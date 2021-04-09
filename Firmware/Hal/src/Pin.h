@@ -5,8 +5,6 @@
 #include <string>
 #include <bitset>
 
-#include "board.h"
-
 class Pin
 {
 public:
@@ -29,24 +27,24 @@ public:
     Pin* as_output();
     Pin* as_input();
 
-    // we need to do this inline due to ISR being in SRAM not FLASH
+    // we need to do this inline
     inline bool get() const
     {
         if (!this->valid) return false;
-        return (LPC_GPIO_PORT->B[this->gpioport][this->gpiopin]) ^ this->inverting;
+        // IDR
+        return ((this->pport[4] & this->ppin) != 0x00U) ^ this->inverting;
     }
 
-    // we need to do this inline due to ISR being in SRAM not FLASH
+    // we need to do this inline
     inline void set(bool value)
     {
         if (!this->valid) return;
-        uint8_t v= (this->inverting ^ value) ? 1 : 0;
-        if(open_drain) {
-            // simulates open drain by setting to input when on and output when off
-            // 0 is input, 1 is output
-            Chip_GPIO_SetPinDIR(LPC_GPIO_PORT, gpioport, gpiopin, v?0:1);
+        // BSSR
+        if(this->inverting ^ value) {
+            this->pport[6] = this->ppin;
+        }else{
+            this->pport[6] = this->ppin << 16;
         }
-        LPC_GPIO_PORT->B[this->gpioport][this->gpiopin] = v;
     }
 
     inline uint16_t get_gpioport() const { return this->gpioport; }
@@ -61,13 +59,15 @@ public:
 private:
 
     static bool set_allocated(uint8_t, uint8_t, bool set= true);
-    bool config_pin(uint32_t gpioconfig); //configures pin for GPIO
-
+    uint32_t *pport;
+    uint32_t ppin;
     struct {
-        uint8_t gpioport:8;
-        uint8_t gpiopin:8;
+        uint8_t gpiopin:6;
+        char gpioport:8; // the port A-K
         bool inverting: 1;
         bool open_drain: 1;
+        bool pullup:1;
+        bool pulldown:1;
         bool valid: 1;
         bool adc_only: 1;   //true if adc only pin
         int adc_channel: 8;   //adc channel

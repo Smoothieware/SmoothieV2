@@ -21,7 +21,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "ff.h"
-#include "stopwatch.h"
+#include "benchmark_timer.h"
 
 #include <functional>
 #include <set>
@@ -1059,7 +1059,8 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
             if(Module::is_halted()) break;
             Robot::getInstance()->actuators[a]->manual_step(dir);
             // delay
-            StopWatch_DelayUs(delayus);
+            uint32_t st= benchmark_timer_start();
+            while(benchmark_timer_as_us(benchmark_timer_elapsed(st)) < delayus) ;
         }
 
         // reset the position based on current actuator position
@@ -1458,7 +1459,7 @@ bool CommandShell::reset_cmd(std::string& params, OutputStream& os)
     os.printf("Reset will occur in 5 seconds, make sure to disconnect before that\n");
     vTaskDelay(pdMS_TO_TICKS(5000));
     //*(volatile int*)0x40053100 = 1; // reset core
-    Chip_RGU_TriggerReset(RGU_CORE_RST); // reset core
+    //Chip_RGU_TriggerReset(RGU_CORE_RST); // reset core
     return true;
 }
 

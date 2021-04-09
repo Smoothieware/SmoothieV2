@@ -9,7 +9,6 @@
 
 #include "../Unity/src/unity.h"
 #include "TestRegistry.h"
-#include "board.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "timers.h"
@@ -21,9 +20,7 @@
 
 #include "uart_comms.h"
 
-extern float get_pll1_clk();
-
-#define TESTCOMMS
+//#define TESTCOMMS
 
 // // place holder
 bool dispatch_line(OutputStream& os, const char *line)
@@ -92,8 +89,6 @@ static int run_tests()
     printf("Done\n");
     return ret;
 }
-
-void configureSPIFI();
 
 void safe_sleep(uint32_t ms)
 {
@@ -488,30 +483,23 @@ extern "C" void vApplicationMallocFailedHook( void )
 }
 
 extern "C" void setup_xprintf();
+extern "C" void main_system_setup();
 
 int main()   //int argc, char *argv[])
 {
-    setup_xprintf();
+    // setup clock and caches etc (in HAL)
+    main_system_setup();
+
 
     //HAL_NVIC_SetPriorityGrouping( NVIC_PRIORITYGROUP_4 );
     NVIC_SetPriorityGrouping( 0 );
 
-    // Read clock settings and update SystemCoreClock variable
-    SystemCoreClockUpdate();
+    setup_xprintf();
 
-    // Set up and initialize all required blocks and
-    // functions related to the board hardware
-    Board_Init();
-
-    if(setup_uart() < 0) {
-        printf("FATAL: UART setup failed\n");
+    if(setup_uart() <= 0) {
+        puts("FATAL: UART setup failed\n");
         __asm("bkpt #0");
     }
-
-#ifndef FLASH16BIT
-    configureSPIFI(); // full speed ahead
-    printf("SPIFI optimization setup\n");
-#endif
 
     printf("MCU clock rate= %lu Hz\n", SystemCoreClock);
 

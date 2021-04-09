@@ -29,12 +29,7 @@
 #ifndef FREERTOS_CONFIG_H
 #define FREERTOS_CONFIG_H
 
-#include "board.h"
-
-#if __NVIC_PRIO_BITS != 3
-#error __NVIC_PRIO_BITS is wrong
-//#define __NVIC_PRIO_BITS          3         /*!< Number of Bits used for Priority Levels */
-#endif
+#include "stm32h745xx.h"
 
 /*-----------------------------------------------------------
  * Application specific definitions.
@@ -51,7 +46,7 @@
 #define configUSE_PREEMPTION			1
 #define configUSE_IDLE_HOOK				1
 #define configUSE_TICK_HOOK				1
-#define configCPU_CLOCK_HZ				( 204000000UL )
+#define configCPU_CLOCK_HZ				( 400000000UL )
 #define configTICK_RATE_HZ				( ( TickType_t ) 1000 )
 #define configMAX_PRIORITIES			( 5 )
 #define configMINIMAL_STACK_SIZE		( ( unsigned short ) 80 )

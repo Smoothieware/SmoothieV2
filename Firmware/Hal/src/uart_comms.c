@@ -2,80 +2,71 @@
  * handles interrupt driven uart I/O for primary UART/DEBUG port
  */
 #include "uart_comms.h"
-#include "board.h"
+
+#include "stm32h7xx_hal.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 static xTaskHandle xTaskToNotify = NULL;
 
-/* Transmit and receive ring buffers */
-STATIC RINGBUFF_T txring, rxring;
-
-/* Transmit and receive ring buffer sizes */
-#define UART_SRB_SIZE 128	/* Send */
-#define UART_RRB_SIZE 256	/* Receive */
-
 /* Transmit and receive buffers */
-static uint8_t rxbuff[UART_RRB_SIZE], txbuff[UART_SRB_SIZE];
+static uint8_t rxbuff[16];
+static uint16_t rxbuffsize= 0;
+static UART_HandleTypeDef UartHandle;
 
 // select the UART to use
-#if defined(BOARD_BAMBINO) && defined (USE_UART0)
-/* Use UART0 for Bambino boards P6.5 : UART0_TXD, P6.4 : UART0_RXD */
-#define LPC_UARTX       LPC_USART0
-#define UARTx_IRQn      USART0_IRQn
-#define UARTx_IRQHandler UART0_IRQHandler
+#if defined(USE_UART3) && UART3_PINSET == 8
 
-// Mini alpha also needs to be told which uart it uses as the pins are different
-#elif defined(BOARD_MINIALPHA) && defined(USE_UART2)
-/* Use UART2 for mini alpha boards PA.1 : UART2_TXD, PA.2 : UART2_RX */
-#define LPC_UARTX       LPC_USART2
-#define UARTx_IRQn      USART2_IRQn
-#define UARTx_IRQHandler UART2_IRQHandler
+/* UART3 on nucleo is routed to the stlinkv3 */
+#define USARTx                     USART3
+#define USARTx_CLK_ENABLE()             __HAL_RCC_USART3_CLK_ENABLE()
+#define USARTx_CLK_DISABLE()            __HAL_RCC_USART3_CLK_DISABLE()
 
-#elif defined(BOARD_MINIALPHA) && defined(USE_UART0)
-/* Use UART0 for mini alpha boards P2.0 : UART0_TXD, P2.1 : UART0_RX */
-#define LPC_UARTX       LPC_USART0
-#define UARTx_IRQn      USART0_IRQn
-#define UARTx_IRQHandler UART0_IRQHandler
+#define USARTx_TX_PIN                   GPIO_PIN_8
+#define USARTx_TX_GPIO_PORT             GPIOD
+#define USARTx_TX_GPIO_CLK_ENABLE()     __HAL_RCC_GPIOD_CLK_ENABLE()
+#define USARTx_TX_GPIO_CLK_DISABLE()    __HAL_RCC_GPIOD_CLK_DISABLE()
+#define USARTx_TX_AF                    GPIO_AF7_USART3
 
-#elif defined(BOARD_MINIALPHA) && defined(USE_UART1)
-// Use UART1 P1.13 : UART1_TXD, P1.14 : UART1_RX
-#define LPC_UARTX       LPC_UART1
-#define UARTx_IRQn      UART1_IRQn
-#define UARTx_IRQHandler UART1_IRQHandler
+#define USARTx_RX_PIN                   GPIO_PIN_9
+#define USARTx_RX_GPIO_PORT             GPIOD
+#define USARTx_RX_GPIO_CLK_ENABLE()     __HAL_RCC_GPIOD_CLK_ENABLE()
+#define USARTx_RX_GPIO_CLK_DISABLE()    __HAL_RCC_GPIOD_CLK_DISABLE()
+#define USARTx_RX_AF                    GPIO_AF7_USART3
 
-#elif defined(BOARD_PRIMEALPHA) && defined(USE_UART0)
-/* Use UART0 for Prime alpha boards PF.10 : UART0_TXD, PF.11 : UART0_RX */
-#define LPC_UARTX       LPC_USART0
-#define UARTx_IRQn      USART0_IRQn
-#define UARTx_IRQHandler UART0_IRQHandler
+#define USARTx_FORCE_RESET()             __HAL_RCC_USART3_FORCE_RESET()
+#define USARTx_RELEASE_RESET()           __HAL_RCC_USART3_RELEASE_RESET()
+
+/* Definition for USARTx's NVIC */
+#define USARTx_IRQn                      USART3_IRQn
+#define USARTx_IRQHandler                USART3_IRQHandler
 
 #else
-#error Board needs to define which UART to use (USE_UART[0|1|2])
+#error Board needs to define which UART to use (USE_UART[0|1|2|3])
 #endif
 
-
-/**
- * @brief	UART interrupt handler using ring buffers
- * @return	Nothing
- */
-void UARTx_IRQHandler(void)
+void USARTx_IRQHandler(void)
 {
-	/* Want to handle any errors? Do it here. */
+	HAL_UART_IRQHandler(&UartHandle);
+}
 
-	int has_rx_data= Chip_UART_ReadLineStatus(LPC_UARTX) & UART_LSR_RDR;
-
-	/* Use default ring buffer handler. Override this with your own
-	   code if you need more capability. */
-	Chip_UART_IRQRBHandler(LPC_UARTX, &rxring, &txring);
-
-	if(xTaskToNotify != NULL && has_rx_data) {
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+	if(xTaskToNotify != NULL) {
 		// we only do this if there is new incoming data
 		// notify task there is data to read
-		BaseType_t xHigherPriorityTaskWoken= pdFALSE;
+		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 		vTaskNotifyGiveFromISR( xTaskToNotify, &xHigherPriorityTaskWoken );
 		portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 	}
+}
+
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t nb_rx_data)
+{
+	// we got a partial buffer
+	rxbuffsize= nb_rx_data;
+
 }
 
 void set_notification_uart(xTaskHandle h)
@@ -84,63 +75,138 @@ void set_notification_uart(xTaskHandle h)
 	xTaskToNotify = h;
 }
 
+void HAL_UART_MspInit(UART_HandleTypeDef *huart)
+{
+	if(huart != &UartHandle) {
+		// not this one
+		return;
+	}
+
+	GPIO_InitTypeDef  GPIO_InitStruct;
+
+	/*##-1- Enable peripherals and GPIO Clocks #################################*/
+	/* Enable GPIO TX/RX clock */
+	USARTx_TX_GPIO_CLK_ENABLE();
+	USARTx_RX_GPIO_CLK_ENABLE();
+
+	/* Enable USARTx clock */
+	USARTx_CLK_ENABLE();
+
+	/*##-2- Configure peripheral GPIO ##########################################*/
+	/* UART TX GPIO pin configuration  */
+	GPIO_InitStruct.Pin       = USARTx_TX_PIN;
+	GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
+	GPIO_InitStruct.Pull      = GPIO_PULLUP;
+	GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_VERY_HIGH;
+	GPIO_InitStruct.Alternate = USARTx_TX_AF;
+
+	HAL_GPIO_Init(USARTx_TX_GPIO_PORT, &GPIO_InitStruct);
+
+	/* UART RX GPIO pin configuration  */
+	GPIO_InitStruct.Pin = USARTx_RX_PIN;
+	GPIO_InitStruct.Alternate = USARTx_RX_AF;
+
+	HAL_GPIO_Init(USARTx_RX_GPIO_PORT, &GPIO_InitStruct);
+
+	/*##-3- Configure the NVIC for UART ########################################*/
+	/* NVIC for USART */
+	HAL_NVIC_SetPriority(USARTx_IRQn, 0, 1);
+	HAL_NVIC_EnableIRQ(USARTx_IRQn);
+}
+
+void HAL_UART_MspDeInit(UART_HandleTypeDef *huart)
+{
+	if(huart != &UartHandle) {
+		// not this one
+		return;
+	}
+
+	/*##-1- Reset peripherals ##################################################*/
+	USARTx_FORCE_RESET();
+	USARTx_RELEASE_RESET();
+
+	/*##-2- Disable peripherals and GPIO Clocks #################################*/
+	/* Configure UART Tx as alternate function  */
+	HAL_GPIO_DeInit(USARTx_TX_GPIO_PORT, USARTx_TX_PIN);
+	/* Configure UART Rx as alternate function  */
+	HAL_GPIO_DeInit(USARTx_RX_GPIO_PORT, USARTx_RX_PIN);
+
+	/*##-3- Disable the NVIC for UART ##########################################*/
+	HAL_NVIC_DisableIRQ(USARTx_IRQn);
+}
+
 int setup_uart()
 {
-	Board_UART_Init(LPC_UARTX);
+	/*##-1- Configure the UART peripheral ######################################*/
+	/* Put the USART peripheral in the Asynchronous mode (UART Mode) */
+	/* UART configured as follows:
+	    - Word Length = 8 Bits
+	    - Stop Bit = One Stop bit
+	    - Parity = None
+	    - BaudRate = 115200 baud
+	    - Hardware flow control disabled (RTS and CTS signals) */
+	UartHandle.Instance        = USARTx;
+	UartHandle.Init.BaudRate   = 115200;
+	UartHandle.Init.WordLength = UART_WORDLENGTH_8B;
+	UartHandle.Init.StopBits   = UART_STOPBITS_1;
+	UartHandle.Init.Parity     = UART_PARITY_NONE;
+	UartHandle.Init.HwFlowCtl  = UART_HWCONTROL_NONE;
+	UartHandle.Init.Mode       = UART_MODE_TX_RX;
+	UartHandle.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+	if(HAL_UART_DeInit(&UartHandle) != HAL_OK) {
+		return 0;
+	}
+	if(HAL_UART_Init(&UartHandle) != HAL_OK) {
+		return 0;
+	}
 
-	/* Setup UART for 115.2K8N1 */
-	Chip_UART_Init(LPC_UARTX);
-	Chip_UART_SetBaud(LPC_UARTX, 115200);
-	Chip_UART_ConfigData(LPC_UARTX, (UART_LCR_WLEN8 | UART_LCR_SBS_1BIT));
-	Chip_UART_SetupFIFOS(LPC_UARTX, (UART_FCR_FIFO_EN | UART_FCR_TRG_LEV2));
-	Chip_UART_TXEnable(LPC_UARTX);
+	// HAL_UART_EnableReceiverTimeout(&UartHandle);
 
-	/* Before using the ring buffers, initialize them using the ring
-	   buffer init function */
-	RingBuffer_Init(&rxring, rxbuff, 1, UART_RRB_SIZE);
-	RingBuffer_Init(&txring, txbuff, 1, UART_SRB_SIZE);
+	/*##-4- Put UART peripheral in reception process ###########################*/
+	if(HAL_UART_Receive_IT(&UartHandle, (uint8_t *)rxbuff, 16) != HAL_OK) {
+		return 0;
+	}
 
-	/* Reset and enable FIFOs, FIFO trigger level 3 (14 chars) */
-	Chip_UART_SetupFIFOS(LPC_UARTX, (UART_FCR_FIFO_EN | UART_FCR_RX_RS |
-							UART_FCR_TX_RS | UART_FCR_TRG_LEV3));
-
-	/* Enable receive data and line status interrupt */
-	Chip_UART_IntEnable(LPC_UARTX, (UART_IER_RBRINT | UART_IER_RLSINT));
-
-	NVIC_SetPriority(UARTx_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
-	NVIC_EnableIRQ(UARTx_IRQn);
 
 	return 1;
 }
 
 void stop_uart()
 {
-	NVIC_DisableIRQ(UARTx_IRQn);
-	Chip_UART_IntDisable(LPC_UARTX, (UART_IER_RBRINT | UART_IER_RLSINT));
+	HAL_UART_MspDeInit(&UartHandle);
 }
 
 size_t read_uart(char * buf, size_t length)
 {
-	int bytes = Chip_UART_ReadRB(LPC_UARTX, &rxring, buf, length);
-	return bytes;
+	if(rxbuffsize > 1) {
+		uint16_t n= rxbuffsize > length ? length : rxbuffsize;
+		rxbuffsize= 0;
+
+		memcpy(buf, rxbuff, n);
+		return n;
+
+	}else{
+		*buf = *rxbuff;
+		rxbuffsize= 0;
+		return 1;
+	}
+
 }
 
 size_t write_uart(const char *buf, size_t length)
 {
-	#if 0
+#if 0
 	// Note we do a blocking write here until all is written
 	size_t sent_cnt = 0;
 	while(sent_cnt < length) {
-		int n = Chip_UART_SendRB(LPC_UARTX, &txring, buf+sent_cnt, length-sent_cnt);
+		int n = Chip_UART_SendRB(LPC_UARTX, &txring, buf + sent_cnt, length - sent_cnt);
 		if(n > 0) {
 			sent_cnt += n;
 		}
 	}
 	return length;
-	#else
-	//taskENTER_CRITICAL();
-	size_t n= Chip_UART_SendBlocking(LPC_UARTX, buf, length);
-	//taskEXIT_CRITICAL();
-	return n;
-	#endif
+#else
+	HAL_UART_Transmit(&UartHandle, (uint8_t*)buf, length, 5000);
+	return length;
+#endif
 }

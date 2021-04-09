@@ -85,9 +85,9 @@ Flashing V2 Smoothie using J-Link (Windows)
 ===========================================
 
 Install and launch Jflash Lite
-Set to LPC4330_M4, JTAG 4000khz
+Set to STM32H745ZI_M7, JTAG 4000khz
 Select V2 smoothie bin file
-Set Address to 0x14000000
+Set Address to 0x08000000
 Click Program Device
 Install SD with config.ini into V2 board
 Plug into USB and boot.  Verify serial connection
