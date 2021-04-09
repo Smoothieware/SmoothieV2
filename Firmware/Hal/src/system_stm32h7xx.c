@@ -914,7 +914,7 @@ static void MPU_Config(void)
 
 }
 
-// cakked from main, but it is HAL so we put it here
+// called from main, but it is HAL so we put it here
 void main_system_setup()
 {
     MPU_Config();
@@ -924,4 +924,12 @@ void main_system_setup()
     HAL_Init();
     /* Configure the system clock to 400 MHz */
     SystemClock_Config();
+}
+
+#include <stdio.h>
+void print_clocks()
+{
+    printf("HCLK = %lu\n", HAL_RCC_GetHCLKFreq());
+    printf("PCLK1 = %lu\n", HAL_RCC_GetPCLK1Freq());
+    printf("PCLK2 = %lu\n", HAL_RCC_GetPCLK2Freq());
 }

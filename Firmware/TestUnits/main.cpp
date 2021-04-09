@@ -484,6 +484,7 @@ extern "C" void vApplicationMallocFailedHook( void )
 
 extern "C" void setup_xprintf();
 extern "C" void main_system_setup();
+extern "C" void print_clocks();
 
 int main()   //int argc, char *argv[])
 {
@@ -502,6 +503,7 @@ int main()   //int argc, char *argv[])
     }
 
     printf("MCU clock rate= %lu Hz\n", SystemCoreClock);
+    print_clocks();
 
     // we need to setup and start the slow ticker for some of the tests
     static SlowTicker *slowticker= new SlowTicker;
