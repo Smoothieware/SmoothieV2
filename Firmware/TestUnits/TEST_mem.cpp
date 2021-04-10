@@ -4,11 +4,10 @@
 #include <malloc.h>
 #include <iostream>
 
-#include "board.h"
-
 #include "TestRegistry.h"
 
 #include "OutputStream.h"
+#include "benchmark_timer.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -20,11 +19,12 @@ REGISTER_TEST(MemoryTest, stats)
     printf("Mem:   %11d%11d%11d%11d\n", mem.arena, mem.uordblks, mem.fordblks, mem.usmblks);
 }
 
+#if 0
 char test_ram2_bss[128] __attribute__ ((section (".bss.$RAM2")));
 // RAM3 is used by USB CDC so it is not fully available
 //char test_ram3_bss[128] __attribute__ ((section (".bss.$RAM3")));
- __attribute__ ((section (".data.$RAM4"))) char test_ram4_data[8]= {1,2,3,4,5,6,7,8};
- __attribute__ ((section (".data.$RAM5"))) char test_ram5_data[4]= {9,8,7,6};
+__attribute__ ((section (".data.$RAM4"))) char test_ram4_data[8]= {1,2,3,4,5,6,7,8};
+__attribute__ ((section (".data.$RAM5"))) char test_ram5_data[4]= {9,8,7,6};
 
 REGISTER_TEST(MemoryTest, other_rams)
 {
@@ -112,21 +112,21 @@ REGISTER_TEST(MemoryTest, memory_pool)
     TEST_ASSERT_EQUAL_INT(ef, _RAM2->available());
     _RAM2->debug(os);
 }
+#endif
 
 #define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
 _ramfunc_ int testramfunc() { return 123; }
+
 REGISTER_TEST(MemoryTest, ramfunc)
 {
     printf("ramfunc is at %p\n", testramfunc);
-    TEST_ASSERT_TRUE((unsigned int)testramfunc >= 0x10000000 && (unsigned int)testramfunc < 0x10020000);
+    TEST_ASSERT_TRUE((unsigned int)testramfunc >= 0x00000000 && (unsigned int)testramfunc < 0x0000200);
     TEST_ASSERT_EQUAL_INT(123, testramfunc());
 }
 
 using systime_t= uint32_t;
-#define clock_systimer() ((systime_t)LPC_RITIMER->COUNTER)
-#define TICK2USEC(x) ((systime_t)(((uint64_t)(x)*1000000)/timerFreq))
 
-_ramfunc_ void runMemoryTest(uint32_t timerFreq, void *addr)
+void runMemoryTest(void *addr, uint32_t n)
 {
     register uint32_t* p = (uint32_t *)addr;
     register uint32_t r1;
@@ -138,8 +138,7 @@ _ramfunc_ void runMemoryTest(uint32_t timerFreq, void *addr)
     register uint32_t r7;
     register uint32_t r8;
 
-    uint32_t n= 8000000;
-    systime_t st = clock_systimer();
+    systime_t st = benchmark_timer_start();
     while(p < (uint32_t *)((uint32_t)addr+n)) {
         asm volatile ("ldm.w %[ptr]!,{%[r1],%[r2],%[r3],%[r4],%[r5],%[r6],%[r7],%[r8]}" :
                         [r1] "=r" (r1), [r2] "=r" (r2), [r3] "=r" (r3), [r4] "=r" (r4),
@@ -147,17 +146,40 @@ _ramfunc_ void runMemoryTest(uint32_t timerFreq, void *addr)
                         [ptr] "=r" (p)                                                  :
                         "r" (p)                                                         : );
     }
-    systime_t en = clock_systimer();
+    systime_t elt = benchmark_timer_elapsed(st);
 
-    printf("elapsed time %lu us over %lu bytes %1.4f mb/sec\n", TICK2USEC(en-st), n, (float)n/TICK2USEC(en-st));
+    printf("elapsed time %lu us over %lu bytes %1.4f mb/sec\n", benchmark_timer_as_us(elt), n, (float)n/benchmark_timer_as_us(elt));
 }
 
-REGISTER_TEST(MemoryTest, time_spifi)
+REGISTER_TEST(MemoryTest, time_memory_cached)
 {
-    printf("Timing memory at 0x14000000\n");
-    /* Get RIT timer peripheral clock rate */
-    uint32_t timerFreq = Chip_Clock_GetRate(CLK_MX_RITIMER);
     taskENTER_CRITICAL();
-    runMemoryTest(timerFreq, (void*)0x14000000);
+    printf("Timing memory at 0x08000000 (FLASH)\n");
+    runMemoryTest((void*)0x08000000, 2000000);
+
+    printf("Timing memory at 0x00000000 (ITCMRAM)\n");
+    runMemoryTest((void*)0x00000000, 64000);
+
+    printf("Timing memory at 0x24000000 (RAM_D1)\n");
+    runMemoryTest((void*)0x24000000, 512000);
+    taskEXIT_CRITICAL();
+}
+
+REGISTER_TEST(MemoryTest, time_memory_not_cached)
+{
+    taskENTER_CRITICAL();
+    /* Disable D-Cache */
+    SCB_DisableDCache();
+    printf("Timing memory at 0x08000000 (FLASH)\n");
+    runMemoryTest((void*)0x08000000, 2000000);
+
+    printf("Timing memory at 0x00000000 (ITCMRAM)\n");
+    runMemoryTest((void*)0x00000000, 64000);
+
+    printf("Timing memory at 0x24000000 (RAM_D1)\n");
+    runMemoryTest((void*)0x24000000, 512000);
+
+    /* Enable D-Cache */
+    SCB_EnableDCache();
     taskEXIT_CRITICAL();
 }

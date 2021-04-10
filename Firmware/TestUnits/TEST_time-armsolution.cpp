@@ -8,36 +8,27 @@
 
 #include "LinearDeltaSolution.h"
 #include "ActuatorCoordinates.h"
-
 #include "ConfigReader.h"
-
-#include "board.h"
-
-using systime_t= uint32_t;
-#define clock_systimer() ((systime_t)Chip_RIT_GetCounter(LPC_RITIMER))
-#define TICK2USEC(x) ((systime_t)(((uint64_t)(x)*1000000)/timerFreq))
+#include "benchmark_timer.h"
 
 static std::string str("[linear delta]\narm_length = 367.3\narm_radius = 199.6014\n");
 
 REGISTER_TEST(ArmSolution, delta_ik)
 {
-    /* Get RIT timer peripheral clock rate */
-    uint32_t timerFreq = Chip_Clock_GetRate(CLK_MX_RITIMER);
-
     std::stringstream ss1(str);
     ConfigReader cr(ss1);
 
-    float millimeters[3]= {100.0, 200.0, 300.0};
+    float millimeters[3]= {0.0, 0.0, 100.0};
     ActuatorCoordinates ac;
     BaseSolution* k= new LinearDeltaSolution(cr);
 
     uint32_t n= 100000;
-    systime_t st = clock_systimer();
+    uint32_t st = benchmark_timer_start();
 
     for(uint32_t i=0;i<n;i++) k->cartesian_to_actuator( millimeters, ac);
 
-    systime_t en = clock_systimer();
-    printf("elapsed time %lu us over %lu iterations %1.4f us per iteration\n", TICK2USEC(en-st), n, TICK2USEC(en-st)/(float)n);
+    uint32_t elt = benchmark_timer_elapsed(st);
+    printf("elapsed time %lu us over %lu iterations %1.4f us per iteration\n", benchmark_timer_as_us(elt), n, (elt)/(float)n);
 
     delete k;
 

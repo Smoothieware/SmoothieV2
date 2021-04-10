@@ -163,6 +163,20 @@ SECTIONS
   PROVIDE(__HeapBase = _end);
   PROVIDE(_vStackTop = _estack);
 
+  /* Copy specific fast-executing code to ITCM RAM */
+  itcm_data = LOADADDR(.itcm_text);
+  .itcm_text :
+  {
+    . = ALIGN(4);
+    itcm_text_start = .;
+    *(.itcm_text)
+    *(.itcm_text*)
+    *(.ramfunc*)
+    . = ALIGN(4);
+    itcm_text_end = .;
+  } >ITCMRAM AT> FLASH
+
+
   /* Remove information from the standard libraries */
   /DISCARD/ :
   {

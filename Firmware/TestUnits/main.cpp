@@ -20,6 +20,8 @@
 
 #include "uart_comms.h"
 
+#include "benchmark_timer.h"
+
 //#define TESTCOMMS
 
 // // place holder
@@ -116,9 +118,6 @@ void setup_memory_pool()
 
 extern "C" void vRunTestsTask(void *pvParameters)
 {
-    // show the DIVB clock rate used for SPIFI
-    //get_pll1_clk();
-
     run_tests();
 
     //vTaskGetTaskState();
@@ -482,6 +481,12 @@ extern "C" void vApplicationMallocFailedHook( void )
     for( ;; );
 }
 
+// #define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
+// _ramfunc_ void TIMER0_IRQHandler(void)
+// {
+//     printf("hello\n");
+// }
+
 extern "C" void setup_xprintf();
 extern "C" void main_system_setup();
 extern "C" void print_clocks();
@@ -491,6 +496,7 @@ int main()   //int argc, char *argv[])
     // setup clock and caches etc (in HAL)
     main_system_setup();
 
+    benchmark_timer_init();
 
     //HAL_NVIC_SetPriorityGrouping( NVIC_PRIORITYGROUP_4 );
     NVIC_SetPriorityGrouping( 0 );

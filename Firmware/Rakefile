@@ -232,7 +232,7 @@ LOPTIONS = ['-Xlinker --gc-sections', '-Xlinker -print-memory-usage', '-Xlinker'
             '-Xlinker', '--wrap=fprintf', '-Xlinker', '--wrap=vfprintf',
             '-mcpu=cortex-m7', '-mfpu=fpv5-sp-d16', '-mfloat-abi=hard', '-mthumb']
 
-LDFLAGS = "  -Xlinker -Map=#{OBJDIR}/#{PROG}.map -T#{LSCRIPT} " + LOPTIONS.join(" ")
+LDFLAGS = " -Wl,--cref -Xlinker -Map=#{OBJDIR}/#{PROG}.map -T#{LSCRIPT} " + LOPTIONS.join(" ")
 
 # generate the header dependencies if they exist
 import(*DEPFILES)

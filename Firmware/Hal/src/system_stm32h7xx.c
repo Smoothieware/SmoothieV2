@@ -47,6 +47,7 @@
 
 #include "stm32h7xx.h"
 #include <math.h>
+#include <string.h>
 
 #if !defined  (HSE_VALUE)
 #define HSE_VALUE    ((uint32_t)8000000) /*!< Value of the External oscillator in Hz */
@@ -237,6 +238,11 @@ void SystemInit (void)
     SCB->VTOR = FLASH_BANK1_BASE | VECT_TAB_OFFSET;       /* Vector Table Relocation in Internal FLASH */
 #endif
 
+  /* Load functions into ITCM RAM */
+  extern unsigned char itcm_text_start;
+  extern const unsigned char itcm_text_end;
+  extern const unsigned char itcm_data;
+  memcpy(&itcm_text_start, &itcm_data, (uint32_t) (&itcm_text_end - &itcm_text_start));
 
 }
 
