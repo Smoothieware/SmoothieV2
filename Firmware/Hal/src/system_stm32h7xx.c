@@ -238,11 +238,11 @@ void SystemInit (void)
     SCB->VTOR = FLASH_BANK1_BASE | VECT_TAB_OFFSET;       /* Vector Table Relocation in Internal FLASH */
 #endif
 
-  /* Load functions into ITCM RAM */
-  extern unsigned char itcm_text_start;
-  extern const unsigned char itcm_text_end;
-  extern const unsigned char itcm_data;
-  memcpy(&itcm_text_start, &itcm_data, (uint32_t) (&itcm_text_end - &itcm_text_start));
+    /* Load functions into ITCM RAM */
+    extern unsigned char itcm_text_start;
+    extern const unsigned char itcm_text_end;
+    extern const unsigned char itcm_data;
+    memcpy(&itcm_text_start, &itcm_data, (uint32_t) (&itcm_text_end - &itcm_text_start));
 
 }
 
@@ -927,7 +927,9 @@ void main_system_setup()
     /* Enable the CPU Cache */
     CPU_CACHE_Enable();
     /* stm32h7xx HAL library initialization */
-    HAL_Init();
+    if(HAL_Init() != HAL_OK) {
+        Error_Handler();
+    }
     /* Configure the system clock to 400 MHz */
     SystemClock_Config();
 }
@@ -938,4 +940,8 @@ void print_clocks()
     printf("HCLK = %lu\n", HAL_RCC_GetHCLKFreq());
     printf("PCLK1 = %lu\n", HAL_RCC_GetPCLK1Freq());
     printf("PCLK2 = %lu\n", HAL_RCC_GetPCLK2Freq());
+    uint32_t s = DWT->CYCCNT;
+    HAL_Delay(10);
+    uint32_t e = DWT->CYCCNT;
+    printf("10ms HAL_Delay took: %lu cycles\n", e - s);
 }

@@ -2,11 +2,14 @@
 #include "TestRegistry.h"
 
 #include "Module.h"
+#include "ConfigReader.h"
 
 #include <string.h>
+#include <sstream>
 
 static bool g_on_halt = false;
 static char g_request_key[32] = "";
+static bool g_create_called =  false;
 
 class TestSingleModule : public Module
 {
@@ -14,8 +17,29 @@ public:
     TestSingleModule(const char *name) : Module(name) {};
     void on_halt(bool flg) { g_on_halt = flg; }
     bool request(const char *key, void *value) { strcpy(g_request_key, key); *(int *)value = 1234; return true; }
+    static bool create(ConfigReader& cr) { g_create_called= true; return true; }
 };
+REGISTER_MODULE(TestSingleModule, TestSingleModule::create)
 
+REGISTER_TEST(Module, auto_register)
+{
+    extern uint32_t __registered_modules_start;
+    extern uint32_t __registered_modules_end;
+    uint32_t *g_pfnModules= &__registered_modules_start;
+    int cnt =0;
+    std::stringstream ss("");
+    ConfigReader cr(ss);
+    TEST_ASSERT_FALSE(g_create_called);
+    while (g_pfnModules < &__registered_modules_end) {
+        uint32_t *addr= g_pfnModules++;
+        bool (*pfnModule)(ConfigReader& cr)= (bool (*)(ConfigReader& cr))*addr;
+        // this calls the registered create function for the module
+        pfnModule(cr);
+        ++cnt;
+    }
+    TEST_ASSERT_EQUAL_INT(1, cnt);
+    TEST_ASSERT_TRUE(g_create_called);
+}
 
 REGISTER_TEST(Module, single_module)
 {

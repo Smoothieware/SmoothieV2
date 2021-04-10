@@ -14,7 +14,7 @@
 
 extern int fatfs_to_errno( FRESULT Result );
 
-#if 0
+#if 1
 /*
  * Map newlib calls to fflib
  */

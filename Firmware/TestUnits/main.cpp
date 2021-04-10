@@ -498,9 +498,6 @@ int main()   //int argc, char *argv[])
 
     benchmark_timer_init();
 
-    //HAL_NVIC_SetPriorityGrouping( NVIC_PRIORITYGROUP_4 );
-    NVIC_SetPriorityGrouping( 0 );
-
     setup_xprintf();
 
     if(setup_uart() <= 0) {

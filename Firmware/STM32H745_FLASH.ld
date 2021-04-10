@@ -63,6 +63,16 @@ SECTIONS
     . = ALIGN(4);
   } >FLASH
 
+  /* modules registration table */
+  .modules_table :
+  {
+    /* *(.after_vectors*) */
+    . = ALIGN(4);
+    __registered_modules_start = .;
+    KEEP(*(.registered_modules*))
+    __registered_modules_end = .;
+  } >FLASH
+
   /* The program code and other data goes into FLASH */
   .text :
   {

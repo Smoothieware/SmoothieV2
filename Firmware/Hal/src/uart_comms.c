@@ -39,7 +39,7 @@ RingBuffer_t *rxrb;
 #define USARTx_SET_RX_GPIO_AF()       LL_GPIO_SetAFPin_8_15(GPIOD, LL_GPIO_PIN_9, LL_GPIO_AF_7)
 
 #else
-#error Board needs to define which UART to use (USE_UART[0|1|2|3])
+#error Board needs to define which UART to use (USE_UART[0|1|2|3]) and pinset to use (UART3_PINSET=8)
 #endif
 
 /**
@@ -123,7 +123,7 @@ void Configure_USART(void)
 	/* (2) NVIC Configuration for USART interrupts */
 	/*  - Set priority for USARTx_IRQn */
 	/*  - Enable USARTx_IRQn */
-	NVIC_SetPriority(USARTx_IRQn, 0);
+	NVIC_SetPriority(USARTx_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
 	NVIC_EnableIRQ(USARTx_IRQn);
 
 	/* (3) Enable USART peripheral clock and clock source ***********************/

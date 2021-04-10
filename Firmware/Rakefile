@@ -111,8 +111,12 @@ NONETWORK = ENV['nonetwork'].nil? ? 0 : ENV['nonetwork']
 # add HAL files
 #hal_src = FileList['Hal/**/*.{c,cpp,s}']
 hal_src = FileList['Hal/STM32H7xx_HAL_Driver/**/*.{c,cpp,s}', 'Hal/src/Pin.cpp', 'Hal/src/uart_comms.c',
-                   'Hal/src/cr_cpp_config.cpp', 'Hal/src/startup_stm32h745xx.s', 'Hal/src/system_stm32h7xx.c']
+                   'Hal/src/cr_cpp_config.cpp', 'Hal/src/startup_stm32h745xx.s', 'Hal/src/system_stm32h7xx.c',
+                  ]
 hal_src.exclude(/_template\.c/)
+
+# SD support and fatfs
+sdmmc_src = FileList['Hal/sdmmc/**/*.c']
 
 # RTOS
 rtos_src = FileList['RTOS/**/*.{c,cpp,s}']
@@ -163,11 +167,11 @@ if NONETWORK == '1'
   puts "Excluding Network code"
 end
 
-# All sources
-SRCS = hal_src + rtos_src + src
-
 # Library sources
-HAL_SRCS = hal_src + rtos_src
+HAL_SRCS = hal_src + sdmmc_src + rtos_src
+
+# All sources
+SRCS = HAL_SRCS + src
 
 $using_cpp= SRCS.find { |i| File.extname(i) == ".cpp" }.nil? ? false : true
 
@@ -186,8 +190,9 @@ SRCS.each do |s|
 end
 
 include_dirs = [Dir.glob(["**/Inc", "**/Include", "**/include", "**/inc"])].flatten +
-              ['Hal/STM32H7xx_HAL_Driver', 'Hal/STM32H7xx_HAL_Driver/cmsis', 'Hal/src', 'Hal/sdmmc/fatfs'] +
-              [Dir.glob(['./src/**/'])].flatten # ,'./staging/**/'
+    [Dir.glob(['./src/**/'])].flatten +
+    ['Hal/STM32H7xx_HAL_Driver', 'Hal/STM32H7xx_HAL_Driver/cmsis', 'Hal/src', 'Hal/sdmmc/fatfs', 'Hal/sdmmc/src']
+
 sys_include_dirs = []
 
 # [Dir.glob([PROG + '/**/Inc/**', './mri/**/'])].flatten
