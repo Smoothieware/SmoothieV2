@@ -21,11 +21,11 @@ else
 end
 
 target_defines= []
+# configure main DEBUG UART port to use
 if TARGET == 'Prime'
   # on G5
   target_defines << '-DUSE_UART0'
   target_defines << "-DUART0_PINSET=15"
-  #ENV['nonetwork'] = '1' # for now until ethernet is fixed on H/W
 elsif TARGET == 'Nucleo'
   target_defines << '-DUSE_UART3'
   target_defines << '-DUART3_PINSET=8'
@@ -206,6 +206,15 @@ end
 
 # Target specified #defines
 defines << "-DBUILD_TARGET=\\\"#{TARGET}\\\" "
+if TARGET == 'Nucleo'
+  defines << '-DBOARD_NUCLEO'
+  #defines << '-DSTRING_CONFIG_H=\"string-config-nucleo.h\"'
+elsif TARGET == 'Prime'
+  defines << '-DBOARD_PRIME'
+  defines << '-DSTRING_CONFIG_H=\"string-config-prime.h\"'
+else
+  raise("Error unhandled target")
+end
 
 # define the maximum number of axis compiled in
 unless ENV['axis'].nil?

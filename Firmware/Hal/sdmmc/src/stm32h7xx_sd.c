@@ -107,7 +107,7 @@ int32_t BSP_SD_Init(uint32_t Instance)
         }
 
         /* Enable and set EXTI Interrupt */
-        HAL_NVIC_SetPriority((SD_DETECT_EXTI_IRQn), BSP_SD_IT_PRIORITY, 0x00);
+        HAL_NVIC_SetPriority((SD_DETECT_EXTI_IRQn), 15, 0x00);
         HAL_NVIC_EnableIRQ((SD_DETECT_EXTI_IRQn));
 
         /* Check if SD card is present   */

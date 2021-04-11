@@ -67,7 +67,7 @@ HAL_StatusTypeDef HAL_InitTick (uint32_t TickPriority)
         HAL_NVIC_SetPriority(TIM6_DAC_IRQn, TickPriority , 0U);
 
         /* Enable the TIM6 global Interrupt */
-        HAL_NVIC_EnableIRQ(TIM6_DAC_IRQn);
+        NVIC_EnableIRQ(TIM6_DAC_IRQn);
         uwTickPrio = TickPriority;
     } else {
         return HAL_ERROR;
