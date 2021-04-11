@@ -156,7 +156,7 @@ DSTATUS SD_status(BYTE lun)
 DRESULT SD_read(BYTE lun, BYTE *buff, DWORD sector, UINT count)
 {
     DRESULT res = RES_ERROR;
-    uint32_t event;
+    uint16_t event;
     uint32_t timer;
 #if (ENABLE_SD_DMA_CACHE_MAINTENANCE == 1)
     uint32_t alignedAddr;
@@ -202,7 +202,7 @@ DRESULT SD_read(BYTE lun, BYTE *buff, DWORD sector, UINT count)
 #if _USE_WRITE == 1
 DRESULT SD_write(BYTE lun, const BYTE *buff, DWORD sector, UINT count)
 {
-    uint32_t event;
+    uint16_t event;
     DRESULT res = RES_ERROR;
     uint32_t timer;
     /*
@@ -295,7 +295,7 @@ void BSP_SD_WriteCpltCallback(uint32_t Instance)
 {
     // We have not woken a task at the start of the ISR.
     BaseType_t xHigherPriorityTaskWoken= pdFALSE;
-    uint32_t v = WRITE_CPLT_MSG;
+    uint16_t v = WRITE_CPLT_MSG;
     xQueueSendFromISR(SDQueueID, &v, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
@@ -304,7 +304,7 @@ void BSP_SD_ReadCpltCallback(uint32_t Instance)
 {
     // We have not woken a task at the start of the ISR.
     BaseType_t xHigherPriorityTaskWoken= pdFALSE;
-    uint32_t v = READ_CPLT_MSG;
+    uint16_t v = READ_CPLT_MSG;
     xQueueSendFromISR(SDQueueID, &v, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR (xHigherPriorityTaskWoken);
 }
