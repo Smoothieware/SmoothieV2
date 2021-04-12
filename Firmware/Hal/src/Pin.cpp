@@ -137,7 +137,6 @@ Pin* Pin::from_string(std::string value)
     	case 'B': pport= (uint32_t *)GPIOB; __HAL_RCC_GPIOB_CLK_ENABLE(); break;
     	case 'C': pport= (uint32_t *)GPIOC; __HAL_RCC_GPIOC_CLK_ENABLE(); break;
     	case 'D': pport= (uint32_t *)GPIOD; __HAL_RCC_GPIOD_CLK_ENABLE(); break;
-    	#ifdef USE_STM32F429I_DISCO
     	case 'E': pport= (uint32_t *)GPIOE; __HAL_RCC_GPIOE_CLK_ENABLE(); break;
     	case 'F': pport= (uint32_t *)GPIOF; __HAL_RCC_GPIOF_CLK_ENABLE(); break;
     	case 'G': pport= (uint32_t *)GPIOG; __HAL_RCC_GPIOG_CLK_ENABLE(); break;
@@ -145,7 +144,6 @@ Pin* Pin::from_string(std::string value)
     	case 'I': pport= (uint32_t *)GPIOI; __HAL_RCC_GPIOI_CLK_ENABLE(); break;
     	case 'J': pport= (uint32_t *)GPIOJ; __HAL_RCC_GPIOJ_CLK_ENABLE(); break;
     	case 'K': pport= (uint32_t *)GPIOK; __HAL_RCC_GPIOK_CLK_ENABLE(); break;
-    	#endif
     	default: return nullptr;
     }
     this->valid = true;
@@ -183,6 +181,8 @@ Pin* Pin::as_output()
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
     GPIO_InitStruct.Pin = ppin;
+    pullup = pulldown= false;
+
     HAL_GPIO_Init((GPIO_TypeDef *)pport, &GPIO_InitStruct);
     return this;
 }

@@ -13,37 +13,29 @@ REGISTER_TEST(PinTest, flashleds)
 #ifdef BOARD_NUCLEO
 	Pin myleds[] = {
 		Pin("PB0"),
-		Pin("PE1"),
-		Pin("PB14"),
+		Pin("PE.1"),
+		Pin("PB_14"),
 	};
-	Pin button("PC13!^");
+	Pin button("PC13v");
 	button.as_input();
-	if(!button.connected()) {
+	if(button.connected()) {
+ 		printf("Set input pin %s\n", button.to_string().c_str());
+	}else{
 		printf("Button was invalid\n");
 	}
-#elif defined(BOARD_PRIMEALPHA)
-	Pin myleds[] = {
-		Pin("GPIO3[12]"),
-		Pin("GPIO3[13]"),
-		Pin("GPIO3[14]"),
-		Pin("GPIO5[26]")
-	};
-	Pin button("GPIO0_7!^"); // G1-3
-	button.as_input();
-	if(!button.connected()) {
-		printf("Button was invalid\n");
-	}
+#else
+	#error unrecognized board
 #endif
 
 	printf("set as outputs... \n");
 	for(auto& p : myleds) {
 		cnt++;
 		if(p.as_output() == nullptr) {
-			printf("Failed to allocate pin %d\n", cnt);
+			printf("Failed to allocate pin %d, %s\n", cnt, p.to_string().c_str());
 			TEST_FAIL();
 		} else {
 			p.set(false);
-			printf("Set pin %d, GPIO%d[%d]\n", cnt, p.get_gpioport(), p.get_gpiopin());
+			printf("Set output pin %d, %s\n", cnt, p.to_string().c_str());
 		}
 	}
 
@@ -51,7 +43,7 @@ REGISTER_TEST(PinTest, flashleds)
 
 	TickType_t delayms= pdMS_TO_TICKS(100);
 	cnt = 0;
-	while(button.get() == 0 && cnt < 100) {
+	while(!button.get() && cnt < 100) {
 		uint8_t m = 1;
 		for(auto& p : myleds) {
 			p.set(cnt & m);
@@ -59,6 +51,11 @@ REGISTER_TEST(PinTest, flashleds)
 		}
 		cnt++;
 		vTaskDelay(delayms);
+		if(button.get()) {
+			printf("Button pressed\n");
+		}
 	}
+	if(cnt < 100) printf("user stopped\n");
+
 	printf("Done\n");
 }
