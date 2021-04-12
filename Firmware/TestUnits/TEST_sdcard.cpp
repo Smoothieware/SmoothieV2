@@ -26,6 +26,8 @@ REGISTER_TEST(SDCardTest, mount)
     TEST_ASSERT_EQUAL_INT(FR_OK, f_mount(&fatfs, "sd", 1));
 }
 
+#if 1
+
 REGISTER_TEST(SDCardTest, raw_read_write)
 {
     int ret;
@@ -436,12 +438,14 @@ REGISTER_TEST(SDCardTest, copy_file_fstreams)
 }
 #endif
 
+#endif
+
 REGISTER_TEST(SDCardTest, cat_config_ini)
 {
     static MD5 md5;
 
     #if 1
-
+    // this gets corrupted lines not sure why. actually reads extra characters
     std::ifstream is;
     is.open("/sd/config.ini");
     TEST_ASSERT_TRUE(is.is_open());
@@ -456,11 +460,17 @@ REGISTER_TEST(SDCardTest, cat_config_ini)
     is.close();
 
     #else
+    // size_t n= 1024;
+    // char *lineptr= malloc(n);
+    // while(getline(&lineptr, &n, fp) > 0) ;
+    // free(lineptr);
+
 
     FIL fp;  /* File object */
     FRESULT ret = f_open(&fp, "/sd/config.ini", FA_READ);
     TEST_ASSERT_EQUAL_INT(FR_OK, ret);
 
+    #if 0
     int cnt= 0;
     // read each line of the file
     while(f_eof(&fp) == 0) {
@@ -471,6 +481,19 @@ REGISTER_TEST(SDCardTest, cat_config_ini)
         md5.update(buf, strlen(buf));
         TEST_ASSERT_TRUE(f_error(&fp) == 0);
     }
+    #else
+    size_t bufsize= 1023;
+    char *buf= (char *)malloc(bufsize);
+    UINT br;
+    while(f_eof(&fp) == 0) {
+        ret = f_read(&fp, buf, bufsize, &br);
+        TEST_ASSERT_EQUAL_INT(FR_OK, ret);
+        ::write(1, buf, br);
+        md5.update(buf, br);
+        if (br < bufsize) break; /* eof */
+    }
+    free(buf);
+    #endif
     printf("md5: %s\n", md5.finalize().hexdigest().c_str());
 
     TEST_ASSERT_TRUE(f_eof(&fp) != 0);

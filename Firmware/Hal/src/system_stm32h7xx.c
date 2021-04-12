@@ -924,13 +924,13 @@ static void MPU_Config(void)
 void main_system_setup()
 {
     MPU_Config();
-    /* Enable the CPU Cache */
+    // Enable the CPU Cache
     CPU_CACHE_Enable();
-    /* stm32h7xx HAL library initialization */
+    // stm32h7xx HAL library initialization
     if(HAL_Init() != HAL_OK) {
         Error_Handler();
     }
-    /* Configure the system clock to 400 MHz */
+    // Configure the system clock to 400 MHz
     SystemClock_Config();
 }
 

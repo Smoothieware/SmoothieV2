@@ -297,56 +297,6 @@ int32_t BSP_SD_IsDetected(uint32_t Instance)
 }
 
 /**
-  * @brief  Reads block(s) from a specified address in an SD card, in polling mode.
-  * @param  Instance   SD Instance
-  * @param  pData      Pointer to the buffer that will contain the data to transmit
-  * @param  BlockIdx   Block index from where data is to be read
-  * @param  BlocksNbr  Number of SD blocks to read
-  * @retval BSP status
-  */
-int32_t BSP_SD_ReadBlocks(uint32_t Instance, uint32_t *pData, uint32_t BlockIdx, uint32_t BlocksNbr)
-{
-    int32_t ret = BSP_ERROR_NONE;
-    uint32_t timeout = SD_READ_TIMEOUT * BlocksNbr;
-
-    if(Instance >= SD_INSTANCES_NBR) {
-        ret = BSP_ERROR_WRONG_PARAM;
-    } else {
-        if(HAL_SD_ReadBlocks(&hsd_sdmmc[Instance], (uint8_t *)pData, BlockIdx, BlocksNbr, timeout) != HAL_OK) {
-            ret = BSP_ERROR_PERIPH_FAILURE;
-        }
-    }
-
-    /* Return BSP status   */
-    return ret;
-}
-
-/**
-  * @brief  Writes block(s) to a specified address in an SD card, in polling mode.
-  * @param  Instance   SD Instance
-  * @param  pData      Pointer to the buffer that will contain the data to transmit
-  * @param  BlockIdx   Block index from where data is to be written
-  * @param  BlocksNbr  Number of SD blocks to write
-  * @retval BSP status
-  */
-int32_t BSP_SD_WriteBlocks(uint32_t Instance, uint32_t *pData, uint32_t BlockIdx, uint32_t BlocksNbr)
-{
-    int32_t ret = BSP_ERROR_NONE;
-    uint32_t timeout = SD_READ_TIMEOUT * BlocksNbr;
-
-    if(Instance >= SD_INSTANCES_NBR) {
-        ret = BSP_ERROR_WRONG_PARAM;
-    } else {
-        if(HAL_SD_WriteBlocks(&hsd_sdmmc[Instance], (uint8_t *)pData, BlockIdx, BlocksNbr, timeout) != HAL_OK) {
-            ret = BSP_ERROR_PERIPH_FAILURE;
-        }
-    }
-
-    /* Return BSP status   */
-    return ret;
-}
-
-/**
   * @brief  Reads block(s) from a specified address in an SD card, in DMA mode.
   * @param  Instance   SD Instance
   * @param  pData      Pointer to the buffer that will contain the data to transmit
@@ -393,55 +343,6 @@ int32_t BSP_SD_WriteBlocks_DMA(uint32_t Instance, uint32_t *pData, uint32_t Bloc
     /* Return BSP status   */
     return ret;
 }
-
-/**
-  * @brief  Reads block(s) from a specified address in an SD card, in DMA mode.
-  * @param  Instance   SD Instance
-  * @param  pData      Pointer to the buffer that will contain the data to transmit
-  * @param  BlockIdx   Block index from where data is to be read
-  * @param  BlocksNbr  Number of SD blocks to read
-  * @retval SD status
-  */
-int32_t BSP_SD_ReadBlocks_IT(uint32_t Instance, uint32_t *pData, uint32_t BlockIdx, uint32_t BlocksNbr)
-{
-    int32_t ret = BSP_ERROR_NONE;
-
-    if(Instance >= SD_INSTANCES_NBR) {
-        ret = BSP_ERROR_WRONG_PARAM;
-    } else {
-        if(HAL_SD_ReadBlocks_IT(&hsd_sdmmc[Instance], (uint8_t *)pData, BlockIdx, BlocksNbr) != HAL_OK) {
-            ret = BSP_ERROR_PERIPH_FAILURE;
-        }
-    }
-
-    /* Return BSP status   */
-    return ret;
-}
-
-/**
-  * @brief  Writes block(s) to a specified address in an SD card, in DMA mode.
-  * @param  Instance   SD Instance
-  * @param  pData      Pointer to the buffer that will contain the data to transmit
-  * @param  BlockIdx   Block index from where data is to be written
-  * @param  BlocksNbr  Number of SD blocks to write
-  * @retval SD status
-  */
-int32_t BSP_SD_WriteBlocks_IT(uint32_t Instance, uint32_t *pData, uint32_t BlockIdx, uint32_t BlocksNbr)
-{
-    int32_t ret = BSP_ERROR_NONE;
-
-    if(Instance >= SD_INSTANCES_NBR) {
-        ret = BSP_ERROR_WRONG_PARAM;
-    } else {
-        if(HAL_SD_WriteBlocks_IT(&hsd_sdmmc[Instance], (uint8_t *)pData, BlockIdx, BlocksNbr) != HAL_OK) {
-            ret = BSP_ERROR_PERIPH_FAILURE;
-        }
-    }
-
-    /* Return BSP status   */
-    return ret;
-}
-
 
 /**
   * @brief  Erases the specified memory area of the given SD card.

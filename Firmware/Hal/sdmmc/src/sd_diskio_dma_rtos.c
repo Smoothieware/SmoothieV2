@@ -25,6 +25,9 @@
 #include "queue.h"
 #include "task.h"
 
+#include <stdlib.h>
+#include <string.h>
+
 extern const Diskio_drvTypeDef  SD_Driver;
 
 
@@ -161,8 +164,20 @@ DRESULT SD_read(BYTE lun, BYTE *buff, DWORD sector, UINT count)
 #if (ENABLE_SD_DMA_CACHE_MAINTENANCE == 1)
     uint32_t alignedAddr;
 #endif
+    uint32_t *aligned_buffer = (uint32_t*)buff;
+    int32_t cbRead = 0;
 
-    if(BSP_SD_ReadBlocks_DMA(0, (uint32_t*)buff,
+    // DMA needs to be on aligned 32bit boundaries
+    if(((uint32_t)buff & 0x03) != 0) {
+        // unaligned buffer is not ok
+        cbRead = count * FF_MAX_SS;
+        aligned_buffer = (uint32_t *)malloc(cbRead);
+        if (aligned_buffer == NULL) {
+            return RES_ERROR;
+        }
+    }
+
+    if(BSP_SD_ReadBlocks_DMA(0, aligned_buffer,
                              (uint32_t) (sector),
                              count) == BSP_ERROR_NONE) {
         /* wait for a message from the queue or a timeout */
@@ -178,14 +193,20 @@ DRESULT SD_read(BYTE lun, BYTE *buff, DWORD sector, UINT count)
                            the SCB_InvalidateDCache_by_Addr() requires a 32-Byte aligned address,
                            adjust the address and the D-Cache size to invalidate accordingly.
                          */
-                        alignedAddr = (uint32_t)buff & ~0x1F;
-                        SCB_InvalidateDCache_by_Addr((uint32_t*)alignedAddr, count * BLOCKSIZE + ((uint32_t)buff - alignedAddr));
+                        alignedAddr = (uint32_t)aligned_buffer & ~0x1F;
+                        SCB_InvalidateDCache_by_Addr((uint32_t*)alignedAddr, count * BLOCKSIZE + ((uint32_t)aligned_buffer - alignedAddr));
 #endif
                         break;
                     }
                 }
             }
         }
+    }
+
+    // we need to copy the aligned buffer to the requested buffer
+    if(cbRead != 0) {
+        memcpy(buff, aligned_buffer, cbRead);
+        free(aligned_buffer);
     }
 
     return res;
@@ -205,12 +226,26 @@ DRESULT SD_write(BYTE lun, const BYTE *buff, DWORD sector, UINT count)
     uint16_t event;
     DRESULT res = RES_ERROR;
     uint32_t timer;
-    /*
-     * since the MPU is configured as write-through, see main.c file, there isn't any need
-     * to maintain the cache as the cache content is always coherent with the memory
-     */
+    uint32_t *aligned_buffer = (uint32_t*)buff;
+    int32_t cbWrite = 0;
 
-    if(BSP_SD_WriteBlocks_DMA(0, (uint32_t*)buff,
+    // DMA needs to be on aligned 32bit boundaries
+    if(((uint32_t)buff & 0x03) != 0) {
+        // unaligned buffer is not ok
+        cbWrite = count * FF_MAX_SS;
+        aligned_buffer = (uint32_t *)malloc(cbWrite);
+        if (aligned_buffer == NULL) {
+            return RES_ERROR;
+        }
+        memcpy(aligned_buffer, buff, cbWrite);
+    }
+
+    /*
+    * since the MPU is configured as write-through, see main.c file, there isn't any need
+    * to maintain the cache as the cache content is always coherent with the memory
+    */
+
+    if(BSP_SD_WriteBlocks_DMA(0, aligned_buffer,
                               (uint32_t) (sector),
                               count) == BSP_ERROR_NONE) {
 
@@ -227,6 +262,10 @@ DRESULT SD_write(BYTE lun, const BYTE *buff, DWORD sector, UINT count)
                 }
             }
         }
+    }
+
+    if(cbWrite != 0) {
+        free(aligned_buffer);
     }
 
     return res;
@@ -294,7 +333,7 @@ DRESULT SD_ioctl(BYTE lun, BYTE cmd, void *buff)
 void BSP_SD_WriteCpltCallback(uint32_t Instance)
 {
     // We have not woken a task at the start of the ISR.
-    BaseType_t xHigherPriorityTaskWoken= pdFALSE;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     uint16_t v = WRITE_CPLT_MSG;
     xQueueSendFromISR(SDQueueID, &v, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
@@ -303,7 +342,7 @@ void BSP_SD_WriteCpltCallback(uint32_t Instance)
 void BSP_SD_ReadCpltCallback(uint32_t Instance)
 {
     // We have not woken a task at the start of the ISR.
-    BaseType_t xHigherPriorityTaskWoken= pdFALSE;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     uint16_t v = READ_CPLT_MSG;
     xQueueSendFromISR(SDQueueID, &v, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR (xHigherPriorityTaskWoken);
@@ -317,7 +356,7 @@ void BSP_SD_ReadCpltCallback(uint32_t Instance)
   */
 void SDMMC1_IRQHandler(void)
 {
-  BSP_SD_IRQHandler(0);
+    BSP_SD_IRQHandler(0);
 }
 
 /**
@@ -327,5 +366,5 @@ void SDMMC1_IRQHandler(void)
   */
 void EXTI15_10_IRQHandler(void)
 {
-  BSP_SD_DETECT_IRQHandler(0);
+    BSP_SD_DETECT_IRQHandler(0);
 }
