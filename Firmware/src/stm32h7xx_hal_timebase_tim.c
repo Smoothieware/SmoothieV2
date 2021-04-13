@@ -145,12 +145,10 @@ void HAL_ResumeTick(void)
   * a global variable "uwTick" used as application time base.
   * @param  htim TIM handle
   * @retval None
+  * this is defined now in tmr_setup.c
   */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+void TIM6_PeriodElapsedCallback()
 {
-    /* Prevent unused argument(s) compilation warning */
-    UNUSED(htim);
-
     HAL_IncTick();
 }
 

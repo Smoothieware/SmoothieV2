@@ -19,8 +19,7 @@
 #include "semphr.h"
 
 #include "uart_comms.h"
-#include "uart3_comms.h"
-#include "stopwatch.h"
+#include "benchmark_timer.h"
 
 #include "Module.h"
 #include "OutputStream.h"
@@ -56,32 +55,6 @@ static GCodeProcessor gp;
 static bool loaded_configuration= false;
 static bool config_override= false;
 const char *OVERRIDE_FILE= "/sd/config-override";
-
-MemoryPool *_RAM2;
-MemoryPool *_RAM3;
-MemoryPool *_RAM4;
-MemoryPool *_RAM5;
-
-// Called very early from ResetISR()
-void setup_memory_pool()
-{
-    // MemoryPool stuff - needs to be initialised before __libc_init_array
-    // so static ctors can use them
-    extern uint8_t __end_bss_RAM2;
-    extern uint8_t __top_RAM2;
-    extern uint8_t __end_bss_RAM3;
-    extern uint8_t __top_RAM3;
-    extern uint8_t __end_bss_RAM4;
-    extern uint8_t __top_RAM4;
-    extern uint8_t __end_bss_RAM5;
-    extern uint8_t __top_RAM5;
-
-    // alocate remaining areas to HEAP for those areas
-    _RAM2= new MemoryPool(&__end_bss_RAM2, &__top_RAM2 - &__end_bss_RAM2);
-    _RAM3= new MemoryPool(&__end_bss_RAM3, &__top_RAM3 - &__end_bss_RAM3);
-    _RAM4= new MemoryPool(&__end_bss_RAM4, &__top_RAM4 - &__end_bss_RAM4);
-    _RAM5= new MemoryPool(&__end_bss_RAM5, &__top_RAM5 - &__end_bss_RAM5);
-}
 
 // load configuration from override file
 static bool load_config_override(OutputStream& os)
@@ -532,41 +505,6 @@ static void uart_comms(void *)
     vTaskDelete(NULL);
 }
 
-#ifdef BOARD_PRIMEALPHA
-static void uart3_comms(void *)
-{
-    printf("DEBUG: UART3 Comms thread running\n");
-    set_notification_uart3(xTaskGetCurrentTaskHandle());
-
-    // create an output stream that writes to the uart
-    static OutputStream os([](const char *buf, size_t len) { return write_uart3(buf, len); });
-    output_streams.insert(&os);
-
-    const TickType_t waitms = pdMS_TO_TICKS( 300 );
-
-    char rx_buf[256];
-    char line[MAX_LINE_LENGTH];
-    size_t cnt = 0;
-    bool discard = false;
-    while(!abort_comms) {
-        // Wait to be notified that there has been a UART irq. (it may have been rx or tx so may not be anything to read)
-        uint32_t ulNotificationValue = ulTaskNotifyTake( pdFALSE, waitms );
-
-        if( ulNotificationValue != 1 ) {
-            /* The call to ulTaskNotifyTake() timed out. check anyway */
-        }
-
-        size_t n = read_uart3(rx_buf, sizeof(rx_buf));
-        if(n > 0) {
-           process_command_buffer(n, rx_buf, &os, line, cnt, discard);
-        }
-    }
-    output_streams.erase(&os);
-    printf("DEBUG: UART3 Comms thread exiting\n");
-    vTaskDelete(NULL);
-}
-#endif
-
 // this prints the string to all consoles that are connected and active
 // must be called in command thread context
 void print_to_all_consoles(const char *str)
@@ -694,9 +632,6 @@ void safe_sleep(uint32_t ms)
 #include "Endstops.h"
 #include "ZProbe.h"
 #include "Player.h"
-
-extern void configureSPIFI();
-//float get_pll1_clk();
 
 #define SD_CONFIG
 
@@ -1017,29 +952,18 @@ extern "C" void setup_xprintf();
 
 int main(int argc, char *argv[])
 {
+    // setup clock and caches etc (in HAL)
+    main_system_setup();
+
+    benchmark_timer_init();
+
     setup_xprintf();
-
-    NVIC_SetPriorityGrouping( 0 );
-
-    // Read clock settings and update SystemCoreClock variable
-    SystemCoreClockUpdate();
-
-    // Set up and initialize all required blocks and
-    // functions related to the board hardware
-    Board_Init();
 
     if(setup_uart() < 0) {
         printf("FATAL: UART setup failed\n");
     }
 
-#ifndef FLASH16BIT
-    configureSPIFI(); // setup the winbond SPIFI to max speed
-#endif
-
     printf("MCU clock rate= %lu Hz\n", SystemCoreClock);
-
-    StopWatch_Init();
-    printf("StopWatch clock rate= %lu Hz\n", StopWatch_TicksPerSecond());
 
     // led 4 indicates boot phase 1 complete
     Board_LED_Set(3, true);

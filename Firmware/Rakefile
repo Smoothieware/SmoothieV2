@@ -112,6 +112,7 @@ NONETWORK = ENV['nonetwork'].nil? ? 0 : ENV['nonetwork']
 #hal_src = FileList['Hal/**/*.{c,cpp,s}']
 hal_src = FileList['Hal/STM32H7xx_HAL_Driver/**/*.{c,cpp,s}', 'Hal/src/Pin.cpp', 'Hal/src/uart_comms.c',
                    'Hal/src/cr_cpp_config.cpp', 'Hal/src/startup_stm32h745xx.s', 'Hal/src/system_stm32h7xx.c',
+                   'Hal/src/tmr-setup.c'
                   ]
 hal_src.exclude(/_template\.c/)
 
@@ -126,6 +127,7 @@ if TESTING
   src = FileList['Unity/src/*.c', 'src/**/*.{c,cpp,s}']
   src.exclude(/(src\/main.cpp)/) # we don't want the Firmware main.cpp
   src.exclude(/(src\/modules)/) # TODO these are not needed yet
+  src.exclude(/(FastTicker)/) # not ready yet
   if ENV['test'].nil?
     # all tests
     src += FileList['TestUnits/TEST_*.cpp']

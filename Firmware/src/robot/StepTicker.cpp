@@ -22,7 +22,8 @@ Pin stepticker_debug_pin(STEPTICKER_DEBUG_PIN, Pin::AS_OUTPUT);
 #endif
 
 // TODO move ramfunc define to a utils.h
-#define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
+// #define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
+#define _ramfunc_
 
 StepTicker *StepTicker::instance= nullptr;
 
@@ -52,16 +53,11 @@ bool StepTicker::start()
     if(!started) {
 
         // setup the step tick timer, which handles step ticks and one off unstep interrupts
-        int permod = tmr0_setup(frequency, delay, (void *)step_timer_handler, (void *)unstep_timer_handler);
-        if(permod <  0) {
-            printf("ERROR: tmr0 setup failed\n");
+        int permod = steptimer_setup(frequency, delay, (void *)step_timer_handler, (void *)unstep_timer_handler);
+        if(permod ==  0) {
+            printf("ERROR: steptimer_setup failed\n");
             return false;
         }
-        if(permod != 0) {
-            printf("Warning: stepticker is not accurate: %d\n", permod);
-            // TODO adjust actual step frequency accordingly
-        }
-
         started = true;
     }
 
@@ -73,7 +69,7 @@ bool StepTicker::start()
 bool StepTicker::stop()
 {
     if(started) {
-        tmr0_stop();
+        steptimer_stop();
     }
     return true;
 }
@@ -111,10 +107,7 @@ void StepTicker::set_unstep_time( float microseconds )
 
 _ramfunc_  bool StepTicker::start_unstep_ticker()
 {
-    // enable the MR1 match register interrupt
-    // this works as we are in MR0 match which reset counter so we will get an interrupt 2us after this is enabled
-    // which we will use to unstep the step pin.
-    tmr0_mr1_start();
+    unsteptimer_start();
     return true;
 }
 

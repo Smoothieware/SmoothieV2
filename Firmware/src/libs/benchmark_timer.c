@@ -29,7 +29,7 @@ uint32_t benchmark_timer_start(void)
 
 uint32_t benchmark_timer_elapsed(uint32_t since)
 {
-	return benchmark_timer_start() - since;
+	return DWT->CYCCNT - since;
 }
 
 /* Returns number of ticks per second of the benchmark_timer timer */

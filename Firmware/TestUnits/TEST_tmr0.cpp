@@ -1,71 +1,70 @@
 #include "../Unity/src/unity.h"
 #include "TestRegistry.h"
 #include "tmr-setup.h"
-
-#include "board.h"
+#include "benchmark_timer.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
+
+#include "stm32h7xx.h" // for HAL_Delay()
 
 #include <stdio.h>
 #include <stdlib.h>
 
 using systime_t= uint32_t;
-#define clock_systimer() ((systime_t)Chip_RIT_GetCounter(LPC_RITIMER))
-#define TICK2USEC(x) ((systime_t)(((uint64_t)(x)*1000000)/timerFreq))
-#define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
 
-static systime_t unstep_start= 0, unstep_stop= 0;
-static volatile int timer_cnt= 0;
+#define _ramfunc_ // __attribute__ ((section(".ramfunctions"),long_call,noinline))
+
+static volatile systime_t unstep_start= 0, unstep_elapsed= 0;
+static volatile uint32_t timer_cnt= 0;
 
 static _ramfunc_ void step_timer_handler()
 {
     if(timer_cnt == 100) {
-        tmr0_mr1_start(); // kick off unstep timer
-        unstep_start= clock_systimer();
+        unsteptimer_start(); // kick off unstep timer
+        unstep_start= benchmark_timer_start();
     }
     ++timer_cnt;
 }
 
 static _ramfunc_ void unstep_timer_handler()
 {
-    unstep_stop= clock_systimer();
+    unstep_elapsed= benchmark_timer_elapsed(unstep_start);
 }
 
 #define FREQUENCY 200000 // 200KHz
-#define PULSE     1 // 1us
-REGISTER_TEST(TMR0Test, test_200Khz)
+#define PULSE     2 // 1us
+REGISTER_TEST(STEPTMRTest, test_200Khz)
 {
-    uint32_t timerFreq = Chip_Clock_GetRate(CLK_MX_RITIMER);
+    // first test the HAL tick is still running
+    uint32_t s = benchmark_timer_start();
+    HAL_Delay(10);
+    printf("10ms HAL_Delay took: %lu us\n", benchmark_timer_as_us(benchmark_timer_elapsed(s)));
 
     // this interrupt should continue to run regardless of RTOS being in critical condition
     taskENTER_CRITICAL();
-    /* Start the timer 100KHz, with 1us delay */
-    int permod = tmr0_setup(FREQUENCY, PULSE, (void *)step_timer_handler, (void *)unstep_timer_handler);
-    if(permod <  0) {
-        printf("ERROR: tmr0 setup failed\n");
+    /* Start the timer 200KHz, with 1us delay */
+    int permod = steptimer_setup(FREQUENCY, PULSE, (void *)step_timer_handler, (void *)unstep_timer_handler);
+    if(permod == 0) {
+        printf("ERROR: steptimer setup failed\n");
         TEST_FAIL();
-    }
-    if(permod != 0) {
-        printf("Warning: stepticker is not accurate: %d\n", permod);
     }
 
     // wait for 200,000 ticks
     timer_cnt= 0;
-    systime_t t1= clock_systimer();
+    systime_t t1= benchmark_timer_start();
     while(timer_cnt < FREQUENCY) ;
-    systime_t t2= clock_systimer();
+    systime_t elapsed= benchmark_timer_as_us(benchmark_timer_elapsed(t1));
 
     /* Stop the timer */
-    tmr0_stop();
-    systime_t unstep_time= TICK2USEC(unstep_stop-unstep_start);
+    steptimer_stop();
 
-    printf("unstep time: %lu - %lu = %lu us\n", unstep_stop, unstep_start, unstep_time);
-    systime_t elapsed= TICK2USEC(t2-t1);
+    systime_t unstep_time= benchmark_timer_as_us(unstep_elapsed);
+    printf("unstep time: %lu us (%lu)\n", unstep_time, unstep_elapsed);
 
-    printf("elapsed time %lu us, period %f, unstep time %lu us, timer cnt %d\n", elapsed, (float)elapsed/timer_cnt, unstep_time, timer_cnt);
+    printf("elapsed time %lu us, period %f us, unstep time %lu us, timer cnt %lu\n", elapsed, (float)elapsed/timer_cnt, unstep_time, timer_cnt);
 
-    TEST_ASSERT_TRUE(unstep_stop != 0);
+    TEST_ASSERT_TRUE(unstep_elapsed > 0);
     TEST_ASSERT_INT_WITHIN(1, 1000000/FREQUENCY, elapsed/timer_cnt); // 5us period
     TEST_ASSERT_INT_WITHIN(1, PULSE, unstep_time);
     taskEXIT_CRITICAL();

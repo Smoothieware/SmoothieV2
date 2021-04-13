@@ -62,15 +62,10 @@ extern const Diskio_drvTypeDef  SD_Driver;
  * validity. Enable the define below to activate a cache maintenance at each
  * read and write operation.
  * Notice: This is applicable only for cortex M7 based platform.
- -- Neeed when MMU sets memory to writethrough but cacheable
+ -- Need when MMU sets memory to writethrough but cacheable
  */
 
 #define ENABLE_SD_DMA_CACHE_MAINTENANCE 1
-
-#if ENABLE_SD_DMA_CACHE_MAINTENANCE == 1
-#define CLEAN_INVALIDATE_CACHE(addr, size) (SCB_CleanInvalidateDCache_by_Addr((uint32_t *)((uint32_t)addr & ~0x1f), \
-    ((uint32_t)((uint8_t *)addr + size + 0x1f) & ~0x1f) - ((uint32_t)addr & ~0x1f)))
-#endif
 
 /* Private variables ---------------------------------------------------------*/
 /* Disk status */
