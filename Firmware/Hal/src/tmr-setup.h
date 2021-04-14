@@ -9,9 +9,9 @@ void unsteptimer_start();
 void steptimer_stop();
 
 // setup where frequency is in Hz
-// int tmr1_setup(uint32_t frequency, void *timer_handler);
-// void tmr1_stop();
-// int tmr1_set_frequency(uint32_t frequency);
+int fasttick_setup(uint32_t frequency, void *timer_handler);
+void fasttick_stop();
+int fasttick_set_frequency(uint32_t frequency);
 
 #ifdef __cplusplus
 }

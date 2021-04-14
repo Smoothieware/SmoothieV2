@@ -24,7 +24,7 @@ FastTicker::FastTicker()
 FastTicker::~FastTicker()
 {
     instance= nullptr;
-    tmr1_stop();
+    fasttick_stop();
 }
 
 #define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
@@ -47,7 +47,7 @@ bool FastTicker::start()
             printf("ERROR: FastTicker cannot be set < %luHz or > %dHz\n", MIN_FREQUENCY, MAX_FREQUENCY);
             return false;
         }
-        tmr1_setup(max_frequency, (void *)timer_handler);
+        fasttick_setup(max_frequency, (void *)timer_handler);
 
     }else{
         printf("WARNING: FastTicker already started\n");
@@ -61,7 +61,7 @@ bool FastTicker::start()
 bool FastTicker::stop()
 {
     if(started) {
-        tmr1_stop();
+        fasttick_stop();
         started= false;
     }
     return true;
@@ -107,7 +107,10 @@ bool FastTicker::set_frequency( int frequency )
 
     if(started) {
         // change frequency of timer callback
-        tmr1_set_frequency(frequency);
+        if(fasttick_set_frequency(frequency) != 1) {
+            printf("ERROR: FastTicker failed to set frequency\n");
+            return false;
+        }
     }
 
     return true;

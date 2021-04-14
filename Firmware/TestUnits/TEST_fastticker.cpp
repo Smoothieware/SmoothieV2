@@ -5,6 +5,9 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
+#include "benchmark_timer.h"
+
+#include "stm32h7xx.h" // for HAL_Delay()
 
 static volatile int timer_cnt2khz= 0;
 static volatile int timer_cnt10khz= 0;
@@ -21,6 +24,11 @@ static void timer_callback10khz(void)
 
 REGISTER_TEST(FastTicker, test_2khz_and_10khz)
 {
+        // first test the HAL tick is still running
+    uint32_t s = benchmark_timer_start();
+    HAL_Delay(10);
+    printf("10ms HAL_Delay took: %lu us\n", benchmark_timer_as_us(benchmark_timer_elapsed(s)));
+
     FastTicker *flt= FastTicker::getInstance();
     if(flt == nullptr) {
         // This just allows FastTicker to already have been setup
@@ -40,23 +48,26 @@ REGISTER_TEST(FastTicker, test_2khz_and_10khz)
     TEST_ASSERT_TRUE(flt->start());
     TEST_ASSERT_TRUE(flt->is_running());
 
-    // 10 KHz
+    // test for 2 seconds
+    timer_cnt2khz= 0;
+    HAL_Delay(2000);
+    printf("time 2 seconds, timer2khz %d\n", timer_cnt2khz);
+    TEST_ASSERT_INT_WITHIN(10, 2*2000, timer_cnt2khz);
+
+    // add 10 KHz
     int n2= flt->attach(10000, timer_callback10khz);
     TEST_ASSERT_TRUE(n2 >= 0 && n2 > n1);
 
     timer_cnt2khz= 0;
     timer_cnt10khz= 0;
-    // test for 5 seconds
-    for (int i = 0; i < 5; ++i) {
-        vTaskDelay(pdMS_TO_TICKS(1000));;
-        printf("time %d seconds, timer2khz %d, timer10khz %d\n", i+1, timer_cnt2khz, timer_cnt10khz);
-    }
+    // test for 2 seconds
+    HAL_Delay(2000);
     TEST_ASSERT_TRUE(flt->stop());
+    printf("time 2 seconds, timer2khz %d, timer10khz %d\n", timer_cnt2khz, timer_cnt10khz);
 
     flt->detach(n1);
     flt->detach(n2);
 
-    printf("timer2khz %d, timer10khz %d\n", timer_cnt2khz, timer_cnt10khz);
-    TEST_ASSERT_INT_WITHIN(5, 5*2000, timer_cnt2khz);
-    TEST_ASSERT_INT_WITHIN(10, 5*10000, timer_cnt10khz);
+    TEST_ASSERT_INT_WITHIN(50, 2*2000, timer_cnt2khz);
+    TEST_ASSERT_INT_WITHIN(200, 2*10000, timer_cnt10khz);
 }
