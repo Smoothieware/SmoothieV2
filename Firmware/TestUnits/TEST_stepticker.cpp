@@ -33,7 +33,7 @@ static _ramfunc_ void unstep_timer_handler()
 }
 
 #define FREQUENCY 200000 // 200KHz
-#define PULSE     2 // 1us
+#define PULSE     2 // 2us
 REGISTER_TEST(STEPTMRTest, test_200Khz)
 {
     // first test the HAL tick is still running
@@ -44,8 +44,8 @@ REGISTER_TEST(STEPTMRTest, test_200Khz)
     // this interrupt should continue to run regardless of RTOS being in critical condition
     taskENTER_CRITICAL();
     /* Start the timer 200KHz, with 1us delay */
-    int permod = steptimer_setup(FREQUENCY, PULSE, (void *)step_timer_handler, (void *)unstep_timer_handler);
-    if(permod == 0) {
+    int status = steptimer_setup(FREQUENCY, PULSE, (void *)step_timer_handler, (void *)unstep_timer_handler);
+    if(status == 0) {
         printf("ERROR: steptimer setup failed\n");
         TEST_FAIL();
     }
@@ -68,4 +68,59 @@ REGISTER_TEST(STEPTMRTest, test_200Khz)
     TEST_ASSERT_INT_WITHIN(1, 1000000/FREQUENCY, elapsed/timer_cnt); // 5us period
     TEST_ASSERT_INT_WITHIN(1, PULSE, unstep_time);
     taskEXIT_CRITICAL();
+}
+
+// PB8
+#define PULSE_PIN                                GPIO_PIN_8
+#define PULSE_GPIO_PORT                          GPIOB
+#define PULSE_GPIO_CLK_ENABLE()                  __HAL_RCC_GPIOB_CLK_ENABLE()
+#define PULSE_GPIO_CLK_DISABLE()                 __HAL_RCC_GPIOB_CLK_DISABLE()
+
+static void setup_pin()
+{
+    PULSE_GPIO_CLK_ENABLE();
+    GPIO_InitTypeDef  GPIO_InitStruct;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
+    GPIO_InitStruct.Pin = GPIO_PIN_8;
+
+    HAL_GPIO_Init(PULSE_GPIO_PORT, &GPIO_InitStruct);
+    HAL_GPIO_WritePin(PULSE_GPIO_PORT, PULSE_PIN, GPIO_PIN_RESET);
+}
+
+static void teardown_pin()
+{
+    HAL_GPIO_DeInit(PULSE_GPIO_PORT, PULSE_PIN);
+    PULSE_GPIO_CLK_DISABLE();
+}
+
+static void set_pin(int v)
+{
+    HAL_GPIO_WritePin(PULSE_GPIO_PORT, PULSE_PIN, v == 1 ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+static _ramfunc_ void step_pulse()
+{
+    set_pin(1);
+    unsteptimer_start(); // kick off unstep timer
+}
+
+static _ramfunc_ void unstep_pulse()
+{
+    set_pin(0);
+}
+
+REGISTER_TEST(STEPTMRTest, pulse_test)
+{
+    setup_pin();
+
+    steptimer_setup(100000, 2, (void *)step_pulse, (void *)unstep_pulse);
+
+    printf("Check pulse is 100KHz, and 2us wide\n");
+    vTaskDelay(pdMS_TO_TICKS(10000));
+    printf("Done\n");
+
+    steptimer_stop();
+    teardown_pin();
 }
