@@ -5,15 +5,27 @@
 #include "task.h"
 #include "semphr.h"
 
+#include "stm32h7xx_hal.h"
+#include "usbd_core.h"
+#include "usbd_desc.h"
+#include "usbd_cdc.h"
+#include "usbd_cdc_if.h"
+
+USBD_HandleTypeDef USBD_Device;
+extern PCD_HandleTypeDef g_hpcd;
+extern USBD_CDC_ItfTypeDef USBD_CDC_fops;
+
 static xTaskHandle xTaskToNotify = NULL;
+
 
 void vcom_notify_recvd()
 {
-    BaseType_t xHigherPriorityTaskWoken= pdFALSE;
-
-    // Notify the task that data is available
-    vTaskNotifyGiveFromISR( xTaskToNotify, &xHigherPriorityTaskWoken );
-    portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    if(xTaskToNotify != NULL) {
+        // Notify the task that data is available
+        vTaskNotifyGiveFromISR( xTaskToNotify, &xHigherPriorityTaskWoken );
+        portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+    }
 }
 
 // called externally to read/write to the USB CDC channel
@@ -22,12 +34,12 @@ void vcom_notify_recvd()
 // so we need to stay here until all requested data has been transfered to the buffer
 size_t write_cdc(const char *buf, size_t len)
 {
-    size_t sent= 0;
+    size_t sent = 0;
     while(sent < len) {
-        uint32_t n = vcom_write((uint8_t *)buf+sent, len-sent);
+        uint32_t n = vcom_write((uint8_t *)buf + sent, len - sent);
         sent += n;
         if(sent < len) {
-            if(!vcom_connected()) return 0; // indicates error
+            // if(!vcom_connected()) return 0; // indicates error
             // yield some time
             taskYIELD();
         }
@@ -46,19 +58,56 @@ int setup_cdc(xTaskHandle h)
     /* Store the handle of the calling task. */
     xTaskToNotify = h;
 
+    HAL_PWREx_EnableUSBVoltageDetector();
+
+    setup_vcom();
+
+    int stat;
+    // Init Device Library
+    if((stat=USBD_Init(&USBD_Device, &VCP_Desc, 0)) != USBD_OK) {
+        USBD_ErrLog("Init failed: %d", stat);
+        return 0;
+    }
+
+    // Add Supported Class
+    if((stat=USBD_RegisterClass(&USBD_Device, USBD_CDC_CLASS)) != USBD_OK) {
+        USBD_ErrLog("RegisterClass failed: %d", stat);
+        return 0;
+    };
+
+    // Add CDC Interface Class
+    if((stat=USBD_CDC_RegisterInterface(&USBD_Device, &USBD_CDC_fops)) != USBD_OK) {
+        USBD_ErrLog("RegisterInterface failed: %d", stat);
+        return 0;
+    }
+
+    // Start Device Process
+    if((stat=USBD_Start(&USBD_Device)) != USBD_OK) {
+        USBD_ErrLog("Start failed: %d", stat);
+        return 0;
+    }
 
     /*  enable USB interrupts */
-    NVIC_SetPriority(LPC_USB_IRQ, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
-    NVIC_EnableIRQ(LPC_USB_IRQ);
+    NVIC_SetPriority(OTG_FS_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
+    NVIC_EnableIRQ(OTG_FS_IRQn);
 
     return 1;
 }
 
 void shutdown_cdc()
 {
-    NVIC_DisableIRQ(LPC_USB_IRQ);
+    USBD_Stop(&USBD_Device);
+    USBD_DeInit(&USBD_Device);
+    NVIC_DisableIRQ(OTG_FS_IRQn);
+    teardown_vcom();
 }
 
-
-
+#ifdef USE_USB_FS
+void OTG_FS_IRQHandler(void)
+#else
+void OTG_HS_IRQHandler(void)
+#endif
+{
+    HAL_PCD_IRQHandler(&g_hpcd);
+}
 

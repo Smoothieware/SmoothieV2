@@ -22,7 +22,7 @@
 
 #include "benchmark_timer.h"
 
-//#define TESTCOMMS
+#define TESTCOMMS
 
 // // place holder
 bool dispatch_line(OutputStream& os, const char *line)
@@ -152,7 +152,7 @@ extern "C" void usbComTask(void *pvParameters)
 
     // setup the USB CDC and give it the handle of our task to wake up when we get an interrupt
     if(setup_cdc(xTaskGetCurrentTaskHandle()) == 0) {
-        printf("setup_cdc failed\n");
+        printf("ERROR: setup_cdc failed\n");
         return;
     }
 
@@ -328,7 +328,6 @@ void fast_download_test(OutputStream *os)
     os->puts("download test complete\n");
 }
 
-extern "C" uint32_t vcom_max;
 void send_test(OutputStream *os)
 {
     os->puts("Starting send test...\n");
@@ -349,6 +348,7 @@ void send_test(OutputStream *os)
     for (int i = 0; i < 1000; ++i) {
         write_cdc(buf, strlen(buf));
     }
+    free(buf);
 }
 
 // this would be the command thread in the firmware

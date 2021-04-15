@@ -119,6 +119,9 @@ hal_src.exclude(/_template\.c/)
 # SD support and fatfs
 sdmmc_src = FileList['Hal/sdmmc/**/*.c']
 
+# USB support
+usb_src = FileList['Hal/usb_cdc/src/*.c', 'Hal/usb_cdc/lib/*.c', 'Hal/usb_cdc/Core/Src/*.c']
+
 # RTOS
 rtos_src = FileList['RTOS/**/*.{c,cpp,s}']
 
@@ -170,7 +173,7 @@ if NONETWORK == '1'
 end
 
 # Library sources
-HAL_SRCS = hal_src + sdmmc_src + rtos_src
+HAL_SRCS = hal_src + sdmmc_src + rtos_src + usb_src
 
 # All sources
 SRCS = HAL_SRCS + src
@@ -193,7 +196,9 @@ end
 
 include_dirs = [Dir.glob(["**/Inc", "**/Include", "**/include", "**/inc"])].flatten +
     [Dir.glob(['./src/**/'])].flatten +
-    ['Hal/STM32H7xx_HAL_Driver', 'Hal/STM32H7xx_HAL_Driver/cmsis', 'Hal/src', 'Hal/sdmmc/fatfs', 'Hal/sdmmc/src']
+    ['Hal/STM32H7xx_HAL_Driver', 'Hal/STM32H7xx_HAL_Driver/cmsis', 'Hal/src',
+     'Hal/sdmmc/fatfs', 'Hal/sdmmc/src', 'Hal/usb_cdc/src', 'Hal/usb_cdc/lib'
+    ]
 
 sys_include_dirs = []
 
