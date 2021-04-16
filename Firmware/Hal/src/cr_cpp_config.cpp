@@ -56,4 +56,13 @@ void __verbose_terminate_handler()
   while(1) ;
 }
 }
+extern "C" void __wrap___aeabi_unwind_cpp_pr0() {}
+extern "C" void __wrap___aeabi_unwind_cpp_pr1() {}
+extern "C" void __wrap___aeabi_unwind_cpp_pr2() {}
+extern "C" void __cxa_pure_virtual()
+{
+  __asm("bkpt #0");
+  for(;;);
+}
+
 #endif

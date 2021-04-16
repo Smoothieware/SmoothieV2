@@ -112,7 +112,7 @@ NONETWORK = ENV['nonetwork'].nil? ? 0 : ENV['nonetwork']
 #hal_src = FileList['Hal/**/*.{c,cpp,s}']
 hal_src = FileList['Hal/STM32H7xx_HAL_Driver/**/*.{c,cpp,s}', 'Hal/src/Pin.cpp', 'Hal/src/uart_comms.c',
                    'Hal/src/cr_cpp_config.cpp', 'Hal/src/startup_stm32h745xx.s', 'Hal/src/system_stm32h7xx.c',
-                   'Hal/src/tmr-setup.c'
+                   'Hal/src/tmr-setup.c', 'Hal/src/Spi.c'
                   ]
 hal_src.exclude(/_template\.c/)
 
@@ -206,7 +206,7 @@ sys_include_dirs = []
 
 INCLUDE = (include_dirs).collect { |d| "-I#{d}" }.join(" ") # + " " + (sys_include_dirs).collect { |d| "-isystem #{d}" }.join(" ")
 
-defines = %w(-DUSE_HAL_DRIVER -DSTM32H745xx -DCORE_CM7)
+defines = %w(-DUSE_HAL_DRIVER -DSTM32H745xx -DCORE_CM7 -DUSE_FULL_LL_DRIVER)
 if DEBUG
   defines << "-DDEBUG"
 end
@@ -247,6 +247,7 @@ CPPFLAGS = CFLAGS + ' -Wno-psabi -fno-exceptions -fno-rtti -fno-common -std=gnu+
 LSCRIPT = "STM32H745_FLASH.ld"
 
 LOPTIONS = ['-Xlinker --gc-sections', '-Xlinker -print-memory-usage', '-Xlinker', '--wrap=malloc', '-Xlinker', '--wrap=_malloc_r',
+            '-Xlinker', '--wrap=__aeabi_unwind_cpp_pr0','-Xlinker', '--wrap=__aeabi_unwind_cpp_pr1','-Xlinker', '--wrap=__aeabi_unwind_cpp_pr2',
             '-Xlinker', '--wrap=printf', '-Xlinker', '--wrap=snprintf', '-Xlinker', '--wrap=vsnprintf', '-Xlinker', '--wrap=sprintf', '-Xlinker', '--wrap=vsprintf', '-Xlinker', '--wrap=vprintf',
             '-Xlinker', '--wrap=dprintf', '-Xlinker', '--wrap=vdprintf',
             # these could be reinstated if needed

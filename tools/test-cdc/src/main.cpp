@@ -87,7 +87,7 @@ bool data_read(std::string msg, bool error)
 	return true;
 }
 
-#define M28
+//#define M28
 int main(int argc, char const *argv[])
 {
 	const char *dev;

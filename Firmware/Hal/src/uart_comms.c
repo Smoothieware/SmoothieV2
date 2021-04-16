@@ -10,6 +10,7 @@
 #include "stm32h7xx_ll_gpio.h"
 #include "stm32h7xx_ll_usart.h"
 
+#include "Hal_pin.h"
 #include "ringbuffer_c.h"
 
 #include <stdlib.h>
@@ -173,6 +174,9 @@ void Configure_USART(void)
 	LL_USART_DisableIT_TC(USARTx_INSTANCE);
 	LL_USART_DisableIT_TXE(USARTx_INSTANCE);
 	LL_USART_EnableIT_ERROR(USARTx_INSTANCE);
+
+	allocate_hal_pin(USARTx_TX_GPIO_PORT, USARTx_TX_PIN);
+	allocate_hal_pin(USARTx_RX_GPIO_PORT, USARTx_RX_PIN);
 }
 
 int setup_uart()

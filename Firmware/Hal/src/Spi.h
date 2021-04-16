@@ -3,8 +3,8 @@ class SPI
 {
 
 public:
-	SPI(int channel);
-	virtual ~SPI();
+	static SPI *getInstance(int channel);
+	static void deleteInstance(int channel);
 
 	/** Configure the data transmission format
 	 *
@@ -20,13 +20,7 @@ public:
 	 *   3  |  1   1
 	 * @endcode
 	 */
-	void format(int bits, int mode = 0);
-
-	/** Set the spi bus clock frequency
-	 *
-	 *  @param hz SCLK frequency in hz (default = 1MHz)
-	 */
-	void frequency(int hz = 1000000);
+	bool init(int bits=8, int mode=0, int frequency=1000000);
 
 	/** Write to the SPI Slave and return the response
 	 *
@@ -36,10 +30,15 @@ public:
 	 *    Response from the SPI slave
 	*/
 	int write(int value);
+	bool valid() const { return _valid; }
+	void *get_hspi() const { return _hspi; }
+	static SPI *spi_channel[2];
 
-protected:
-	static bool channel_init[2];
-	void *_lpc_ssp;
+private:
+	SPI(int channel);
+	virtual ~SPI();
+	void *_hspi;
+	bool _valid;
 	int _channel;
 	int _bits;
 	int _mode;

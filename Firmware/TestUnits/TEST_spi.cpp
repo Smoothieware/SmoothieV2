@@ -5,15 +5,12 @@
 
 #include "TestRegistry.h"
 
-#include "board.h"
-
 #include "FreeRTOS.h"
 #include "task.h"
 
-#define LPC_SSP LPC_SSP0
-
-#ifdef BOARD_PRIMEALPHA
 #if 0
+
+#define LPC_SSP LPC_SSP0
 REGISTER_TEST(SPITest, basic_lowlevel)
 {
 	/* SSP initialization */
@@ -78,15 +75,16 @@ static int sendSPI(SPI *spi, Pin& cs, uint8_t *b, int cnt, uint8_t *r)
 
 REGISTER_TEST(SPITest, Spi_class)
 {
-    SPI *spi = new SPI(0);
-    spi->frequency(100000);
-    spi->format(8, 3); // 8bit, mode3
+    SPI *spi = SPI::getInstance(0);
+    TEST_ASSERT_NOT_NULL(spi);
+    TEST_ASSERT_TRUE(spi->init(8, 3, 100000));
+    TEST_ASSERT_TRUE(spi->valid());
 
     Pin cs[]= {
-    	Pin("gpio3_8", Pin::AS_OUTPUT),
-    	Pin("gpio7_12", Pin::AS_OUTPUT),
-    	Pin("gpio7_7", Pin::AS_OUTPUT),
-    	Pin("gpio2_8", Pin::AS_OUTPUT)
+    	Pin("PA8", Pin::AS_OUTPUT),
+    	Pin("PA9", Pin::AS_OUTPUT),
+    	Pin("PA10", Pin::AS_OUTPUT),
+    	Pin("PA11", Pin::AS_OUTPUT)
     };
 
     for(auto& p : cs) {
@@ -97,7 +95,7 @@ REGISTER_TEST(SPITest, Spi_class)
 
 
     for(auto& p : cs) {
-		uint32_t data= 0xE0000ul;
+		uint32_t data= 0x12345ul;
 		uint8_t tx_buf[3]{(uint8_t)(data>>16), (uint8_t)(data>>8), (uint8_t)(data&0xFF)};
 		uint8_t rx_buf[3]{0};
 
@@ -109,6 +107,6 @@ REGISTER_TEST(SPITest, Spi_class)
 		uint32_t rdata= ((rx_buf[0] << 16) | (rx_buf[1] << 8) | (rx_buf[2])) >> 4;
 		printf("  rcvd: %02X %02X %02X (%08lX)\n", rx_buf[0], rx_buf[1], rx_buf[2], rdata);
 	}
-	delete spi;
+	SPI::deleteInstance(0);
 }
-#endif
+

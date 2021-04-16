@@ -210,7 +210,7 @@ void LL_RCC_DeInit(void)
 
   /* Clear reset source flags */
   SET_BIT(RCC->RSR, RCC_RSR_RMVF);
-  
+
    /* Decreasing the number of wait states because of lower CPU frequency */
   if(FLASH_LATENCY_DEFAULT  < (READ_BIT((FLASH->ACR), FLASH_ACR_LATENCY)))
   {
@@ -836,7 +836,7 @@ uint32_t LL_RCC_GetSAIClockFreq(uint32_t SAIxSource)
 #if defined (RCC_CDCCIP1R_SAI2ASEL) || defined(RCC_CDCCIP1R_SAI2BSEL)
     case LL_RCC_SAI2A_CLKSOURCE_PLL1Q:
     case LL_RCC_SAI2B_CLKSOURCE_PLL1Q:
-#endif /* RCC_CDCCIP1R_SAI2ASEL || RCC_CDCCIP1R_SAI2BSEL */ 
+#endif /* RCC_CDCCIP1R_SAI2ASEL || RCC_CDCCIP1R_SAI2BSEL */
       if (LL_RCC_PLL1_IsReady() != 0U)
       {
         LL_RCC_GetPLL1ClockFreq(&PLL_Clocks);

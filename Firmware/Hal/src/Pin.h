@@ -53,12 +53,12 @@ public:
     bool is_inverting() const { return inverting; }
     void set_inverting(bool f) { inverting = f; }
 
-    // mbed::InterruptIn *interrupt_pin();
+    static bool set_allocated(uint8_t, uint8_t, bool set= true);
 
+    // mbed::InterruptIn *interrupt_pin();
 
 private:
 
-    static bool set_allocated(uint8_t, uint8_t, bool set= true);
     uint32_t *pport;
     uint32_t ppin;
     struct {

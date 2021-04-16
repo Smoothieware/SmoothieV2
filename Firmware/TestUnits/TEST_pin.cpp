@@ -2,9 +2,21 @@
 #include "TestRegistry.h"
 
 #include "Pin.h"
+#include "Hal_pin.h"
+#include "stm32h7xx_hal.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
+
+REGISTER_TEST(PinTest, test_allocation)
+{
+	Pin p("PB2");
+	TEST_ASSERT_TRUE(allocate_hal_pin(GPIOB, GPIO_PIN_3));
+	TEST_ASSERT_FALSE(allocate_hal_pin(GPIOB, GPIO_PIN_2));
+	TEST_ASSERT_FALSE(allocate_hal_pin(GPIOB, GPIO_PIN_3));
+	Pin::set_allocated('B', 2, false);
+	Pin::set_allocated('B', 3, false);
+}
 
 REGISTER_TEST(PinTest, flashleds)
 {

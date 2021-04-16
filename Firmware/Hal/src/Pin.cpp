@@ -50,7 +50,7 @@ Pin::~Pin()
 static std::bitset<256> allocated_pins;
 bool Pin::set_allocated(uint8_t port, uint8_t pin, bool set)
 {
-    uint8_t n = (port * 16) + pin;
+    uint8_t n = ((port-'A') * 16) + pin;
 
     if(!set) {
         // deallocate it
@@ -66,6 +66,41 @@ bool Pin::set_allocated(uint8_t port, uint8_t pin, bool set)
 
     // indicate it was already set
     return false;
+}
+
+extern "C" int allocate_hal_pin(void *port, uint16_t pin)
+{
+    uint8_t po= 0;
+    if(port == GPIOA) po= 'A';
+    else if(port == GPIOB) po= 'B';
+    else if(port == GPIOC) po= 'C';
+    else if(port == GPIOD) po= 'D';
+    else if(port == GPIOE) po= 'E';
+    else if(port == GPIOF) po= 'F';
+    else if(port == GPIOG) po= 'G';
+    else if(port == GPIOH) po= 'H';
+    else if(port == GPIOI) po= 'I';
+    else if(port == GPIOJ) po= 'J';
+    else if(port == GPIOK) po= 'K';
+
+    uint16_t pi= 16;
+    for (int i = 0; i < 16; ++i) {
+        if((pin>>i) & 1) {
+            pi= i;
+            break;
+        }
+    }
+
+    if(po > 0 && pi < 16) {
+        if(Pin::set_allocated(po, pi, true)) {
+            return 1;
+        }
+        printf("WARNING: P%c%d has already been allocated\n", po, pi);
+        return 0;
+    }
+
+    printf("WARNING: invalid port/pin\n");
+    return 0;
 }
 
 #define toUpper(str) (std::transform(str.begin(), str.end(), str.begin(), ::toupper), str)
@@ -90,10 +125,10 @@ Pin* Pin::from_string(std::string value)
     size_t pos = value.find_first_of("._", 2);
     if(pos == std::string::npos) pos= 1;
     pin= strtol(value.substr(pos + 1).c_str(), nullptr, 10);
-    if(pin > 16) return nullptr;
+    if(pin >= 16) return nullptr;
 
     if(!set_allocated(port, pin)) {
-        printf("WARNING: GPIO%d[%d] has already been allocated\n", port, pin);
+        printf("WARNING: P%c%d has already been allocated\n", port, pin);
     }
 
     // now check for modifiers:-
@@ -127,7 +162,7 @@ Pin* Pin::from_string(std::string value)
         }
     }
 
-    // save the gpio port and pin (we can always get the pin number from this and the lut)
+    // save the gpio port and pin
     gpioport = port;
     gpiopin = pin;
     ppin = 1 << pin;
@@ -154,7 +189,7 @@ std::string Pin::to_string() const
 {
     if(valid) {
         std::string s("P");
-        s.append(1, gpioport).append(".").append(std::to_string(gpiopin));
+        s.append(1, gpioport).append(std::to_string(gpiopin));
 
         if(open_drain) s.push_back('o');
         if(inverting) s.push_back('!');

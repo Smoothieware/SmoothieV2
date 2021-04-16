@@ -1,5 +1,4 @@
 #include "SigmaDeltaPwm.h"
-#include "main.h"
 
 #define confine(value, min, max) (((value) < (min))?(min):(((value) > (max))?(max):(value)))
 
@@ -35,7 +34,6 @@ void SigmaDeltaPwm::set(bool value)
     Pin::set(value);
 }
 
-_ramfunc_
 void SigmaDeltaPwm::on_tick(void)
 {
     if ((_pwm < 0) || _pwm >= PID_PWM_MAX) {

@@ -60,6 +60,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32h7xx_sd.h"
+#include "Hal_pin.h"
 
 #include "FreeRTOS.h"
 
@@ -96,6 +97,7 @@ int32_t BSP_SD_Init(uint32_t Instance)
         gpio_init_structure.Speed = GPIO_SPEED_FREQ_HIGH;
         gpio_init_structure.Mode = GPIO_MODE_IT_RISING_FALLING;
         HAL_GPIO_Init(SD_DETECT_GPIO_PORT, &gpio_init_structure);
+        allocate_hal_pin(SD_DETECT_GPIO_PORT, SD_DETECT_PIN);
 
         const uint32_t SD_EXTI_LINE[SD_INSTANCES_NBR]   = {SD_DETECT_EXTI_LINE};
         if(HAL_EXTI_GetHandle(&hsd_exti[Instance], SD_EXTI_LINE[Instance]) != HAL_OK) {
@@ -590,6 +592,14 @@ static void SD_MspInit(SD_HandleTypeDef *hsd)
         /* GPIOD configuration */
         gpio_init_structure.Pin = GPIO_PIN_2;
         HAL_GPIO_Init(GPIOD, &gpio_init_structure);
+
+        allocate_hal_pin(GPIOC, GPIO_PIN_8);
+        allocate_hal_pin(GPIOC, GPIO_PIN_9);
+        allocate_hal_pin(GPIOC, GPIO_PIN_10);
+        allocate_hal_pin(GPIOC, GPIO_PIN_11);
+        allocate_hal_pin(GPIOC, GPIO_PIN_12);
+        allocate_hal_pin(GPIOD, GPIO_PIN_2);
+
 #if 0
         /* D0DIR(PC6), D123DIR(PC7) */
         gpio_init_structure.Alternate = GPIO_AF8_SDIO1;
