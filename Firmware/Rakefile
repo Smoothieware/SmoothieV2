@@ -4,7 +4,6 @@ require 'pathname'
 
 verbose(ENV['verbose'] == '1')
 TESTING = ENV['testing'].nil? ? false : ENV['testing'] == '1'
-SPIFI = ENV['flash'].nil? ? true : false
 
 PROG = 'smoothiev2'
 
@@ -206,9 +205,11 @@ sys_include_dirs = []
 
 INCLUDE = (include_dirs).collect { |d| "-I#{d}" }.join(" ") # + " " + (sys_include_dirs).collect { |d| "-isystem #{d}" }.join(" ")
 
-defines = %w(-DUSE_HAL_DRIVER -DSTM32H745xx -DCORE_CM7 -DUSE_FULL_LL_DRIVER)
+defines = %w(-DUSE_HAL_DRIVER -DSTM32H745xx -DCORE_CM7)
 if DEBUG
   defines << "-DDEBUG"
+  defines << "-DUSE_FULL_ASSERT"
+  defines << "-DUSE_FULL_LL_DRIVER"
 end
 
 # Target specified #defines
@@ -266,7 +267,6 @@ task :help do
   puts " testing=1 - compiles unit tests"
   puts " test=test1[,test2,test3] - specifies which test(s) to build"
   puts " exclude=test1[,test2...] - excludes the named test(s) from the build"
-  puts " flash=1 - compile for parallel flash, default is SPIFI"
   puts " target=[Nucleo|Prime] - sets target board. default is #{TARGET}"
   puts " debug=1 - turns on debug compilation"
   puts " debuglib=1 - turns on debugging only for the hal libs"

@@ -8,6 +8,8 @@ static char SDPath[5]; /* SD card logical drive path */
 
 extern const Diskio_drvTypeDef SD_Driver;
 
+#if 0
+// when we detect sd remove and then insert a new one
 static int SD_Initialize()
 {
     if (isInitialized == 0) {
@@ -24,6 +26,7 @@ static int SD_Initialize()
     }
     return 1;
 }
+#endif
 
 int setup_sdmmc()
 {
@@ -33,10 +36,10 @@ int setup_sdmmc()
         return 0;
     }
 
-    if(SD_Initialize() != 1) {
-        printf("Error: setup_sdmmc - SD_Initialize failed\n");
-        return 0;
-    }
+    // if(SD_Initialize() != 1) {
+    //     printf("Error: setup_sdmmc - SD_Initialize failed\n");
+    //     return 0;
+    // }
 
     // if(f_mount(&SDFatFs, (TCHAR const*)SDPath, 1) != FR_OK) {
     //  printf("Error: setup_sdmmc - mount failed\n");

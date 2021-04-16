@@ -33,15 +33,14 @@
 #include "Pin.h"
 #include "Network.h"
 
-static bool system_running= false;
-static bool rpi_port_enabled= false;
-static uint32_t rpi_baudrate= 115200;
+static bool system_running = false;
+static bool rpi_port_enabled = false;
+static uint32_t rpi_baudrate = 115200;
 static Pin *aux_play_led = nullptr;
 
 // for ?, $I or $S queries
 // for ? then query_line will be nullptr
-struct query_t
-{
+struct query_t {
     OutputStream *query_os;
     char *query_line;
 };
@@ -52,9 +51,9 @@ static std::string config_error_msg;
 
 // TODO maybe move to Dispatcher
 static GCodeProcessor gp;
-static bool loaded_configuration= false;
-static bool config_override= false;
-const char *OVERRIDE_FILE= "/sd/config-override";
+static bool loaded_configuration = false;
+static bool config_override = false;
+const char *OVERRIDE_FILE = "/sd/config-override";
 
 // load configuration from override file
 static bool load_config_override(OutputStream& os)
@@ -77,11 +76,11 @@ static bool load_config_override(OutputStream& os)
                 }
             }
         }
-        loaded_configuration= true;
+        loaded_configuration = true;
         fsin.close();
 
-    }else{
-        loaded_configuration= false;
+    } else {
+        loaded_configuration = false;
         return false;
     }
 
@@ -124,7 +123,7 @@ bool dispatch_line(OutputStream& os, const char *ln)
                 os.printf("error:Unsupported command - %s\n", line.c_str());
             }
 
-        }else if(!os.is_no_response()) {
+        } else if(!os.is_no_response()) {
             os.puts("ok\n");
         }
         os.set_no_response(false);
@@ -143,17 +142,17 @@ bool dispatch_line(OutputStream& os, const char *ln)
             return true;
         }
 
-        auto& g= gcodes.back();
+        auto& g = gcodes.back();
         // we have to check for certain gcodes which are known to violate spec (eg M28)
         if(g.has_error()) {
             // Word parse Error
             if(THEDISPATCHER->is_grbl_mode()) {
                 os.printf("error:gcode parse failed %s - %s\n", g.get_error_message(), line.c_str());
-            }else{
+            } else {
                 os.printf("// WARNING gcode parse failed %s - %s\n", g.get_error_message(), line.c_str());
             }
             // TODO add option to HALT in this case
-        }else{
+        } else {
             // this shouldn't happen
             printf("WARNING: parse returned false but no error\n");
         }
@@ -177,7 +176,7 @@ bool dispatch_line(OutputStream& os, const char *ln)
             if(fputs(line.c_str(), upload_fp) < 0 || fputc('\n', upload_fp) < 0) {
                 // we got an error
                 fclose(upload_fp);
-                upload_fp= nullptr;
+                upload_fp = nullptr;
                 os.printf("Error:error writing to file.\n");
             }
         }
@@ -199,26 +198,26 @@ bool dispatch_line(OutputStream& os, const char *ln)
         //i.dump(os);
         if(i.has_m() || i.has_g()) {
             // potentially handle M500 - M503 here
-            OutputStream *pos= &os;
-            std::fstream *fsout= nullptr;
-            bool m500= false;
+            OutputStream *pos = &os;
+            std::fstream *fsout = nullptr;
+            bool m500 = false;
 
             if(i.has_m() && (i.get_code() >= 500 && i.get_code() <= 503)) {
                 if(i.get_code() == 500) {
                     // we have M500 so redirect os to a config-override file
-                    fsout= new std::fstream(OVERRIDE_FILE, std::fstream::out | std::fstream::trunc);
+                    fsout = new std::fstream(OVERRIDE_FILE, std::fstream::out | std::fstream::trunc);
                     if(!fsout->is_open()) {
                         os.printf("ERROR: opening file: %s\n", OVERRIDE_FILE);
                         delete fsout;
                         return true;
                     }
-                    pos= new OutputStream(fsout);
-                    m500= true;
+                    pos = new OutputStream(fsout);
+                    m500 = true;
 
                 } else if(i.get_code() == 501) {
                     if(load_config_override(os)) {
                         os.printf("configuration override loaded\nok\n");
-                    }else{
+                    } else {
                         os.printf("failed to load configuration override\nok\n");
                     }
                     return true;
@@ -231,7 +230,7 @@ bool dispatch_line(OutputStream& os, const char *ln)
                 } else if(i.get_code() == 503) {
                     if(loaded_configuration) {
                         os.printf("// NOTE: config override loaded\n");
-                    }else{
+                    } else {
                         os.printf("// NOTE: No config override loaded\n");
                     }
                     i.set_command('M', 500, 3); // change gcode to be M500.3
@@ -246,7 +245,7 @@ bool dispatch_line(OutputStream& os, const char *ln)
 
             // clean up after M500
             if(m500) {
-                m500= false;
+                m500 = false;
                 fsout->close();
                 delete fsout;
                 delete pos; // this would be the file output stream
@@ -301,7 +300,7 @@ bool process_command_buffer(size_t n, char *rx_buf, OutputStream *os, char *line
                 Module::broadcast_halt(false);
                 os->puts("[Caution: Unlocked]\n");
 
-            }else{
+            } else {
                 // there is a race condition where the host may send the ^Y so fast after
                 // the $J -c that it is executed first, which would leave the system in cont mode
                 // We set the stop_request flag if we are not in continuous jog mode and
@@ -309,7 +308,7 @@ bool process_command_buffer(size_t n, char *rx_buf, OutputStream *os, char *line
                 if(Conveyor::getInstance()->get_continuous_mode()) {
                     // stop continuous jog mode
                     Conveyor::getInstance()->set_continuous_mode(false);
-                }else{
+                } else {
                     // set generic stop request, currently used to see if we got ^Y before cont mode and to abort
                     // some file commands
                     os->set_stop_request(true);
@@ -343,16 +342,16 @@ bool process_command_buffer(size_t n, char *rx_buf, OutputStream *os, char *line
                     }
                     os->puts("ok\n");
 
-                }else if(!queries.full()) {
+                } else if(!queries.full()) {
                     // Handle $I and $S as instant queries
                     queries.push_back({os, strdup(line)});
                 }
 
-            }else {
+            } else {
                 if(!send_message_queue(line, os, wait)) {
                     // we were told not to wait and the queue was full
                     // the caller will now need to call send_message_queue()
-                    cnt= 0;
+                    cnt = 0;
                     return false;
                 }
             }
@@ -373,10 +372,10 @@ bool process_command_buffer(size_t n, char *rx_buf, OutputStream *os, char *line
     return true;
 }
 
-static volatile bool abort_comms= false;
+static volatile bool abort_comms = false;
 void set_abort_comms()
 {
-    abort_comms= true;
+    abort_comms = true;
     // Network *network= static_cast<Network *>(Module::lookup("network"));
     // if(network != nullptr) network->set_abort();
 }
@@ -395,8 +394,8 @@ static void usb_comms(void *)
     }
 
     // we set this to 1024 so ymodem will run faster (but if not needed then it can be as low as 256)
-    const size_t usb_rx_buf_sz= 1024;
-    char *usb_rx_buf= (char *)_RAM3->alloc(usb_rx_buf_sz);
+    const size_t usb_rx_buf_sz = 1024;
+    char *usb_rx_buf = (char *)_RAM3->alloc(usb_rx_buf_sz);
     if(usb_rx_buf == nullptr) {
         printf("FATAL: no memory in RAM3 for usb_rx_buf\n");
         return;
@@ -406,7 +405,7 @@ static void usb_comms(void *)
     static const char *welcome_message = "Welcome to Smoothie\nok\n";
     const TickType_t waitms = pdMS_TO_TICKS( 300 );
 
-    size_t n, il= 0;
+    size_t n, il = 0;
     bool done = false;
 
     // first we wait for an initial '\n' sent from host
@@ -420,16 +419,16 @@ static void usb_comms(void *)
                 if(usb_rx_buf[i] == '\n') {
                     if(config_error_msg.empty()) {
                         write_cdc(welcome_message, strlen(welcome_message));
-                    }else{
+                    } else {
                         write_cdc(config_error_msg.c_str(), config_error_msg.size());
                     }
                     done = true;
-                    if(i+1 < n) {
+                    if(i + 1 < n) {
                         // we had another command after the first \n
-                        il= i+1;
+                        il = i + 1;
                         n -= il;
-                    }else{
-                        il= 0;
+                    } else {
+                        il = 0;
                     }
                     break;
                 }
@@ -497,7 +496,7 @@ static void uart_comms(void *)
 
         size_t n = read_uart(rx_buf, sizeof(rx_buf));
         if(n > 0) {
-           process_command_buffer(n, rx_buf, &os, line, cnt, discard);
+            process_command_buffer(n, rx_buf, &os, line, cnt, discard);
         }
     }
     output_streams.erase(&os);
@@ -522,7 +521,7 @@ static void handle_query(bool need_done)
     // so long as safe_sleep() is called then this will still be processed
     // also dispatch any instant queries we have recieved
     while(!queries.empty()) {
-        struct query_t q= queries.pop_front();
+        struct query_t q = queries.pop_front();
         if(q.query_line == nullptr) { // it is a ? query
             std::string r;
             Robot::getInstance()->get_query_string(r);
@@ -550,7 +549,7 @@ static void command_handler()
 
     for(;;) {
         char *line;
-        OutputStream *os= nullptr;
+        OutputStream *os = nullptr;
         bool idle = false;
 
         // This will timeout after 100 ms
@@ -648,17 +647,17 @@ static std::map<std::string, Adc*> voltage_monitors;
 
 float get_voltage_monitor(const char* name)
 {
-    auto p= voltage_monitors.find(name);
+    auto p = voltage_monitors.find(name);
     if(p == voltage_monitors.end()) return 0;
     return p->second->read_voltage();
 }
 
 int get_voltage_monitor_names(const char *names[])
 {
-    int i= 0;
+    int i = 0;
     for(auto& p : voltage_monitors) {
         if(names != nullptr)
-            names[i]= p.first.c_str();
+            names[i] = p.first.c_str();
         ++i;
     }
     return i;
@@ -741,17 +740,17 @@ static void smoothie_startup(void *)
                 bool f = cr.get_bool(m, "grbl_mode", false);
                 THEDISPATCHER->set_grbl_mode(f);
                 printf("INFO: grbl mode %s\n", f ? "set" : "not set");
-                config_override= cr.get_bool(m, "config-override", false);
+                config_override = cr.get_bool(m, "config-override", false);
                 printf("INFO: use config override is %s\n", config_override ? "set" : "not set");
-                rpi_port_enabled= cr.get_bool(m, "rpi_port_enable", false);
-                rpi_baudrate= cr.get_int(m, "rpi_baudrate", 115200);
+                rpi_port_enabled = cr.get_bool(m, "rpi_port_enable", false);
+                rpi_baudrate = cr.get_int(m, "rpi_baudrate", 115200);
                 printf("INFO: rpi port is %senabled, at baudrate: %lu\n", rpi_port_enabled ? "" : "not ", rpi_baudrate);
                 std::string p = cr.get_string(m, "aux_play_led", "nc");
                 aux_play_led = new Pin(p.c_str(), Pin::AS_OUTPUT);
                 if(!aux_play_led->connected()) {
                     delete aux_play_led;
                     aux_play_led = nullptr;
-                }else{
+                } else {
                     printf("INFO: auxilliary play led set to %s\n", aux_play_led->to_string().c_str());
                 }
             }
@@ -811,10 +810,10 @@ static void smoothie_startup(void *)
         // create all registered modules, the addresses are stored in a known location in flash
         extern uint32_t __registered_modules_start;
         extern uint32_t __registered_modules_end;
-        uint32_t *g_pfnModules= &__registered_modules_start;
+        uint32_t *g_pfnModules = &__registered_modules_start;
         while (g_pfnModules < &__registered_modules_end) {
-            uint32_t *addr= g_pfnModules++;
-            bool (*pfnModule)(ConfigReader& cr)= (bool (*)(ConfigReader& cr))*addr;
+            uint32_t *addr = g_pfnModules++;
+            bool (*pfnModule)(ConfigReader & cr) = (bool (*)(ConfigReader & cr)) * addr;
             // this calls the registered create function for the module
             pfnModule(cr);
         }
@@ -830,12 +829,12 @@ static void smoothie_startup(void *)
                     std::string k = s.first;
                     std::string v = s.second;
 
-                    Adc *padc= new Adc;
+                    Adc *padc = new Adc;
                     if(padc->from_string(v.c_str()) == nullptr) {
                         printf("WARNING: Failed to create %s voltage monitor\n", k.c_str());
                         delete padc;
-                    }else{
-                        voltage_monitors[k]= padc;
+                    } else {
+                        voltage_monitors[k] = padc;
                         printf("DEBUG: added voltage monitor %s: %s\n", k.c_str(), v.c_str());
                     }
                 }
@@ -887,7 +886,7 @@ static void smoothie_startup(void *)
 
     } else {
         puts("ERROR: Configure failed\n");
-        config_error_msg= "There was a fatal error in the config.ini this must be fixed to continue\nOnly some shell commands are allowed and sdcard access\n";
+        config_error_msg = "There was a fatal error in the config.ini this must be fixed to continue\nOnly some shell commands are allowed and sdcard access\n";
         Module::broadcast_halt(true);
         puts(config_error_msg.c_str());
     }
@@ -900,8 +899,8 @@ static void smoothie_startup(void *)
 
     // Start comms threads higher priority than the command thread
     // fixed stack size of 4k Bytes each
-    xTaskCreate(usb_comms, "USBCommsThread", 1500/4, NULL, (tskIDLE_PRIORITY + COMMS_PRI), (TaskHandle_t *) NULL);
-    xTaskCreate(uart_comms, "UARTCommsThread", 1500/4, NULL, (tskIDLE_PRIORITY + COMMS_PRI), (TaskHandle_t *) NULL);
+    xTaskCreate(usb_comms, "USBCommsThread", 1500 / 4, NULL, (tskIDLE_PRIORITY + COMMS_PRI), (TaskHandle_t *) NULL);
+    xTaskCreate(uart_comms, "UARTCommsThread", 1500 / 4, NULL, (tskIDLE_PRIORITY + COMMS_PRI), (TaskHandle_t *) NULL);
 
     // run any startup functions that have been registered
     for(auto f : startup_fncs) {
@@ -915,8 +914,8 @@ static void smoothie_startup(void *)
         if(setup_uart3(rpi_baudrate) < 0) {
             printf("ERROR: UART3/RPI setup failed\n");
         } else {
-            xTaskCreate(uart3_comms, "UART3CommsThread", 1500/4, NULL, (tskIDLE_PRIORITY + COMMS_PRI), (TaskHandle_t *) NULL
-                );
+            xTaskCreate(uart3_comms, "UART3CommsThread", 1500 / 4, NULL, (tskIDLE_PRIORITY + COMMS_PRI), (TaskHandle_t *) NULL
+                       );
         }
     }
 #endif
@@ -925,7 +924,7 @@ static void smoothie_startup(void *)
     printf("DEBUG: Initial: free malloc memory= %d, free sbrk memory= %d, Total free= %d\n", mi.fordblks, xPortGetFreeHeapSize() - mi.fordblks, xPortGetFreeHeapSize());
 
     // indicate we are up and running
-    system_running= true;
+    system_running = true;
 
     // load config override if set
     if(ok && config_override) {
@@ -933,7 +932,7 @@ static void smoothie_startup(void *)
         if(load_config_override(os)) {
             os.printf("INFO: configuration override loaded\n");
 
-        }else{
+        } else {
             os.printf("INFO: No saved configuration override\n");
         }
     }
@@ -972,7 +971,7 @@ int main(int argc, char *argv[])
     // set to be lower priority than comms, although it maybe better to invert them as we don;t really
     // want the commandthread preempted by the comms thread everytime it gets data.
     // 10000 Bytes stack
-    xTaskCreate(smoothie_startup, "CommandThread", 10000/4, NULL, (tskIDLE_PRIORITY + CMDTHRD_PRI), (TaskHandle_t *) NULL);
+    xTaskCreate(smoothie_startup, "CommandThread", 10000 / 4, NULL, (tskIDLE_PRIORITY + CMDTHRD_PRI), (TaskHandle_t *) NULL);
 
     /* Start the scheduler */
     vTaskStartScheduler();
@@ -1002,8 +1001,8 @@ extern "C" void vApplicationIdleHook( void )
                     if(aux_play_led != nullptr) {
                         aux_play_led->set(Board_LED_Test(1));
                     }
-                }else{
-                    bool f= !Conveyor::getInstance()->is_idle();
+                } else {
+                    bool f = !Conveyor::getInstance()->is_idle();
                     Board_LED_Set(1, f);
                     if(aux_play_led != nullptr) {
                         aux_play_led->set(f);
@@ -1053,19 +1052,20 @@ extern "C" void vApplicationMallocFailedHook( void )
     FreeRTOSConfig.h, and the xPortGetFreeHeapSize() API function can be used
     to query the size of free heap space that remains (although it does not
     provide information on how the remaining heap might be fragmented). */
-    #if 0
+#if 0
     taskDISABLE_INTERRUPTS();
     __asm("bkpt #0");
     for( ;; );
-    #else
+#else
     // we don't want to use any memory for this
     // returns NULL to the caller
     write_uart("FATAL: malloc/sbrk out of memory\n", 33);
     return;
-    #endif
+#endif
 }
 
-extern "C" void HardFault_Handler(void) {
+extern "C" void HardFault_Handler(void)
+{
     Board_LED_Set(0, true);
     Board_LED_Set(1, true);
     Board_LED_Set(2, false);
@@ -1073,3 +1073,23 @@ extern "C" void HardFault_Handler(void) {
     __asm("bkpt #0");
     for( ;; );
 }
+
+#ifdef  USE_FULL_ASSERT
+/**
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
+extern "C" void assert_failed(uint8_t* file, uint32_t line)
+{
+    printf("ERROR: HAL assert failed: file %s on line %lu\n", file, line);
+
+    // __disable_irq();
+    __asm("bkpt #0");
+    /* Infinite loop */
+    while (1) {
+    }
+}
+#endif

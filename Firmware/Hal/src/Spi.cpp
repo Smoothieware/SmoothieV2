@@ -2,7 +2,9 @@
 #include "Hal_pin.h"
 
 #include "stm32h7xx_hal.h"
+#ifdef USE_FULL_LL_DRIVER
 #include "stm32h7xx_ll_rcc.h"
+#endif
 
 #include <stdio.h>
 #include <cstring>
@@ -44,35 +46,39 @@ bool SPI::init(int bits, int mode, int frequency)
 		}
 		return true;
 	}
+	#ifdef USE_FULL_LL_DRIVER
 	uint32_t spi_hz = LL_RCC_GetSPIClockFreq(LL_RCC_SPI123_CLKSOURCE);
 	printf("DEBUG: SPI clk source: %lu hz\n", spi_hz);
+	#endif
 
 	// divisor needed for requested frequency
 	uint32_t f = (uint32_t) (SystemCoreClock / (2 * frequency));
 	uint32_t psc = 0;
 	// find nearest prescaler
-	if(f <= 2) psc = SPI_BAUDRATEPRESCALER_2;
-	else if(f <= 4) psc = SPI_BAUDRATEPRESCALER_4;
-	else if(f <= 8) psc = SPI_BAUDRATEPRESCALER_8;
-	else if(f <= 16) psc = SPI_BAUDRATEPRESCALER_16;
-	else if(f <= 32) psc = SPI_BAUDRATEPRESCALER_32;
-	else if(f <= 64) psc = SPI_BAUDRATEPRESCALER_64;
-	else if(f <= 128) psc = SPI_BAUDRATEPRESCALER_128;
-	else if(f <= 256) psc = SPI_BAUDRATEPRESCALER_256;
+	if(f <= 2) { psc = SPI_BAUDRATEPRESCALER_2; f= 2; }
+	else if(f <= 4) { psc = SPI_BAUDRATEPRESCALER_4; f= 4; }
+	else if(f <= 8) { psc = SPI_BAUDRATEPRESCALER_8; f= 8; }
+	else if(f <= 16) { psc = SPI_BAUDRATEPRESCALER_16; f= 16; }
+	else if(f <= 32) { psc = SPI_BAUDRATEPRESCALER_32; f= 32; }
+	else if(f <= 64) { psc = SPI_BAUDRATEPRESCALER_64; f= 64; }
+	else if(f <= 128) { psc = SPI_BAUDRATEPRESCALER_128; f= 128; }
+	else if(f <= 256) { psc = SPI_BAUDRATEPRESCALER_256; f= 256; }
 	else {
+		f= 256;
 		psc = SPI_BAUDRATEPRESCALER_256;
-		printf("WARNING: cannot get SPI frequency this low, set to: %lu hz\n", (SystemCoreClock / (2 * psc)));
+		printf("WARNING: cannot get SPI frequency this low, set to: %lu hz\n", (SystemCoreClock / (2 * f)));
 	}
-	printf("DEBUG:SPI frequency set to: %lu hz\n", (SystemCoreClock / (2 * psc)));
+	printf("DEBUG:SPI frequency set to: %lu hz\n", (SystemCoreClock / (2 * f)));
 
 
 	/* Set the SPI parameters */
 	SPI_HandleTypeDef SpiHandle;
+	memset(&SpiHandle, 0, sizeof(SPI_HandleTypeDef));
 	SpiHandle.Instance               = _channel == 0 ? SPI1 : SPI2;
 	SpiHandle.Init.BaudRatePrescaler = psc;
 	SpiHandle.Init.Direction         = SPI_DIRECTION_2LINES;
-	SpiHandle.Init.CLKPhase          = mode & 1;
-	SpiHandle.Init.CLKPolarity       = mode & 2;
+	SpiHandle.Init.CLKPhase          = (mode & 1) ? SPI_PHASE_2EDGE : SPI_PHASE_1EDGE;
+	SpiHandle.Init.CLKPolarity       = (mode & 2) ? SPI_POLARITY_HIGH : SPI_POLARITY_LOW;
 	SpiHandle.Init.DataSize          = bits - 1;
 	SpiHandle.Init.FirstBit          = SPI_FIRSTBIT_MSB;
 	SpiHandle.Init.TIMode            = SPI_TIMODE_DISABLE;

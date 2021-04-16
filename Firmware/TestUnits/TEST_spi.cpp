@@ -79,12 +79,13 @@ REGISTER_TEST(SPITest, Spi_class)
     TEST_ASSERT_NOT_NULL(spi);
     TEST_ASSERT_TRUE(spi->init(8, 3, 100000));
     TEST_ASSERT_TRUE(spi->valid());
+    TEST_ASSERT_FALSE(spi->init(8, 1, 100000));
 
     Pin cs[]= {
-    	Pin("PA8", Pin::AS_OUTPUT),
-    	Pin("PA9", Pin::AS_OUTPUT),
-    	Pin("PA10", Pin::AS_OUTPUT),
-    	Pin("PA11", Pin::AS_OUTPUT)
+    	// led pins on Nucleo
+    	Pin("PB0", Pin::AS_OUTPUT),
+    	Pin("PE1", Pin::AS_OUTPUT),
+    	Pin("PB14", Pin::AS_OUTPUT),
     };
 
     for(auto& p : cs) {

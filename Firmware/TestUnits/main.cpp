@@ -446,8 +446,8 @@ extern "C" void vApplicationStackOverflowHook( TaskHandle_t pxTask, char *pcTask
     /* Run time stack overflow checking is performed if
     configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2.  This hook
     function is called if a stack overflow is detected. */
-    taskDISABLE_INTERRUPTS();
-    __asm("bkpt #0");
+    __disable_irq();
+    __asm volatile ("bkpt #0");
     for( ;; );
 }
 
@@ -476,10 +476,32 @@ extern "C" void vApplicationMallocFailedHook( void )
     FreeRTOSConfig.h, and the xPortGetFreeHeapSize() API function can be used
     to query the size of free heap space that remains (although it does not
     provide information on how the remaining heap might be fragmented). */
-    taskDISABLE_INTERRUPTS();
-    __asm("bkpt #0");
+    __disable_irq();
+    __asm volatile ("bkpt #0");
     for( ;; );
 }
+
+#ifdef  USE_FULL_ASSERT
+
+/**
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
+extern "C" void assert_failed(uint8_t* file, uint32_t line)
+{
+    printf("ERROR: HAL assert failed: file %s on line %lu\n", file, line);
+
+    //__disable_irq();
+    __asm volatile ("bkpt #0");
+  /* Infinite loop */
+  while (1)
+  {
+  }
+}
+#endif
 
 // #define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
 // _ramfunc_ void TIMER0_IRQHandler(void)
@@ -502,7 +524,7 @@ int main()   //int argc, char *argv[])
 
     if(setup_uart() <= 0) {
         puts("FATAL: UART setup failed\n");
-        __asm("bkpt #0");
+        __asm volatile ("bkpt #0");
     }
 
     printf("MCU clock rate= %lu Hz\n", SystemCoreClock);
@@ -522,7 +544,7 @@ int main()   //int argc, char *argv[])
     if(!create_message_queue()) {
         // Failed to create the queue.
         printf("ERROR: failed to create dispatch queue\n");
-        __asm("bkpt #0");
+        __asm volatile ("bkpt #0");
     }
 
     xTaskCreate(usbComTask, "usbComTask", 1024, NULL, (tskIDLE_PRIORITY + 3UL), (TaskHandle_t *) NULL);
@@ -536,5 +558,5 @@ int main()   //int argc, char *argv[])
     vTaskStartScheduler();
 
     // should never reach here
-    __asm("bkpt #0");
+    __asm volatile ("bkpt #0");
 }
