@@ -84,6 +84,7 @@ static void setup_pin()
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
     GPIO_InitStruct.Pin = GPIO_PIN_8;
+    GPIO_InitStruct.Alternate = 0;
 
     HAL_GPIO_Init(PULSE_GPIO_PORT, &GPIO_InitStruct);
     HAL_GPIO_WritePin(PULSE_GPIO_PORT, PULSE_PIN, GPIO_PIN_RESET);

@@ -96,6 +96,7 @@ int32_t BSP_SD_Init(uint32_t Instance)
         gpio_init_structure.Pull = GPIO_PULLUP;
         gpio_init_structure.Speed = GPIO_SPEED_FREQ_HIGH;
         gpio_init_structure.Mode = GPIO_MODE_IT_RISING_FALLING;
+        gpio_init_structure.Alternate = 0;
         HAL_GPIO_Init(SD_DETECT_GPIO_PORT, &gpio_init_structure);
         allocate_hal_pin(SD_DETECT_GPIO_PORT, SD_DETECT_PIN);
 

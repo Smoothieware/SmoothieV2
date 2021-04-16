@@ -49,10 +49,12 @@ bool SPI::init(int bits, int mode, int frequency)
 	#ifdef USE_FULL_LL_DRIVER
 	uint32_t spi_hz = LL_RCC_GetSPIClockFreq(LL_RCC_SPI123_CLKSOURCE);
 	printf("DEBUG: SPI clk source: %lu hz\n", spi_hz);
-	#endif
-
+	uint32_t f = (uint32_t) (spi_hz / frequency);
+	#else
 	// divisor needed for requested frequency
 	uint32_t f = (uint32_t) (SystemCoreClock / (2 * frequency));
+	#endif
+
 	uint32_t psc = 0;
 	// find nearest prescaler
 	if(f <= 2) { psc = SPI_BAUDRATEPRESCALER_2; f= 2; }

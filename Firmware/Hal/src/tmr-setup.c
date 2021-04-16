@@ -18,19 +18,19 @@ static void (*fasttick_handler)();
 #define STEP_TIM_CLK_ENABLE                  __HAL_RCC_TIM3_CLK_ENABLE
 #define STEP_TIM_IRQn                        TIM3_IRQn
 #define STEP_TIM_IRQHandler                  TIM3_IRQHandler
-TIM_HandleTypeDef StepTimHandle;
+static TIM_HandleTypeDef StepTimHandle;
 
 #define UNSTEP_TIM                             TIM4
 #define UNSTEP_TIM_CLK_ENABLE                  __HAL_RCC_TIM4_CLK_ENABLE
 #define UNSTEP_TIM_IRQn                        TIM4_IRQn
 #define UNSTEP_TIM_IRQHandler                  TIM4_IRQHandler
-TIM_HandleTypeDef UnStepTimHandle;
+static TIM_HandleTypeDef UnStepTimHandle;
 
 #define FASTTICK_TIM                             TIM2
 #define FASTTICK_TIM_CLK_ENABLE                  __HAL_RCC_TIM2_CLK_ENABLE
 #define FASTTICK_TIM_IRQn                        TIM2_IRQn
 #define FASTTICK_TIM_IRQHandler                  TIM2_IRQHandler
-TIM_HandleTypeDef FastTickTimHandle;
+static TIM_HandleTypeDef FastTickTimHandle;
 
 // frequency in HZ, delay in microseconds
 int steptimer_setup(uint32_t frequency, uint32_t delay, void *step_handler, void *unstep_handler)
