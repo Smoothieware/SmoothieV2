@@ -218,7 +218,6 @@ Pin* Pin::as_output()
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
     GPIO_InitStruct.Pin = ppin;
-    GPIO_InitStruct.Alternate = 0;
 
     pullup = pulldown= false;
 
@@ -236,7 +235,7 @@ Pin* Pin::as_input()
     GPIO_InitStruct.Pull = pullup ? GPIO_PULLUP : pulldown ? GPIO_PULLDOWN : GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
     GPIO_InitStruct.Pin = ppin;
-    GPIO_InitStruct.Alternate = 0;
+
     HAL_GPIO_Init((GPIO_TypeDef *)pport, &GPIO_InitStruct);
     return this;
 }

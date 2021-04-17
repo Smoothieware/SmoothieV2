@@ -77,7 +77,7 @@ REGISTER_TEST(SPITest, Spi_class)
 {
     SPI *spi = SPI::getInstance(0);
     TEST_ASSERT_NOT_NULL(spi);
-    TEST_ASSERT_TRUE(spi->init(8, 3, 100000));
+    TEST_ASSERT_TRUE(spi->init(8, 0, 100000));
     TEST_ASSERT_TRUE(spi->valid());
     TEST_ASSERT_FALSE(spi->init(8, 1, 100000));
 
@@ -96,7 +96,7 @@ REGISTER_TEST(SPITest, Spi_class)
 
 
     for(auto& p : cs) {
-		uint32_t data= 0x12345ul;
+		uint32_t data= 0x012345ul;
 		uint8_t tx_buf[3]{(uint8_t)(data>>16), (uint8_t)(data>>8), (uint8_t)(data&0xFF)};
 		uint8_t rx_buf[3]{0};
 
