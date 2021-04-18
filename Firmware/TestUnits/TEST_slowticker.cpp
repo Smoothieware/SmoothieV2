@@ -2,6 +2,7 @@
 #include "TestRegistry.h"
 
 #include "SlowTicker.h"
+#include "benchmark_timer.h"
 
 static volatile int timer_cnt20= 0;
 static volatile int timer_cnt100= 0;
@@ -48,24 +49,20 @@ REGISTER_TEST(SlowTicker, test_20_and_100_hz)
 }
 
 using systime_t= uint32_t;
-#define clock_systimer() ((systime_t)Chip_RIT_GetCounter(LPC_RITIMER))
-#define TICK2USEC(x) ((systime_t)(((uint64_t)(x)*1000000)/timerFreq))
 #define TICKS2MS( xTicks ) ( (uint32_t) ( ((uint64_t)(xTicks) * 1000) / configTICK_RATE_HZ ) )
 REGISTER_TEST(SlowTicker, xTaskGetTickCount)
 {
-    /* Get RIT timer peripheral clock rate */
-    uint32_t timerFreq = Chip_Clock_GetRate(CLK_MX_RITIMER);
     static TickType_t last_time_check = xTaskGetTickCount();
     int cnt= 0;
 
-    systime_t st = clock_systimer();
+    systime_t st = benchmark_timer_start();
     while(cnt < 10) {
         if(TICKS2MS(xTaskGetTickCount() - last_time_check) >= 100) {
             last_time_check = xTaskGetTickCount();
             cnt++;
         }
     }
-    systime_t en = clock_systimer();
-    printf("elapsed time %lu us\n", TICK2USEC(en-st));
-    TEST_ASSERT_INT_WITHIN(1000, 1000000, TICK2USEC(en-st));
+    systime_t el = benchmark_timer_elapsed(st);
+    printf("elapsed time %lu us\n", benchmark_timer_as_us(el));
+    TEST_ASSERT_INT_WITHIN(1000, 1000000, benchmark_timer_as_us(el));
 }
