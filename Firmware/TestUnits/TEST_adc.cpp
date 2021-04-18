@@ -4,17 +4,15 @@
 
 #include "TestRegistry.h"
 
-#include "board.h"
-
 #include "Adc.h"
 #include "SlowTicker.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "benchmark_timer.h"
+
 using systime_t= uint32_t;
-#define clock_systimer() ((systime_t)Chip_RIT_GetCounter(LPC_RITIMER))
-#define TICK2USEC(x) ((systime_t)(((uint64_t)(x)*1000000)/timerFreq))
 
 #ifdef BOARD_BAMBINO
 #define _ADC_CHANNEL ADC_CH1
@@ -26,10 +24,9 @@ using systime_t= uint32_t;
 #define _LPC_ADC_ID LPC_ADC0
 #define _LPC_ADC_IRQ ADC0_IRQn
 
+#if 0
 REGISTER_TEST(ADCTest, raw_polling)
 {
-    /* Get RIT timer peripheral clock rate */
-    uint32_t timerFreq = Chip_Clock_GetRate(CLK_MX_RITIMER);
     uint32_t t = Chip_Clock_GetRate(CLK_APB3_ADC0);
     printf("ADC0 clk= %lu\n", t);
 
@@ -49,7 +46,7 @@ REGISTER_TEST(ADCTest, raw_polling)
 
     float acc= 0;
     uint32_t n= 0;
-    systime_t st = clock_systimer();
+    systime_t st = benchmark_timer_start();
     for (int i = 0; i < 10000; ++i) {
         /* Start A/D conversion if not using burst mode */
         //    Chip_ADC_SetStartMode(_LPC_ADC_ID, ADC_START_NOW, ADC_TRIGGERMODE_RISING);
@@ -67,10 +64,10 @@ REGISTER_TEST(ADCTest, raw_polling)
             printf("Failed to read adc\n");
         }
     }
-    systime_t en = clock_systimer();
+    systime_t el = benchmark_timer_elapsed(st);
 
     printf("channel: %d, average adc= %04X, v= %10.4f\n", _ADC_CHANNEL, (int)(acc/n), 3.3F * (acc/n)/1024.0F);
-    printf("elapsed time: %lu us, %10.2f us/sample\n", TICK2USEC(en-st), (float)TICK2USEC(en-st)/n);
+    printf("elapsed time: %lu us, %10.2f us/sample\n", benchmark_timer_as_us(el), (float)benchmark_timer_as_us(el)/n);
 
 
     // calculate temp of board thermistor
@@ -145,8 +142,9 @@ REGISTER_TEST(ADCTest, non_burst_interrupt)
     Chip_ADC_EnableChannel(_LPC_ADC_ID, _ADC_CHANNEL, DISABLE);
     Chip_ADC_DeInit(_LPC_ADC_ID);
 }
+#endif
 
-REGISTER_TEST(ADCTest, adc_class_interrupts)
+REGISTER_TEST(ADCTest, adc_class)
 {
     TEST_ASSERT_TRUE(Adc::setup());
 

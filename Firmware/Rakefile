@@ -109,11 +109,10 @@ NONETWORK = ENV['nonetwork'].nil? ? 0 : ENV['nonetwork']
 
 # add HAL files
 #hal_src = FileList['Hal/**/*.{c,cpp,s}']
-hal_src = FileList['Hal/STM32H7xx_HAL_Driver/**/*.{c,cpp,s}', 'Hal/src/Pin.cpp', 'Hal/src/uart_comms.c',
-                   'Hal/src/cr_cpp_config.cpp', 'Hal/src/startup_stm32h745xx.s', 'Hal/src/system_stm32h7xx.c',
-                   'Hal/src/tmr-setup.c', 'Hal/src/Spi.c'
-                  ]
+hal_src = FileList['Hal/STM32H7xx_HAL_Driver/**/*.{c,cpp,s}', 'Hal/src/*.{c,cpp,s}']
 hal_src.exclude(/_template\.c/)
+hal_src.exclude("Hal/src/Adc.cpp")
+hal_src.exclude("Hal/src/i2c.cpp")
 
 # SD support and fatfs
 sdmmc_src = FileList['Hal/sdmmc/**/*.c']

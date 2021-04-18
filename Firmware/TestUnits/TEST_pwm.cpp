@@ -3,49 +3,45 @@
 #include <stdio.h>
 
 #include "TestRegistry.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 #include "Pwm.h"
-REGISTER_TEST(PWMTest, from_string)
+
+REGISTER_TEST(PWMTest, basic_test)
 {
-    TEST_ASSERT_TRUE(Pwm::setup(10000));
+    printf("Setting PWM1 frequency to 20KHz\n");
+    TEST_ASSERT_TRUE(Pwm::setup(0, 20000));
 
-    Pwm pwm1;
-    TEST_ASSERT_FALSE(pwm1.is_valid());
-    TEST_ASSERT_FALSE(pwm1.from_string("X1.2"));
-    TEST_ASSERT_FALSE(pwm1.is_valid());
+    Pwm pwm1("PWM1_1");
+    Pwm pwmx("X1.2");
+    Pwm pwm2("PWM1_2");
+    Pwm pwm3("PWM2_1");
 
-    Pwm pwm2;
-    TEST_ASSERT_TRUE(pwm2.from_string("P2.12"));
+    TEST_ASSERT_TRUE(pwm1.is_valid());
     TEST_ASSERT_TRUE(pwm2.is_valid());
+    TEST_ASSERT_FALSE(pwmx.is_valid());
+    TEST_ASSERT_FALSE(pwm3.is_valid());
 
-    Pwm pwm3("P2.11");
-    TEST_ASSERT_TRUE(pwm3.is_valid());
-}
+    TEST_ASSERT_TRUE(Pwm::post_config_setup());
 
+    TEST_ASSERT_EQUAL_FLOAT(0, pwm1.get());
+    TEST_ASSERT_EQUAL_FLOAT(0, pwm2.get());
 
-// current = dutycycle * 2.0625
-REGISTER_TEST(PWMTest, set_current)
-{
-    // set X driver to 400mA
-    // set Y driver to 1amp
-    // set Z driver to 1.5amp
-    Pwm pwmx("P7.4"); // X
-    TEST_ASSERT_TRUE(pwmx.is_valid());
-    // dutycycle= current/2.0625
-    float dcp= 0.4F/2.0625F;
-    pwmx.set(dcp);
+    printf("Setting channel 1 to 50%% and channel 2 to 25%%\n");
+    pwm1.set(0.5F);
+    pwm2.set(0.25F);
+    TEST_ASSERT_EQUAL_FLOAT(0.5F, pwm1.get());
+    TEST_ASSERT_EQUAL_FLOAT(0.25F, pwm2.get());
+    vTaskDelay(pdMS_TO_TICKS(1000));
 
-    Pwm pwmy("PB.2"); // Y
-    TEST_ASSERT_TRUE(pwmy.is_valid());
+    printf("Setting channel 1 to 25%% and channel 2 to 0%%\n");
+    pwm1.set(0.25);
+    pwm2.set(0);
+    vTaskDelay(pdMS_TO_TICKS(1000));
 
-    // dutycycle= current/2.0625
-    dcp= 1.0F/2.0625F;
-    pwmy.set(dcp);
-
-    Pwm pwmz("PB.3"); // Z
-    TEST_ASSERT_TRUE(pwmz.is_valid());
-    // dutycycle= current/2.0625
-    dcp= 1.5F/2.0625F;
-    pwmz.set(dcp);
+    printf("Setting channel 1 to 75%%\n");
+    pwm1.set(0.75);
+    vTaskDelay(pdMS_TO_TICKS(1000));
 }
 

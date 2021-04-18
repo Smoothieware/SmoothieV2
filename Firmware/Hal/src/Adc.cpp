@@ -7,36 +7,20 @@
 #include <string>
 #include <cctype>
 #include <algorithm>
-
-#include "board.h"
+#include <string.h>
 
 #include "FreeRTOS.h"
 #include "task.h"
 
-#undef __GNU_VISIBLE
-#define __GNU_VISIBLE 1 // for strcasestr
-#include <string.h>
 
 // interrupts seem to not work very well
 #define NO_ADC_INTERRUPTS
 
-#define _LPC_ADC_ID LPC_ADC0
-const ADC_CHANNEL_T CHANNEL_LUT[] = {
-    ADC_CH0,                /**< ADC channel 0 */
-    ADC_CH1,                /**< ADC channel 1 */
-    ADC_CH2,                /**< ADC channel 2 */
-    ADC_CH3,                /**< ADC channel 3 */
-    ADC_CH4,                /**< ADC channel 4 */
-    ADC_CH5,                /**< ADC channel 5 */
-    ADC_CH6,                /**< ADC channel 6 */
-    ADC_CH7                 /**< ADC channel 7 */
-};
-
-Adc *Adc::instances[Adc::num_channels] = {nullptr};
+Adc *Adc::instances[Adc::num_channels] {nullptr};
 std::set<int> Adc::allocated_channels;
-int Adc::ninstances = 0;
-bool Adc::running = false;
-int Adc::slowticker_n = -1;
+int Adc::ninstances {0};
+bool Adc::running  {false};
+int Adc::slowticker_n {-1};
 
 static ADC_CLOCK_SETUP_T ADCSetup;
 
