@@ -774,15 +774,22 @@ static void smoothie_startup(void *)
         ///////////////////////////////////////////////////////////
         // configure core modules here
         {
-            // Pwm needs to be initialized, there can only be one frequency
-            // needs to be done before any module that could use it
-            uint32_t freq = 10000; // default is 10KHz
+            // Pwm needs to be initialized, there are two PWM timers and each
+            // can a frequency.
+            // This needs to be done before any module that could use it
+            // NOTE that Pwm::post_config_setup() needs to be called after all modules have been created
+            uint32_t deffreq = 10000; // default is 10KHz
             ConfigReader::section_map_t m;
-            if(cr.get_section("pwm", m)) {
-                freq = cr.get_int(m, "frequency", freq);
+            if(cr.get_section("pwm1", m)) {
+                uint32_t freq = cr.get_int(m, "frequency", deffreq);
+                Pwm::setup(0, freq);
+                printf("INFO: PWM1 frequency set to %lu Hz\n", freq);
             }
-            Pwm::setup(freq);
-            printf("INFO: PWM frequency set to %lu Hz\n", freq);
+            if(cr.get_section("pwm2", m)) {
+                uint32_t freq = cr.get_int(m, "frequency", deffreq);
+                Pwm::setup(1, freq);
+                printf("INFO: PWM2 frequency set to %lu Hz\n", freq);
+            }
         }
 
         {
@@ -840,6 +847,11 @@ static void smoothie_startup(void *)
                 }
             }
         }
+
+        if(!Pwm::post_config_setup()) {
+            printf("ERROR: Pwm::post_config_setup failed\n");
+        }
+
 #ifdef SD_CONFIG
         // close the file stream
         fs.close();

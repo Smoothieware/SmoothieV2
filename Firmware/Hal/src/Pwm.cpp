@@ -152,7 +152,7 @@ bool Pwm::setup(int timr, uint32_t freq)
     uint32_t clkhz = freq * 1000;
     uint32_t uhPrescalerValue = (uint32_t)(SystemCoreClock / (2 * clkhz)) - 1;
     uint32_t period_value = (uint32_t)((clkhz / freq) - 1); // Period Value
-    printf("DEBUG: PWM%d setup frequency= %lu, prsc= %lu, period= %lu\n", timr, freq, uhPrescalerValue, period_value);
+    printf("DEBUG: PWM%d setup frequency= %lu Hz, prsc= %lu, period= %lu\n", timr, freq, uhPrescalerValue, period_value);
 
     TIM_HandleTypeDef TimHandle;
     memset(&TimHandle, 0, sizeof(TIM_HandleTypeDef));

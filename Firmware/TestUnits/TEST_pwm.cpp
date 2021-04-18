@@ -12,6 +12,7 @@ REGISTER_TEST(PWMTest, basic_test)
 {
     printf("Setting PWM1 frequency to 20KHz\n");
     TEST_ASSERT_TRUE(Pwm::setup(0, 20000));
+    //TEST_ASSERT_TRUE(Pwm::setup(0, 50));
 
     Pwm pwm1("PWM1_1");
     Pwm pwmx("X1.2");
