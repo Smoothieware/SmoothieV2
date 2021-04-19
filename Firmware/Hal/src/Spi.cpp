@@ -74,8 +74,7 @@ bool SPI::init(int bits, int mode, int frequency)
 
 
 	/* Set the SPI parameters */
-	SPI_HandleTypeDef SpiHandle;
-	memset(&SpiHandle, 0, sizeof(SPI_HandleTypeDef));
+	SPI_HandleTypeDef SpiHandle{0};
 	SpiHandle.Instance               = _channel == 0 ? SPI1 : SPI2;
 	SpiHandle.Init.BaudRatePrescaler = psc;
 	SpiHandle.Init.Direction         = SPI_DIRECTION_2LINES;

@@ -154,8 +154,7 @@ bool Pwm::setup(int timr, uint32_t freq)
     uint32_t period_value = (uint32_t)((clkhz / freq) - 1); // Period Value
     printf("DEBUG: PWM%d setup frequency= %lu Hz, prsc= %lu, period= %lu\n", timr, freq, uhPrescalerValue, period_value);
 
-    TIM_HandleTypeDef TimHandle;
-    memset(&TimHandle, 0, sizeof(TIM_HandleTypeDef));
+    TIM_HandleTypeDef TimHandle{0};
 
     TimHandle.Instance = timr == 0 ? PWM1 : PWM2;
     TimHandle.Init.Prescaler         = uhPrescalerValue;
@@ -178,8 +177,7 @@ bool Pwm::post_config_setup()
     // We need to know how many PWM timers are used and how many channels for each so we need this to be called after config
 
     // Common configuration for all channels
-    TIM_OC_InitTypeDef sConfig;
-    memset(&sConfig, 0, sizeof(sConfig));
+    TIM_OC_InitTypeDef sConfig{0};
 
     sConfig.OCMode       = TIM_OCMODE_PWM1;
     sConfig.OCPolarity   = TIM_OCPOLARITY_HIGH;

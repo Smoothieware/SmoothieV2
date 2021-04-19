@@ -212,8 +212,7 @@ Pin* Pin::as_output()
 {
     if(!valid) return nullptr;
 
-    GPIO_InitTypeDef GPIO_InitStruct;
-    memset(&GPIO_InitStruct, 0, sizeof(GPIO_InitTypeDef));
+    GPIO_InitTypeDef GPIO_InitStruct{0};
     GPIO_InitStruct.Mode = open_drain ? GPIO_MODE_OUTPUT_OD : GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
@@ -229,8 +228,7 @@ Pin* Pin::as_input()
 {
     if(!valid) return nullptr;
 
-    GPIO_InitTypeDef GPIO_InitStruct;
-    memset(&GPIO_InitStruct, 0, sizeof(GPIO_InitTypeDef));
+    GPIO_InitTypeDef GPIO_InitStruct{0};
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
     GPIO_InitStruct.Pull = pullup ? GPIO_PULLUP : pulldown ? GPIO_PULLDOWN : GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
