@@ -27,8 +27,8 @@ REGISTER_TEST(ArmSolution, delta_ik)
 
     for(uint32_t i=0;i<n;i++) k->cartesian_to_actuator( millimeters, ac);
 
-    uint32_t elt = benchmark_timer_elapsed(st);
-    printf("elapsed time %lu us over %lu iterations %1.4f us per iteration\n", benchmark_timer_as_us(elt), n, (elt)/(float)n);
+    uint32_t elt = benchmark_timer_as_us(benchmark_timer_elapsed(st));
+    printf("elapsed time %lu us over %lu iterations %1.4f us per iteration\n", elt, n, (float)elt/n);
 
     delete k;
 
