@@ -29,6 +29,9 @@ REGISTER_TEST(PWMTest, basic_test)
     TEST_ASSERT_EQUAL_FLOAT(0, pwm1.get());
     TEST_ASSERT_EQUAL_FLOAT(0, pwm2.get());
 
+    TEST_ASSERT_EQUAL_INT(20000, pwm1.get_frequency());
+    TEST_ASSERT_EQUAL_INT(20000, pwm2.get_frequency());
+
     printf("Setting channel 1 to 50%% and channel 2 to 25%%\n");
     pwm1.set(0.5F);
     pwm2.set(0.25F);

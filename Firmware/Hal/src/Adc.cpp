@@ -19,7 +19,11 @@ Adc *Adc::instances[Adc::num_channels] {nullptr};
 std::set<uint16_t> Adc::allocated_channels;
 bool Adc::running  {false};
 
-static uint16_t *pADCxConvertedData;
+// make sure it is aligned on 32byte boundary for cache coherency, need to allocate potentially max size
+// num_samples (8) samples per num_channels (8) channels
+ALIGN_32BYTES(static __IO uint16_t aADCxConvertedData[Adc::num_samples * Adc::num_channels]);
+
+// this will be the actual size of the data based on the number of ADC channels actually in use
 static size_t adc_data_size;
 
 Adc::Adc(uint16_t ch)
@@ -152,17 +156,11 @@ bool Adc::post_config_setup()
         }
     }
 
-    // allocate memory and make sure on 32byte boundary
-    // 8 samples per channel
-    adc_data_size = nc * num_samples;
-    void *mem = malloc(adc_data_size + 32);
-    pADCxConvertedData = (uint16_t*)((uint32_t)mem & ~0x1F);
+    // num_samples (8) samples per channel
+    adc_data_size = nc * num_samples; // actual data size
 
     /* ### - 4 - Start conversion in DMA mode ################################# */
-    if (HAL_ADC_Start_DMA(&AdcHandle,
-                          (uint32_t *)pADCxConvertedData,
-                          adc_data_size
-                         ) != HAL_OK) {
+    if (HAL_ADC_Start_DMA(&AdcHandle, (uint32_t *)aADCxConvertedData, adc_data_size) != HAL_OK) {
         printf("ERROR: ADC Start DMA failed\n");
         return false;
     }
@@ -195,7 +193,7 @@ void Adc::sample_isr()
         // pick it out of the array
         uint16_t dataADC[num_samples];
         for(int i = 0; i < num_samples; ++i) {
-            dataADC[i] = pADCxConvertedData[(i * n) + o];
+            dataADC[i] = aADCxConvertedData[(i * n) + o];
         }
         memcpy(adc->sample_buffer, dataADC, sizeof(dataADC));
         ++o;
@@ -285,8 +283,10 @@ float Adc::read_voltage()
 */
 extern "C" void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
 {
+    if(hadc->Instance != ADCx) return;
+
     GPIO_InitTypeDef          GPIO_InitStruct{0};
-    static DMA_HandleTypeDef         DmaHandle;
+    static DMA_HandleTypeDef  DmaHandle;
 
     /*##-1- Enable peripherals and GPIO Clocks #################################*/
     /* Enable GPIO clock ****************************************/
@@ -342,6 +342,8 @@ extern "C" void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
   */
 extern "C" void HAL_ADC_MspDeInit(ADC_HandleTypeDef *hadc)
 {
+    if(hadc->Instance != ADCx) return;
+
     /*##-1- Reset peripherals ##################################################*/
     ADCx_FORCE_RESET();
     ADCx_RELEASE_RESET();
@@ -350,8 +352,9 @@ extern "C" void HAL_ADC_MspDeInit(ADC_HandleTypeDef *hadc)
     __HAL_RCC_ADC12_CLK_DISABLE();
 
     /*##-2- Disable peripherals and GPIO Clocks ################################*/
-    /* De-initialize the ADC Channel GPIO pin */
+    /* TODO: De-initialize the ADC Channel GPIO pin */
     //HAL_GPIO_DeInit(ADCx_CHANNEL_GPIO_PORT, ADCx_CHANNEL_PIN);
+    NVIC_DisableIRQ(DMA1_Stream1_IRQn);
 }
 
 /**
@@ -372,6 +375,6 @@ extern "C" void DMA1_Stream1_IRQHandler(void)
 extern "C" void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
     // Invalidate Data Cache to get the updated content of the SRAM on the ADC converted data buffer
-    SCB_InvalidateDCache_by_Addr((uint32_t *) pADCxConvertedData, adc_data_size);
+    SCB_InvalidateDCache_by_Addr((uint32_t *) aADCxConvertedData, adc_data_size);
     Adc::sample_isr();
 }

@@ -33,6 +33,12 @@
 #include "Pin.h"
 #include "Network.h"
 
+extern "C" {
+    void Board_LED_Toggle(int);
+    void Board_LED_Set(int, bool);
+    bool Board_LED_Test(int);
+}
+
 static bool system_running = false;
 static bool rpi_port_enabled = false;
 static uint32_t rpi_baudrate = 115200;
@@ -395,9 +401,9 @@ static void usb_comms(void *)
 
     // we set this to 1024 so ymodem will run faster (but if not needed then it can be as low as 256)
     const size_t usb_rx_buf_sz = 1024;
-    char *usb_rx_buf = (char *)_RAM3->alloc(usb_rx_buf_sz);
+    char *usb_rx_buf = (char *)malloc(usb_rx_buf_sz);
     if(usb_rx_buf == nullptr) {
-        printf("FATAL: no memory in RAM3 for usb_rx_buf\n");
+        printf("FATAL: no memory for usb_rx_buf\n");
         return;
     }
 
@@ -568,6 +574,7 @@ static void command_handler()
             }
             handle_query(true);
 
+#ifdef USE_DFU
             // special case if we see we got a DFU detach we call the dfu command
             if(DFU_requested_detach()) {
                 print_to_all_consoles("DFU firmware download has been requested, going down for update\n");
@@ -579,6 +586,7 @@ static void command_handler()
                 // and stop
                 __asm("bkpt #0");
             }
+#endif
         }
 
         // call in_command_ctx for all modules that want it
@@ -803,13 +811,9 @@ static void smoothie_startup(void *)
 
         {
             printf("DEBUG: configure temperature control\n");
-            if(Adc::setup()) {
-                // this creates any configured temperature controls
-                if(!TemperatureControl::load_controls(cr)) {
-                    printf("INFO: no Temperature Controls loaded\n");
-                }
-            } else {
-                printf("ERROR: ADC failed to setup\n");
+            // this creates any configured temperature controls
+            if(!TemperatureControl::load_controls(cr)) {
+                printf("INFO: no Temperature Controls loaded\n");
             }
         }
 
@@ -836,18 +840,24 @@ static void smoothie_startup(void *)
                     std::string k = s.first;
                     std::string v = s.second;
 
-                    Adc *padc = new Adc;
-                    if(padc->from_string(v.c_str()) == nullptr) {
-                        printf("WARNING: Failed to create %s voltage monitor\n", k.c_str());
+                    Adc *padc = new Adc(strtol(v.c_str(), nullptr, 10));
+                    if(!padc->is_valid()) {
+                        printf("WARNING: Failed to create %s voltage monitor,illegal ADC channel: %s\n", k.c_str(), v.c_str());
                         delete padc;
                     } else {
                         voltage_monitors[k] = padc;
-                        printf("DEBUG: added voltage monitor %s: %s\n", k.c_str(), v.c_str());
+                        printf("DEBUG: added voltage monitor: %s, ADC channel: %s\n", k.c_str(), v.c_str());
                     }
                 }
             }
         }
 
+        // setup ADC
+        if(!Adc::post_config_setup()) {
+            printf("ERROR: ADC failed to setup\n");
+        }
+
+        // setup PWM
         if(!Pwm::post_config_setup()) {
             printf("ERROR: Pwm::post_config_setup failed\n");
         }
@@ -960,6 +970,7 @@ static void smoothie_startup(void *)
 }
 
 extern "C" void setup_xprintf();
+extern "C" void main_system_setup();
 
 int main(int argc, char *argv[])
 {

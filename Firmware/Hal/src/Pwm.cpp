@@ -167,6 +167,7 @@ bool Pwm::setup(int timr, uint32_t freq)
     memcpy(htim, &TimHandle, sizeof(TIM_HandleTypeDef));
     instances[timr]._htim= htim;
     instances[timr].period= period_value;
+    instances[timr].frequency= freq;
 
     return true;
 }

@@ -78,9 +78,11 @@ bool CommandShell::initialize()
     THEDISPATCHER->add_handler( "version", std::bind( &CommandShell::version_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "break", std::bind( &CommandShell::break_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "reset", std::bind( &CommandShell::reset_cmd, this, _1, _2) );
-    THEDISPATCHER->add_handler( "flash", std::bind( &CommandShell::flash_cmd, this, _1, _2) );
-    THEDISPATCHER->add_handler( "dfu", std::bind( &CommandShell::dfu_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "ed", std::bind( &CommandShell::edit_cmd, this, _1, _2) );
+#ifdef USE_DFU
+    THEDISPATCHER->add_handler( "dfu", std::bind( &CommandShell::dfu_cmd, this, _1, _2) );
+    THEDISPATCHER->add_handler( "flash", std::bind( &CommandShell::flash_cmd, this, _1, _2) );
+#endif
 
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 20, std::bind(&CommandShell::m20_cmd, this, _1, _2));
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 115, std::bind(&CommandShell::m115_cmd, this, _1, _2));
@@ -1455,6 +1457,7 @@ bool CommandShell::reset_cmd(std::string& params, OutputStream& os)
 extern "C" void shutdown_sdmmc();
 extern "C" void shutdown_cdc();
 
+#ifdef USE_DFU
 static void stop_everything(void)
 {
     // stop stuff
@@ -1541,6 +1544,7 @@ bool CommandShell::dfu_cmd(std::string& params, OutputStream& os)
 
     return true;
 }
+#endif
 
 namespace ecce {
     int main(const char *infile, const char *outfile, std::function<void(char)> outfnc);

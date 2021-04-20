@@ -46,6 +46,7 @@ public:
             this->pport[6] = this->ppin << 16;
         }
     }
+    void toggle();
 
     inline uint16_t get_gpioport() const { return this->gpioport; }
     inline uint16_t get_gpiopin() const { return this->gpiopin; }

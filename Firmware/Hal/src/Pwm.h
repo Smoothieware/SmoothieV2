@@ -13,10 +13,11 @@ public:
 	// set duty cycle 0-1
 	void set(float v);
 	float get() const { return value; }
+	uint32_t get_frequency() const { return instances[timr].frequency; }
 	static bool post_config_setup();
 	static bool setup(int timr, uint32_t frequency);
 	static bool is_allocated(int i, int j) { return allocated[i][j]; }
-	using instance_t = struct { void *_htim; uint32_t period; };
+	using instance_t = struct { void *_htim; uint32_t period; uint32_t frequency; };
 
 private:
 	static instance_t instances[2];

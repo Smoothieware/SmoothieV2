@@ -238,6 +238,10 @@ Pin* Pin::as_input()
     return this;
 }
 
+void Pin::toggle()
+{
+    set(!get());
+}
 
 #if 0
 mbed::InterruptIn* Pin::interrupt_pin()

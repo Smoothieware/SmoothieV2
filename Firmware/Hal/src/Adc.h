@@ -30,10 +30,10 @@ public:
 
     static void sample_isr();
     static std::set<uint16_t> allocated_channels;
-
-private:
     static const int num_channels= 8;
     static const int num_samples= 8;
+
+private:
     static Adc* instances[num_channels];
     static bool running;
 
