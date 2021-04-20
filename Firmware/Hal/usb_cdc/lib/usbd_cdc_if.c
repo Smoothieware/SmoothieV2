@@ -27,7 +27,7 @@ USBD_CDC_LineCodingTypeDef linecoding = {
 extern USBD_HandleTypeDef USBD_Device;
 
 static RingBuffer_t *rx_rb;
-static uint8_t rx_buffer[CDC_DATA_HS_OUT_PACKET_SIZE];
+static uint8_t rx_buffer[CDC_DATA_FS_OUT_PACKET_SIZE];
 static volatile int tx_complete;
 
 void setup_vcom()

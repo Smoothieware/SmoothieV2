@@ -8,307 +8,202 @@
 #include <cctype>
 #include <algorithm>
 #include <string.h>
+#include <set>
 
 #include "FreeRTOS.h"
 #include "task.h"
 
-
-// interrupts seem to not work very well
-#define NO_ADC_INTERRUPTS
+#include "stm32h7xx_hal.h"
 
 Adc *Adc::instances[Adc::num_channels] {nullptr};
-std::set<int> Adc::allocated_channels;
-int Adc::ninstances {0};
+std::set<uint16_t> Adc::allocated_channels;
 bool Adc::running  {false};
-int Adc::slowticker_n {-1};
 
-static ADC_CLOCK_SETUP_T ADCSetup;
+static uint16_t *pADCxConvertedData;
+static size_t adc_data_size;
 
-// NOTE we cannot create these once ADC is running
-Adc::Adc()
+Adc::Adc(uint16_t ch)
 {
-    if(ninstances < Adc::num_channels && !running) {
-        instance_idx = ninstances++;
-        instances[instance_idx] = this;
+    if(ch < num_channels && allocated_channels.count(ch) == 0) {
+        instances[channel] = this;
+        channel = ch;
+        valid = true;
+        allocated_channels.insert(channel);
+    } else {
+        printf("ERROR: ADC channel %d is illegal or already in use\n", ch);
     }
-    channel = -1;
-    enabled = false;
 }
 
 Adc::~Adc()
 {
-    if(channel == -1 || instance_idx < 0) return;
-    allocated_channels.erase(channel);
-    Chip_ADC_Int_SetChannelCmd(_LPC_ADC_ID, CHANNEL_LUT[channel], DISABLE);
-    Chip_ADC_EnableChannel(_LPC_ADC_ID, CHANNEL_LUT[channel], DISABLE);
+    if(!valid) return;
 
-    channel = -1;
-    enabled = false;
     // remove from instances array
     taskENTER_CRITICAL();
-    instances[instance_idx] = nullptr;
-    for (int i = instance_idx; i < ninstances - 1; ++i) {
-        instances[i] = instances[i + 1];
-    }
-    --ninstances;
+    allocated_channels.erase(channel);
+    instances[channel] = nullptr;
     taskEXIT_CRITICAL();
-    if(ninstances == 0) {
-        if(slowticker_n >= 0) {
-            SlowTicker::getInstance()->detach(slowticker_n);
-            slowticker_n = -1;
-        }
-    }
 }
 
-bool Adc::setup()
+
+#define ADCx                            ADC1
+#define ADCx_CLK_ENABLE()               __HAL_RCC_ADC12_CLK_ENABLE()
+#define ADCx_CHANNEL_GPIO_CLK_ENABLE()  __HAL_RCC_GPIOA_CLK_ENABLE()
+
+#define DMAx_CHANNELx_CLK_ENABLE()      __HAL_RCC_DMA1_CLK_ENABLE()
+
+#define ADCx_FORCE_RESET()              __HAL_RCC_ADC12_FORCE_RESET()
+#define ADCx_RELEASE_RESET()            __HAL_RCC_ADC12_RELEASE_RESET()
+
+// Definitions for all allowed ADC channels we use
+#define ADCx_CHANNEL_PIN_CLK_ENABLE()   __HAL_RCC_GPIOA_CLK_ENABLE(); __HAL_RCC_GPIOB_CLK_ENABLE(); __HAL_RCC_GPIOC_CLK_ENABLE();__HAL_RCC_GPIOF_CLK_ENABLE();
+
+static struct {GPIO_TypeDef* port; uint32_t pin;} adcpinlut[] = {
+    {GPIOA, GPIO_PIN_4},
+    {GPIOA, GPIO_PIN_1},
+    {GPIOF, GPIO_PIN_11},
+    {GPIOB, GPIO_PIN_1},
+    {GPIOF, GPIO_PIN_12},
+    {GPIOC, GPIO_PIN_2},
+    {GPIOC, GPIO_PIN_3},
+    {GPIOA, GPIO_PIN_3},
+};
+
+static uint32_t adc_channel_lut[] = {
+    ADC_CHANNEL_18,
+    ADC_CHANNEL_17,
+    ADC_CHANNEL_2,
+    ADC_CHANNEL_5,
+    ADC_CHANNEL_6,
+    ADC_CHANNEL_12,
+    ADC_CHANNEL_13,
+    ADC_CHANNEL_15
+};
+
+static uint32_t adc_rank_lut[] = {
+    ADC_REGULAR_RANK_1,
+    ADC_REGULAR_RANK_2,
+    ADC_REGULAR_RANK_3,
+    ADC_REGULAR_RANK_4,
+    ADC_REGULAR_RANK_5,
+    ADC_REGULAR_RANK_6,
+    ADC_REGULAR_RANK_7,
+    ADC_REGULAR_RANK_8
+};
+
+/* Definition for ADCx's Channel */
+#define ADCx_CHANNEL                    ADC_CHANNEL_3
+
+static ADC_HandleTypeDef AdcHandle;
+
+bool Adc::post_config_setup()
 {
-    // ADC Init
-    Chip_ADC_Init(_LPC_ADC_ID, &ADCSetup);
-
-    // ADC sample rate need to be fast enough to be able to read the enabled channels within the thermistor poll time
-    // even though there maybe 32 samples we only need one new one within the polling time
-    // Set sample rate to 70KHz (That is as slow as it will go)
-    // As this is a lot of IRQ overhead we can't use interrupts in burst mode
-    // so we need to sample it from a slow timer instead
-    Chip_ADC_SetSampleRate(_LPC_ADC_ID, &ADCSetup, ADC_MAX_SAMPLE_RATE);
-
-    // NOTE we would like to just trigger a sample after we sample, but that seemed to only work for the first channel
-    // the second channel was never ready
-
-#ifndef NO_ADC_INTERRUPTS
-    Chip_ADC_SetBurstCmd(_LPC_ADC_ID, DISABLE);
-#else
-    // We use burst mode so samples are always ready when we sample the ADC values
-    Chip_ADC_SetBurstCmd(_LPC_ADC_ID, ENABLE);
-#endif
-
-    // init instances array
-    for (int i = 0; i < num_channels; ++i) {
-        instances[i] = nullptr;
+    // This is not called until after all modules have been configged and we know how many ADC channels we need
+    int nc = allocated_channels.size();
+    if(nc == 0) {
+        printf("WARNING: ADC No channels allocated\n");
+        return true;
     }
+
+    /* ### - 1 - Initialize ADC peripheral #################################### */
+    AdcHandle.Instance          = ADCx;
+    HAL_ADC_DeInit(&AdcHandle);
+
+    AdcHandle.Init.ClockPrescaler           = ADC_CLOCK_ASYNC_DIV2;          /* Asynchronous clock mode, input ADC clock divided by 2*/
+    AdcHandle.Init.Resolution               = ADC_RESOLUTION_16B;            /* 16-bit resolution for converted data */
+    AdcHandle.Init.ScanConvMode             = ENABLE;                        // Sequencer enabled
+    AdcHandle.Init.EOCSelection             = ADC_EOC_SINGLE_CONV;           /* EOC flag picked-up to indicate conversion end */
+    AdcHandle.Init.LowPowerAutoWait         = DISABLE;                       /* Auto-delayed conversion feature disabled */
+    AdcHandle.Init.ContinuousConvMode       = ENABLE;                        /* Continuous mode enabled (automatic conversion restart after each conversion) */
+    AdcHandle.Init.NbrOfConversion          = nc;
+    AdcHandle.Init.DiscontinuousConvMode    = DISABLE;                       /* Parameter discarded because sequencer is disabled */
+    AdcHandle.Init.NbrOfDiscConversion      = 1;                             /* Parameter discarded because sequencer is disabled */
+    AdcHandle.Init.ExternalTrigConv         = ADC_SOFTWARE_START;            /* Software start to trig the 1st conversion manually, without external event */
+    AdcHandle.Init.ExternalTrigConvEdge     = ADC_EXTERNALTRIGCONVEDGE_NONE; /* Parameter discarded because software trigger chosen */
+    AdcHandle.Init.ConversionDataManagement = ADC_CONVERSIONDATA_DMA_CIRCULAR; /* ADC DMA circular requested */
+    AdcHandle.Init.Overrun                  = ADC_OVR_DATA_OVERWRITTEN;      /* DR register is overwritten with the last conversion result in case of overrun */
+    AdcHandle.Init.OversamplingMode         = DISABLE;                       /* No oversampling */
+    /* Initialize ADC peripheral according to the passed parameters */
+    if (HAL_ADC_Init(&AdcHandle) != HAL_OK) {
+        printf("ERROR: ADC ADC_Init failed\n");
+        return false;
+    }
+
+    /* ### - 2 - Start calibration ############################################ */
+    if (HAL_ADCEx_Calibration_Start(&AdcHandle, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED) != HAL_OK) {
+        printf("ERROR: ADC Calibration failed\n");
+        return false;
+    }
+
+    /* ### - 3 - Channel configuration ######################################## */
+    // For each channel
+    int rank = 0;
+    for(uint16_t c : Adc::allocated_channels) {
+        ADC_ChannelConfTypeDef sConfig{0};
+        sConfig.Channel      = adc_channel_lut[c];                /* Sampled channel number */
+        sConfig.Rank         = adc_rank_lut[rank++];          /* Rank of sampled channel number ADCx_CHANNEL */
+        sConfig.SamplingTime = ADC_SAMPLETIME_8CYCLES_5;   /* Sampling time (number of clock cycles unit) */
+        sConfig.SingleDiff   = ADC_SINGLE_ENDED;            /* Single-ended input channel */
+        sConfig.OffsetNumber = ADC_OFFSET_NONE;             /* No offset subtraction */
+        sConfig.Offset = 0;                                 /* Parameter discarded because offset correction is disabled */
+        if (HAL_ADC_ConfigChannel(&AdcHandle, &sConfig) != HAL_OK) {
+            printf("ERROR: ADC ConfigChannel %d failed\n", c);
+            return false;
+        }
+    }
+
+    // allocate memory and make sure on 32byte boundary
+    // 8 samples per channel
+    adc_data_size = nc * num_samples;
+    void *mem = malloc(adc_data_size + 32);
+    pADCxConvertedData = (uint16_t*)((uint32_t)mem & ~0x1F);
+
+    /* ### - 4 - Start conversion in DMA mode ################################# */
+    if (HAL_ADC_Start_DMA(&AdcHandle,
+                          (uint32_t *)pADCxConvertedData,
+                          adc_data_size
+                         ) != HAL_OK) {
+        printf("ERROR: ADC Start DMA failed\n");
+        return false;
+    }
+
     return true;
 }
 
 bool Adc::start()
 {
-#ifndef NO_ADC_INTERRUPTS
-    // setup to interrupt
-
-    NVIC_SetPriority(ADC0_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
-    NVIC_EnableIRQ(ADC0_IRQn);
-    NVIC_ClearPendingIRQ(ADC0_IRQn);
-    // kick start it
-    Chip_ADC_SetStartMode(_LPC_ADC_ID, ADC_START_NOW, ADC_TRIGGERMODE_RISING);
     running = true;
-    // start conversion every 10ms
-    slowticker_n = SlowTicker::getInstance()->attach(100, Adc::on_tick);
-#else
-    // No need to start it as we are in BURST mode
-    //Chip_ADC_SetStartMode(_LPC_ADC_ID, ADC_START_NOW, ADC_TRIGGERMODE_RISING);
-    running = true;
-    // read conversion every 10ms
-    slowticker_n = SlowTicker::getInstance()->attach(100, Adc::on_tick);
-#endif
     return true;
-}
-
-void Adc::on_tick()
-{
-#ifndef NO_ADC_INTERRUPTS
-    if(running) {
-        Chip_ADC_SetStartMode(_LPC_ADC_ID, ADC_START_NOW, ADC_TRIGGERMODE_RISING);
-    }
-#else
-    // we need to run the sampling irq
-    if(running) {
-        sample_isr();
-        // No need to start it as we are in burst mode so it should always be ready
-        //Chip_ADC_SetStartMode(_LPC_ADC_ID, ADC_START_NOW, ADC_TRIGGERMODE_RISING);
-    }
-#endif
 }
 
 bool Adc::stop()
 {
     running = false;
-#ifndef NO_ADC_INTERRUPTS
-    NVIC_DisableIRQ(ADC0_IRQn);
-#endif
-    Chip_ADC_SetBurstCmd(_LPC_ADC_ID, DISABLE);
-    Chip_ADC_DeInit(_LPC_ADC_ID);
-
     return true;
 }
 
-// TODO only ADC0_0 to ADC0_7 handled at the moment
-// figure out channel from name (ADC0_1, ADC0_4, ...)
-// or Pin P4_3
-Adc* Adc::from_string(const char *name)
-{
-    if(enabled) return nullptr; // aready setup
-    if(instance_idx < 0) return nullptr; // too many instances
-
-    const char *p = strcasestr(name, "adc");
-    if (p != nullptr) {
-        // ADC specific pin
-        p += 3;
-        if(*p++ != '0') return nullptr; // must be ADC0
-        if(*p++ != '_') return nullptr; // must be _
-        channel = strtol(p, nullptr, 10);
-        if(channel < 0 || channel >= num_channels) return nullptr;
-
-        // make sure it is not already in use
-        if(allocated_channels.count(channel) != 0) {
-            // already allocated
-            channel = -1;
-            return nullptr;
-        }
-
-    } else if(tolower(name[0]) == 'p') {
-        // pin specification
-        std::string str(name);
-        uint16_t port = strtol(str.substr(1).c_str(), nullptr, 16);
-        size_t pos = str.find_first_of("._", 1);
-        if(pos == std::string::npos) return nullptr;
-        uint16_t pin = strtol(str.substr(pos + 1).c_str(), nullptr, 10);
-
-        /* now map to an adc channel (ADC0 only)
-            P4_3 ADC0_0
-            P4_1 ADC0_1
-            PF_8 ADC0_2
-            P7_5 ADC0_3
-            P7_4 ADC0_4
-            PF_10 ADC0_5
-            PB_6 ADC0_6
-        */
-        if     (port ==  4 && pin ==  3) channel = 0;
-        else if(port ==  4 && pin ==  1) channel = 1;
-        else if(port == 15 && pin ==  8) channel = 2;
-        else if(port ==  7 && pin ==  5) channel = 3;
-        else if(port ==  7 && pin ==  4) channel = 4;
-        else if(port == 15 && pin == 10) channel = 5;
-        else if(port == 11 && pin ==  6) channel = 6;
-        else return nullptr; // not a valid ADC pin
-
-        // make sure it is not already in use
-        if(allocated_channels.count(channel) != 0) {
-            // already allocated
-            channel = -1;
-            return nullptr;
-        }
-
-        // now need to set to input, disable receiver with EZI bit, disable pullup EPUN=1 and disable pulldown EPD=0
-        uint16_t modefunc = 1 << 4; // disable pullup,
-        Chip_SCU_PinMuxSet(port, pin, modefunc);
-        Chip_SCU_ADC_Channel_Config(0, channel);
-
-    } else {
-        return nullptr;
-    }
-
-    allocated_channels.insert(channel);
-
-    memset(sample_buffer, 0, sizeof(sample_buffer));
-    memset(ave_buf, 0, sizeof(ave_buf));
-    Chip_ADC_EnableChannel(_LPC_ADC_ID, CHANNEL_LUT[channel], ENABLE);
-#ifndef NO_ADC_INTERRUPTS
-    Chip_ADC_Int_SetChannelCmd(_LPC_ADC_ID, CHANNEL_LUT[channel], ENABLE);
-#endif
-    enabled = true;
-
-    return this;
-}
-
-#ifndef NO_ADC_INTERRUPTS
-//  isr call
-extern "C" _ramfunc_ void ADC0_IRQHandler(void)
-{
-    NVIC_DisableIRQ(ADC0_IRQn);
-    Adc::sample_isr();
-    NVIC_EnableIRQ(ADC0_IRQn);
-}
-#endif
-
-//_ramfunc_
-// As this calls non ram based funcs there is no point in it being in ram
-// in interrupt mode this will be called once for each active channel
 void Adc::sample_isr()
 {
-    for (int i = 0; i < ninstances; ++i) {
-        Adc *adc = Adc::getInstance(i);
-        if(adc == nullptr || !adc->enabled) continue; // not setup
+    if(!running) return;
 
-        int ch = adc->channel;
-        if(ch < 0) continue; // no channel assigned
-        uint16_t dataADC = 0;
-        // NOTE these are not in RAM
-        if(Chip_ADC_ReadStatus(_LPC_ADC_ID, CHANNEL_LUT[ch], ADC_DR_DONE_STAT) == SET && Chip_ADC_ReadValue(_LPC_ADC_ID, CHANNEL_LUT[ch], &dataADC) == SUCCESS) {
-            adc->new_sample(dataADC);
-        } else {
-            // NOTE in interrupt mode this is not meaningful as we get an interrupt when each channel is ready
-            adc->not_ready_error++;
+    // I think this means we have 8 samples from each channel interleaved
+    int n = allocated_channels.size();
+    int o = 0;
+    for(uint16_t c : allocated_channels) {
+        Adc *adc = getInstance(c);
+        if(adc == nullptr || !adc->valid) continue; // not setup
+        // pick it out of the array
+        uint16_t dataADC[num_samples];
+        for(int i = 0; i < num_samples; ++i) {
+            dataADC[i] = pADCxConvertedData[(i * n) + o];
         }
+        memcpy(adc->sample_buffer, dataADC, sizeof(dataADC));
+        ++o;
     }
 }
 
-// Keeps the last 32 values for each channel
-// This is called in an ISR, so sample_buffer needs to be accessed atomically
-//_ramfunc_
-void Adc::new_sample(uint32_t value)
-{
-    // Shuffle down and add new value to the end
-    // FIXME memmove appears to not be inline, so in an interrupt in SPIFI it is too slow
-    // memmove(&sample_buffer[0], &sample_buffer[1], sizeof(sample_buffer) - sizeof(sample_buffer[0]));
-    for (int i = 1; i < num_samples; ++i) {
-        sample_buffer[i - 1] = sample_buffer[i];
-    }
-    sample_buffer[num_samples - 1] = value; // the 10 bit ADC reading
-}
-
-//#define USE_MEDIAN_FILTER
-// gets called 20 times a second from a timer
-uint32_t Adc::read()
-{
-    uint16_t median_buffer[num_samples];
-
-    // needs atomic access TODO maybe be able to use std::atomic here or some lockless mutex
-    taskENTER_CRITICAL();
-    memcpy(median_buffer, sample_buffer, sizeof(median_buffer));
-    taskEXIT_CRITICAL();
-
+#define USE_MEDIAN_FILTER
 #ifdef USE_MEDIAN_FILTER
-    // returns the median value of the last 8 samples
-    return median_buffer[quick_median(median_buffer, num_samples)];
-
-#elif defined(OVERSAMPLE)
-    // Oversample to get 2 extra bits of resolution
-    // weed out top and bottom worst values then oversample the rest
-    std::sort(median_buffer, median_buffer + num_samples);
-    uint32_t sum = 0;
-    for (int i = num_samples / 4; i < (num_samples - (num_samples / 4)); ++i) {
-        sum += median_buffer[i];
-    }
-
-    // put into a 4 element moving average and return the average of the last 4 oversampled readings
-    // this slows down the rate of change a little bit
-    ave_buf[3] = ave_buf[2];
-    ave_buf[2] = ave_buf[1];
-    ave_buf[1] = ave_buf[0];
-    ave_buf[0] = sum >> OVERSAMPLE;
-    return roundf((ave_buf[0] + ave_buf[1] + ave_buf[2] + ave_buf[3]) / 4.0F);
-
-#else
-    // sort the 8 readings and return the average of the middle 4
-    std::sort(median_buffer, median_buffer + num_samples);
-    int sum = 0;
-    for (int i = num_samples / 4; i < (num_samples - (num_samples / 4)); ++i) {
-        sum += median_buffer[i];
-    }
-    return sum / (num_samples / 2);
-
-#endif
-}
-
 static void split(uint16_t data[], unsigned int n, uint16_t x, unsigned int& i, unsigned int& j)
 {
     do {
@@ -337,6 +232,33 @@ static unsigned int quick_median(uint16_t data[], unsigned int n)
     }
     return k;
 }
+#endif
+
+// gets called 20 times a second from a timer
+uint32_t Adc::read()
+{
+    uint16_t median_buffer[num_samples];
+
+    // needs atomic access TODO maybe be able to use std::atomic here or some lockless mutex
+    taskENTER_CRITICAL();
+    memcpy(median_buffer, sample_buffer, sizeof(median_buffer));
+    taskEXIT_CRITICAL();
+
+#ifdef USE_MEDIAN_FILTER
+    // returns the median value of the last 8 samples
+    return median_buffer[quick_median(median_buffer, num_samples)];
+
+#else
+    // sort the 8 readings and return the average of the middle 4
+    std::sort(median_buffer, median_buffer + num_samples);
+    int sum = 0;
+    for (int i = num_samples / 4; i < (num_samples - (num_samples / 4)); ++i) {
+        sum += median_buffer[i];
+    }
+    return sum / (num_samples / 2);
+
+#endif
+}
 
 float Adc::read_voltage()
 {
@@ -349,9 +271,107 @@ float Adc::read_voltage()
     taskEXIT_CRITICAL();
 
     // take the median value
-    unsigned int i= quick_median(median_buffer, num_samples);
-    uint16_t adc= median_buffer[i];
+    unsigned int i = quick_median(median_buffer, num_samples);
+    uint16_t adc = median_buffer[i];
 
-    float v= 3.3F * (adc / 1024.0F); // 10 bit adc values
+    float v = 3.3F * (adc / 1024.0F); // 10 bit adc values
     return v;
+}
+
+/**
+* @brief  ADC MSP Init
+* @param  hadc : ADC handle
+* @retval None
+*/
+extern "C" void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
+{
+    GPIO_InitTypeDef          GPIO_InitStruct{0};
+    static DMA_HandleTypeDef         DmaHandle;
+
+    /*##-1- Enable peripherals and GPIO Clocks #################################*/
+    /* Enable GPIO clock ****************************************/
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    /* ADC Periph clock enable */
+    ADCx_CLK_ENABLE();
+    /* ADC Periph interface clock configuration */
+    __HAL_RCC_ADC_CONFIG(RCC_ADCCLKSOURCE_CLKP);
+    /* Enable DMA clock */
+    DMAx_CHANNELx_CLK_ENABLE();
+
+    ADCx_CHANNEL_PIN_CLK_ENABLE();
+    // For each channel, init the GPIOs
+    for(uint16_t c : Adc::allocated_channels) {
+        // lookup pin and port
+        GPIO_InitStruct.Pin = adcpinlut[c].pin;
+        GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+        GPIO_InitStruct.Pull = GPIO_NOPULL;
+        HAL_GPIO_Init(adcpinlut[c].port, &GPIO_InitStruct);
+    }
+
+    /*##- 3- Configure DMA #####################################################*/
+
+    /*********************** Configure DMA parameters ***************************/
+    DmaHandle.Instance                 = DMA1_Stream1;
+    DmaHandle.Init.Request             = DMA_REQUEST_ADC1;
+    DmaHandle.Init.Direction           = DMA_PERIPH_TO_MEMORY;
+    DmaHandle.Init.PeriphInc           = DMA_PINC_DISABLE;
+    DmaHandle.Init.MemInc              = DMA_MINC_ENABLE;
+    DmaHandle.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    DmaHandle.Init.MemDataAlignment    = DMA_MDATAALIGN_HALFWORD;
+    DmaHandle.Init.Mode                = DMA_CIRCULAR;
+    DmaHandle.Init.Priority            = DMA_PRIORITY_MEDIUM;
+    /* Deinitialize  & Initialize the DMA for new transfer */
+    HAL_DMA_DeInit(&DmaHandle);
+    HAL_DMA_Init(&DmaHandle);
+
+    /* Associate the DMA handle */
+    __HAL_LINKDMA(hadc, DMA_Handle, DmaHandle);
+
+    /* NVIC configuration for DMA Input data interrupt */
+    NVIC_SetPriority(DMA1_Stream1_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
+    NVIC_EnableIRQ(DMA1_Stream1_IRQn);
+}
+
+/**
+  * @brief ADC MSP De-Initialization
+  *        This function frees the hardware resources used in this example:
+  *          - Disable the Peripheral's clock
+  *          - Revert GPIO to their default state
+  * @param hadc: ADC handle pointer
+  * @retval None
+  */
+extern "C" void HAL_ADC_MspDeInit(ADC_HandleTypeDef *hadc)
+{
+    /*##-1- Reset peripherals ##################################################*/
+    ADCx_FORCE_RESET();
+    ADCx_RELEASE_RESET();
+    /* ADC Periph clock disable
+     (automatically reset all ADC instances of the ADC common group) */
+    __HAL_RCC_ADC12_CLK_DISABLE();
+
+    /*##-2- Disable peripherals and GPIO Clocks ################################*/
+    /* De-initialize the ADC Channel GPIO pin */
+    //HAL_GPIO_DeInit(ADCx_CHANNEL_GPIO_PORT, ADCx_CHANNEL_PIN);
+}
+
+/**
+* @brief  This function handles DMA1_Stream1_IRQHandler interrupt request.
+* @param  None
+* @retval None
+*/
+extern "C" void DMA1_Stream1_IRQHandler(void)
+{
+    HAL_DMA_IRQHandler(AdcHandle.DMA_Handle);
+}
+
+/**
+  * @brief  Conversion DMA callback in non-blocking mode
+  * @param  hadc: ADC handle
+  * @retval None
+  */
+extern "C" void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+{
+    // Invalidate Data Cache to get the updated content of the SRAM on the ADC converted data buffer
+    SCB_InvalidateDCache_by_Addr((uint32_t *) pADCxConvertedData, adc_data_size);
+    Adc::sample_isr();
 }

@@ -14,142 +14,13 @@
 
 using systime_t= uint32_t;
 
-#ifdef BOARD_BAMBINO
-#define _ADC_CHANNEL ADC_CH1
-#else
-//#define _ADC_CHANNEL ADC_CH6 // board temp
-#define _ADC_CHANNEL ADC_CH7 // Vbb
-#endif
-
-#define _LPC_ADC_ID LPC_ADC0
-#define _LPC_ADC_IRQ ADC0_IRQn
-
 #if 0
-REGISTER_TEST(ADCTest, raw_polling)
-{
-    uint32_t t = Chip_Clock_GetRate(CLK_APB3_ADC0);
-    printf("ADC0 clk= %lu\n", t);
-
-    ADC_CLOCK_SETUP_T ADCSetup;
-
-    Chip_ADC_Init(_LPC_ADC_ID, &ADCSetup);
-    Chip_ADC_EnableChannel(_LPC_ADC_ID, _ADC_CHANNEL, ENABLE);
-
-    uint16_t dataADC;
-
-    // Set sample rate to 400KHz
-    ADCSetup.burstMode= true;;
-    Chip_ADC_SetSampleRate(_LPC_ADC_ID, &ADCSetup, 100000); // ADC_MAX_SAMPLE_RATE);
-
-    // Select using burst mode
-    Chip_ADC_SetBurstCmd(_LPC_ADC_ID, ENABLE);
-
-    float acc= 0;
-    uint32_t n= 0;
-    systime_t st = benchmark_timer_start();
-    for (int i = 0; i < 10000; ++i) {
-        /* Start A/D conversion if not using burst mode */
-        //    Chip_ADC_SetStartMode(_LPC_ADC_ID, ADC_START_NOW, ADC_TRIGGERMODE_RISING);
-
-        /* Waiting for A/D conversion complete */
-        while (Chip_ADC_ReadStatus(_LPC_ADC_ID, _ADC_CHANNEL, ADC_DR_DONE_STAT) != SET) {
-            //vTaskDelay(pdMS_TO_TICKS(1));
-        }
-
-        /* Read ADC value */
-        if(Chip_ADC_ReadValue(_LPC_ADC_ID, _ADC_CHANNEL, &dataADC) == SUCCESS) {
-            acc += dataADC;
-            ++n;
-        } else {
-            printf("Failed to read adc\n");
-        }
-    }
-    systime_t el = benchmark_timer_elapsed(st);
-
-    printf("channel: %d, average adc= %04X, v= %10.4f\n", _ADC_CHANNEL, (int)(acc/n), 3.3F * (acc/n)/1024.0F);
-    printf("elapsed time: %lu us, %10.2f us/sample\n", benchmark_timer_as_us(el), (float)benchmark_timer_as_us(el)/n);
-
-
-    // calculate temp of board thermistor
-    float adc_value= acc/n;
-    float beta= 4334;
-    float r0= 100000;
-    float r2= 4700;
-    float t0= 25;
-    float r = r2 / (((float)1024.0F / adc_value) - 1.0F);
-    float j = (1.0F / beta);
-    float k = (1.0F / (t0 + 273.15F));
-    float temp = (1.0F / (k + (j * logf(r / r0)))) - 273.15F;
-    printf("Temp= %f °C\n", temp);
-
-    Chip_ADC_SetBurstCmd(_LPC_ADC_ID, DISABLE);
-    Chip_ADC_EnableChannel(_LPC_ADC_ID, _ADC_CHANNEL, DISABLE);
-    Chip_ADC_DeInit(_LPC_ADC_ID);
-}
-
-#define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
-static uint16_t intdataADC;
-volatile int ADC_Interrupt_Done_Flag= 0;
-extern "C" _ramfunc_ void ADC0_IRQHandler(void)
-{
-        TEST_ASSERT_TRUE(Chip_ADC_ReadValue(_LPC_ADC_ID, _ADC_CHANNEL, &intdataADC) == SUCCESS);
-        ADC_Interrupt_Done_Flag += 1;
-}
-
-REGISTER_TEST(ADCTest, non_burst_interrupt)
-{
-    uint32_t timerFreq = Chip_Clock_GetRate(CLK_MX_RITIMER);
-    ADC_CLOCK_SETUP_T ADCSetup;
-
-    Chip_ADC_Init(_LPC_ADC_ID, &ADCSetup);
-    Chip_ADC_EnableChannel(_LPC_ADC_ID, _ADC_CHANNEL, ENABLE);
-
-    Chip_ADC_Int_SetChannelCmd(_LPC_ADC_ID, _ADC_CHANNEL, ENABLE);
-
-    // Set sample rate to 400KHz
-    Chip_ADC_SetSampleRate(_LPC_ADC_ID, &ADCSetup, ADC_MAX_SAMPLE_RATE);
-
-    // Select non burst mode
-    Chip_ADC_SetBurstCmd(_LPC_ADC_ID, DISABLE);
-
-    NVIC_EnableIRQ(_LPC_ADC_IRQ);
-
-    float acc= 0;
-    uint32_t n= 0;
-    systime_t st = clock_systimer();
-    for (int i = 0; i < 10000; ++i) {
-        /* Start A/D conversion */
-        ADC_Interrupt_Done_Flag= 0;
-        Chip_ADC_SetStartMode(_LPC_ADC_ID, ADC_START_NOW, ADC_TRIGGERMODE_RISING);
-
-        // wait for IRQ
-        while(ADC_Interrupt_Done_Flag == 0) {
-            // wait for it
-        }
-        acc += intdataADC;
-        ++n;
-        TEST_ASSERT_TRUE(ADC_Interrupt_Done_Flag == 1);
-    }
-    systime_t en = clock_systimer();
-
-    printf("channel: %d, average adc= %04X, v= %10.4f\n", _ADC_CHANNEL, (int)(acc/n), 3.3F * (acc/n)/1024.0F);
-    printf("elapsed time: %lu us, %10.2f us/sample\n", TICK2USEC(en-st), (float)TICK2USEC(en-st)/n);
-
-    /* Disable ADC interrupt */
-    NVIC_DisableIRQ(_LPC_ADC_IRQ);
-    Chip_ADC_Int_SetChannelCmd(_LPC_ADC_ID, _ADC_CHANNEL, DISABLE);
-
-    Chip_ADC_EnableChannel(_LPC_ADC_ID, _ADC_CHANNEL, DISABLE);
-    Chip_ADC_DeInit(_LPC_ADC_ID);
-}
-#endif
-
 REGISTER_TEST(ADCTest, adc_class)
 {
     TEST_ASSERT_TRUE(Adc::setup());
 
     Adc *adc = new Adc;
-    TEST_ASSERT_TRUE(adc->is_created());
+    TEST_ASSERT_TRUE(adc->is_valid());
     TEST_ASSERT_FALSE(adc->connected());
     TEST_ASSERT_FALSE(adc->from_string("nc") == adc);
     TEST_ASSERT_FALSE(adc->connected());
@@ -193,30 +64,22 @@ REGISTER_TEST(ADCTest, adc_class)
     TEST_ASSERT_TRUE(dummy->from_string("ADC0_1") == dummy);
     delete dummy;
 }
+#endif
 
 REGISTER_TEST(ADCTest, two_adc_channels)
 {
-    TEST_ASSERT_TRUE(Adc::setup());
+    // Use ADC0 and ADC2 on PA4 and PF11
+    Adc *adc1 = new Adc(0);
+    Adc *adc2 = new Adc(2);
 
-    Adc *adc1 = new Adc;
-    TEST_ASSERT_TRUE(adc1->is_created());
-#ifdef BOARD_BAMBINO
-    TEST_ASSERT_TRUE(adc1->from_string("PB.6") == adc1); // ADC0_6
-    TEST_ASSERT_EQUAL_INT(6, adc1->get_channel());
-#else
-    TEST_ASSERT_TRUE(adc1->from_string("ADC0_1") == adc1); // ADC0_1 / T1
-    TEST_ASSERT_EQUAL_INT(1, adc1->get_channel());
-#endif
+    TEST_ASSERT_TRUE(Adc::post_config_setup());
 
-    Adc *adc2 = new Adc;
-    TEST_ASSERT_TRUE(adc2->is_created());
-#ifdef BOARD_BAMBINO
-    TEST_ASSERT_TRUE(adc2->from_string("ADC0_1") == adc2);
-    TEST_ASSERT_EQUAL_INT(1, adc2->get_channel());
-#else
-    TEST_ASSERT_TRUE(adc2->from_string("ADC0_2") == adc2); // ADC0_2 / T2
+    TEST_ASSERT_TRUE(adc1->is_valid());
+    TEST_ASSERT_EQUAL_INT(0, adc1->get_channel());
+
+    TEST_ASSERT_TRUE(adc2->is_valid());
     TEST_ASSERT_EQUAL_INT(2, adc2->get_channel());
-#endif
+
     TEST_ASSERT_TRUE(Adc::start());
 
     const uint32_t max_adc_value = Adc::get_max_value();
@@ -224,12 +87,6 @@ REGISTER_TEST(ADCTest, two_adc_channels)
 
     // give it time to accumulate the 32 samples
     vTaskDelay(pdMS_TO_TICKS(32*10*2 + 100));
-
-    // fill up moving average buffer
-    for (int i = 0; i < 4; ++i) {
-        adc1->read();
-        adc2->read();
-    }
 
     for (int i = 0; i < 10; ++i) {
         uint16_t v= adc2->read();
@@ -245,8 +102,8 @@ REGISTER_TEST(ADCTest, two_adc_channels)
     TEST_ASSERT_TRUE(adc1->get_errors() == 0);
     TEST_ASSERT_TRUE(adc2->get_errors() == 0);
 
-    delete adc1;
-    delete adc2;
-
     TEST_ASSERT_TRUE(Adc::stop());
+
+    // delete adc1;
+    // delete adc2;
 }

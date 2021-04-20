@@ -111,7 +111,6 @@ NONETWORK = ENV['nonetwork'].nil? ? 0 : ENV['nonetwork']
 #hal_src = FileList['Hal/**/*.{c,cpp,s}']
 hal_src = FileList['Hal/STM32H7xx_HAL_Driver/**/*.{c,cpp,s}', 'Hal/src/*.{c,cpp,s}']
 hal_src.exclude(/_template\.c/)
-hal_src.exclude("Hal/src/Adc.cpp")
 hal_src.exclude("Hal/src/i2c.cpp")
 
 # SD support and fatfs

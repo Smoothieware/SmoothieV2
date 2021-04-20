@@ -289,7 +289,7 @@ extern "C" void HAL_SPI_MspDeInit(SPI_HandleTypeDef *hspi)
 		HAL_GPIO_DeInit(SPI1_MOSI_GPIO_PORT, SPI1_MOSI_PIN);
 
 		/*##-5- Disable the NVIC for SPI ###########################################*/
-		NVIC_EnableIRQ(SPI1_IRQn);
+		NVIC_DisableIRQ(SPI1_IRQn);
 
 	} else if(hspi->Instance == SPI2) {
 		/*##-1- Reset peripherals ##################################################*/
@@ -305,7 +305,7 @@ extern "C" void HAL_SPI_MspDeInit(SPI_HandleTypeDef *hspi)
 		HAL_GPIO_DeInit(SPI2_MOSI_GPIO_PORT, SPI2_MOSI_PIN);
 
 		/*##-5- Disable the NVIC for SPI ###########################################*/
-		NVIC_EnableIRQ(SPI2_IRQn);
+		NVIC_DisableIRQ(SPI2_IRQn);
 	}
 }
 
