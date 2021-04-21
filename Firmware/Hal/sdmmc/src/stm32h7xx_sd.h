@@ -85,11 +85,8 @@ typedef struct
 #define SD_DETECT_GPIO_PORT          GPIOG
 #define SD_DETECT_GPIO_CLK_ENABLE()  __HAL_RCC_GPIOG_CLK_ENABLE()
 #define SD_DETECT_GPIO_CLK_DISABLE() __HAL_RCC_GPIOG_CLK_DISABLE()
-#define SD_DETECT_EXTI_IRQn          EXTI15_10_IRQn
-#define SD_DETECT_EXTI_LINE          EXTI_LINE_10
 
 extern SD_HandleTypeDef    hsd_sdmmc[];
-extern EXTI_HandleTypeDef  hsd_exti[];
 
 int32_t BSP_SD_Init(uint32_t Instance);
 int32_t BSP_SD_DeInit(uint32_t Instance);

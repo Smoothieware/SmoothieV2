@@ -88,6 +88,19 @@
 #define ARC_ANGULAR_TRAVEL_EPSILON 5E-7F // Float (radians)
 #define PI 3.14159265358979323846F // force to be float, do not use M_PI
 
+#define DEFAULT_STEP_PIN(a)  default_stepper_pins[a][0]
+#define DEFAULT_DIR_PIN(a)  default_stepper_pins[a][1]
+#define DEFAULT_EN_PIN(a)  default_stepper_pins[a][2]
+
+static const char* const default_stepper_pins[][3] = {
+    {"PI1", "PI2",  "nc"}, // X step, dir, enb
+    {"PI3", "PI4",  "nc"}, // Y step, dir, enb
+    {"PI5", "PI6",  "nc"}, // Z step, dir, enb
+    {"PI7", "PI8",  "nc"}, // A step, dir, enb
+    {"PI9", "PI10", "nc"}, // B step, dir, enb
+    {"PI11", "PI12","nc"}, // C step, dir, enb
+};
+
 Robot *Robot::instance = nullptr;
 
 // The Robot converts GCodes into actual movements, and then adds them to the Planner, which passes them to the Conveyor so they can be added to the queue
@@ -221,9 +234,9 @@ bool Robot::configure(ConfigReader& cr)
         if(s == ssm.end()) break; // actuator not found and they must be in contiguous order
 
         auto& mm = s->second; // map of actuator config values for this actuator
-        Pin step_pin(cr.get_string(mm, step_pin_key, "nc"), Pin::AS_OUTPUT);
-        Pin dir_pin( cr.get_string(mm, dir_pin_key,  "nc"), Pin::AS_OUTPUT);
-        Pin en_pin(  cr.get_string(mm, en_pin_key,   "nc"), Pin::AS_OUTPUT);
+        Pin step_pin(cr.get_string(mm, step_pin_key, DEFAULT_STEP_PIN(a)), Pin::AS_OUTPUT);
+        Pin dir_pin( cr.get_string(mm, dir_pin_key,  DEFAULT_DIR_PIN (a)), Pin::AS_OUTPUT);
+        Pin en_pin(  cr.get_string(mm, en_pin_key,   DEFAULT_EN_PIN  (a)), Pin::AS_OUTPUT);
 
         printf("DEBUG:configure-robot: for actuator %s pins: %s, %s, %s\n", s->first.c_str(), step_pin.to_string().c_str(), dir_pin.to_string().c_str(), en_pin.to_string().c_str());
 

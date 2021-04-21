@@ -636,7 +636,7 @@ static bool get_spindle_state()
 // set or get gpio
 bool CommandShell::gpio_cmd(std::string& params, OutputStream& os)
 {
-    HELP("set and get gpio pins: use GPIO5[14] | gpio5_14 | gpio5.14 | P4_10 | p4.10 out/in [on/off]");
+    HELP("set and get gpio pins: use PA1 | PK.8 | PC_11 out/in [on/off]");
 
     std::string gpio = stringutils::shift_parameter( params );
     std::string dir = stringutils::shift_parameter( params );

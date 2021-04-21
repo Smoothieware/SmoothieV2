@@ -393,5 +393,5 @@ end
 
 rule '.o' => lambda{ |objfile| obj2src(objfile, 's') } do |t|
   puts "Assembling #{t.source}"
-  sh "#{CC} -c -mthumb -mcpu=cortex-m4 -mthumb-interwork -mlittle-endian -mfloat-abi=hard -mfpu=fpv4-sp-d16 -g -Wa,--no-warn -x assembler-with-cpp #{INCLUDE} -o #{t.name} #{t.source}"
+  sh "#{CC} -c -mthumb -mcpu=cortex-m4 -mthumb-interwork -mlittle-endian -mfloat-abi=hard -mfpu=fpv5-sp-d16 -g -Wa,--no-warn -x assembler-with-cpp #{INCLUDE} -o #{t.name} #{t.source}"
 end

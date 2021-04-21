@@ -14,6 +14,7 @@
 #include "task.h"
 
 #include "stm32h7xx_hal.h"
+#include "Hal_pin.h"
 
 Adc *Adc::instances[Adc::num_channels] {nullptr};
 std::set<uint16_t> Adc::allocated_channels;
@@ -71,17 +72,21 @@ static struct {GPIO_TypeDef* port; uint32_t pin;} adcpinlut[] = {
     {GPIOC, GPIO_PIN_2},
     {GPIOC, GPIO_PIN_3},
     {GPIOA, GPIO_PIN_3},
+    {GPIOA, GPIO_PIN_0},
+    {GPIOA, GPIO_PIN_0},
 };
 
 static uint32_t adc_channel_lut[] = {
     ADC_CHANNEL_18,
-    ADC_CHANNEL_17,
+    ADC_CHANNEL_1,
     ADC_CHANNEL_2,
     ADC_CHANNEL_5,
     ADC_CHANNEL_6,
     ADC_CHANNEL_12,
     ADC_CHANNEL_13,
-    ADC_CHANNEL_15
+    ADC_CHANNEL_15,
+    ADC_CHANNEL_0,
+    ADC_CHANNEL_16,
 };
 
 static uint32_t adc_rank_lut[] = {
@@ -92,7 +97,9 @@ static uint32_t adc_rank_lut[] = {
     ADC_REGULAR_RANK_5,
     ADC_REGULAR_RANK_6,
     ADC_REGULAR_RANK_7,
-    ADC_REGULAR_RANK_8
+    ADC_REGULAR_RANK_8,
+    ADC_REGULAR_RANK_9,
+    ADC_REGULAR_RANK_10
 };
 
 /* Definition for ADCx's Channel */
@@ -306,6 +313,7 @@ extern "C" void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
         GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
         HAL_GPIO_Init(adcpinlut[c].port, &GPIO_InitStruct);
+        allocate_hal_pin(adcpinlut[c].port, adcpinlut[c].pin);
     }
 
     /*##- 3- Configure DMA #####################################################*/

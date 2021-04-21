@@ -29,7 +29,7 @@ REGISTER_TEST(PinTest, flashleds)
 		Pin("PB_14"),
 	};
 	Pin button("PC13v");
-	button.as_input();
+	TEST_ASSERT_NOT_NULL(button.as_input());
 	if(button.connected()) {
  		printf("Set input pin %s\n", button.to_string().c_str());
 	}else{
@@ -69,5 +69,51 @@ REGISTER_TEST(PinTest, flashleds)
 	}
 	if(cnt < 100) printf("user stopped\n");
 
+	// deinit the pins and deallocate
+	for(auto& p : myleds) {
+		p.deinit();
+	}
+	button.deinit();
+
 	printf("Done\n");
+}
+
+static volatile int button_pressed= 0;
+static void test_button_int()
+{
+	button_pressed= 1;
+}
+
+REGISTER_TEST(PinTest, interrupt_pin)
+{
+#ifdef BOARD_NUCLEO
+	Pin button("PC13v");
+#else
+	#error unrecognized board
+#endif
+
+	TEST_ASSERT_NOT_NULL(button.as_interrupt(test_button_int));
+	if(button.connected()) {
+ 		printf("Set input pin %s\n", button.to_string().c_str());
+	}else{
+		printf("Button was invalid\n");
+	}
+
+	{
+		// Test that we cannot have another interrupt on a pin with the same pin number
+		Pin dummy("PD13");
+		TEST_ASSERT_TRUE(dummy.connected());
+		TEST_ASSERT_NULL(dummy.as_interrupt(test_button_int));
+		TEST_ASSERT_FALSE(dummy.connected());
+	}
+
+	printf("Press button to test...\n");
+
+	int cnt = 0;
+	while(!button_pressed && ++cnt < 100) {
+		vTaskDelay(pdMS_TO_TICKS(100));
+	}
+	if(cnt < 100) printf("test passed\n");
+	else printf("test timed out\n");
+
 }

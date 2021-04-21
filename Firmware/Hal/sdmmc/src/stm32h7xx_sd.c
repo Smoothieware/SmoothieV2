@@ -99,19 +99,7 @@ int32_t BSP_SD_Init(uint32_t Instance)
         gpio_init_structure.Alternate = 0;
         HAL_GPIO_Init(SD_DETECT_GPIO_PORT, &gpio_init_structure);
         allocate_hal_pin(SD_DETECT_GPIO_PORT, SD_DETECT_PIN);
-
-        const uint32_t SD_EXTI_LINE[SD_INSTANCES_NBR]   = {SD_DETECT_EXTI_LINE};
-        if(HAL_EXTI_GetHandle(&hsd_exti[Instance], SD_EXTI_LINE[Instance]) != HAL_OK) {
-            return BSP_ERROR_PERIPH_FAILURE;
-        } else {
-            if(HAL_EXTI_RegisterCallback(&hsd_exti[Instance],  HAL_EXTI_COMMON_CB_ID, BSP_SD_DetectCallback) != HAL_OK) {
-                return BSP_ERROR_PERIPH_FAILURE;
-            }
-        }
-
-        /* Enable and set EXTI Interrupt */
-        HAL_NVIC_SetPriority((SD_DETECT_EXTI_IRQn), 15, 0x00);
-        HAL_NVIC_EnableIRQ((SD_DETECT_EXTI_IRQn));
+        allocate_hal_interrupt_pin(SD_DETECT_PIN, BSP_SD_DetectCallback);
 
         /* Check if SD card is present   */
 
@@ -186,8 +174,6 @@ int32_t BSP_SD_DeInit(uint32_t Instance)
         SD_MspDeInit(&hsd_sdmmc[Instance]);
 #endif /* (USE_HAL_SD_REGISTER_CALLBACKS == 0)   */
     }
-
-    HAL_NVIC_DisableIRQ((SD_DETECT_EXTI_IRQn));
 
     return ret;
 }
@@ -453,16 +439,6 @@ void HAL_SD_DriveTransciver_1_8V_Callback(FlagStatus status)
 #endif /* !defined (USE_HAL_SD_REGISTER_CALLBACKS) || (USE_HAL_SD_REGISTER_CALLBACKS == 0)   */
 
 /**
-  * @brief  This function handles pin detection interrupt request.
-  * @param  Instance  SD Instance
-  * @retval None
-  */
-void BSP_SD_DETECT_IRQHandler(uint32_t Instance)
-{
-    HAL_EXTI_IRQHandler(&hsd_exti[Instance]);
-}
-
-/**
   * @brief  This function handles SDMMC interrupt requests.
   * @param  Instance  SD Instance
   * @retval None
@@ -617,8 +593,8 @@ static void SD_MspInit(SD_HandleTypeDef *hsd)
         __HAL_RCC_SDMMC1_RELEASE_RESET();
 
         /* NVIC configuration for SDIO interrupts   */
-        HAL_NVIC_SetPriority(SDMMC1_IRQn, BSP_SD_IT_PRIORITY, 0);
-        HAL_NVIC_EnableIRQ(SDMMC1_IRQn);
+        NVIC_SetPriority(SDMMC1_IRQn, BSP_SD_IT_PRIORITY);
+        NVIC_EnableIRQ(SDMMC1_IRQn);
     }
 }
 

@@ -1097,7 +1097,7 @@ extern "C" void HardFault_Handler(void)
     for( ;; );
 }
 
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.

@@ -353,13 +353,3 @@ void SDMMC1_IRQHandler(void)
 {
     BSP_SD_IRQHandler(0);
 }
-
-/**
-  * @brief  This function handles SD detection interrupty
-  * @param  None
-  * @retval None
-  */
-void EXTI15_10_IRQHandler(void)
-{
-    BSP_SD_DETECT_IRQHandler(0);
-}

@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string>
 #include <bitset>
+#include <functional>
 
 class Pin
 {
@@ -15,17 +16,16 @@ public:
     enum TYPE_T {AS_INPUT, AS_OUTPUT};
     Pin(const char *s, Pin::TYPE_T);
 
-
     Pin* from_string(std::string value);
     std::string to_string() const;
 
-    bool connected() const
-    {
-        return this->valid;
-    }
+    bool deinit();
+
+    bool connected() const { return this->valid; }
 
     Pin* as_output();
     Pin* as_input();
+    Pin* as_interrupt(std::function<void(void)> fnc, bool rising=true, uint32_t pri=0x0F);
 
     // we need to do this inline
     inline bool get() const
@@ -54,24 +54,23 @@ public:
     bool is_inverting() const { return inverting; }
     void set_inverting(bool f) { inverting = f; }
 
-    static bool set_allocated(uint8_t, uint8_t, bool set= true);
+    bool is_interrupt() const { return interrupt; }
 
-    // mbed::InterruptIn *interrupt_pin();
+    static bool set_allocated(uint8_t, uint8_t, bool set= true);
+    static bool allocate_interrupt_pin(uint8_t pin, bool set= true);
 
 private:
-
     uint32_t *pport;
     uint32_t ppin;
     struct {
-        uint8_t gpiopin:6;
+        uint8_t gpiopin:6; // the pin 0-15
         char gpioport:8; // the port A-K
         bool inverting: 1;
         bool open_drain: 1;
         bool pullup:1;
         bool pulldown:1;
         bool valid: 1;
-        bool adc_only: 1;   //true if adc only pin
-        int adc_channel: 8;   //adc channel
+        bool interrupt: 1;
     };
 };
 
