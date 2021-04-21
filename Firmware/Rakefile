@@ -274,11 +274,10 @@ task :help do
   puts " paxis=nnn - overrides the number of primary axis. default is 3"
 end
 
-# tasks
-# desc "Upload via stlink"
-# task :upload do
-#   sh "./flashit #{OBJDIR}/#{PROG}.bin"
-# end
+desc "Upload via stlink"
+task :upload do
+  sh "st-flash write #{OBJDIR}/#{PROG}.bin 0x08000000"
+end
 
 # desc "Upload via openocd"
 # task :upload do

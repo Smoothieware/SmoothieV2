@@ -42,7 +42,7 @@ Adc::Adc(const char *nm)
         return;
     }
 
-    channel= strtol(name.substr(5).c_str(), nullptr, 10);
+    channel = strtol(name.substr(5).c_str(), nullptr, 10);
     if(channel >= num_channels) {
         printf("ERROR: Illegal ADC channel: %d\n", channel);
         return;
@@ -67,7 +67,6 @@ Adc::~Adc()
     instances[channel] = nullptr;
     taskEXIT_CRITICAL();
 }
-
 
 #define ADCx                            ADC1
 #define ADCx_CLK_ENABLE()               __HAL_RCC_ADC12_CLK_ENABLE()
@@ -171,7 +170,7 @@ bool Adc::post_config_setup()
         ADC_ChannelConfTypeDef sConfig{0};
         sConfig.Channel      = adc_channel_lut[c];                /* Sampled channel number */
         sConfig.Rank         = adc_rank_lut[rank++];          /* Rank of sampled channel number ADCx_CHANNEL */
-        sConfig.SamplingTime = ADC_SAMPLETIME_8CYCLES_5;   /* Sampling time (number of clock cycles unit) */
+        sConfig.SamplingTime = ADC_SAMPLETIME_810CYCLES_5;   /* Sampling time (number of clock cycles unit) */
         sConfig.SingleDiff   = ADC_SINGLE_ENDED;            /* Single-ended input channel */
         sConfig.OffsetNumber = ADC_OFFSET_NONE;             /* No offset subtraction */
         sConfig.Offset = 0;                                 /* Parameter discarded because offset correction is disabled */
@@ -190,6 +189,13 @@ bool Adc::post_config_setup()
         return false;
     }
 
+    return true;
+}
+
+// mainly for testing
+bool Adc::deinit()
+{
+    HAL_ADC_DeInit(&AdcHandle);
     return true;
 }
 
@@ -306,56 +312,63 @@ float Adc::read_voltage()
 * @param  hadc : ADC handle
 * @retval None
 */
+static DMA_HandleTypeDef DmaHandle;
 extern "C" void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
 {
-    if(hadc->Instance != ADCx) return;
+    if(hadc->Instance == ADCx) {
 
-    GPIO_InitTypeDef          GPIO_InitStruct{0};
-    static DMA_HandleTypeDef  DmaHandle;
+        GPIO_InitTypeDef          GPIO_InitStruct{0};
 
-    /*##-1- Enable peripherals and GPIO Clocks #################################*/
-    /* Enable GPIO clock ****************************************/
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    /* ADC Periph clock enable */
-    ADCx_CLK_ENABLE();
-    /* ADC Periph interface clock configuration */
-    __HAL_RCC_ADC_CONFIG(RCC_ADCCLKSOURCE_CLKP);
-    /* Enable DMA clock */
-    DMAx_CHANNELx_CLK_ENABLE();
+        /*##-1- Enable peripherals and GPIO Clocks #################################*/
+        /* Enable GPIO clock ****************************************/
+        __HAL_RCC_GPIOA_CLK_ENABLE();
+        /* ADC Periph clock enable */
+        ADCx_CLK_ENABLE();
+        /* ADC Periph interface clock configuration */
+        __HAL_RCC_ADC_CONFIG(RCC_ADCCLKSOURCE_CLKP);
+        /* Enable DMA clock */
+        DMAx_CHANNELx_CLK_ENABLE();
 
-    ADCx_CHANNEL_PIN_CLK_ENABLE();
-    // For each channel, init the GPIOs
-    for(uint16_t c : Adc::allocated_channels) {
-        // lookup pin and port
-        GPIO_InitStruct.Pin = adcpinlut[c].pin;
-        GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-        GPIO_InitStruct.Pull = GPIO_NOPULL;
-        HAL_GPIO_Init(adcpinlut[c].port, &GPIO_InitStruct);
-        allocate_hal_pin(adcpinlut[c].port, adcpinlut[c].pin);
+        ADCx_CHANNEL_PIN_CLK_ENABLE();
+        // For each channel, init the GPIOs
+        for(uint16_t c : Adc::allocated_channels) {
+            // lookup pin and port
+            GPIO_InitStruct.Pin = adcpinlut[c].pin;
+            GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+            GPIO_InitStruct.Pull = GPIO_NOPULL;
+            HAL_GPIO_Init(adcpinlut[c].port, &GPIO_InitStruct);
+            allocate_hal_pin(adcpinlut[c].port, adcpinlut[c].pin);
+        }
+
+        /*##- 3- Configure DMA #####################################################*/
+
+        /*********************** Configure DMA parameters ***************************/
+        DmaHandle.Instance                 = DMA1_Stream1;
+        DmaHandle.Init.Request             = DMA_REQUEST_ADC1;
+        DmaHandle.Init.Direction           = DMA_PERIPH_TO_MEMORY;
+        DmaHandle.Init.PeriphInc           = DMA_PINC_DISABLE;
+        DmaHandle.Init.MemInc              = DMA_MINC_ENABLE;
+        DmaHandle.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+        DmaHandle.Init.MemDataAlignment    = DMA_MDATAALIGN_HALFWORD;
+        DmaHandle.Init.Mode                = DMA_CIRCULAR;
+        DmaHandle.Init.Priority            = DMA_PRIORITY_MEDIUM;
+        /* Deinitialize  & Initialize the DMA for new transfer */
+        HAL_DMA_DeInit(&DmaHandle);
+        HAL_DMA_Init(&DmaHandle);
+
+        /* Associate the DMA handle */
+        __HAL_LINKDMA(hadc, DMA_Handle, DmaHandle);
+
+        /* NVIC configuration for DMA Input data interrupt */
+        NVIC_SetPriority(DMA1_Stream1_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
+        NVIC_EnableIRQ(DMA1_Stream1_IRQn);
+
+    } else if(hadc->Instance == ADC3) {
+        __HAL_RCC_ADC3_CLK_ENABLE();
+        /* ADC Periph interface clock configuration */
+        __HAL_RCC_ADC_CONFIG(RCC_ADCCLKSOURCE_CLKP);
     }
 
-    /*##- 3- Configure DMA #####################################################*/
-
-    /*********************** Configure DMA parameters ***************************/
-    DmaHandle.Instance                 = DMA1_Stream1;
-    DmaHandle.Init.Request             = DMA_REQUEST_ADC1;
-    DmaHandle.Init.Direction           = DMA_PERIPH_TO_MEMORY;
-    DmaHandle.Init.PeriphInc           = DMA_PINC_DISABLE;
-    DmaHandle.Init.MemInc              = DMA_MINC_ENABLE;
-    DmaHandle.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
-    DmaHandle.Init.MemDataAlignment    = DMA_MDATAALIGN_HALFWORD;
-    DmaHandle.Init.Mode                = DMA_CIRCULAR;
-    DmaHandle.Init.Priority            = DMA_PRIORITY_MEDIUM;
-    /* Deinitialize  & Initialize the DMA for new transfer */
-    HAL_DMA_DeInit(&DmaHandle);
-    HAL_DMA_Init(&DmaHandle);
-
-    /* Associate the DMA handle */
-    __HAL_LINKDMA(hadc, DMA_Handle, DmaHandle);
-
-    /* NVIC configuration for DMA Input data interrupt */
-    NVIC_SetPriority(DMA1_Stream1_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
-    NVIC_EnableIRQ(DMA1_Stream1_IRQn);
 }
 
 /**
@@ -363,24 +376,37 @@ extern "C" void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
   *        This function frees the hardware resources used in this example:
   *          - Disable the Peripheral's clock
   *          - Revert GPIO to their default state
-  * @param hadc: ADC handle pointer
+  * @  hadc: ADC handle pointer
   * @retval None
   */
 extern "C" void HAL_ADC_MspDeInit(ADC_HandleTypeDef *hadc)
 {
-    if(hadc->Instance != ADCx) return;
+    if(hadc->Instance == ADCx) {
 
-    /*##-1- Reset peripherals ##################################################*/
-    ADCx_FORCE_RESET();
-    ADCx_RELEASE_RESET();
-    /* ADC Periph clock disable
-     (automatically reset all ADC instances of the ADC common group) */
-    __HAL_RCC_ADC12_CLK_DISABLE();
+        /*##-1- Reset peripherals ##################################################*/
+        ADCx_FORCE_RESET();
+        ADCx_RELEASE_RESET();
+        /* ADC Periph clock disable
+         (automatically reset all ADC instances of the ADC common group) */
+        __HAL_RCC_ADC12_CLK_DISABLE();
 
-    /*##-2- Disable peripherals and GPIO Clocks ################################*/
-    /* TODO: De-initialize the ADC Channel GPIO pin */
-    //HAL_GPIO_DeInit(ADCx_CHANNEL_GPIO_PORT, ADCx_CHANNEL_PIN);
-    NVIC_DisableIRQ(DMA1_Stream1_IRQn);
+        HAL_DMA_DeInit(&DmaHandle);
+
+        /*##-2- Disable peripherals and GPIO Clocks ################################*/
+        // For each channel, de init the GPIOs
+        for(uint16_t c : Adc::allocated_channels) {
+            HAL_GPIO_DeInit(adcpinlut[c].port, adcpinlut[c].pin);
+            //deallocate_hal_pin(adcpinlut[c].port, adcpinlut[c].pin);
+        }
+        NVIC_DisableIRQ(DMA1_Stream1_IRQn);
+
+    } else if(hadc->Instance == ADC3) {
+        __HAL_RCC_ADC3_FORCE_RESET();
+        __HAL_RCC_ADC3_RELEASE_RESET();
+        /* ADC Periph clock disable
+         (automatically reset all ADC's) */
+        __HAL_RCC_ADC3_CLK_DISABLE();
+    }
 }
 
 /**

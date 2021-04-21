@@ -14,6 +14,7 @@ public:
     Adc(const char *);
     virtual ~Adc();
 
+    static bool deinit();
     static bool post_config_setup();
     static bool start();
     static bool stop();
