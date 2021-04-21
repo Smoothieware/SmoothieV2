@@ -138,6 +138,7 @@ if TESTING
         src.exclude(e)
       end
     end
+    puts "Building All Test Cases debug: #{DEBUG}"
 
   else
     # just named tests
@@ -152,10 +153,9 @@ if TESTING
         src += FileList["src/modules/#{t}/*.{c,cpp}"]
       end
     end
+    puts "Building Test Cases #{tests}, debug: #{DEBUG}"
   end
   src += FileList['TestUnits/main.cpp']
-
-  puts "Building Test Cases debug: #{DEBUG}"
 
 else
   src = FileList['src/**/*.{c,cpp,s}'] #, 'staging/**/*.cpp' ]

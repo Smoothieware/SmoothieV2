@@ -1,0 +1,21 @@
+
+| func    | pin   |header |
+|---------+-------+-------|
+| ADC1_1  |PA4     | |
+| ADC1_2  |PA1_C   | |
+| ADC1_3  |PF11    | |
+| ADC1_4  |PB1     | |
+| ADC1_5  |PAF12   | |
+| ADC1_6  |PC2     | |
+| ADC1_7  |PC3     | |
+| ADC1_8  |PA3     | |
+| ADC1_9  |PA0_C   | |
+| ADC1_10 |PA0     | |
+| PWM1_1  |PE9     | |
+| PWM1_2  |PE11    | |
+| PWM1_3  |PE13    | |
+| PWM1_4  |PE14    | |
+| PWM2_1  |PI5     | |
+| PWM2_2  |PI6     | |
+| PWM2_3  |PI7     | |
+| PWM2_4  |PI2     | |

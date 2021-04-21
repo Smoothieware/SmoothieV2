@@ -14,57 +14,34 @@
 
 using systime_t= uint32_t;
 
-#if 0
-REGISTER_TEST(ADCTest, adc_class)
+REGISTER_TEST(ADCTest, adc_names)
 {
-    TEST_ASSERT_TRUE(Adc::setup());
-
-    Adc *adc = new Adc;
+    Adc *adc = new Adc("ADC1_1");
     TEST_ASSERT_TRUE(adc->is_valid());
-    TEST_ASSERT_FALSE(adc->connected());
-    TEST_ASSERT_FALSE(adc->from_string("nc") == adc);
-    TEST_ASSERT_FALSE(adc->connected());
-    TEST_ASSERT_TRUE(adc->from_string("ADC0_1") == adc); // ADC0_1/T1
-    TEST_ASSERT_TRUE(adc->connected());
     TEST_ASSERT_EQUAL_INT(1, adc->get_channel());
 
     // check it won't let us create a duplicate
-    Adc *dummy= new Adc();
-    TEST_ASSERT_TRUE(dummy->from_string("ADC0_1") == nullptr);
+    Adc *dummy= new Adc("ADC1_1");
+    TEST_ASSERT_FALSE(dummy->is_valid());
     delete dummy;
 
-    TEST_ASSERT_TRUE(Adc::start());
+    // illegal name
+    dummy= new Adc("ADC2_1");
+    TEST_ASSERT_FALSE(dummy->is_valid());
+    delete dummy;
 
-    const uint32_t max_adc_value = Adc::get_max_value();
-    printf("Max ADC= %lu\n", max_adc_value);
+    // illegal channel
+    dummy= new Adc("ADC1_16");
+    TEST_ASSERT_FALSE(dummy->is_valid());
+    delete dummy;
 
-    // give it time to accumulate the 32 samples
-    vTaskDelay(pdMS_TO_TICKS(32*10*2 + 100));
-    // fill up moving average buffer
-    adc->read();
-    adc->read();
-    adc->read();
-    adc->read();
-
-    for (int i = 0; i < 10; ++i) {
-        uint16_t v= adc->read();
-        float volts= 3.3F * (v / (float)max_adc_value);
-
-        printf("adc= %04X, volts= %10.4f\n", v, volts);
-        vTaskDelay(pdMS_TO_TICKS(20));
-    }
-
-    printf("read_voltage() = %10.4f\n", adc->read_voltage());
 
     delete adc;
-    TEST_ASSERT_TRUE(Adc::stop());
-
     // should be able to create it now
-    dummy= new Adc();
-    TEST_ASSERT_TRUE(dummy->from_string("ADC0_1") == dummy);
+    dummy= new Adc("ADC1_1");
+    TEST_ASSERT_TRUE(dummy->is_valid());
     delete dummy;
 }
-#endif
 
 REGISTER_TEST(ADCTest, two_adc_channels)
 {
