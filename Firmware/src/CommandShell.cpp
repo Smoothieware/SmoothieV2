@@ -25,6 +25,7 @@
 
 #include <functional>
 #include <set>
+#include <cmath>
 
 #include <sys/types.h>
 #include <sys/stat.h>

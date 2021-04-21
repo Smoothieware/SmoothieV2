@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include <cmath>
+#include <string>
 #include <set>
 
 class Pin;
@@ -11,7 +11,7 @@ class Adc
 public:
     static Adc *getInstance(int n) { return (n < num_channels) ? instances[n] : nullptr; }
 
-    Adc(uint16_t channel);
+    Adc(const char *);
     virtual ~Adc();
 
     static bool post_config_setup();
@@ -37,6 +37,7 @@ private:
     static Adc* instances[num_channels];
     static bool running;
 
+    std::string name;
     bool valid{false};
     uint16_t channel;
     uint32_t not_ready_error{0};

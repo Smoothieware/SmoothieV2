@@ -111,15 +111,15 @@ bool Thermistor::configure(ConfigReader& cr, ConfigReader::section_map_t& m)
     this->r2 = cr.get_float(m, r2_key, this->r2);
 
     // for the dedicated ADC specify the channel
-    int adc_channel= cr.get_int(m, thermistor_pin_key, -1);
-    if(adc_channel < 0) {
+    std::string adc_channel= cr.get_string(m, thermistor_pin_key, "");
+    if(adc_channel.empty()) {
         printf("config-thermistor: no thermistor pin defined\n");
         return false;
     }
 
-    thermistor_pin= new Adc(adc_channel);
+    thermistor_pin= new Adc(adc_channel.c_str());
     if(!thermistor_pin->is_valid()) {
-        printf("config-thermistor: Thermistor ADC channel is invalid: %d\n", adc_channel);
+        printf("config-thermistor: Thermistor ADC channel is invalid: %s\n", adc_channel.c_str());
         return false;
     }
 

@@ -15,6 +15,7 @@
 
 #include "stm32h7xx_hal.h"
 #include "Hal_pin.h"
+#include "StringUtils.h"
 
 Adc *Adc::instances[Adc::num_channels] {nullptr};
 std::set<uint16_t> Adc::allocated_channels;
@@ -27,15 +28,32 @@ ALIGN_32BYTES(static __IO uint16_t aADCxConvertedData[Adc::num_samples * Adc::nu
 // this will be the actual size of the data based on the number of ADC channels actually in use
 static size_t adc_data_size;
 
-Adc::Adc(uint16_t ch)
+Adc::Adc(const char *nm)
 {
-    if(ch < num_channels && allocated_channels.count(ch) == 0) {
+    // decode name eg ADC1_0
+    name.assign(nm);
+    if(name.size() != 6 || stringutils::toUpper(name.substr(0, 3)) != "ADC" || name[4] != '_') {
+        printf("ERROR: illegal ADC name: %s\n", nm);
+        return;
+    }
+
+    if(name[3] != '1') {
+        printf("ERROR: Illegal ADC only ADC1 supported: %s\n", nm);
+        return;
+    }
+
+    channel= strtol(name.substr(5).c_str(), nullptr, 10);
+    if(channel >= num_channels) {
+        printf("ERROR: Illegal ADC channel: %d\n", channel);
+        return;
+    }
+
+    if(allocated_channels.count(channel) == 0) {
         instances[channel] = this;
-        channel = ch;
         valid = true;
         allocated_channels.insert(channel);
     } else {
-        printf("ERROR: ADC channel %d is illegal or already in use\n", ch);
+        printf("ERROR: ADC channel %d is already in use\n", channel);
     }
 }
 
@@ -136,13 +154,13 @@ bool Adc::post_config_setup()
     AdcHandle.Init.OversamplingMode         = DISABLE;                       /* No oversampling */
     /* Initialize ADC peripheral according to the passed parameters */
     if (HAL_ADC_Init(&AdcHandle) != HAL_OK) {
-        printf("ERROR: ADC ADC_Init failed\n");
+        printf("ERROR: ADC1 ADC_Init failed\n");
         return false;
     }
 
     /* ### - 2 - Start calibration ############################################ */
     if (HAL_ADCEx_Calibration_Start(&AdcHandle, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED) != HAL_OK) {
-        printf("ERROR: ADC Calibration failed\n");
+        printf("ERROR: ADC1 Calibration failed\n");
         return false;
     }
 
@@ -158,7 +176,7 @@ bool Adc::post_config_setup()
         sConfig.OffsetNumber = ADC_OFFSET_NONE;             /* No offset subtraction */
         sConfig.Offset = 0;                                 /* Parameter discarded because offset correction is disabled */
         if (HAL_ADC_ConfigChannel(&AdcHandle, &sConfig) != HAL_OK) {
-            printf("ERROR: ADC ConfigChannel %d failed\n", c);
+            printf("ERROR: ADC1 ConfigChannel %d failed\n", c);
             return false;
         }
     }
@@ -168,7 +186,7 @@ bool Adc::post_config_setup()
 
     /* ### - 4 - Start conversion in DMA mode ################################# */
     if (HAL_ADC_Start_DMA(&AdcHandle, (uint32_t *)aADCxConvertedData, adc_data_size) != HAL_OK) {
-        printf("ERROR: ADC Start DMA failed\n");
+        printf("ERROR: ADC1 Start DMA failed\n");
         return false;
     }
 
@@ -385,4 +403,16 @@ extern "C" void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
     // Invalidate Data Cache to get the updated content of the SRAM on the ADC converted data buffer
     SCB_InvalidateDCache_by_Addr((uint32_t *) aADCxConvertedData, adc_data_size);
     Adc::sample_isr();
+}
+
+/**
+  * @brief  Conversion DMA half-transfer callback in non-blocking mode.
+  * @param hadc ADC handle
+  * @retval None
+  */
+extern "C" void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
+{
+    // Invalidate Data Cache to get the updated content of the SRAM on the ADC converted data buffer
+    //SCB_InvalidateDCache_by_Addr((uint32_t *) aADCxConvertedData, adc_data_size);
+    //Adc::sample_isr();
 }

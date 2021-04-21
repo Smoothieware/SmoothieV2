@@ -840,7 +840,7 @@ static void smoothie_startup(void *)
                     std::string k = s.first;
                     std::string v = s.second;
 
-                    Adc *padc = new Adc(strtol(v.c_str(), nullptr, 10));
+                    Adc *padc = new Adc(v.c_str());
                     if(!padc->is_valid()) {
                         printf("WARNING: Failed to create %s voltage monitor,illegal ADC channel: %s\n", k.c_str(), v.c_str());
                         delete padc;

@@ -69,8 +69,8 @@ REGISTER_TEST(ADCTest, adc_class)
 REGISTER_TEST(ADCTest, two_adc_channels)
 {
     // Use ADC0 and ADC2 on PA4 and PF11
-    Adc *adc1 = new Adc(0);
-    Adc *adc2 = new Adc(2);
+    Adc *adc1 = new Adc("ADC1_0");
+    Adc *adc2 = new Adc("ADC1_2");
 
     TEST_ASSERT_TRUE(Adc::post_config_setup());
 
