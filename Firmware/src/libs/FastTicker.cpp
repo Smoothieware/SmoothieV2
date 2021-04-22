@@ -4,6 +4,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include <cstdio>
+
 // timers are specified in Hz and periods in microseconds
 #define BASE_FREQUENCY 1000000
 #define MAX_FREQUENCY 10000

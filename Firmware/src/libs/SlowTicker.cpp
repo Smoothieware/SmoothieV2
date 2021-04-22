@@ -1,5 +1,6 @@
 #include "SlowTicker.h"
 
+#include <cstdio>
 
 // timers are specified in milliseconds
 #define BASE_FREQUENCY 1000

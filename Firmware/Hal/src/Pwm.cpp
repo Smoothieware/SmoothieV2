@@ -175,6 +175,8 @@ bool Pwm::setup(int timr, uint32_t freq)
 // static
 bool Pwm::post_config_setup()
 {
+    printf("DEBUG: PWM post config setup\n");
+
     // We need to know how many PWM timers are used and how many channels for each so we need this to be called after config
 
     // Common configuration for all channels

@@ -2,8 +2,8 @@
 
 #include "ZProbeStrategy.h"
 
-#include <string.h>
 #include <tuple>
+#include <cstdint>
 
 class OutputStream;
 class GCode;
