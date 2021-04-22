@@ -73,107 +73,133 @@ Switch::Switch(const char *name) : Module("switch", name)
 
 bool Switch::configure(ConfigReader& cr, ConfigReader::section_map_t& m)
 {
-    this->input_pin.from_string( cr.get_string(m, input_pin_key, "nc") )->as_input();
-    this->subcode = cr.get_int(m, command_subcode_key, 0);
+    // see if input pin
+    std::string nm= cr.get_string(m, input_pin_key, "");
+    if(!nm.empty()) {
+        // it is an input
+        input_pin= new Pin(nm.c_str(), Pin::AS_INPUT);
+        if(!input_pin->connected()) {
+            delete input_pin;
+            printf("ERROR: switch-config - illegal pin: %s\n", nm.c_str());
+            return false;
+        }
+
+        std::string ipb = cr.get_string(m, input_pin_behavior_key, "momentary");
+        input_pin_behavior = (ipb == "momentary") ? momentary_behavior : toggle_behavior;
+        output_on_command = cr.get_string(m, output_on_command_key, "");
+        output_off_command = cr.get_string(m, output_off_command_key, "");
+        // for commands we may need to replace _ for space for old configs
+        std::replace(output_on_command.begin(), output_on_command.end(), '_', ' '); // replace _ with space
+        std::replace(output_off_command.begin(), output_off_command.end(), '_', ' '); // replace _ with space
+
+        // set to initial state
+        input_pin_state = input_pin->get();
+        if(input_pin_behavior == momentary_behavior) {
+            // initialize switch state to same as current pin level
+            switch_state = input_pin_state;
+        }
+
+        // input pin polling
+        // TODO we should only have one of these in Switch and call each switch instance
+        SlowTicker::getInstance()->attach(100, std::bind(&Switch::pinpoll_tick, this));
+        is_input= true;
+        output_type= NONE;
+        return true;
+    }
+
+    is_input= false;
+
+    // it is an output pin of some sort
+    subcode = cr.get_int(m, command_subcode_key, 0);
     std::string input_on_command = cr.get_string(m, input_on_command_key, "");
     std::string input_off_command = cr.get_string(m, input_off_command_key, "");
-    this->output_on_command = cr.get_string(m, output_on_command_key, "");
-    this->output_off_command = cr.get_string(m, output_off_command_key, "");
+    if(input_on_command.empty() && input_off_command.empty()) {
+        printf("ERROR: switch-config - output pin has no command to trigger it\n");
+        return false;
+    }
 
-    this->switch_state = cr.get_bool(m, startup_state_key, false);
-    this->failsafe = cr.get_int(m, failsafe_key, 0);
-    this->halt_setting = cr.get_bool(m, halt_setting_key, false);
-    this->ignore_on_halt = cr.get_bool(m, ignore_onhalt_key, false);
+    switch_state = cr.get_bool(m, startup_state_key, false);
+    failsafe = cr.get_bool(m, failsafe_key, false);
+    halt_setting = cr.get_bool(m, halt_setting_key, false);
+    ignore_on_halt = cr.get_bool(m, ignore_onhalt_key, false);
 
-    std::string ipb = cr.get_string(m, input_pin_behavior_key, "momentary");
-    this->input_pin_behavior = (ipb == "momentary") ? momentary_behavior : toggle_behavior;
-
-    std::string output_pin = cr.get_string(m, output_pin_key, "nc");
 
     // output pin type
     std::string type = cr.get_string(m, output_type_key, "");
+    if(type != "sigmadeltapwm" && type != "digital" && type != "hwpwm") {
+        printf("ERROR: switch-config - output pin type is not valid: %s\n", type.c_str());
+        return false;
+    }
+
+    std::string output_pin = cr.get_string(m, output_pin_key, "nc");
+
     if(type == "sigmadeltapwm") {
-        this->output_type = SIGMADELTA;
-        this->sigmadelta_pin = new SigmaDeltaPwm();
-        this->sigmadelta_pin->from_string(output_pin)->as_output();
-        if(this->sigmadelta_pin->connected()) {
-            if(failsafe == 1) {
-                //set_high_on_debug(sigmadelta_pin->port_number, sigmadelta_pin->pin);
-            } else {
-                //set_low_on_debug(sigmadelta_pin->port_number, sigmadelta_pin->pin);
-            }
+        output_type = SIGMADELTA;
+        sigmadelta_pin = new SigmaDeltaPwm();
+        if(!sigmadelta_pin->from_string(output_pin) || !sigmadelta_pin->as_output() || !sigmadelta_pin->connected()) {
+            printf("ERROR: switch-config - Selected sigmadelta pin is invalid\n");
+            delete sigmadelta_pin;
+            return false;
+        }
+        if(failsafe) {
+            //set_high_on_debug(sigmadelta_pin->port_number, sigmadelta_pin->pin);
         } else {
-            printf("configure-switch: Selected sigmadelta pin invalid - disabled\n");
-            this->output_type = NONE;
-            delete this->sigmadelta_pin;
-            this->sigmadelta_pin = nullptr;
+            //set_low_on_debug(sigmadelta_pin->port_number, sigmadelta_pin->pin);
         }
 
     } else if(type == "digital") {
-        this->output_type = DIGITAL;
-        this->digital_pin = new Pin();
-        this->digital_pin->from_string(output_pin)->as_output();
-        if(this->digital_pin->connected()) {
-            if(failsafe == 1) {
+        output_type = DIGITAL;
+        digital_pin = new Pin(output_pin.c_str(), Pin::AS_OUTPUT);
+        if(!digital_pin->connected()) {
+            printf("ERROR: switch-config - Selected digital pin is invalid\n");
+            delete digital_pin;
+            return false;
+
+        } else {
+            if(failsafe) {
                 //set_high_on_debug(digital_pin->port_number, digital_pin->pin);
             } else {
                 //set_low_on_debug(digital_pin->port_number, digital_pin->pin);
             }
-        } else {
-            printf("configure-switch: Selected digital pin invalid - disabled\n");
-            this->output_type = NONE;
-            delete this->digital_pin;
-            this->digital_pin = nullptr;
         }
 
     } else if(type == "hwpwm") {
-        this->output_type = HWPWM;
+        output_type = HWPWM;
         pwm_pin = new Pwm(output_pin.c_str());
+        if(!pwm_pin->is_valid()) {
+            printf("ERROR: switch-config - Selected HWPWM output pin is not valid\n");
+            delete pwm_pin;
+            return false;
+        }
+
         if(failsafe == 1) {
             //set_high_on_debug(pin->port_number, pin->pin);
         } else {
             //set_low_on_debug(pin->port_number, pin->pin);
         }
-        if(!pwm_pin->is_valid()) {
-            printf("configure-switch: Selected Switch PWM output pin is not PWM capable - disabled");
-            delete pwm_pin;
-            pwm_pin= nullptr;
-            this->output_type = NONE;
-        }
-
-    } else {
-        this->digital_pin = nullptr;
-        this->output_type = NONE;
-        if(output_pin != "nc") {
-            printf("WARNING: switch config: output pin has no known type: %s\n", type.c_str());
-        }
     }
 
-    if(this->output_type == SIGMADELTA) {
-        this->sigmadelta_pin->max_pwm(cr.get_int(m,  max_pwm_key, 255));
-        this->switch_value = cr.get_int(m, startup_value_key, this->sigmadelta_pin->max_pwm());
-        if(this->switch_state) {
-            this->sigmadelta_pin->pwm(this->switch_value); // will be truncated to max_pwm
+    if(output_type == SIGMADELTA) {
+        sigmadelta_pin->max_pwm(cr.get_int(m,  max_pwm_key, 255));
+        switch_value = cr.get_int(m, startup_value_key, sigmadelta_pin->max_pwm());
+        if(switch_state) {
+            sigmadelta_pin->pwm(switch_value); // will be truncated to max_pwm
         } else {
-            this->sigmadelta_pin->set(false);
+            sigmadelta_pin->set(false);
         }
 
-    } else if(this->output_type == HWPWM) {
-        // We can;t set the PWM here it is global
-        // float p = cr.get_float(m, pwm_period_ms_key, 20) * 1000.0F; // ms but fractions are allowed
-        // this->pwm_pin->period_us(p);
-
+    } else if(output_type == HWPWM) {
         // default is 0% duty cycle
-        this->switch_value = cr.get_float(m, startup_value_key, 0);
-        this->default_on_value = cr.get_float(m, default_on_value_key, 0);
-        if(this->switch_state) {
-            pwm_pin->set(this->default_on_value/100.0F);
+        switch_value = cr.get_float(m, startup_value_key, 0);
+        default_on_value = cr.get_float(m, default_on_value_key, 0);
+        if(switch_state) {
+            pwm_pin->set(default_on_value/100.0F);
         } else {
-            pwm_pin->set(this->switch_value/100.0F);
+            pwm_pin->set(switch_value/100.0F);
         }
 
-    } else if(this->output_type == DIGITAL) {
-        this->digital_pin->set(this->switch_state);
+    } else if(output_type == DIGITAL) {
+        digital_pin->set(switch_state);
     }
 
     // Set the on/off command codes
@@ -187,13 +213,15 @@ bool Switch::configure(ConfigReader& cr, ConfigReader::section_map_t& m)
         std::tuple<uint16_t, uint16_t> c = GCodeProcessor::parse_code(p);
         input_on_command_code = std::get<0>(c);
         if(std::get<1>(c) != 0) {
-            this->subcode = std::get<1>(c); // override any subcode setting
+            subcode = std::get<1>(c); // override any subcode setting
         }
         // add handler for this code
         using std::placeholders::_1;
         using std::placeholders::_2;
         THEDISPATCHER->add_handler(input_on_command_letter == 'G' ? Dispatcher::GCODE_HANDLER : Dispatcher::MCODE_HANDLER, input_on_command_code, std::bind(&Switch::handle_gcode, this, _1, _2));
 
+    }else{
+        printf("WARNING: switch-config - input_on_command is not legal\n");
     }
 
     if(input_off_command.size() >= 2) {
@@ -203,36 +231,21 @@ bool Switch::configure(ConfigReader& cr, ConfigReader::section_map_t& m)
         std::tuple<uint16_t, uint16_t> c = GCodeProcessor::parse_code(p);
         input_off_command_code = std::get<0>(c);
         if(std::get<1>(c) != 0) {
-            this->subcode = std::get<1>(c); // override any subcode setting
+            subcode = std::get<1>(c); // override any subcode setting
         }
         using std::placeholders::_1;
         using std::placeholders::_2;
         THEDISPATCHER->add_handler(input_off_command_letter == 'G' ? Dispatcher::GCODE_HANDLER : Dispatcher::MCODE_HANDLER, input_off_command_code, std::bind(&Switch::handle_gcode, this, _1, _2));
+    }else{
+        printf("WARNING: switch-config - input_off_command is not legal\n");
     }
 
-    if(input_pin.connected()) {
-        // set to initial state
-        this->input_pin_state = this->input_pin.get();
-        if(this->input_pin_behavior == momentary_behavior) {
-            // initialize switch state to same as current pin level
-            this->switch_state = this->input_pin_state;
-        }
-
-        // input pin polling
-        // TODO we should only have one of these in Switch and call each switch instance
-        SlowTicker::getInstance()->attach(100, std::bind(&Switch::pinpoll_tick, this));
-    }
-
-    if(this->output_type == SIGMADELTA) {
+    if(output_type == SIGMADELTA) {
         // SIGMADELTA tick
         // TODO We should probably have one timer for all sigmadelta pins
         // TODO we should be allowed to set the frequency for this
-        FastTicker::getInstance()->attach(1000, std::bind(&SigmaDeltaPwm::on_tick, this->sigmadelta_pin));
+        FastTicker::getInstance()->attach(1000, std::bind(&SigmaDeltaPwm::on_tick, sigmadelta_pin));
     }
-
-    // for commands we may need to replace _ for space for old configs
-    std::replace(output_on_command.begin(), output_on_command.end(), '_', ' '); // replace _ with space
-    std::replace(output_off_command.begin(), output_off_command.end(), '_', ' '); // replace _ with space
 
     return true;
 }
@@ -240,6 +253,30 @@ bool Switch::configure(ConfigReader& cr, ConfigReader::section_map_t& m)
 std::string Switch::get_info() const
 {
     std::string s;
+
+    if(is_input) {
+        s.append("INPUT:");
+        s.append(input_pin->to_string());
+        s.append(",");
+
+        switch(this->input_pin_behavior) {
+            case momentary_behavior: s.append("momentary,"); break;
+            case toggle_behavior: s.append("toggle,"); break;
+        }
+
+        if(!output_on_command.empty()) {
+            s.append("OUTPUT_ON_COMMAND:");
+            s.append(output_on_command);
+            s.append(",");
+        }
+        if(!output_off_command.empty()) {
+            s.append("OUTPUT_OFF_COMMAND:");
+            s.append(output_off_command);
+            s.append(",");
+        }
+
+        return s;
+    }
 
     if(digital_pin != nullptr) {
         s.append("OUTPUT:");
@@ -262,16 +299,7 @@ std::string Switch::get_info() const
             case NONE: s.append("???,none,"); break;
         }
     }
-    if(input_pin.connected()) {
-        s.append("INPUT:");
-        s.append(input_pin.to_string());
-        s.append(",");
 
-        switch(this->input_pin_behavior) {
-            case momentary_behavior: s.append("momentary,"); break;
-            case toggle_behavior: s.append("toggle,"); break;
-        }
-    }
     if(input_on_command_letter) {
         s.append("INPUT_ON_COMMAND:");
         s.push_back(input_on_command_letter);
@@ -287,16 +315,6 @@ std::string Switch::get_info() const
     if(subcode != 0) {
         s.append("SUBCODE:");
         s.append(std::to_string(subcode));
-        s.append(",");
-    }
-    if(!output_on_command.empty()) {
-        s.append("OUTPUT_ON_COMMAND:");
-        s.append(output_on_command);
-        s.append(",");
-    }
-    if(!output_off_command.empty()) {
-        s.append("OUTPUT_OFF_COMMAND:");
-        s.append(output_off_command);
         s.append(",");
     }
 
@@ -405,8 +423,6 @@ bool Switch::handle_gcode(GCode& gcode, OutputStream& os)
         }
     }
 
-    // TODO could just call handle_switch_changed() instead of duplicating above
-
     return true;
 }
 
@@ -414,24 +430,45 @@ bool Switch::handle_gcode(GCode& gcode, OutputStream& os)
 bool Switch::request(const char *key, void *value)
 {
     if(strcmp(key, "state") == 0) {
-        *(bool *)value = this->switch_state;
+        *(bool *)value = switch_state;
+
+    } else if(strcmp(key, "value") == 0) {
+        *(float *)value = switch_value;
 
     } else if(strcmp(key, "set-state") == 0) {
         // TODO should we check and see if we are already in this state and ignore if we are?
-        this->switch_state = *(bool*)value;
-        handle_switch_changed();
-
-        // if there is no gcode to be sent then we can do this now (in on_idle)
-        // Allows temperature switch to turn on a fan even if main loop is blocked with heat and wait
-        //if(this->output_on_command.empty() && this->output_off_command.empty()) on_main_loop(nullptr);
-
-    } else if(strcmp(key, "value") == 0) {
-        *(float *)value = this->switch_value;
+        switch_state = *(bool*)value;
+        if(switch_state) {
+            if(output_type == SIGMADELTA) {
+                sigmadelta_pin->pwm(switch_value); // this requires the value has been set otherwise it switches on to whatever it last was
+            } else if (output_type == HWPWM) {
+                pwm_pin->set(default_on_value / 100.0F);
+            } else if (output_type == DIGITAL) {
+                digital_pin->set(true);
+            }
+        }else{
+            if(output_type == SIGMADELTA) {
+                sigmadelta_pin->set(false);
+            } else if (output_type == HWPWM) {
+                pwm_pin->set(switch_value/100.0F);
+            } else if (output_type == DIGITAL) {
+                digital_pin->set(false);
+            }
+        }
 
     } else if(strcmp(key, "set-value") == 0) {
         // TODO should we check and see if we already have this value and ignore if we do?
-        this->switch_value = *(float*)value;
-        handle_switch_changed();
+        switch_value = *(float*)value;
+        if(output_type == SIGMADELTA) {
+            sigmadelta_pin->pwm(switch_value);
+            switch_state = (switch_value > 0);
+        } else if (output_type == HWPWM) {
+            pwm_pin->set(switch_value / 100.0F);
+            switch_state = (ROUND2DP(switch_value) != ROUND2DP(switch_value));
+        } else if (output_type == DIGITAL) {
+            switch_state= (switch_value > 0.0001F);
+            digital_pin->set(switch_state);
+        }
 
     } else {
         return false;
@@ -458,30 +495,10 @@ void Switch::handle_switch_changed()
             dispatch_line(os, this->output_on_command.c_str());
         }
 
-        if(this->output_type == SIGMADELTA) {
-            this->sigmadelta_pin->pwm(this->switch_value); // this requires the value has been set otherwise it switches on to whatever it last was
-
-        } else if (this->output_type == HWPWM) {
-            this->pwm_pin->set(this->default_on_value / 100.0F);
-
-        } else if (this->output_type == DIGITAL) {
-            this->digital_pin->set(true);
-        }
-
     } else {
         if(!this->output_off_command.empty()){
             OutputStream os; // null output stream
             dispatch_line(os, this->output_off_command.c_str());
-        }
-
-        if(this->output_type == SIGMADELTA) {
-            this->sigmadelta_pin->set(false);
-
-        } else if (this->output_type == HWPWM) {
-            this->pwm_pin->set(this->switch_value/100.0F);
-
-        } else if (this->output_type == DIGITAL) {
-            this->digital_pin->set(false);
         }
     }
 }
@@ -494,12 +511,12 @@ void Switch::handle_switch_changed()
 // FIXME there is a race condition where if the button is pressed and released faster than the command loop runs then it will not see the button as active
 void Switch::pinpoll_tick()
 {
-    if(!input_pin.connected()) return;
+    if(!is_input) return;
 
     bool switch_changed = false;
 
     // See if pin changed
-    bool current_state = this->input_pin.get();
+    bool current_state = input_pin->get();
     if(this->input_pin_state != current_state) {
         this->input_pin_state = current_state;
         // If pin high

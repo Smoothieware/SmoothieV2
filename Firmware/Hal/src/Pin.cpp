@@ -44,7 +44,7 @@ Pin::Pin(const char *s, TYPE_T t)
     this->valid = false;
     this->open_drain = false;
     this->interrupt = false;
-    if(from_string(s) != nullptr) {
+    if(from_string(s)) {
         switch(t) {
             case AS_INPUT: as_input(); break;
             case AS_OUTPUT: as_output(); break;
@@ -152,30 +152,30 @@ extern "C" int allocate_hal_pin(void *port, uint16_t pin)
 
 // Make a new pin object from a string
 // Pins are defined for the STM32xxxx as PA6 or PA_6 or PA.6, second letter is A-K followed by a number 0-15
-Pin* Pin::from_string(std::string value)
+bool Pin::from_string(const std::string& value)
 {
     valid = false;
     inverting = false;
     open_drain = false;
 
-    if(value == "nc") return nullptr;
+    if(value == "nc") return false;
 
     char port = 0;
     uint16_t pin = 0;
 
-    if(value.size() < 3 || toupper(value[0]) != 'P') return nullptr;
+    if(value.size() < 3 || toupper(value[0]) != 'P') return false;
 
     port = toupper(value[1]);
-    if(port < 'A' || port > 'K') return nullptr;
+    if(port < 'A' || port > 'K') return false;
 
     size_t pos = value.find_first_of("._", 2);
     if(pos == std::string::npos) pos = 1;
     pin = strtol(value.substr(pos + 1).c_str(), nullptr, 10);
-    if(pin >= 16) return nullptr;
+    if(pin >= 16) return false;
 
     if(!set_allocated(port, pin)) {
         printf("ERROR: P%c%d has already been allocated\n", port, pin);
-        return nullptr;
+        return false;
     }
 
     // now check for modifiers:-
@@ -229,7 +229,7 @@ Pin* Pin::from_string(std::string value)
     }
 
     this->valid = true;
-    return this;
+    return true;
 }
 
 std::string Pin::to_string() const
@@ -259,9 +259,9 @@ void Pin::toggle()
     set(!get());
 }
 
-Pin* Pin::as_output()
+bool Pin::as_output()
 {
-    if(!valid) return nullptr;
+    if(!valid) return false;
 
     GPIO_InitTypeDef GPIO_InitStruct{0};
     GPIO_InitStruct.Mode = open_drain ? GPIO_MODE_OUTPUT_OD : GPIO_MODE_OUTPUT_PP;
@@ -272,12 +272,13 @@ Pin* Pin::as_output()
     pullup = pulldown = false;
 
     HAL_GPIO_Init((GPIO_TypeDef *)pport, &GPIO_InitStruct);
-    return this;
+
+    return true;
 }
 
-Pin* Pin::as_input()
+bool Pin::as_input()
 {
-    if(!valid) return nullptr;
+    if(!valid) return false;
 
     GPIO_InitTypeDef GPIO_InitStruct{0};
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
@@ -286,7 +287,8 @@ Pin* Pin::as_input()
     GPIO_InitStruct.Pin = ppin;
 
     HAL_GPIO_Init((GPIO_TypeDef *)pport, &GPIO_InitStruct);
-    return this;
+
+    return true;
 }
 
 static IRQn_Type getIRQ(uint16_t pin)
@@ -312,13 +314,13 @@ static IRQn_Type getIRQ(uint16_t pin)
     return EXTI0_IRQn;
 }
 
-Pin* Pin::as_interrupt(std::function<void(void)> fnc, bool rising, uint32_t pri)
+bool Pin::as_interrupt(std::function<void(void)> fnc, bool rising, uint32_t pri)
 {
-    if(!valid) return nullptr;
+    if(!valid) return false;
     if(!allocate_interrupt_pin(gpiopin)) {
         printf("ERROR: pin line %d already has an interrupt set\n", gpiopin);
         valid= false;
-        return nullptr;
+        return false;
     }
 
     interrupt_fncs[gpiopin] = fnc;
@@ -334,7 +336,7 @@ Pin* Pin::as_interrupt(std::function<void(void)> fnc, bool rising, uint32_t pri)
     NVIC_EnableIRQ(getIRQ(ppin));
 
     interrupt = true;
-    return this;
+    return false;
 }
 
 // used to setup sd detect pin but can be used by c to setup interrupt pin

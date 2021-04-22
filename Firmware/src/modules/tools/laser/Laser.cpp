@@ -71,13 +71,12 @@ bool Laser::configure(ConfigReader& cr)
     this->pwm_inverting = cr.get_bool(m, inverted_key, false);
 
     // TTL settings
-    this->ttl_pin = new Pin();
-    ttl_pin->from_string( cr.get_string(m, ttl_pin_key, "nc" ))->as_output();
-    this->ttl_used = ttl_pin->connected();
-    this->ttl_inverting = ttl_pin->is_inverting();
-    if (ttl_used) {
+    this->ttl_pin = new Pin(cr.get_string(m, ttl_pin_key, "nc"), Pin::AS_OUTPUT);
+    if(ttl_pin->connected()) {
+        this->ttl_inverting = ttl_pin->is_inverting();
         ttl_pin->set(0);
     } else {
+        this->ttl_used = false;
         delete ttl_pin;
         ttl_pin = NULL;
     }

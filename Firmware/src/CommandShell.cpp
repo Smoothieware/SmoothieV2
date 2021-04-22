@@ -647,6 +647,7 @@ bool CommandShell::gpio_cmd(std::string& params, OutputStream& os)
         return true;
     }
 
+    // FIXME need to check if pin is already allocated and just read it if it is
     if(dir.empty() || dir == "in") {
         // read pin
         Pin pin(gpio.c_str(), Pin::AS_INPUT);

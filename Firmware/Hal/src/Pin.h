@@ -16,16 +16,16 @@ public:
     enum TYPE_T {AS_INPUT, AS_OUTPUT};
     Pin(const char *s, Pin::TYPE_T);
 
-    Pin* from_string(std::string value);
+    bool from_string(const std::string& value);
     std::string to_string() const;
 
     bool deinit();
 
     bool connected() const { return this->valid; }
 
-    Pin* as_output();
-    Pin* as_input();
-    Pin* as_interrupt(std::function<void(void)> fnc, bool rising=true, uint32_t pri=0x0F);
+    bool as_output();
+    bool as_input();
+    bool as_interrupt(std::function<void(void)> fnc, bool rising=true, uint32_t pri=0x0F);
 
     // we need to do this inline
     inline bool get() const
@@ -63,7 +63,7 @@ private:
     uint32_t *pport;
     uint32_t ppin;
     struct {
-        uint8_t gpiopin:6; // the pin 0-15
+        uint8_t gpiopin:4; // the pin 0-15
         char gpioport:8; // the port A-K
         bool inverting: 1;
         bool open_drain: 1;

@@ -72,9 +72,8 @@ bool ZProbe::configure(ConfigReader& cr)
         return false;
     }
 
-    this->pin.from_string( cr.get_string(m, probe_pin_key, "nc" ))->as_input();
-    if(!this->pin.connected()) {
-        printf("ERROR: config-zprobe: no pin defined\n");
+    if(!pin.from_string(cr.get_string(m, probe_pin_key, "nc")) || !pin.as_input() || !pin.connected()) {
+        printf("ERROR: config-zprobe: no pin or illegal pin\n");
         return false;
 
     }else{
