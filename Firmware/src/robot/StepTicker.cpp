@@ -22,8 +22,8 @@ Pin stepticker_debug_pin(STEPTICKER_DEBUG_PIN, Pin::AS_OUTPUT);
 #endif
 
 // TODO move ramfunc define to a utils.h
-// #define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
-#define _ramfunc_
+#define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
+//#define _ramfunc_
 
 StepTicker *StepTicker::instance= nullptr;
 
