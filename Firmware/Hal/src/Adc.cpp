@@ -308,7 +308,7 @@ float Adc::read_voltage()
     unsigned int i = quick_median(median_buffer, num_samples);
     uint16_t adc = median_buffer[i];
 
-    float v = 3.3F * (adc / 1024.0F); // 10 bit adc values
+    float v = 3.3F * ((float)adc / get_max_value());
     return v;
 }
 

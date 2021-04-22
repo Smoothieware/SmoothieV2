@@ -1573,6 +1573,8 @@ bool CommandShell::edit_cmd(std::string& params, OutputStream& os)
         return true;
     }
 
+    os.printf("type %%h for help\n");
+
     set_capture([](char c) { ecce::add_input(c); });
     int ret= ecce::main(infile.c_str(), outfile.c_str(), [&os](char c){os.write(&c, 1);});
     set_capture(nullptr);

@@ -5,7 +5,7 @@
 | ADC1_2  |PA1_C   | |
 | ADC1_3  |PF11    | |
 | ADC1_4  |PB1     | |
-| ADC1_5  |PAF12   | |
+| ADC1_5  |PF12    | |
 | ADC1_6  |PC2     | |
 | ADC1_7  |PC3     | |
 | ADC1_8  |PA3     | |

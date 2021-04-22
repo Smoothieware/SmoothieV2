@@ -27,7 +27,7 @@ public:
     uint32_t get_errors() const { return not_ready_error; }
     bool is_valid() const { return valid; }
 
-    static int get_max_value() { return 65535;}
+    static int get_max_value() { return 65535;} // 16bit samples
 
     static void sample_isr();
     static std::set<uint16_t> allocated_channels;
