@@ -235,8 +235,8 @@ bool Robot::configure(ConfigReader& cr)
 
         auto& mm = s->second; // map of actuator config values for this actuator
         Pin step_pin(cr.get_string(mm, step_pin_key, DEFAULT_STEP_PIN(a)), Pin::AS_OUTPUT);
-        Pin dir_pin( cr.get_string(mm, dir_pin_key,  DEFAULT_DIR_PIN (a)), Pin::AS_OUTPUT);
-        Pin en_pin(  cr.get_string(mm, en_pin_key,   DEFAULT_EN_PIN  (a)), Pin::AS_OUTPUT);
+        Pin dir_pin( cr.get_string(mm, dir_pin_key,  DEFAULT_DIR_PIN(a)), Pin::AS_OUTPUT);
+        Pin en_pin(  cr.get_string(mm, en_pin_key,   DEFAULT_EN_PIN(a)), Pin::AS_OUTPUT);
 
         printf("DEBUG:configure-robot: for actuator %s pins: %s, %s, %s\n", s->first.c_str(), step_pin.to_string().c_str(), dir_pin.to_string().c_str(), en_pin.to_string().c_str());
 

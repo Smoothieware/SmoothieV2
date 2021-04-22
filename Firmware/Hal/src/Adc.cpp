@@ -126,6 +126,8 @@ static ADC_HandleTypeDef AdcHandle;
 
 bool Adc::post_config_setup()
 {
+    printf("DEBUG: ADC post config setup\n");
+
     // This is not called until after all modules have been configged and we know how many ADC channels we need
     int nc = allocated_channels.size();
     if(nc == 0) {
@@ -137,7 +139,7 @@ bool Adc::post_config_setup()
     AdcHandle.Instance          = ADCx;
     HAL_ADC_DeInit(&AdcHandle);
 
-    AdcHandle.Init.ClockPrescaler           = ADC_CLOCK_ASYNC_DIV2;          /* Asynchronous clock mode, input ADC clock divided by 2*/
+    AdcHandle.Init.ClockPrescaler           = ADC_CLOCK_ASYNC_DIV6;          /* Asynchronous clock mode, input ADC clock divided by 6*/
     AdcHandle.Init.Resolution               = ADC_RESOLUTION_16B;            /* 16-bit resolution for converted data */
     AdcHandle.Init.ScanConvMode             = ENABLE;                        // Sequencer enabled
     AdcHandle.Init.EOCSelection             = ADC_EOC_SINGLE_CONV;           /* EOC flag picked-up to indicate conversion end */
@@ -211,6 +213,9 @@ bool Adc::stop()
     return true;
 }
 
+// This will take 154 us per sample with current settings
+// for 8 samples on a channel this is 1.2ms per channel
+// with 2 channels this gets called about every 2.4ms
 void Adc::sample_isr()
 {
     if(!running) return;
@@ -429,6 +434,7 @@ extern "C" void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
     // Invalidate Data Cache to get the updated content of the SRAM on the ADC converted data buffer
     SCB_InvalidateDCache_by_Addr((uint32_t *) aADCxConvertedData, adc_data_size);
     Adc::sample_isr();
+    //Adc::sample_isr(1); // copy second half while first half is being filled
 }
 
 /**
@@ -440,5 +446,5 @@ extern "C" void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
 {
     // Invalidate Data Cache to get the updated content of the SRAM on the ADC converted data buffer
     //SCB_InvalidateDCache_by_Addr((uint32_t *) aADCxConvertedData, adc_data_size);
-    //Adc::sample_isr();
+    //Adc::sample_isr(0); // copy first half while second half is being filled
 }

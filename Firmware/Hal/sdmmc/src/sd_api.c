@@ -57,7 +57,7 @@ void shutdown_sdmmc()
 // NOTE ISR
 void BSP_SD_DetectCallback()
 {
-    // Fixme we need to be able to deinit and re init sdcardf when this happens
+    // Fixme we need to be able to deinit and re init sdcard when this happens
     if(BSP_SD_IsDetected(0)) {
         isInitialized = 1;
     } else {

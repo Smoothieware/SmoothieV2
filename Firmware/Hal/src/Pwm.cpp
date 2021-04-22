@@ -192,7 +192,7 @@ bool Pwm::post_config_setup()
         if(instances[t]._htim == nullptr) continue;
         TIM_HandleTypeDef *htim= (TIM_HandleTypeDef*)instances[t]._htim;
 
-        printf("DEBUG: PWM setting up PWM%d, timer\n", t);
+        printf("DEBUG: PWM setting up PWM%d\n", t);
         if (HAL_TIM_PWM_Init(htim) != HAL_OK) {
             printf("ERROR: PWM%d Init failed\n", t);
             return false;

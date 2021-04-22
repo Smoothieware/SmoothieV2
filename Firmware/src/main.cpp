@@ -909,9 +909,9 @@ static void smoothie_startup(void *)
     } else {
         puts("ERROR: Configure failed\n");
         config_error_msg = "There was a fatal error in the config.ini this must be fixed to continue\nOnly some shell commands are allowed and sdcard access\n";
-        Module::broadcast_halt(true);
         puts(config_error_msg.c_str());
-    }
+        // Module::broadcast_halt(true);
+     }
 
     // create queue for incoming buffers from the I/O ports
     if(!create_message_queue()) {
@@ -946,7 +946,7 @@ static void smoothie_startup(void *)
     printf("DEBUG: Initial: free malloc memory= %d, free sbrk memory= %d, Total free= %d\n", mi.fordblks, xPortGetFreeHeapSize() - mi.fordblks, xPortGetFreeHeapSize());
 
     // indicate we are up and running
-    system_running = true;
+    system_running = ok;
 
     // load config override if set
     if(ok && config_override) {
@@ -959,9 +959,11 @@ static void smoothie_startup(void *)
         }
     }
 
-    // led 3,4 off indicates boot phase 2 complete
-    Board_LED_Set(2, false);
-    Board_LED_Set(3, false);
+    if(ok) {
+        // led 3,4 off indicates boot phase 2 complete
+        Board_LED_Set(2, false);
+        Board_LED_Set(3, false);
+    }
 
     // run the command handler in this thread
     command_handler();
@@ -1053,7 +1055,7 @@ extern "C" void vApplicationStackOverflowHook( TaskHandle_t pxTask, char *pcTask
     /* Run time stack overflow checking is performed if
     configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2.  This hook
     function is called if a stack overflow is detected. */
-    taskDISABLE_INTERRUPTS();
+    __disable_irq();
     Board_LED_Set(0, true);
     Board_LED_Set(1, false);
     Board_LED_Set(2, true);
@@ -1109,7 +1111,7 @@ extern "C" void assert_failed(uint8_t* file, uint32_t line)
 {
     printf("ERROR: HAL assert failed: file %s on line %lu\n", file, line);
 
-    // __disable_irq();
+    __disable_irq();
     __asm("bkpt #0");
     /* Infinite loop */
     while (1) {
