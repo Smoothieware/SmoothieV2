@@ -13,7 +13,7 @@ class Thermistor : public TempSensor
 {
     public:
         Thermistor();
-        ~Thermistor();
+        virtual ~Thermistor();
 
         // TempSensor interface.
         bool configure(ConfigReader& cr, ConfigReader::section_map_t&);
