@@ -16,6 +16,22 @@ REGISTER_TEST(PinTest, test_allocation)
 	TEST_ASSERT_FALSE(allocate_hal_pin(GPIOB, GPIO_PIN_3));
 	Pin::set_allocated('B', 2, false);
 	Pin::set_allocated('B', 3, false);
+
+	TEST_ASSERT_FALSE(Pin::set_allocated('A'-1, 1));
+	TEST_ASSERT_FALSE(Pin::set_allocated('L', 1));
+	TEST_ASSERT_FALSE(Pin::set_allocated('A', 16));
+
+	TEST_ASSERT_TRUE(Pin::set_allocated('a', 0));
+	TEST_ASSERT_TRUE(Pin::set_allocated('K', 15));
+
+	TEST_ASSERT_TRUE(Pin::is_allocated('A', 0));
+	TEST_ASSERT_TRUE(Pin::is_allocated('K', 15));
+	TEST_ASSERT_FALSE(Pin::is_allocated('B', 2));
+
+	Pin::set_allocated('A', 0, false);
+	Pin::set_allocated('K', 15, false);
+	TEST_ASSERT_FALSE(Pin::is_allocated('A', 0));
+	TEST_ASSERT_FALSE(Pin::is_allocated('K', 15));
 }
 
 REGISTER_TEST(PinTest, flashleds)
@@ -29,7 +45,7 @@ REGISTER_TEST(PinTest, flashleds)
 		Pin("PB_14"),
 	};
 	Pin button("PC13v");
-	TEST_ASSERT_NOT_NULL(button.as_input());
+	TEST_ASSERT_TRUE(button.as_input());
 	if(button.connected()) {
  		printf("Set input pin %s\n", button.to_string().c_str());
 	}else{
@@ -42,7 +58,7 @@ REGISTER_TEST(PinTest, flashleds)
 	printf("set as outputs... \n");
 	for(auto& p : myleds) {
 		cnt++;
-		if(p.as_output() == nullptr) {
+		if(!p.as_output()) {
 			printf("Failed to allocate pin %d, %s\n", cnt, p.to_string().c_str());
 			TEST_FAIL();
 		} else {
@@ -92,7 +108,7 @@ REGISTER_TEST(PinTest, interrupt_pin)
 	#error unrecognized board
 #endif
 
-	TEST_ASSERT_NOT_NULL(button.as_interrupt(test_button_int));
+	TEST_ASSERT_TRUE(button.as_interrupt(test_button_int));
 	if(button.connected()) {
  		printf("Set input pin %s\n", button.to_string().c_str());
 	}else{
@@ -103,7 +119,7 @@ REGISTER_TEST(PinTest, interrupt_pin)
 		// Test that we cannot have another interrupt on a pin with the same pin number
 		Pin dummy("PD13");
 		TEST_ASSERT_TRUE(dummy.connected());
-		TEST_ASSERT_NULL(dummy.as_interrupt(test_button_int));
+		TEST_ASSERT_FALSE(dummy.as_interrupt(test_button_int));
 		TEST_ASSERT_FALSE(dummy.connected());
 	}
 
@@ -115,5 +131,7 @@ REGISTER_TEST(PinTest, interrupt_pin)
 	}
 	if(cnt < 100) printf("test passed\n");
 	else printf("test timed out\n");
+
+	// button gets de inited on dtor as it is an interrupt
 
 }

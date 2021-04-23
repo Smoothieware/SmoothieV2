@@ -80,22 +80,23 @@ bool Pin::deinit()
 
 // bitset to indicate a port/pin has been configured
 #include <bitset>
-static std::bitset<256> allocated_pins;
+static std::bitset<16> allocated_pins[11];
 static std::bitset<16> allocated_interrupt_pins;
 
 bool Pin::set_allocated(uint8_t port, uint8_t pin, bool set)
 {
-    uint8_t n = ((port - 'A') * 16) + pin;
-
+    port = toupper(port);
+    if(port < 'A' || port > 'K' || pin >= 16) return false;
+    uint8_t n= port - 'A';
     if(!set) {
         // deallocate it
-        allocated_pins.reset(n);
+        allocated_pins[n].reset(pin);
         return true;
     }
 
-    if(!allocated_pins[n]) {
+    if(!allocated_pins[n].test(pin)) {
         // if not set yet then set it
-        allocated_pins.set(n);
+        allocated_pins[n].set(pin);
         return true;
     }
 
@@ -103,8 +104,18 @@ bool Pin::set_allocated(uint8_t port, uint8_t pin, bool set)
     return false;
 }
 
+bool Pin::is_allocated(uint8_t port, uint8_t pin)
+{
+    port = toupper(port);
+    if(port < 'A' || port > 'K' || pin >= 16) return false;
+    uint8_t n= port - 'A';
+    return allocated_pins[n].test(pin);
+}
+
 bool Pin::allocate_interrupt_pin(uint8_t pin, bool set)
 {
+    if(pin >= allocated_interrupt_pins.size()) return false;
+
     if(!set) {
         // deallocate it
         allocated_interrupt_pins.reset(pin);
@@ -336,7 +347,7 @@ bool Pin::as_interrupt(std::function<void(void)> fnc, bool rising, uint32_t pri)
     NVIC_EnableIRQ(getIRQ(ppin));
 
     interrupt = true;
-    return false;
+    return true;
 }
 
 // used to setup sd detect pin but can be used by c to setup interrupt pin
