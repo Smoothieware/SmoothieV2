@@ -276,7 +276,7 @@ end
 
 desc "Upload via stlink"
 task :upload do
-  sh "st-flash write #{OBJDIR}/#{PROG}.bin 0x08000000"
+  sh "st-flash --freq=4000 write #{OBJDIR}/#{PROG}.bin 0x08000000"
 end
 
 # desc "Upload via openocd"

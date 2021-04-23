@@ -109,15 +109,18 @@ bool CurrentControl::configure(ConfigReader& cr)
         }
     }
 
-    // register gcodes and mcodes
-    using std::placeholders::_1;
-    using std::placeholders::_2;
+    if(currents.size() > 0) {
+        // register gcodes and mcodes
+        using std::placeholders::_1;
+        using std::placeholders::_2;
 
-    Dispatcher::getInstance()->add_handler(Dispatcher::MCODE_HANDLER, 500, std::bind(&CurrentControl::handle_gcode, this, _1, _2));
-    Dispatcher::getInstance()->add_handler(Dispatcher::MCODE_HANDLER, 906, std::bind(&CurrentControl::handle_gcode, this, _1, _2));
-    Dispatcher::getInstance()->add_handler(Dispatcher::MCODE_HANDLER, 907, std::bind(&CurrentControl::handle_gcode, this, _1, _2));
+        Dispatcher::getInstance()->add_handler(Dispatcher::MCODE_HANDLER, 500, std::bind(&CurrentControl::handle_gcode, this, _1, _2));
+        Dispatcher::getInstance()->add_handler(Dispatcher::MCODE_HANDLER, 906, std::bind(&CurrentControl::handle_gcode, this, _1, _2));
+        Dispatcher::getInstance()->add_handler(Dispatcher::MCODE_HANDLER, 907, std::bind(&CurrentControl::handle_gcode, this, _1, _2));
+        return true;
+    }
 
-    return currents.size() > 0;
+    return false;
 }
 
 bool CurrentControl::set_current(const std::string& name, float current)
@@ -165,7 +168,9 @@ bool CurrentControl::handle_gcode(GCode& gcode, OutputStream& os)
                 if(name == 0) {
                     os.printf("WARNING: could not find axis %c\n", axis);
                 }else{
-                    set_current(name, current/1000.0F);
+                    if(!set_current(name, current/1000.0F)) {
+                        os.printf("axis %c is not configured for current control\n", axis);
+                    }
                 }
             }
         }
@@ -199,13 +204,23 @@ bool CurrentControl::handle_gcode(GCode& gcode, OutputStream& os)
         return true;
 
     } else if(gcode.get_code() == 500) {
-        os.printf(";Motor currents (amps):\nM907 ");
+        std::string res;
         for (int i = 0; i < Robot::getInstance()->get_number_registered_motors(); i++) {
             char axis= i < 3 ? 'X'+i : 'A'+i-3;
             const char *name= lookup_axis(axis);
-            os.printf("%c%1.5f ", axis, currents[name]);
+            if(name != 0) {
+                auto c= currents.find(name);
+                if (c != currents.end()) {
+                    char buf[32];
+                    snprintf(buf, sizeof(buf), "%c%1.5f ", axis, c->second);
+                    res += buf;
+                }
+            }
         }
-        os.printf("\n");
+        if(!res.empty()) {
+            os.printf(";Motor currents (amps):\nM907 ");
+            os.printf("%s\n", res.c_str());
+        }
         return true;
     }
 
