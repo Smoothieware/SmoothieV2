@@ -172,7 +172,7 @@ bool CommandShell::ls_cmd(std::string& params, OutputStream& os)
     FATFS *fs;
     FRESULT res = f_opendir(&dir, path.c_str());
     if(FR_OK != res) {
-        os.printf("Could not open directory %s\n", path.c_str());
+        os.printf("Could not open directory %s (%d)\n", path.c_str(), res);
         return true;
     }
 

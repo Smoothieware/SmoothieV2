@@ -100,7 +100,7 @@ void set_notification_uart(xTaskHandle h)
   */
 void Configure_USART(void)
 {
-	rxrb= CreateRingBuffer(32);
+	rxrb = CreateRingBuffer(32);
 
 	/* (1) Enable GPIO clock and configures the USART pins *********************/
 
@@ -133,6 +133,7 @@ void Configure_USART(void)
 	/* Set clock source */
 	USARTx_CLK_SOURCE();
 
+#if 0
 	/* (4) Configure USART functional parameters ********************************/
 
 	/* Disable USART prior modifying configuration registers */
@@ -161,6 +162,38 @@ void Configure_USART(void)
 	*/
 	uint32_t Periphclk = HAL_RCC_GetPCLK1Freq(); // PCLK1
 	LL_USART_SetBaudRate(USARTx_INSTANCE, Periphclk, LL_USART_PRESCALER_DIV1, LL_USART_OVERSAMPLING_16, 115200);
+
+#else
+	/* (4) Configure USART functional parameters ********************************/
+
+	/* Disable USART prior modifying configuration registers */
+	/* Note: Commented as corresponding to Reset value */
+	// LL_USART_Disable(USARTx_INSTANCE);
+
+	/* Set fields of initialization structure                   */
+	/*  - Prescaler           : LL_USART_PRESCALER_DIV1         */
+	/*  - BaudRate            : 115200                          */
+	/*  - DataWidth           : LL_USART_DATAWIDTH_8B           */
+	/*  - StopBits            : LL_USART_STOPBITS_1             */
+	/*  - Parity              : LL_USART_PARITY_NONE            */
+	/*  - TransferDirection   : LL_USART_DIRECTION_TX_RX        */
+	/*  - HardwareFlowControl : LL_USART_HWCONTROL_NONE         */
+	/*  - OverSampling        : LL_USART_OVERSAMPLING_16        */
+	LL_USART_InitTypeDef usart_initstruct;
+	usart_initstruct.PrescalerValue      = LL_USART_PRESCALER_DIV1;
+	usart_initstruct.BaudRate            = 115200;
+	usart_initstruct.DataWidth           = LL_USART_DATAWIDTH_8B;
+	usart_initstruct.StopBits            = LL_USART_STOPBITS_1;
+	usart_initstruct.Parity              = LL_USART_PARITY_NONE;
+	usart_initstruct.TransferDirection   = LL_USART_DIRECTION_TX_RX;
+	usart_initstruct.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
+	usart_initstruct.OverSampling        = LL_USART_OVERSAMPLING_16;
+
+	/* Initialize USART instance according to parameters defined in initialization structure */
+	LL_USART_Init(USARTx_INSTANCE, &usart_initstruct);
+#endif
+
+
 
 	/* (5) Enable USART *********************************************************/
 	LL_USART_Enable(USARTx_INSTANCE);
@@ -192,12 +225,12 @@ void stop_uart()
 
 size_t read_uart(char * buf, size_t length)
 {
-	size_t cnt= 0;
+	size_t cnt = 0;
 	for (int i = 0; i < length; ++i) {
 		if(RingBufferEmpty(rxrb)) break;
 		uint8_t ch;
 		RingBufferGet(rxrb, &ch);
-		buf[i]= ch;
+		buf[i] = ch;
 		++cnt;
 	}
 

@@ -8,6 +8,11 @@ static Pin leds[] = {
 	Pin("PB_14", Pin::AS_OUTPUT),
 };
 #define NLEDS 3
+#elif defined(BOARD_DEVEBOX)
+static Pin leds[] = {
+	Pin("PA1", Pin::AS_OUTPUT),
+};
+#define NLEDS 1
 #else
 	#error unrecognized board
 #endif

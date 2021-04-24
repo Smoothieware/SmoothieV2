@@ -93,12 +93,12 @@
 #define DEFAULT_EN_PIN(a)  default_stepper_pins[a][2]
 
 static const char* const default_stepper_pins[][3] = {
-    {"PI1", "PI2",  "nc"}, // X step, dir, enb
-    {"PI3", "PI4",  "nc"}, // Y step, dir, enb
-    {"PI5", "PI6",  "nc"}, // Z step, dir, enb
-    {"PI7", "PI8",  "nc"}, // A step, dir, enb
-    {"PI9", "PI10", "nc"}, // B step, dir, enb
-    {"PI11", "PI12","nc"}, // C step, dir, enb
+    {"PJ1", "PJ2",  "nc"}, // X step, dir, enb
+    {"PJ3", "PJ4",  "nc"}, // Y step, dir, enb
+    {"PJ5", "PJ6",  "nc"}, // Z step, dir, enb
+    {"PJ7", "PJ8",  "nc"}, // A step, dir, enb
+    {"PJ9", "PJ10", "nc"}, // B step, dir, enb
+    {"PJ11", "PJ12","nc"}, // C step, dir, enb
 };
 
 Robot *Robot::instance = nullptr;

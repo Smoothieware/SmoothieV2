@@ -2,7 +2,7 @@
 
 
 
-#ifdef BOARD_NUCLEO
+#if defined(STM32H745xx) || defined(STM32H743xx)
 #include "stm32h7xx_hal.h"
 #include <limits>
 #include <stdio.h>

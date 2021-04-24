@@ -89,6 +89,7 @@ int32_t BSP_SD_Init(uint32_t Instance)
     if(Instance >= SD_INSTANCES_NBR) {
         ret = BSP_ERROR_WRONG_PARAM;
     } else {
+#ifndef BOARD_DEVEBOX
         // setup sd detect pin
         SD_DETECT_GPIO_CLK_ENABLE();
         GPIO_InitTypeDef gpio_init_structure;
@@ -100,7 +101,7 @@ int32_t BSP_SD_Init(uint32_t Instance)
         HAL_GPIO_Init(SD_DETECT_GPIO_PORT, &gpio_init_structure);
         allocate_hal_pin(SD_DETECT_GPIO_PORT, SD_DETECT_PIN);
         allocate_hal_interrupt_pin(SD_DETECT_PIN, BSP_SD_DetectCallback);
-
+#endif
         /* Check if SD card is present   */
 
         if((uint32_t)BSP_SD_IsDetected(Instance) != SD_PRESENT) {
@@ -269,6 +270,7 @@ int32_t BSP_SD_RegisterMspCallbacks(uint32_t Instance, BSP_SD_Cb_t *CallBacks)
   */
 int32_t BSP_SD_IsDetected(uint32_t Instance)
 {
+#ifndef BOARD_DEVEBOX
     int32_t ret = BSP_ERROR_UNKNOWN_FAILURE;
 
     if(Instance >= SD_INSTANCES_NBR) {
@@ -283,6 +285,9 @@ int32_t BSP_SD_IsDetected(uint32_t Instance)
     }
 
     return ret;
+#else
+    return (int32_t)SD_PRESENT;
+#endif
 }
 
 /**
@@ -559,7 +564,7 @@ static void SD_MspInit(SD_HandleTypeDef *hsd)
         /* Common GPIO configuration */
         gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
         gpio_init_structure.Pull      = GPIO_NOPULL;
-        gpio_init_structure.Speed     = GPIO_SPEED_FREQ_VERY_HIGH;
+        gpio_init_structure.Speed     = GPIO_SPEED_FREQ_HIGH; // GPIO_SPEED_FREQ_VERY_HIGH;
         /* D0(PC8), D1(PC9), D2(PC10), D3(PC11), CK(PC12), CMD(PD2) */
         /* Common GPIO configuration */
         gpio_init_structure.Alternate = GPIO_AF12_SDIO1;

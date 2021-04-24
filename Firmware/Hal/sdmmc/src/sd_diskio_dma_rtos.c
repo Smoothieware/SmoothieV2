@@ -44,7 +44,7 @@ extern const Diskio_drvTypeDef  SD_Driver;
  *
  */
 
-#define SD_TIMEOUT 30 * 1000
+#define SD_TIMEOUT pdMS_TO_TICKS(30 * 1000)
 
 #define SD_DEFAULT_BLOCK_SIZE 512
 

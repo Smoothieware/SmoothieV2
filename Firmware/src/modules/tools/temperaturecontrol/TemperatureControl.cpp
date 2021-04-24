@@ -177,10 +177,9 @@ bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t
     sensor = nullptr; // In case we fail to create a new sensor.
     if(sensor_type.compare("thermistor") == 0) {
         sensor = new Thermistor();
-    #ifdef BOARD_NUCLEO
-    } else if(sensor_type.compare("builtin") == 0) {
+    } else if(sensor_type.compare("chip") == 0) {
         sensor = new Builtin();
-    #endif
+
 //  } else if(sensor_type.compare("max31855") == 0) { // needs porting
 //      sensor = new Max31855();
 //  } else if(sensor_type.compare("ad8495") == 0) {

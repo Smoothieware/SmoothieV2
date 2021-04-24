@@ -648,6 +648,7 @@ static std::string str(string_config);
 static std::stringstream ss(str);
 #else
 extern "C" bool setup_sdmmc();
+static FATFS fatfs; /* File system object */
 #endif
 
 // voltage monitors
@@ -681,7 +682,6 @@ void register_startup(StartupFunc_t sf)
 static void smoothie_startup(void *)
 {
     printf("INFO: Smoothie V2.alpha Build for %s - starting up\n", BUILD_TARGET);
-    //get_pll1_clk();
 
     // led 4 indicates boot phase 2 starts
     Board_LED_Set(3, true);
@@ -710,7 +710,6 @@ static void smoothie_startup(void *)
     // open the config file
     do {
 #ifdef SD_CONFIG
-        static FATFS fatfs; /* File system object */
         if(!setup_sdmmc()) {
             std::cout << "Error: setting up sdmmc\n";
             break;

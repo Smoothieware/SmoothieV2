@@ -12,8 +12,8 @@ load 'rakefile.defaults' if File.exists?('rakefile.defaults')
 
 if ENV['target'].nil?
   TARGET = 'Nucleo'
-elsif (ENV['target'] != 'Nucleo' && ENV['target'] != 'Prime')
-  puts "ERROR: Must specify target=[Nucleo|Prime]"
+elsif (ENV['target'] != 'Nucleo' && ENV['target'] != 'Prime'&& ENV['target'] != 'Devebox')
+  puts "ERROR: Must specify target=[Nucleo|Prime|Devebox]"
   exit 0
 else
   TARGET = ENV['target']
@@ -26,6 +26,9 @@ if TARGET == 'Prime'
   target_defines << '-DUSE_UART0'
   target_defines << "-DUART0_PINSET=15"
 elsif TARGET == 'Nucleo'
+  target_defines << '-DUSE_UART3'
+  target_defines << '-DUART3_PINSET=8'
+elsif TARGET == 'Devebox'
   target_defines << '-DUSE_UART3'
   target_defines << '-DUART3_PINSET=8'
 end
@@ -203,21 +206,29 @@ sys_include_dirs = []
 
 INCLUDE = (include_dirs).collect { |d| "-I#{d}" }.join(" ") # + " " + (sys_include_dirs).collect { |d| "-isystem #{d}" }.join(" ")
 
-defines = %w(-DUSE_HAL_DRIVER -DSTM32H745xx -DCORE_CM7)
+defines = %w(-DUSE_HAL_DRIVER -DCORE_CM7)
+defines << "-DUSE_FULL_LL_DRIVER"
+
 if DEBUG
   defines << "-DDEBUG"
   defines << "-DUSE_FULL_ASSERT"
-  defines << "-DUSE_FULL_LL_DRIVER"
 end
 
 # Target specified #defines
 defines << "-DBUILD_TARGET=\\\"#{TARGET}\\\" "
 if TARGET == 'Nucleo'
   defines << '-DBOARD_NUCLEO'
+  defines << '-DSTM32H745xx'
+  defines << '-DHSE_VALUE=8000000'
   #defines << '-DSTRING_CONFIG_H=\"string-config-nucleo.h\"'
 elsif TARGET == 'Prime'
   defines << '-DBOARD_PRIME'
+  defines << '-DSTM32H745xx'
   defines << '-DSTRING_CONFIG_H=\"string-config-prime.h\"'
+elsif TARGET == 'Devebox'
+  defines << '-DBOARD_DEVEBOX'
+  defines << '-DSTM32H743xx'
+  defines << '-DHSE_VALUE=25000000'
 else
   raise("Error unhandled target")
 end

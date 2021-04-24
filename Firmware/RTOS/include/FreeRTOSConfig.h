@@ -29,7 +29,11 @@
 #ifndef FREERTOS_CONFIG_H
 #define FREERTOS_CONFIG_H
 
+#ifdef STM32H745xx
 #include "stm32h745xx.h"
+#elif defined STM32H743xx
+#include "stm32h743xx.h"
+#endif
 
 #if defined(__ICCARM__) || defined(__CC_ARM) || defined(__GNUC__)
  #include <stdint.h>

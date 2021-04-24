@@ -1,21 +1,47 @@
 
 | func    | pin   |header |
 |---------+-------+-------|
-| ADC1_1  |PA4     | |
-| ADC1_2  |PA1_C   | |
-| ADC1_3  |PF11    | |
-| ADC1_4  |PB1     | |
-| ADC1_5  |PF12    | |
-| ADC1_6  |PC2     | |
-| ADC1_7  |PC3     | |
-| ADC1_8  |PA3     | |
-| ADC1_9  |PA0_C   | |
-| ADC1_10 |PA0     | |
+| ADC1_0  |PA4     | |
+| ADC1_1  |PA1_C   | |
+| ADC1_2  |PF11    | |
+| ADC1_3  |PB1     | |
+| ADC1_4  |PF12    | |
+| ADC1_5  |PC2     | |
+| ADC1_6  |PC3     | |
+| ADC1_7  |PA3     | |
+| ADC1_8  |PA0_C   | |
+| ADC1_9  |PA0     | |
+
 | PWM1_1  |PE9     | |
 | PWM1_2  |PE11    | |
 | PWM1_3  |PE13    | |
 | PWM1_4  |PE14    | |
+
 | PWM2_1  |PI5     | |
 | PWM2_2  |PI6     | |
 | PWM2_3  |PI7     | |
 | PWM2_4  |PI2     | |
+
+| UART3_RX|PD9     | Debug port |
+| UART3_TX|PD8     | Debug port |
+
+| SDMMCDET|PG10    | |
+| SDMMC   |PC8     | |
+| SDMMC   |PC9     | |
+| SDMMC   |PC10    | |
+| SDMMC   |PC11    | |
+| SDMMC   |PC12    | |
+| SDMMC   |PD2     | |
+
+| LED1    |PB0     | Nucleo |
+| LED2    |PE1     | Nucleo |
+| LED3    |PB14    | Nucleo |
+| BUT     |PC13    | Nucleo |
+
+| SPI1CK  |PA5     | |
+| SPI1MOSI|PB5     | |
+| SPI1MISO|PA6     | |
+
+| SPI2CK  |PB13    | |
+| SPI2MOSI|PB15    | |
+| SPI2MISO|PB14    | |

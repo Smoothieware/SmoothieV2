@@ -15,13 +15,21 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "benchmark_timer.h"
 #include "md5.h"
+
+#include "stm32h7xx.h" // for HAL_Delay()
 
 extern "C" bool setup_sdmmc();
 
 static FATFS fatfs; /* File system object */
 REGISTER_TEST(SDCardTest, mount)
 {
+    // first test the HAL tick is running at the correct rate
+    uint32_t s = benchmark_timer_start();
+    HAL_Delay(10);
+    printf("10ms HAL_Delay took: %lu us\n", benchmark_timer_as_us(benchmark_timer_elapsed(s)));
+
     TEST_ASSERT_EQUAL_INT(1, setup_sdmmc());
     TEST_ASSERT_EQUAL_INT(FR_OK, f_mount(&fatfs, "sd", 1));
 }
