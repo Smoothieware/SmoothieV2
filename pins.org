@@ -42,6 +42,6 @@
 | SPI1MOSI|PB5     | |
 | SPI1MISO|PA6     | |
 
-| SPI2CK  |PB13    | |
-| SPI2MOSI|PB15    | |
-| SPI2MISO|PB14    | |
+| SPI2CK  |PE12    | |
+| SPI2MOSI|PE6     | |
+| SPI2MISO|PE5     | |

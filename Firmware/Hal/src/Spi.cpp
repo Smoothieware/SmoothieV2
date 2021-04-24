@@ -9,6 +9,54 @@
 #include <stdio.h>
 #include <cstring>
 
+/* Define SPI1 for 1st SPI */
+#define SPI1x                              SPI1
+#define SPI1x_CLK_ENABLE()                __HAL_RCC_SPI1_CLK_ENABLE()
+#define DMA1_CLK_ENABLE()                 __HAL_RCC_DMA2_CLK_ENABLE()
+#define SPI1x_SCK_GPIO_CLK_ENABLE()       __HAL_RCC_GPIOA_CLK_ENABLE()
+#define SPI1x_MISO_GPIO_CLK_ENABLE()      __HAL_RCC_GPIOA_CLK_ENABLE()
+#define SPI1x_MOSI_GPIO_CLK_ENABLE()      __HAL_RCC_GPIOB_CLK_ENABLE()
+
+#define SPI1x_FORCE_RESET()               __HAL_RCC_SPI1_FORCE_RESET()
+#define SPI1x_RELEASE_RESET()             __HAL_RCC_SPI1_RELEASE_RESET()
+#define SPI1x_IRQn                        SPI1_IRQn
+#define SPI1x_IRQHandler                  SPI1_IRQHandler
+
+/* Definition SPI1 Pins */
+#define SPI1x_SCK_PIN                     GPIO_PIN_5
+#define SPI1x_SCK_GPIO_PORT               GPIOA
+#define SPI1x_SCK_AF                      GPIO_AF5_SPI1
+#define SPI1x_MISO_PIN                    GPIO_PIN_6
+#define SPI1x_MISO_GPIO_PORT              GPIOA
+#define SPI1x_MISO_AF                     GPIO_AF5_SPI1
+#define SPI1x_MOSI_PIN                    GPIO_PIN_5
+#define SPI1x_MOSI_GPIO_PORT              GPIOB
+#define SPI1x_MOSI_AF                     GPIO_AF5_SPI1
+
+/* Define SPI4 for 2nd SPI*/
+#define SPI2x                             SPI4
+#define SPI2x_CLK_ENABLE()                __HAL_RCC_SPI4_CLK_ENABLE()
+#define DMA1_CLK_ENABLE()                 __HAL_RCC_DMA2_CLK_ENABLE()
+#define SPI2x_SCK_GPIO_CLK_ENABLE()       __HAL_RCC_GPIOE_CLK_ENABLE()
+#define SPI2x_MISO_GPIO_CLK_ENABLE()      __HAL_RCC_GPIOE_CLK_ENABLE()
+#define SPI2x_MOSI_GPIO_CLK_ENABLE()      __HAL_RCC_GPIOE_CLK_ENABLE()
+#define SPI2x_IRQn                        SPI4_IRQn
+#define SPI2x_IRQHandler                  SPI4_IRQHandler
+
+#define SPI2x_FORCE_RESET()               __HAL_RCC_SPI4_FORCE_RESET()
+#define SPI2x_RELEASE_RESET()             __HAL_RCC_SPI4_RELEASE_RESET()
+
+/* Definition for SPI4 Pins */
+#define SPI2x_SCK_PIN                     GPIO_PIN_12
+#define SPI2x_SCK_GPIO_PORT               GPIOE
+#define SPI2x_SCK_AF                      GPIO_AF5_SPI4
+#define SPI2x_MISO_PIN                    GPIO_PIN_5
+#define SPI2x_MISO_GPIO_PORT              GPIOE
+#define SPI2x_MISO_AF                     GPIO_AF5_SPI4
+#define SPI2x_MOSI_PIN                    GPIO_PIN_6
+#define SPI2x_MOSI_GPIO_PORT              GPIOE
+#define SPI2x_MOSI_AF                     GPIO_AF5_SPI2
+
 SPI *SPI::spi_channel[2] {nullptr, nullptr};
 // static
 SPI *SPI::getInstance(int channel)
@@ -75,7 +123,7 @@ bool SPI::init(int bits, int mode, int frequency)
 
 	/* Set the SPI parameters */
 	SPI_HandleTypeDef SpiHandle{0};
-	SpiHandle.Instance               = _channel == 0 ? SPI1 : SPI2;
+	SpiHandle.Instance               = _channel == 0 ? SPI1x : SPI2x;
 	SpiHandle.Init.BaudRatePrescaler = psc;
 	SpiHandle.Init.Direction         = SPI_DIRECTION_2LINES;
 	SpiHandle.Init.CLKPhase          = (mode & 1) ? SPI_PHASE_2EDGE : SPI_PHASE_1EDGE;
@@ -134,48 +182,6 @@ int SPI::write(int value)
 	return ret;
 }
 
-/* Define SPI1 */
-#define SPI1_CLK_ENABLE()                __HAL_RCC_SPI1_CLK_ENABLE()
-#define DMA1_CLK_ENABLE()                __HAL_RCC_DMA2_CLK_ENABLE()
-#define SPI1_SCK_GPIO_CLK_ENABLE()       __HAL_RCC_GPIOA_CLK_ENABLE()
-#define SPI1_MISO_GPIO_CLK_ENABLE()      __HAL_RCC_GPIOA_CLK_ENABLE()
-#define SPI1_MOSI_GPIO_CLK_ENABLE()      __HAL_RCC_GPIOB_CLK_ENABLE()
-
-#define SPI1_FORCE_RESET()               __HAL_RCC_SPI1_FORCE_RESET()
-#define SPI1_RELEASE_RESET()             __HAL_RCC_SPI1_RELEASE_RESET()
-
-/* Definition for SPI1 Pins */
-#define SPI1_SCK_PIN                     GPIO_PIN_5
-#define SPI1_SCK_GPIO_PORT               GPIOA
-#define SPI1_SCK_AF                      GPIO_AF5_SPI1
-#define SPI1_MISO_PIN                    GPIO_PIN_6
-#define SPI1_MISO_GPIO_PORT              GPIOA
-#define SPI1_MISO_AF                     GPIO_AF5_SPI1
-#define SPI1_MOSI_PIN                    GPIO_PIN_5
-#define SPI1_MOSI_GPIO_PORT              GPIOB
-#define SPI1_MOSI_AF                     GPIO_AF5_SPI1
-
-/* Define SPI2 */
-#define SPI2_CLK_ENABLE()                __HAL_RCC_SPI2_CLK_ENABLE()
-#define DMA1_CLK_ENABLE()                __HAL_RCC_DMA2_CLK_ENABLE()
-#define SPI2_SCK_GPIO_CLK_ENABLE()       __HAL_RCC_GPIOB_CLK_ENABLE()
-#define SPI2_MISO_GPIO_CLK_ENABLE()      __HAL_RCC_GPIOB_CLK_ENABLE()
-#define SPI2_MOSI_GPIO_CLK_ENABLE()      __HAL_RCC_GPIOB_CLK_ENABLE()
-
-#define SPI2_FORCE_RESET()               __HAL_RCC_SPI2_FORCE_RESET()
-#define SPI2_RELEASE_RESET()             __HAL_RCC_SPI2_RELEASE_RESET()
-
-/* Definition for SPI2 Pins */
-#define SPI2_SCK_PIN                     GPIO_PIN_13
-#define SPI2_SCK_GPIO_PORT               GPIOB
-#define SPI2_SCK_AF                      GPIO_AF5_SPI2
-#define SPI2_MISO_PIN                    GPIO_PIN_14
-#define SPI2_MISO_GPIO_PORT              GPIOB
-#define SPI2_MISO_AF                     GPIO_AF5_SPI2
-#define SPI2_MOSI_PIN                    GPIO_PIN_15
-#define SPI2_MOSI_GPIO_PORT              GPIOB
-#define SPI2_MOSI_AF                     GPIO_AF5_SPI2
-
 /**
   * @brief SPI MSP Initialization
   *        This function configures the hardware resources used in this example:
@@ -190,78 +196,78 @@ extern "C" void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi)
 {
 	GPIO_InitTypeDef  GPIO_InitStruct;
 
-	if (hspi->Instance == SPI1) {
+	if (hspi->Instance == SPI1x) {
 		/*##-1- Enable peripherals and GPIO Clocks #################################*/
 		/* Enable GPIO TX/RX clock */
-		SPI1_SCK_GPIO_CLK_ENABLE();
-		SPI1_MISO_GPIO_CLK_ENABLE();
-		SPI1_MOSI_GPIO_CLK_ENABLE();
+		SPI1x_SCK_GPIO_CLK_ENABLE();
+		SPI1x_MISO_GPIO_CLK_ENABLE();
+		SPI1x_MOSI_GPIO_CLK_ENABLE();
 		/* Enable SPI1 clock */
-		SPI1_CLK_ENABLE();
+		SPI1x_CLK_ENABLE();
 
 		/*##-2- Configure peripheral GPIO ##########################################*/
 		/* SPI SCK GPIO pin configuration  */
-		GPIO_InitStruct.Pin       = SPI1_SCK_PIN;
+		GPIO_InitStruct.Pin       = SPI1x_SCK_PIN;
 		GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
 		GPIO_InitStruct.Pull      = GPIO_PULLDOWN;
 		GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_HIGH;
-		GPIO_InitStruct.Alternate = SPI1_SCK_AF;
-		HAL_GPIO_Init(SPI1_SCK_GPIO_PORT, &GPIO_InitStruct);
+		GPIO_InitStruct.Alternate = SPI1x_SCK_AF;
+		HAL_GPIO_Init(SPI1x_SCK_GPIO_PORT, &GPIO_InitStruct);
 
 		/* SPI MISO GPIO pin configuration  */
-		GPIO_InitStruct.Pin = SPI1_MISO_PIN;
-		GPIO_InitStruct.Alternate = SPI1_MISO_AF;
-		HAL_GPIO_Init(SPI1_MISO_GPIO_PORT, &GPIO_InitStruct);
+		GPIO_InitStruct.Pin = SPI1x_MISO_PIN;
+		GPIO_InitStruct.Alternate = SPI1x_MISO_AF;
+		HAL_GPIO_Init(SPI1x_MISO_GPIO_PORT, &GPIO_InitStruct);
 
 		/* SPI MOSI GPIO pin configuration  */
-		GPIO_InitStruct.Pin = SPI1_MOSI_PIN;
-		GPIO_InitStruct.Alternate = SPI1_MOSI_AF;
-		HAL_GPIO_Init(SPI1_MOSI_GPIO_PORT, &GPIO_InitStruct);
+		GPIO_InitStruct.Pin = SPI1x_MOSI_PIN;
+		GPIO_InitStruct.Alternate = SPI1x_MOSI_AF;
+		HAL_GPIO_Init(SPI1x_MOSI_GPIO_PORT, &GPIO_InitStruct);
 
 		/*##-5- Configure the NVIC for SPI #########################################*/
 		/* NVIC configuration for SPI transfer complete interrupt (SPI1) */
-		// NVIC_SetPriority(SPI1_IRQn, 5);
-		// NVIC_EnableIRQ(SPI1_IRQn);
+		// NVIC_SetPriority(SPI1x_IRQn, 5);
+		// NVIC_EnableIRQ(SPI1x_IRQn);
 
-		allocate_hal_pin(SPI1_SCK_GPIO_PORT, SPI1_SCK_PIN);
-		allocate_hal_pin(SPI1_MISO_GPIO_PORT, SPI1_MISO_PIN);
-		allocate_hal_pin(SPI1_MOSI_GPIO_PORT, SPI1_MOSI_PIN);
+		allocate_hal_pin(SPI1x_SCK_GPIO_PORT, SPI1x_SCK_PIN);
+		allocate_hal_pin(SPI1x_MISO_GPIO_PORT, SPI1x_MISO_PIN);
+		allocate_hal_pin(SPI1x_MOSI_GPIO_PORT, SPI1x_MOSI_PIN);
 
-	} else if (hspi->Instance == SPI2) {
+	} else if (hspi->Instance == SPI2x) {
 		/*##-1- Enable peripherals and GPIO Clocks #################################*/
 		/* Enable GPIO TX/RX clock */
-		SPI2_SCK_GPIO_CLK_ENABLE();
-		SPI2_MISO_GPIO_CLK_ENABLE();
-		SPI2_MOSI_GPIO_CLK_ENABLE();
+		SPI2x_SCK_GPIO_CLK_ENABLE();
+		SPI2x_MISO_GPIO_CLK_ENABLE();
+		SPI2x_MOSI_GPIO_CLK_ENABLE();
 		/* Enable SPI2 clock */
-		SPI2_CLK_ENABLE();
+		SPI2x_CLK_ENABLE();
 
 		/*##-2- Configure peripheral GPIO ##########################################*/
 		/* SPI SCK GPIO pin configuration  */
-		GPIO_InitStruct.Pin       = SPI2_SCK_PIN;
+		GPIO_InitStruct.Pin       = SPI2x_SCK_PIN;
 		GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
 		GPIO_InitStruct.Pull      = GPIO_PULLDOWN;
 		GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_HIGH;
-		GPIO_InitStruct.Alternate = SPI2_SCK_AF;
-		HAL_GPIO_Init(SPI2_SCK_GPIO_PORT, &GPIO_InitStruct);
+		GPIO_InitStruct.Alternate = SPI2x_SCK_AF;
+		HAL_GPIO_Init(SPI2x_SCK_GPIO_PORT, &GPIO_InitStruct);
 
 		/* SPI MISO GPIO pin configuration  */
-		GPIO_InitStruct.Pin = SPI2_MISO_PIN;
-		GPIO_InitStruct.Alternate = SPI2_MISO_AF;
-		HAL_GPIO_Init(SPI2_MISO_GPIO_PORT, &GPIO_InitStruct);
+		GPIO_InitStruct.Pin = SPI2x_MISO_PIN;
+		GPIO_InitStruct.Alternate = SPI2x_MISO_AF;
+		HAL_GPIO_Init(SPI2x_MISO_GPIO_PORT, &GPIO_InitStruct);
 
 		/* SPI MOSI GPIO pin configuration  */
-		GPIO_InitStruct.Pin = SPI2_MOSI_PIN;
-		GPIO_InitStruct.Alternate = SPI2_MOSI_AF;
-		HAL_GPIO_Init(SPI2_MOSI_GPIO_PORT, &GPIO_InitStruct);
+		GPIO_InitStruct.Pin = SPI2x_MOSI_PIN;
+		GPIO_InitStruct.Alternate = SPI2x_MOSI_AF;
+		HAL_GPIO_Init(SPI2x_MOSI_GPIO_PORT, &GPIO_InitStruct);
 
 		/*##-5- Configure the NVIC for SPI #########################################*/
 		/* NVIC configuration for SPI transfer complete interrupt (SPI1) */
-		// NVIC_SetPriority(SPI2_IRQn, 5);
-		// NVIC_EnableIRQ(SPI2_IRQn);
-		allocate_hal_pin(SPI2_SCK_GPIO_PORT, SPI2_SCK_PIN);
-		allocate_hal_pin(SPI2_MISO_GPIO_PORT, SPI2_MISO_PIN);
-		allocate_hal_pin(SPI2_MOSI_GPIO_PORT, SPI2_MOSI_PIN);
+		// NVIC_SetPriority(SPI2x_IRQn, 5);
+		// NVIC_EnableIRQ(SPI2x_IRQn);
+		allocate_hal_pin(SPI2x_SCK_GPIO_PORT, SPI2x_SCK_PIN);
+		allocate_hal_pin(SPI2x_MISO_GPIO_PORT, SPI2x_MISO_PIN);
+		allocate_hal_pin(SPI2x_MOSI_GPIO_PORT, SPI2x_MOSI_PIN);
 	}
 }
 
@@ -277,35 +283,35 @@ extern "C" void HAL_SPI_MspDeInit(SPI_HandleTypeDef *hspi)
 {
 	if(hspi->Instance == SPI1) {
 		/*##-1- Reset peripherals ##################################################*/
-		SPI1_FORCE_RESET();
-		SPI1_RELEASE_RESET();
+		SPI1x_FORCE_RESET();
+		SPI1x_RELEASE_RESET();
 
 		/*##-2- Disable peripherals and GPIO Clocks ################################*/
 		/* Deconfigure SPI SCK */
-		HAL_GPIO_DeInit(SPI1_SCK_GPIO_PORT, SPI1_SCK_PIN);
+		HAL_GPIO_DeInit(SPI1x_SCK_GPIO_PORT, SPI1x_SCK_PIN);
 		/* Deconfigure SPI MISO */
-		HAL_GPIO_DeInit(SPI1_MISO_GPIO_PORT, SPI1_MISO_PIN);
+		HAL_GPIO_DeInit(SPI1x_MISO_GPIO_PORT, SPI1x_MISO_PIN);
 		/* Deconfigure SPI MOSI */
-		HAL_GPIO_DeInit(SPI1_MOSI_GPIO_PORT, SPI1_MOSI_PIN);
+		HAL_GPIO_DeInit(SPI1x_MOSI_GPIO_PORT, SPI1x_MOSI_PIN);
 
 		/*##-5- Disable the NVIC for SPI ###########################################*/
-		NVIC_DisableIRQ(SPI1_IRQn);
+		NVIC_DisableIRQ(SPI1x_IRQn);
 
 	} else if(hspi->Instance == SPI2) {
 		/*##-1- Reset peripherals ##################################################*/
-		SPI2_FORCE_RESET();
-		SPI2_RELEASE_RESET();
+		SPI2x_FORCE_RESET();
+		SPI2x_RELEASE_RESET();
 
 		/*##-2- Disable peripherals and GPIO Clocks ################################*/
 		/* Deconfigure SPI SCK */
-		HAL_GPIO_DeInit(SPI2_SCK_GPIO_PORT, SPI2_SCK_PIN);
+		HAL_GPIO_DeInit(SPI2x_SCK_GPIO_PORT, SPI2x_SCK_PIN);
 		/* Deconfigure SPI MISO */
-		HAL_GPIO_DeInit(SPI2_MISO_GPIO_PORT, SPI2_MISO_PIN);
+		HAL_GPIO_DeInit(SPI2x_MISO_GPIO_PORT, SPI2x_MISO_PIN);
 		/* Deconfigure SPI MOSI */
-		HAL_GPIO_DeInit(SPI2_MOSI_GPIO_PORT, SPI2_MOSI_PIN);
+		HAL_GPIO_DeInit(SPI2x_MOSI_GPIO_PORT, SPI2x_MOSI_PIN);
 
 		/*##-5- Disable the NVIC for SPI ###########################################*/
-		NVIC_DisableIRQ(SPI2_IRQn);
+		NVIC_DisableIRQ(SPI2x_IRQn);
 	}
 }
 
@@ -338,12 +344,12 @@ extern "C" void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
   * @param  None
   * @retval None
   */
-extern "C" void SPI1_IRQHandler(void)
+extern "C" void SPI1x_IRQHandler(void)
 {
 	HAL_SPI_IRQHandler((SPI_HandleTypeDef*)SPI::spi_channel[0]->get_hspi());
 }
 
-extern "C" void SPI2_IRQHandler(void)
+extern "C" void SPI2x_IRQHandler(void)
 {
 	HAL_SPI_IRQHandler((SPI_HandleTypeDef*)SPI::spi_channel[1]->get_hspi());
 }
