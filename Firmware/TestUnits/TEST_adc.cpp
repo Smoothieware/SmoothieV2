@@ -16,12 +16,13 @@ using systime_t = uint32_t;
 
 REGISTER_TEST(ADCTest, adc_names)
 {
-    Adc *adc = new Adc("ADC1_1");
+    // can't use 0,1,4 on nucleo
+    Adc *adc = new Adc("ADC1_2");
     TEST_ASSERT_TRUE(adc->is_valid());
     TEST_ASSERT_EQUAL_INT(1, adc->get_channel());
 
     // check it won't let us create a duplicate
-    Adc *dummy = new Adc("ADC1_1");
+    Adc *dummy = new Adc("ADC1_2");
     TEST_ASSERT_FALSE(dummy->is_valid());
     delete dummy;
 
@@ -38,16 +39,16 @@ REGISTER_TEST(ADCTest, adc_names)
 
     delete adc;
     // should be able to create it now
-    dummy = new Adc("ADC1_1");
+    dummy = new Adc("ADC1_2");
     TEST_ASSERT_TRUE(dummy->is_valid());
     delete dummy;
 }
 
 REGISTER_TEST(ADCTest, two_adc_channels)
 {
-    // Use ADC0 and ADC2 on PA4 and PF11
-    Adc *adc1 = new Adc("ADC1_0");
-    Adc *adc2 = new Adc("ADC1_2");
+    // Use ADC2 and ADC3 on PF11 and PF12
+    Adc *adc1 = new Adc("ADC1_2");
+    Adc *adc2 = new Adc("ADC1_3");
 
     TEST_ASSERT_TRUE(Adc::post_config_setup());
 

@@ -80,30 +80,40 @@ Adc::~Adc()
 // Definitions for all allowed ADC channels we use
 #define ADCx_CHANNEL_PIN_CLK_ENABLE()   __HAL_RCC_GPIOA_CLK_ENABLE(); __HAL_RCC_GPIOB_CLK_ENABLE(); __HAL_RCC_GPIOC_CLK_ENABLE();__HAL_RCC_GPIOF_CLK_ENABLE();
 
+/*
+ADC1_INP0       PA0_C
+ADC1_INP1       PA1_C
+ADC1_INP2       PF11
+ADC1_INP6       PF12
+ADC1_INP9       PB0
+ADC1_INP12      PC2
+ADC1_INP13      PC3
+ADC1_INP15      PA3
+optionally...
+ADC2_INP2       PF13
+ADC2_INP6       PF14
+*/
+
 static struct {GPIO_TypeDef* port; uint32_t pin;} adcpinlut[] = {
-    {GPIOA, GPIO_PIN_4},
+    {GPIOA, GPIO_PIN_0},
     {GPIOA, GPIO_PIN_1},
     {GPIOF, GPIO_PIN_11},
-    {GPIOB, GPIO_PIN_1},
     {GPIOF, GPIO_PIN_12},
+    {GPIOB, GPIO_PIN_0},
     {GPIOC, GPIO_PIN_2},
     {GPIOC, GPIO_PIN_3},
     {GPIOA, GPIO_PIN_3},
-    {GPIOA, GPIO_PIN_0},
-    {GPIOA, GPIO_PIN_0},
 };
 
 static uint32_t adc_channel_lut[] = {
-    ADC_CHANNEL_18,
+    ADC_CHANNEL_0,
     ADC_CHANNEL_1,
     ADC_CHANNEL_2,
-    ADC_CHANNEL_5,
     ADC_CHANNEL_6,
+    ADC_CHANNEL_9,
     ADC_CHANNEL_12,
     ADC_CHANNEL_13,
     ADC_CHANNEL_15,
-    ADC_CHANNEL_0,
-    ADC_CHANNEL_16,
 };
 
 static uint32_t adc_rank_lut[] = {
@@ -115,8 +125,6 @@ static uint32_t adc_rank_lut[] = {
     ADC_REGULAR_RANK_6,
     ADC_REGULAR_RANK_7,
     ADC_REGULAR_RANK_8,
-    ADC_REGULAR_RANK_9,
-    ADC_REGULAR_RANK_10
 };
 
 /* Definition for ADCx's Channel */

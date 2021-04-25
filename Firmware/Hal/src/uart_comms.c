@@ -19,7 +19,7 @@
 static xTaskHandle xTaskToNotify = NULL;
 
 /* Transmit and receive buffers */
-RingBuffer_t *rxrb;
+static RingBuffer_t *rxrb;
 
 // select the UART to use
 #if defined(USE_UART3) && UART3_PINSET == 8
