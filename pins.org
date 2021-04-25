@@ -58,20 +58,20 @@
 | SPI2MISO|PE5     | |
 
 |Ethernet |||
-|RX_CLK   | PA1    | |
-|MDIO     | PA2    | |
-|RX_DV    | PA7    | |
-|TX_EN    | PB11   | |
-|TXD0     | PB12   | |
-|MDC      | PC1    | |
-|RXD0     | PC4    | |
-|RXD1     | PC5    | |
-|TXD1     | PG14   | |
+| RX_CLK  | PA1    | |
+| MDIO    | PA2    | |
+| RX_DV   | PA7    | |
+| TX_EN   | PB11   | |
+| TXD0    | PB12   | |
+| MDC     | PC1    | |
+| RXD0    | PC4    | |
+| RXD1    | PC5    | |
+| TXD1    | PG14   | |
 
 |Quad SPI |||
-|IO0      | PF8    | |
-|IO1      | PF9    | |
-|IO2      | PE2    | |
-|IO3      | PF6    | |
-|NCS      | PB6    | |
-|CLK      | PF10   | |
+| IO0     | PF8    | |
+| IO1     | PF9    | |
+| IO2     | PE2    | |
+| IO3     | PF6    | |
+| NCS     | PB6    | |
+| CLK     | PF10   | |

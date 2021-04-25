@@ -155,7 +155,6 @@ SPI::~SPI()
 {
 	HAL_SPI_DeInit((SPI_HandleTypeDef*)_hspi);
 	free(_hspi);
-	spi_channel[_channel] = nullptr;
 }
 
 int SPI::write(int value)

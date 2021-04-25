@@ -177,9 +177,17 @@ TMC26X::TMC26X(char d) : designator(d)
 
     // setup singleton spi instance
     if(spi == nullptr) {
-        spi = new SPI(0);
-        spi->frequency(100000);
-        spi->format(8, 3); // 8bit, mode3
+        bool ok= false;
+        spi = SPI::getInstance(0);
+        if(spi != nullptr) {
+            if(spi->init(8, 3, 100000)) { // 8bit, mode3, 100KHz
+                ok= true;
+            }
+        }
+        if(!ok) {
+            printf("ERROR: TMC26X failed to get SPI\n");
+            return;
+        }
     }
 
     // setting the default register values
