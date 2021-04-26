@@ -1,8 +1,9 @@
 Note the Name is not a chip designation, it is a mapping of the
 pins used on the headers when selecting a function in the Firmware
 
+
 | Name     | pin   | comment                |
-+==========+=======+========================+
+|----------|-------|------------------------|
 | ADC1_0   | PA0_C |                        |
 | ADC1_1   | PA1_C |                        |
 | ADC1_2   | PF11  |                        |
