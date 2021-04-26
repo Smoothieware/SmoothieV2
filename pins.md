@@ -36,10 +36,10 @@ pins used on the headers when selecting a function in the Firmware
 | SPI1MOSI   | PE6     |                          |
 | SPI1MISO   | PE5     |                          |
 |            |         |                          |
-| I2C0 SCL   | PF1     |                          |
+| I2C0 SCL   | PF1     | PB10/11 on devebox       |
 | I2C0 SDA   | PF0     |                          |
 |            |         |                          |
-| I2C1 SCL   | PA8     |                          |
+| I2C1 SCL   | PA8     | n/a on devebox           |
 | I2C1 SDA   | PH8     |                          |
 |            |         |                          |
 | LED1       | PB0     | Nucleo                   |

@@ -22,7 +22,7 @@
 
 #include "benchmark_timer.h"
 
-#define TESTCOMMS
+//#define TESTCOMMS
 
 // // place holder
 bool dispatch_line(OutputStream& os, const char *line)
@@ -478,6 +478,12 @@ extern "C" void vApplicationMallocFailedHook( void )
     provide information on how the remaining heap might be fragmented). */
     __disable_irq();
     __asm volatile ("bkpt #0");
+    for( ;; );
+}
+
+extern "C" void HardFault_Handler(void)
+{
+    __asm("bkpt #0");
     for( ;; );
 }
 

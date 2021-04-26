@@ -58,7 +58,8 @@ I2C::~I2C()
 bool I2C::read(uint8_t slave_addr, uint8_t *buf, int len)
 {
 	// Read data
-	if(HAL_I2C_Master_Receive_IT((I2C_HandleTypeDef*)_hi2c, (uint16_t)slave_addr, (uint8_t *)buf, len) != HAL_OK) {
+	int waits= 0;
+	if(HAL_I2C_Master_Receive_IT((I2C_HandleTypeDef*)_hi2c, (uint16_t)slave_addr<<1, (uint8_t *)buf, len) != HAL_OK) {
 		return false;
 	}
 
@@ -68,6 +69,7 @@ bool I2C::read(uint8_t slave_addr, uint8_t *buf, int len)
 	if(uxBits & RX_CPLT) {
 		// should be ready if we got the interrupt
 		while (HAL_I2C_GetState((I2C_HandleTypeDef*)_hi2c) != HAL_I2C_STATE_READY) {
+			++waits;
 		}
 		return true;
 
@@ -85,30 +87,37 @@ bool I2C::read(uint8_t slave_addr, uint8_t *buf, int len)
 bool I2C::write(uint8_t slave_addr, uint8_t *buf, int len)
 {
 	// Send data
+	int waits= 0;
+	int cnt= 0;
 	do { // maybe resend if we did not get an ack
-		if(HAL_I2C_Master_Transmit_IT((I2C_HandleTypeDef*)_hi2c, (uint16_t)slave_addr, (uint8_t*)buf, len) != HAL_OK) {
+		if(HAL_I2C_Master_Transmit_IT((I2C_HandleTypeDef*)_hi2c, (uint16_t)slave_addr<<1, (uint8_t*)buf, len) != HAL_OK) {
 			return false;
 		}
 
 		// wait for event telling us it was sent ok
-		EventBits_t uxBits = xEventGroupWaitBits(_peventg, TX_CPLT | ERR_CPLT, pdTRUE, pdFALSE, pdMS_TO_TICKS(100));
+		EventBits_t uxBits = xEventGroupWaitBits((EventGroupHandle_t)_peventg, TX_CPLT | ERR_CPLT, pdTRUE, pdFALSE, pdMS_TO_TICKS(100));
 
 		if(uxBits & TX_CPLT) {
 			// should be ready if we got the interrupt
 			while (HAL_I2C_GetState((I2C_HandleTypeDef*)_hi2c) != HAL_I2C_STATE_READY) {
+				++waits;
 			}
+			//printf("I2C write ok: waits %d\n", waits);
 			return true;
 
 		} else if(uxBits & ERR_CPLT) {
+			// will retry 10 times if the error is no ACK
+			//printf("I2C write error\n");
 			continue;
 
 		} else {
 			// timed out
+			//printf("I2C write timed out\n");
 			return false;
 		}
 
-		// When Acknowledge failure occurs (Slave don't acknowledge it's address) Master restarts communication */
-	} while(HAL_I2C_GetError((I2C_HandleTypeDef*)_hi2c) == HAL_I2C_ERROR_AF);
+		// When Acknowledge failure occurs the Master tries again
+	} while(HAL_I2C_GetError((I2C_HandleTypeDef*)_hi2c) == HAL_I2C_ERROR_AF && ++cnt < 10);
 
 	return false;
 }
@@ -131,6 +140,7 @@ I2C3_SCL        PA8
 I2C3_SDA        PH8
 */
 
+#ifndef BOARD_DEVEBOX
 // Set channel 0 to I2C2
 #define I2Cx1                            I2C2
 #define I2Cx1_CLK_ENABLE()               __HAL_RCC_I2C2_CLK_ENABLE()
@@ -152,6 +162,31 @@ I2C3_SDA        PH8
 #define I2Cx1_ER_IRQn                    I2C2_ER_IRQn
 #define I2Cx1_EV_IRQHandler              I2C2_EV_IRQHandler
 #define I2Cx1_ER_IRQHandler              I2C2_ER_IRQHandler
+
+#else
+
+// Set channel 0 to I2C2 PB10 PB11
+#define I2Cx1                            I2C2
+#define I2Cx1_CLK_ENABLE()               __HAL_RCC_I2C2_CLK_ENABLE()
+#define I2Cx1_SDA_GPIO_CLK_ENABLE()      __HAL_RCC_GPIOB_CLK_ENABLE()
+#define I2Cx1_SCL_GPIO_CLK_ENABLE()      __HAL_RCC_GPIOB_CLK_ENABLE()
+
+#define I2Cx1_FORCE_RESET()              __HAL_RCC_I2C2_FORCE_RESET()
+#define I2Cx1_RELEASE_RESET()            __HAL_RCC_I2C2_RELEASE_RESET()
+
+/* Definition for I2Cx1 Pins */
+#define I2Cx1_SCL_PIN                    GPIO_PIN_10
+#define I2Cx1_SCL_GPIO_PORT              GPIOB
+#define I2Cx1_SDA_PIN                    GPIO_PIN_11
+#define I2Cx1_SDA_GPIO_PORT              GPIOB
+#define I2Cx1_SCL_SDA_AF                 GPIO_AF4_I2C2
+
+/* Definition for I2Cx1's NVIC */
+#define I2Cx1_EV_IRQn                    I2C2_EV_IRQn
+#define I2Cx1_ER_IRQn                    I2C2_ER_IRQn
+#define I2Cx1_EV_IRQHandler              I2C2_EV_IRQHandler
+#define I2Cx1_ER_IRQHandler              I2C2_ER_IRQHandler
+#endif
 
 // Set channel 1 to I2C3
 #define I2Cx2                            I2C3
@@ -210,7 +245,7 @@ bool I2C::init(int frequency)
 	I2cHandle.Instance             = (channel == 0) ? I2Cx1 : I2Cx2;
 	I2cHandle.Init.Timing          = i2c_timing;
 	I2cHandle.Init.OwnAddress1     = 0;
-	I2cHandle.Init.AddressingMode  = I2C_ADDRESSINGMODE_10BIT;
+	I2cHandle.Init.AddressingMode  = I2C_ADDRESSINGMODE_7BIT;
 	I2cHandle.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
 	I2cHandle.Init.OwnAddress2     = 0;
 	I2cHandle.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
@@ -338,7 +373,7 @@ extern "C" void HAL_I2C_MspDeInit(I2C_HandleTypeDef *hi2c)
   * @param  I2cHandle: I2C handle
   * @retval None
   */
-void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *I2cHandle)
+extern "C" void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *I2cHandle)
 {
 	I2C *i2c;
 	if(I2cHandle->Instance == I2Cx1) {
@@ -352,7 +387,7 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *I2cHandle)
 	i2c->set_event(ERR_CPLT);
 }
 
-void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *I2cHandle)
+extern "C" void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *I2cHandle)
 {
 	I2C *i2c;
 	if(I2cHandle->Instance == I2Cx1) {
@@ -366,7 +401,7 @@ void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *I2cHandle)
 	i2c->set_event(TX_CPLT);
 }
 
-void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *I2cHandle)
+extern "C" void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *I2cHandle)
 {
 	I2C *i2c;
 	if(I2cHandle->Instance == I2Cx1) {
@@ -380,7 +415,7 @@ void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *I2cHandle)
 	i2c->set_event(RX_CPLT);
 }
 
-void I2Cx1_EV_IRQHandler(void)
+extern "C" void I2Cx1_EV_IRQHandler(void)
 {
 	HAL_I2C_EV_IRQHandler((I2C_HandleTypeDef*)I2C::i2c_channel[0]->get_hi2c());
 }
@@ -388,12 +423,12 @@ void I2Cx1_EV_IRQHandler(void)
 /**
   * @brief  This function handles I2C error interrupt request.
   */
-void I2Cx1_ER_IRQHandler(void)
+extern "C" void I2Cx1_ER_IRQHandler(void)
 {
 	HAL_I2C_ER_IRQHandler((I2C_HandleTypeDef*)I2C::i2c_channel[0]->get_hi2c());
 }
 
-void I2Cx2_EV_IRQHandler(void)
+extern "C" void I2Cx2_EV_IRQHandler(void)
 {
 	HAL_I2C_EV_IRQHandler((I2C_HandleTypeDef*)I2C::i2c_channel[1]->get_hi2c());
 }
@@ -401,7 +436,7 @@ void I2Cx2_EV_IRQHandler(void)
 /**
   * @brief  This function handles I2C error interrupt request.
   */
-void I2Cx2_ER_IRQHandler(void)
+extern "C" void I2Cx2_ER_IRQHandler(void)
 {
 	HAL_I2C_ER_IRQHandler((I2C_HandleTypeDef*)I2C::i2c_channel[1]->get_hi2c());
 }
