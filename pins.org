@@ -1,5 +1,7 @@
+Note the Name is not a chip designation, it is a mapping of the
+pins used on the headers when selecting a function in the Firmware
 
-| func    | pin    |comment|
+| Name    |pin     |comment|
 |---------+--------+-------|
 | ADC1_0  |PA0_C   | |
 | ADC1_1  |PA1_C   | |
@@ -25,6 +27,25 @@
 | UART2_RX|PD6     | comms port |
 | UART2_TX|PD5     | comms port |
 
+| SPI0CK  |PA5     | |
+| SPI0MOSI|PB5     | |
+| SPI0MISO|PA6     | |
+
+| SPI1CK  |PE12    | |
+| SPI1MOSI|PE6     | |
+| SPI1MISO|PE5     | |
+
+| I2C0 SCL|PF1     | |
+| I2C0 SDA|PF0     | |
+
+| I2C1 SCL|PA8     | |
+| I2C1 SDA|PH8     | |
+
+| LED1    |PB0     | Nucleo |
+| LED2    |PE1     | Nucleo |
+| LED3    |PB14    | Nucleo |
+| BUT     |PC13    | Nucleo |
+
 | SDCard  |||
 | SDMMCDET|PG10    | |
 | SDMMC   |PC8     | |
@@ -43,19 +64,6 @@
 | USB1vbus| PB13   | Host Device |
 | USB1dm  | PB14   | Host Device |
 | USB1dp  | PB15   | Host Device |
-
-| LED1    |PB0     | Nucleo |
-| LED2    |PE1     | Nucleo |
-| LED3    |PB14    | Nucleo |
-| BUT     |PC13    | Nucleo |
-
-| SPI1CK  |PA5     | |
-| SPI1MOSI|PB5     | |
-| SPI1MISO|PA6     | |
-
-| SPI2CK  |PE12    | |
-| SPI2MOSI|PE6     | |
-| SPI2MISO|PE5     | |
 
 |Ethernet |||
 | RX_CLK  | PA1    | |
