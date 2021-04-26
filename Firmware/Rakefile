@@ -29,8 +29,9 @@ elsif TARGET == 'Nucleo'
   target_defines << '-DUSE_UART3'
   target_defines << '-DUART3_PINSET=8'
 elsif TARGET == 'Devebox'
-  target_defines << '-DUSE_UART3'
-  target_defines << '-DUART3_PINSET=8'
+  target_defines << '-DUSE_UART4'
+  target_defines << '-DUART4_PINSET=8'
+  ENV['nonetwork'] = '1'
 end
 
 puts "Target is #{TARGET}"

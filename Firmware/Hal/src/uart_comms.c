@@ -24,7 +24,7 @@ static RingBuffer_t *rxrb;
 // select the UART to use
 #if defined(USE_UART3) && UART3_PINSET == 8
 
-/* UART3 on nucleo is routed to the stlinkv3 */
+// UART3 on nucleo is routed to the stlinkv3
 #define USARTx_INSTANCE               USART3
 #define USARTx_CLK_ENABLE()           LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART3)
 #define USARTx_CLK_SOURCE()           LL_RCC_SetUSARTClockSource(LL_RCC_USART234578_CLKSOURCE_PCLK1)
@@ -39,8 +39,24 @@ static RingBuffer_t *rxrb;
 #define USARTx_RX_GPIO_PORT           GPIOD
 #define USARTx_SET_RX_GPIO_AF()       LL_GPIO_SetAFPin_8_15(GPIOD, LL_GPIO_PIN_9, LL_GPIO_AF_7)
 
+#elif defined(USE_UART4) && UART4_PINSET == 8
+// UART4 on devebox is PA0 PA1
+#define USARTx_INSTANCE               UART4
+#define USARTx_CLK_ENABLE()           LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_UART4)
+#define USARTx_CLK_SOURCE()           LL_RCC_SetUSARTClockSource(LL_RCC_USART234578_CLKSOURCE_PCLK1)
+#define USARTx_IRQn                   UART4_IRQn
+#define USARTx_IRQHandler             UART4_IRQHandler
+
+#define USARTx_GPIO_CLK_ENABLE()      LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOB)   /* Enable the peripheral clock of GPIOD */
+#define USARTx_TX_PIN                 LL_GPIO_PIN_9
+#define USARTx_TX_GPIO_PORT           GPIOB
+#define USARTx_SET_TX_GPIO_AF()       LL_GPIO_SetAFPin_8_15(GPIOB, LL_GPIO_PIN_9, LL_GPIO_AF_8)
+#define USARTx_RX_PIN                 LL_GPIO_PIN_8
+#define USARTx_RX_GPIO_PORT           GPIOB
+#define USARTx_SET_RX_GPIO_AF()       LL_GPIO_SetAFPin_8_15(GPIOB, LL_GPIO_PIN_8, LL_GPIO_AF_8)
+
 #else
-#error Board needs to define which UART to use (USE_UART[0|1|2|3]) and pinset to use (UART3_PINSET=8)
+#error Board needs to define which UART to use (USE_UART[0|1|2|3|4]) and pinset to use (eg UART3_PINSET=8)
 #endif
 
 /**
