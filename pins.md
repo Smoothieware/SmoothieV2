@@ -37,7 +37,7 @@ pins used on the headers when selecting a function in the Firmware
 | SPI1MISO   | PE5     |                          |
 |            |         |                          |
 | I2C0 SCL   | PF1     | PB10/11 on devebox       |
-| I2C0 SDA   | PF0     |                          |
+| I2C0 SDA   | PF0     | PB10/11 on devebox       |
 |            |         |                          |
 | I2C1 SCL   | PA8     | n/a on devebox           |
 | I2C1 SDA   | PH8     |                          |
@@ -89,3 +89,4 @@ pins used on the headers when selecting a function in the Firmware
 | IO3        | PF6     |                          |
 | NCS        | PB6     |                          |
 | CLK        | PF10    |                          |
++------------+---------+--------------------------+

@@ -4,10 +4,27 @@
 
 #include <algorithm>
 #include <cstring>
+#include <bitset>
+#include <set>
 
 #include "StringUtils.h"
 
+static std::bitset<16> allocated_pins[11];
+static std::bitset<16> allocated_interrupt_pins;
 static std::function<void(void)> interrupt_fncs[16] = {nullptr};
+
+// Blacklisted pins which Pin() is not allowed to allocate
+static std::set<std::string> black_listed {
+    "PF8", "PF9", "PE2", "PF6", "PB6", "PF10", // QSPI
+    "PG10", "PC8", "PC9", "PC10", "PC11", "PC12", "PD2", // SDCard
+    #if !defined(BOARD_DEVEBOX)
+    "PA1", "PA2", "PA7", "PB11", "PB12", "PC1", "PC4", "PC5", "PG14", // Ethernet
+    #endif
+    "PA9", "PA10", "PA11", "PA12", // USB2
+    #if !defined(BOARD_NUCLEO) && !defined(BOARD_DEVEBOX)
+    "PB12", "PB13", "PB14", "PB15",///USB1
+    #endif
+};
 
 static uint16_t gpiopin2pin(uint16_t gpin)
 {
@@ -77,11 +94,6 @@ bool Pin::deinit()
 
     return true;
 }
-
-// bitset to indicate a port/pin has been configured
-#include <bitset>
-static std::bitset<16> allocated_pins[11];
-static std::bitset<16> allocated_interrupt_pins;
 
 bool Pin::set_allocated(uint8_t port, uint8_t pin, bool set)
 {
@@ -183,6 +195,15 @@ bool Pin::from_string(const std::string& value)
     if(pos == std::string::npos) pos = 1;
     pin = strtol(value.substr(pos + 1).c_str(), nullptr, 10);
     if(pin >= 16) return false;
+
+    {
+        std::string s("P");
+        s.append(1, port).append(std::to_string(pin));
+        if(black_listed.count(s) != 0) {
+            printf("ERROR: %s is a black listed pin and cannot be used\n", s.c_str());
+            return false;
+        }
+    }
 
     if(!set_allocated(port, pin)) {
         printf("ERROR: P%c%d has already been allocated\n", port, pin);

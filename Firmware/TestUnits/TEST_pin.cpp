@@ -32,6 +32,11 @@ REGISTER_TEST(PinTest, test_allocation)
 	Pin::set_allocated('K', 15, false);
 	TEST_ASSERT_FALSE(Pin::is_allocated('A', 0));
 	TEST_ASSERT_FALSE(Pin::is_allocated('K', 15));
+
+	// test blacklisting
+	Pin p2;
+	TEST_ASSERT_FALSE(p2.from_string("PB11"));
+	TEST_ASSERT_FALSE(p2.connected());
 }
 
 REGISTER_TEST(PinTest, flashleds)
