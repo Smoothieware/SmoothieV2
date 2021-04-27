@@ -972,6 +972,7 @@ static void smoothie_startup(void *)
 
 extern "C" void setup_xprintf();
 extern "C" void main_system_setup();
+std::string get_mcu();
 
 int main(int argc, char *argv[])
 {
@@ -986,6 +987,7 @@ int main(int argc, char *argv[])
         printf("FATAL: UART setup failed\n");
     }
 
+    printf("%s on %s\n", get_mcu().c_str(), BUILD_TARGET);
     printf("MCU clock rate= %lu Hz\n", SystemCoreClock);
 
     // led 4 indicates boot phase 1 complete

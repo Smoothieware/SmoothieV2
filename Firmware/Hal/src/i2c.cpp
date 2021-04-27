@@ -313,6 +313,9 @@ extern "C" void HAL_I2C_MspInit(I2C_HandleTypeDef *hi2c)
 		NVIC_SetPriority(I2Cx1_EV_IRQn, 5);
 		NVIC_EnableIRQ(I2Cx1_EV_IRQn);
 
+		allocate_hal_pin(I2Cx1_SCL_GPIO_PORT, I2Cx1_SCL_PIN);
+		allocate_hal_pin(I2Cx1_SDA_GPIO_PORT, I2Cx1_SDA_PIN);
+
 	} else if(hi2c->Instance == I2Cx2) {
 		I2Cx2_SCL_GPIO_CLK_ENABLE();
 		I2Cx2_SDA_GPIO_CLK_ENABLE();
@@ -330,6 +333,9 @@ extern "C" void HAL_I2C_MspInit(I2C_HandleTypeDef *hi2c)
 		NVIC_EnableIRQ(I2Cx2_ER_IRQn);
 		NVIC_SetPriority(I2Cx2_EV_IRQn, 5);
 		NVIC_EnableIRQ(I2Cx2_EV_IRQn);
+
+		allocate_hal_pin(I2Cx2_SCL_GPIO_PORT, I2Cx2_SCL_PIN);
+		allocate_hal_pin(I2Cx2_SDA_GPIO_PORT, I2Cx2_SDA_PIN);
 	}
 }
 

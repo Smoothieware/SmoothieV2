@@ -33,6 +33,33 @@
 #define SPI1x_MOSI_GPIO_PORT              GPIOB
 #define SPI1x_MOSI_AF                     GPIO_AF5_SPI1
 
+#ifdef BOARD_DEVEBOX
+// Define SPI2 for 2nd SPI
+#define SPI2x                             SPI2
+#define SPI2x_CLK_ENABLE()                __HAL_RCC_SPI2_CLK_ENABLE()
+#define DMA1_CLK_ENABLE()                 __HAL_RCC_DMA2_CLK_ENABLE()
+#define SPI2x_SCK_GPIO_CLK_ENABLE()       __HAL_RCC_GPIOB_CLK_ENABLE()
+#define SPI2x_MISO_GPIO_CLK_ENABLE()      __HAL_RCC_GPIOB_CLK_ENABLE()
+#define SPI2x_MOSI_GPIO_CLK_ENABLE()      __HAL_RCC_GPIOB_CLK_ENABLE()
+#define SPI2x_IRQn                        SPI2_IRQn
+#define SPI2x_IRQHandler                  SPI2_IRQHandler
+
+#define SPI2x_FORCE_RESET()               __HAL_RCC_SPI2_FORCE_RESET()
+#define SPI2x_RELEASE_RESET()             __HAL_RCC_SPI2_RELEASE_RESET()
+
+// Definition for SPI2 Pins
+#define SPI2x_SCK_PIN                     GPIO_PIN_13
+#define SPI2x_SCK_GPIO_PORT               GPIOB
+#define SPI2x_SCK_AF                      GPIO_AF5_SPI2
+#define SPI2x_MISO_PIN                    GPIO_PIN_14
+#define SPI2x_MISO_GPIO_PORT              GPIOB
+#define SPI2x_MISO_AF                     GPIO_AF5_SPI2
+#define SPI2x_MOSI_PIN                    GPIO_PIN_15
+#define SPI2x_MOSI_GPIO_PORT              GPIOB
+#define SPI2x_MOSI_AF                     GPIO_AF5_SPI2
+
+#else
+
 /* Define SPI4 for 2nd SPI*/
 #define SPI2x                             SPI4
 #define SPI2x_CLK_ENABLE()                __HAL_RCC_SPI4_CLK_ENABLE()
@@ -55,7 +82,8 @@
 #define SPI2x_MISO_AF                     GPIO_AF5_SPI4
 #define SPI2x_MOSI_PIN                    GPIO_PIN_6
 #define SPI2x_MOSI_GPIO_PORT              GPIOE
-#define SPI2x_MOSI_AF                     GPIO_AF5_SPI2
+#define SPI2x_MOSI_AF                     GPIO_AF5_SPI4
+#endif
 
 SPI *SPI::spi_channel[2] {nullptr, nullptr};
 // static
