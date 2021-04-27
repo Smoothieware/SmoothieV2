@@ -35,7 +35,7 @@ REGISTER_TEST(PinTest, test_allocation)
 
 	// test blacklisting
 	Pin p2;
-	TEST_ASSERT_FALSE(p2.from_string("PB11"));
+	TEST_ASSERT_FALSE(p2.from_string("PC11"));
 	TEST_ASSERT_FALSE(p2.connected());
 }
 
@@ -50,15 +50,21 @@ REGISTER_TEST(PinTest, flashleds)
 		Pin("PB_14"),
 	};
 	Pin button("PC13v");
+#elif defined(BOARD_DEVEBOX)
+	Pin myleds[] = {
+		Pin("PA1"),
+	};
+	Pin button("PE3^!");
+#else
+	#error unrecognized board
+#endif
+
 	TEST_ASSERT_TRUE(button.as_input());
 	if(button.connected()) {
  		printf("Set input pin %s\n", button.to_string().c_str());
 	}else{
 		printf("Button was invalid\n");
 	}
-#else
-	#error unrecognized board
-#endif
 
 	printf("set as outputs... \n");
 	for(auto& p : myleds) {
@@ -109,6 +115,10 @@ REGISTER_TEST(PinTest, interrupt_pin)
 {
 #ifdef BOARD_NUCLEO
 	Pin button("PC13v");
+	const char *dummypin= "PD13";
+#elif defined(BOARD_DEVEBOX)
+	Pin button("PE3^!");
+	const char *dummypin= "PD3";
 #else
 	#error unrecognized board
 #endif
@@ -122,7 +132,7 @@ REGISTER_TEST(PinTest, interrupt_pin)
 
 	{
 		// Test that we cannot have another interrupt on a pin with the same pin number
-		Pin dummy("PD13");
+		Pin dummy(dummypin);
 		TEST_ASSERT_TRUE(dummy.connected());
 		TEST_ASSERT_FALSE(dummy.as_interrupt(test_button_int));
 		TEST_ASSERT_FALSE(dummy.connected());
