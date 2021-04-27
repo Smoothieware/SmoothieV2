@@ -518,7 +518,7 @@ extern "C" void assert_failed(uint8_t* file, uint32_t line)
 extern "C" void setup_xprintf();
 extern "C" void main_system_setup();
 extern "C" void print_clocks();
-
+std::string get_mcu();
 int main()   //int argc, char *argv[])
 {
     // setup clock and caches etc (in HAL)
@@ -533,6 +533,7 @@ int main()   //int argc, char *argv[])
         __asm volatile ("bkpt #0");
     }
 
+    printf("%s on %s\n", get_mcu().c_str(), BUILD_TARGET);
     printf("MCU clock rate= %lu Hz\n", SystemCoreClock);
     print_clocks();
 

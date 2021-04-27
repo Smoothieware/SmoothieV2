@@ -21,7 +21,7 @@ static std::set<std::string> black_listed {
     "PA1", "PA2", "PA7", "PB11", "PB12", "PC1", "PC4", "PC5", "PG14", // Ethernet
     #endif
     "PA9", "PA10", "PA11", "PA12", // USB2
-    #if !defined(BOARD_NUCLEO) && !defined(BOARD_DEVEBOX)
+    #if defined(BOARD_PRIME)
     "PB12", "PB13", "PB14", "PB15",///USB1
     #endif
 };
@@ -182,11 +182,10 @@ bool Pin::from_string(const std::string& value)
     open_drain = false;
 
     if(value == "nc") return false;
+    if(value.size() < 3 || toupper(value[0]) != 'P') return false;
 
     char port = 0;
     uint16_t pin = 0;
-
-    if(value.size() < 3 || toupper(value[0]) != 'P') return false;
 
     port = toupper(value[1]);
     if(port < 'A' || port > 'K') return false;

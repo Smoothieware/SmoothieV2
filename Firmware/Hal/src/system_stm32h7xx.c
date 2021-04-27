@@ -789,11 +789,11 @@ static void SystemClock_Config(void)
     RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
     // Supply configuration update enable
-    #ifdef STM32H745xx
+#ifdef STM32H745xx
     HAL_PWREx_ConfigSupply(PWR_DIRECT_SMPS_SUPPLY);
-    #else
+#else
     HAL_PWREx_ConfigSupply(PWR_LDO_SUPPLY);
-    #endif
+#endif
     /** Configure the main internal regulator output voltage
     */
     __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
@@ -969,4 +969,4 @@ void print_clocks()
     printf("HCLK = %lu\n", HAL_RCC_GetHCLKFreq());
     printf("PCLK1 = %lu\n", HAL_RCC_GetPCLK1Freq());
     printf("PCLK2 = %lu\n", HAL_RCC_GetPCLK2Freq());
- }
+}

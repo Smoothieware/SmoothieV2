@@ -236,7 +236,7 @@ bool CommandShell::rm_cmd(std::string& params, OutputStream& os)
     std::string fn = stringutils::shift_parameter( params );
     while(!fn.empty()) {
         int s = remove(fn.c_str());
-        if (s != 0){
+        if (s != 0) {
             os.printf("Could not delete %s\n", fn.c_str());
         } else {
             os.printf("deleted %s\n", fn.c_str());
@@ -252,7 +252,7 @@ bool CommandShell::cd_cmd(std::string& params, OutputStream& os)
     HELP("change directory");
     std::string fn = stringutils::shift_parameter( params );
     if(fn.empty()) {
-        fn= "/";
+        fn = "/";
     }
     if(FR_OK != f_chdir(fn.c_str())) {
         os.puts("failed to change to directory\n");
@@ -478,7 +478,7 @@ bool CommandShell::cat_cmd(std::string& params, OutputStream& os)
             if(os.get_stop_request()) {
                 os.printf("cat aborted\n");
                 os.set_stop_request(false);
-                delay= false;
+                delay = false;
                 break;
             }
 
@@ -505,7 +505,7 @@ bool CommandShell::cat_cmd(std::string& params, OutputStream& os)
 bool CommandShell::md5sum_cmd(std::string& params, OutputStream& os)
 {
     HELP("calculate the md5sum of given filename(s)");
-    std::string filename= stringutils::shift_parameter( params );
+    std::string filename = stringutils::shift_parameter( params );
 
     while(!filename.empty()) {
         // Open file
@@ -524,7 +524,7 @@ bool CommandShell::md5sum_cmd(std::string& params, OutputStream& os)
         } else {
             os.printf("File not found: %s\n", filename.c_str());
         }
-        filename= stringutils::shift_parameter( params );
+        filename = stringutils::shift_parameter( params );
     }
 
     os.set_no_response();
@@ -800,15 +800,15 @@ bool CommandShell::get_cmd(std::string& params, OutputStream& os)
         std::ostringstream oss;
         OutputStream tos(&oss);
         grblDG_cmd(str, tos);
-        str= oss.str();
-        os.printf("%s\n", str.substr(1,str.size()-3).c_str());
+        str = oss.str();
+        os.printf("%s\n", str.substr(1, str.size() - 3).c_str());
 
     } else if (what == "status") {
         // also ? on serial and usb
         std::string str;
         Robot::getInstance()->get_query_string(str);
         // so we can see this in smoopi we strip off the <...>
-        os.printf("%s\n", str.substr(1,str.size()-3).c_str());
+        os.printf("%s\n", str.substr(1, str.size() - 3).c_str());
 
     } else if (what == "volts") {
         std::string type = stringutils::shift_parameter( params );
@@ -847,7 +847,7 @@ bool CommandShell::grblDG_cmd(std::string& params, OutputStream& os)
               Robot::getInstance()->plane_axis_0 == Y_AXIS && Robot::getInstance()->plane_axis_1 == Z_AXIS && Robot::getInstance()->plane_axis_2 == X_AXIS ? 19 : 17,
               Robot::getInstance()->inch_mode ? 20 : 21,
               Robot::getInstance()->absolute_mode ? 90 : 91,
-              get_spindle_state()?'3':'5',
+              get_spindle_state() ? '3' : '5',
               0, // TODO get_active_tool(),
               Robot::getInstance()->from_millimeters(Robot::getInstance()->get_feed_rate()),
               Robot::getInstance()->get_s_value());
@@ -1051,7 +1051,7 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
             if(Module::is_halted()) break;
             Robot::getInstance()->actuators[a]->manual_step(dir);
             // delay
-            uint32_t st= benchmark_timer_start();
+            uint32_t st = benchmark_timer_start();
             while(benchmark_timer_as_us(benchmark_timer_elapsed(st)) < delayus) ;
         }
 
@@ -1076,16 +1076,16 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
 
     AutoPushPop app;
 
-    int n_motors= Robot::getInstance()->get_number_registered_motors();
+    int n_motors = Robot::getInstance()->get_number_registered_motors();
 
     // get axis to move and amount (X0.1)
     // may specify multiple axis
 
-    float rate_mm_s= -1;
-    float scale= 1.0F;
+    float rate_mm_s = -1;
+    float scale = 1.0F;
     float delta[n_motors];
     for (int i = 0; i < n_motors; ++i) {
-        delta[i]= 0;
+        delta[i] = 0;
     }
 
     if(params.empty()) {
@@ -1093,14 +1093,14 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         return true;
     }
 
-    bool cont_mode= false;
+    bool cont_mode = false;
     while(!params.empty()) {
-        std::string p= stringutils::shift_parameter(params);
+        std::string p = stringutils::shift_parameter(params);
         if(p.size() == 2 && p[0] == '-') {
             // process option
             switch(toupper(p[1])) {
                 case 'C':
-                    cont_mode= true;
+                    cont_mode = true;
                     break;
                 default:
                     os.printf("error:illegal option %c\n", p[1]);
@@ -1109,10 +1109,10 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
             continue;
         }
 
-        char ax= toupper(p[0]);
+        char ax = toupper(p[0]);
         if(ax == 'S') {
             // get speed scale
-            scale= strtof(p.substr(1).c_str(), NULL);
+            scale = strtof(p.substr(1).c_str(), NULL);
             continue;
         }
 
@@ -1121,27 +1121,27 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
             return true;
         }
 
-        uint8_t a= ax >= 'X' ? ax - 'X' : ax - 'A' + 3;
+        uint8_t a = ax >= 'X' ? ax - 'X' : ax - 'A' + 3;
         if(a >= n_motors) {
             os.printf("error:axis out of range %c\n", ax);
             return true;
         }
 
-        delta[a]= strtof(p.substr(1).c_str(), NULL);
+        delta[a] = strtof(p.substr(1).c_str(), NULL);
     }
 
     // select slowest axis rate to use
-    int cnt= 0;
-    int axis= 0;
+    int cnt = 0;
+    int axis = 0;
     for (int i = 0; i < n_motors; ++i) {
         if(delta[i] != 0) {
             ++cnt;
             if(rate_mm_s < 0) {
-                rate_mm_s= Robot::getInstance()->actuators[i]->get_max_rate();
-            }else{
+                rate_mm_s = Robot::getInstance()->actuators[i]->get_max_rate();
+            } else {
                 rate_mm_s = std::min(rate_mm_s, Robot::getInstance()->actuators[i]->get_max_rate());
             }
-            axis= i;
+            axis = i;
             //printf("%d %f S%f\n", i, delta[i], rate_mm_s);
         }
     }
@@ -1149,7 +1149,7 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
     if(cnt == 0) {
         os.printf("error:no delta jog specified\n");
         return true;
-    }else if(cont_mode && cnt > 1) {
+    } else if(cont_mode && cnt > 1) {
         os.printf("error:continuous mode can only have one axis\n");
         return true;
     }
@@ -1166,9 +1166,9 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         return true;
     }
 
-    float fr= rate_mm_s*scale;
+    float fr = rate_mm_s * scale;
 
-    auto savect= Robot::getInstance()->compensationTransform;
+    auto savect = Robot::getInstance()->compensationTransform;
     if(cont_mode) {
         // $J -c returns ok when done
         os.set_no_response(false);
@@ -1183,14 +1183,14 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
 
         // continuous jog mode, will move until told to stop
         // calculate minimum distance to travel to accomodate acceleration and feedrate
-        float acc= Robot::getInstance()->get_default_acceleration();
-        float t= fr/acc; // time to reach frame rate
-        float d= 0.5F * acc * powf(t, 2); // distance required to accelerate
+        float acc = Robot::getInstance()->get_default_acceleration();
+        float t = fr / acc; // time to reach frame rate
+        float d = 0.5F * acc * powf(t, 2); // distance required to accelerate
         d *= 2; // include distance to decelerate
-        d= roundf(d+0.5F); // round up to nearest mm
+        d = roundf(d + 0.5F); // round up to nearest mm
         // we need to move at least this distance to reach full speed
-        if(delta[axis] < 0) delta[axis]= -d;
-        else delta[axis]= d;
+        if(delta[axis] < 0) delta[axis] = -d;
+        else delta[axis] = d;
         //printf("time: %f, delta: %f, fr: %f\n", t, d, fr);
 
         // turn off any compensation transform so Z does not move as we jog
@@ -1217,18 +1217,21 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         // reset the position based on current actuator position
         Robot::getInstance()->reset_position_from_current_actuator_position();
         // restore compensationTransform
-        Robot::getInstance()->compensationTransform= savect;
+        Robot::getInstance()->compensationTransform = savect;
     }
 
     return true;
 }
 
+std::string get_mcu();
 bool CommandShell::version_cmd(std::string& params, OutputStream& os)
 {
     HELP("version - print version");
 
     Version vers;
-    const char *mcu = "LPC4330 on " BUILD_TARGET;
+    std::string mcu= get_mcu();
+
+    os.printf("%s on %s\n", get_mcu().c_str(), BUILD_TARGET);
     os.printf("Build version: %s, Build date: %s, MCU: %s, System Clock: %ldMHz\r\n", vers.get_build(), vers.get_build_date(), mcu, SystemCoreClock / 1000000);
     os.printf("%d axis\n", MAX_ROBOT_ACTUATORS);
 
@@ -1361,7 +1364,7 @@ bool CommandShell::ry_cmd(std::string& params, OutputStream& os)
     }
 
 
-    YModem ymodem([&os](char c){os.write(&c, 1);});
+    YModem ymodem([&os](char c) {os.write(&c, 1);});
     // check we did not run out of memory
     if(!ymodem.is_ok()) {
         os.printf("error: not enough memory\n");
@@ -1500,7 +1503,7 @@ bool CommandShell::flash_cmd(std::string& params, OutputStream& os)
     //uint8_t *data_end       = _binary_flashloader_bin_end;
     size_t data_size  = (size_t)_binary_flashloader_bin_size;
     // copy to RAM
-    uint32_t *addr= (uint32_t*)0x10000000;
+    uint32_t *addr = (uint32_t*)0x10000000;
     // copy to execution area at addr
     memcpy(addr, data_start, data_size);
 
@@ -1536,7 +1539,7 @@ bool CommandShell::dfu_cmd(std::string& params, OutputStream& os)
     // call the DFU tasks, returns true if the file was written
     // if it returns false it ran out of memory or some other error
     if(DFU_Tasks(stop_everything)) {
-         // we run the flash program
+        // we run the flash program
         OutputStream nullos;
         flash_cmd(params, nullos);
     }
@@ -1547,9 +1550,10 @@ bool CommandShell::dfu_cmd(std::string& params, OutputStream& os)
 }
 #endif
 
-namespace ecce {
-    int main(const char *infile, const char *outfile, std::function<void(char)> outfnc);
-    void add_input(char c);
+namespace ecce
+{
+int main(const char *infile, const char *outfile, std::function<void(char)> outfnc);
+void add_input(char c);
 }
 bool CommandShell::edit_cmd(std::string& params, OutputStream& os)
 {
@@ -1577,11 +1581,11 @@ bool CommandShell::edit_cmd(std::string& params, OutputStream& os)
     os.printf("type %%h for help\n");
 
     set_capture([](char c) { ecce::add_input(c); });
-    int ret= ecce::main(infile.c_str(), outfile.c_str(), [&os](char c){os.write(&c, 1);});
+    int ret = ecce::main(infile.c_str(), outfile.c_str(), [&os](char c) {os.write(&c, 1);});
     set_capture(nullptr);
-    if(ret == 0){
+    if(ret == 0) {
         os.printf("edit was successful\n");
-    }else{
+    } else {
         remove(outfile.c_str());
         os.printf("edit failed\n");
     }
