@@ -381,13 +381,13 @@ extern "C" void HAL_I2C_MspDeInit(I2C_HandleTypeDef *hi2c)
   */
 extern "C" void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *I2cHandle)
 {
-	I2C *i2c;
+	I2C *i2c= nullptr;
 	if(I2cHandle->Instance == I2Cx1) {
 		i2c = I2C::i2c_channel[0];
 
 	} else if(I2cHandle->Instance == I2Cx2) {
 		i2c = I2C::i2c_channel[1];
-	}
+	} else return;
 
 	// set event to wakeup sender
 	i2c->set_event(ERR_CPLT);
@@ -395,13 +395,13 @@ extern "C" void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *I2cHandle)
 
 extern "C" void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *I2cHandle)
 {
-	I2C *i2c;
+	I2C *i2c= nullptr;
 	if(I2cHandle->Instance == I2Cx1) {
 		i2c = I2C::i2c_channel[0];
 
 	} else if(I2cHandle->Instance == I2Cx2) {
 		i2c = I2C::i2c_channel[1];
-	}
+	} else return;
 
 	// set event to wakeup sender
 	i2c->set_event(TX_CPLT);
@@ -409,13 +409,13 @@ extern "C" void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *I2cHandle)
 
 extern "C" void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *I2cHandle)
 {
-	I2C *i2c;
+	I2C *i2c= nullptr;
 	if(I2cHandle->Instance == I2Cx1) {
 		i2c = I2C::i2c_channel[0];
 
 	} else if(I2cHandle->Instance == I2Cx2) {
 		i2c = I2C::i2c_channel[1];
-	}
+	} else return;
 
 	// set event to wakeup sender
 	i2c->set_event(RX_CPLT);
