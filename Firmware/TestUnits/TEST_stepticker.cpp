@@ -13,7 +13,7 @@
 
 using systime_t= uint32_t;
 
-#define _ramfunc_ // __attribute__ ((section(".ramfunctions"),long_call,noinline))
+#define _ramfunc_  __attribute__ ((section(".ramfunctions"),long_call,noinline))
 
 static volatile systime_t unstep_start= 0, unstep_elapsed= 0;
 static volatile uint32_t timer_cnt= 0;
@@ -70,11 +70,21 @@ REGISTER_TEST(STEPTMRTest, test_200Khz)
     taskEXIT_CRITICAL();
 }
 
+#ifdef BOARD_NUCLEO
 // PB8
 #define PULSE_PIN                                GPIO_PIN_8
 #define PULSE_GPIO_PORT                          GPIOB
 #define PULSE_GPIO_CLK_ENABLE()                  __HAL_RCC_GPIOB_CLK_ENABLE()
 #define PULSE_GPIO_CLK_DISABLE()                 __HAL_RCC_GPIOB_CLK_DISABLE()
+#elif defined(BOARD_DEVEBOX)
+// PD9
+#define PULSE_PIN                                GPIO_PIN_9
+#define PULSE_GPIO_PORT                          GPIOD
+#define PULSE_GPIO_CLK_ENABLE()                  __HAL_RCC_GPIOD_CLK_ENABLE()
+#define PULSE_GPIO_CLK_DISABLE()                 __HAL_RCC_GPIOD_CLK_DISABLE()
+#else
+#error not a known board
+#endif
 
 static void setup_pin()
 {
@@ -83,7 +93,7 @@ static void setup_pin()
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
-    GPIO_InitStruct.Pin = GPIO_PIN_8;
+    GPIO_InitStruct.Pin = PULSE_PIN;
     GPIO_InitStruct.Alternate = 0;
 
     HAL_GPIO_Init(PULSE_GPIO_PORT, &GPIO_InitStruct);
@@ -93,10 +103,9 @@ static void setup_pin()
 static void teardown_pin()
 {
     HAL_GPIO_DeInit(PULSE_GPIO_PORT, PULSE_PIN);
-    PULSE_GPIO_CLK_DISABLE();
 }
 
-static void set_pin(int v)
+static _ramfunc_ void set_pin(int v)
 {
     HAL_GPIO_WritePin(PULSE_GPIO_PORT, PULSE_PIN, v == 1 ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }

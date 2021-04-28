@@ -6,8 +6,7 @@
 #include "stm32h7xx.h"
 
 // TODO move ramfunc define to a utils.h
-//#define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
-#define _ramfunc_
+#define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
 
 static void (*tick_handler)();
 static void (*untick_handler)();
@@ -42,11 +41,11 @@ int steptimer_setup(uint32_t frequency, uint32_t delay, void *step_handler, void
     // Set STEP_TIM instance
     StepTimHandle.Instance = STEP_TIM;
 
-    // Get STEP_TIM peripheral clock rate
+    // Set STEP_TIM peripheral clock rate
     uint32_t timerFreq = 20000000; // 20MHz
     printf("DEBUG: STEP_TIM input clock rate= %lu\n", timerFreq);
 
-    /* Compute the prescaler value to have STEP_TIM counter clock equal to 5MHz */
+    /* Compute the prescaler value to have STEP_TIM counter clock equal to 20MHz */
     uint32_t uwPrescalerValue = (uint32_t) (SystemCoreClock / (2 * timerFreq)) - 1;
 
     // step tick period
@@ -74,7 +73,7 @@ int steptimer_setup(uint32_t frequency, uint32_t delay, void *step_handler, void
     uint32_t delay_period = timerFreq / f; // delay is in us
     printf("DEBUG: UNSTEP_TIM period=%lu, pulse width=%f us\n", delay_period, ((float)delay_period * 1000000) / timerFreq);
 
-    // Set STEP_TIM instance
+    // Set UNSTEP_TIM instance
     UnStepTimHandle.Instance = UNSTEP_TIM;
 
     UnStepTimHandle.Init.Period = delay_period - 1;
@@ -95,7 +94,7 @@ int steptimer_setup(uint32_t frequency, uint32_t delay, void *step_handler, void
     NVIC_SetPriority(STEP_TIM_IRQn, 0);
     NVIC_EnableIRQ(STEP_TIM_IRQn);
     NVIC_ClearPendingIRQ(STEP_TIM_IRQn);
-    NVIC_SetPriority(UNSTEP_TIM_IRQn, 1);
+    NVIC_SetPriority(UNSTEP_TIM_IRQn, 0);
     NVIC_EnableIRQ(UNSTEP_TIM_IRQn);
     NVIC_ClearPendingIRQ(UNSTEP_TIM_IRQn);
 

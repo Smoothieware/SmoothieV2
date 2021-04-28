@@ -696,9 +696,9 @@ static void smoothie_startup(void *)
     StepTicker *step_ticker = new StepTicker();
 #ifdef DEBUG
     // when debug is enabled we cannot run stepticker at full speed
-    step_ticker->set_frequency(10000); // 10KHz
+    step_ticker->set_frequency(50000); // 50KHz
 #else
-    step_ticker->set_frequency(150000); // 150KHz
+    step_ticker->set_frequency(200000); // 200KHz
 #endif
     step_ticker->set_unstep_time(1); // 1us step pulse by default
 

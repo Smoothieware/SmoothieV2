@@ -205,7 +205,7 @@ _ramfunc_  void StepTicker::step_tick (void)
         current_block->tick_info[m].counter += current_block->tick_info[m].steps_per_tick;
 
         if(current_block->tick_info[m].counter >= STEPTICKER_FPSCALE) { // >= 1.0 step time
-            current_block->tick_info[m].counter -= STEPTICKER_FPSCALE; // -= 1.0F;
+            current_block->tick_info[m].counter -= STEPTICKER_FPSCALE; // -= 1.0;
             if(continuing){
                 if(!Conveyor::getInstance()->get_continuous_mode()) {
                     // we were in continuous mode and at the continuing point so clear it
