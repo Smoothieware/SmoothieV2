@@ -59,7 +59,9 @@ SECTIONS
   .isr_vector :
   {
     . = ALIGN(4);
+    __vectors_start__ = ABSOLUTE(.) ;
     KEEP(*(.isr_vector)) /* Startup code */
+    __vectors_end__ = ABSOLUTE(.) ;
     . = ALIGN(4);
   } >FLASH
 
@@ -172,6 +174,14 @@ SECTIONS
 
   PROVIDE(__HeapBase = _end);
   PROVIDE(_vStackTop = _estack);
+
+  /* copy vector table here */
+  .itcm_vectors :
+  {
+    itcm_vectors_start = .;
+    . = . + (__vectors_end__ - __vectors_start__);
+    itcm_vectors_end = .;
+  } >ITCMRAM
 
   /* Copy specific fast-executing code to ITCM RAM */
   itcm_data = LOADADDR(.itcm_text);

@@ -238,6 +238,13 @@ void SystemInit (void)
     SCB->VTOR = FLASH_BANK1_BASE | VECT_TAB_OFFSET;       /* Vector Table Relocation in Internal FLASH */
 #endif
 
+    /* Load vector table into ITCM RAM */
+    extern unsigned char itcm_vectors_start;
+    extern const unsigned char itcm_vectors_end;
+    extern const unsigned char __vectors_start__;
+    memcpy(&itcm_vectors_start, &__vectors_start__, (uint32_t) (&itcm_vectors_end - &itcm_vectors_start));
+    SCB->VTOR = itcm_vectors_start;       /* Vector Table Relocation in Internal SRAM */
+
     /* Load functions into ITCM RAM */
     extern unsigned char itcm_text_start;
     extern const unsigned char itcm_text_end;
