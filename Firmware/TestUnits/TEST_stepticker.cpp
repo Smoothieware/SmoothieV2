@@ -14,9 +14,10 @@
 using systime_t= uint32_t;
 
 #define _ramfunc_  __attribute__ ((section(".ramfunctions"),long_call,noinline))
+#define _fast_data_ __attribute__ ((section(".itcm_text")))
 
-static volatile systime_t unstep_start= 0, unstep_elapsed= 0;
-static volatile uint32_t timer_cnt= 0;
+_fast_data_ static volatile systime_t unstep_start= 0, unstep_elapsed= 0;
+_fast_data_ static volatile uint32_t timer_cnt= 0;
 
 static _ramfunc_ void step_timer_handler()
 {
@@ -107,7 +108,12 @@ static void teardown_pin()
 
 static _ramfunc_ void set_pin(int v)
 {
-    HAL_GPIO_WritePin(PULSE_GPIO_PORT, PULSE_PIN, v == 1 ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    //HAL_GPIO_WritePin(PULSE_GPIO_PORT, PULSE_PIN, v == 1 ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    if(v == 1) {
+        PULSE_GPIO_PORT->BSRR = PULSE_PIN;
+    }else{
+        PULSE_GPIO_PORT->BSRR = PULSE_PIN << 16;
+    }
 }
 
 static _ramfunc_ void step_pulse()

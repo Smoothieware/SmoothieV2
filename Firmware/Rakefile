@@ -332,7 +332,7 @@ end
 
 desc 'get disasm of build'
 task :disasm do
-  sh "#{OBJDUMP} -d -f -M reg-names-std --demangle #{OBJDIR}/#{PROG}.elf > #{OBJDIR}/#{PROG}.disasm"
+  sh "#{OBJDUMP} --disassemble -f -M reg-names-std --demangle #{OBJDIR}/#{PROG}.elf > #{OBJDIR}/#{PROG}.disasm"
 end
 
 task :version do

@@ -7,9 +7,10 @@
 
 // TODO move ramfunc define to a utils.h
 #define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
+#define _fast_data_ __attribute__ ((section(".itcm_text")))
 
-static void (*tick_handler)();
-static void (*untick_handler)();
+_fast_data_ static void (*tick_handler)();
+_fast_data_ static void (*untick_handler)();
 static void (*fasttick_handler)();
 
 // Definition for STEP_TIM and UNSTEP_TIM clock resources
@@ -17,13 +18,15 @@ static void (*fasttick_handler)();
 #define STEP_TIM_CLK_ENABLE                  __HAL_RCC_TIM3_CLK_ENABLE
 #define STEP_TIM_IRQn                        TIM3_IRQn
 #define STEP_TIM_IRQHandler                  TIM3_IRQHandler
-static TIM_HandleTypeDef StepTimHandle;
+
+_fast_data_ static TIM_HandleTypeDef StepTimHandle={0};
 
 #define UNSTEP_TIM                             TIM4
 #define UNSTEP_TIM_CLK_ENABLE                  __HAL_RCC_TIM4_CLK_ENABLE
 #define UNSTEP_TIM_IRQn                        TIM4_IRQn
 #define UNSTEP_TIM_IRQHandler                  TIM4_IRQHandler
-static TIM_HandleTypeDef UnStepTimHandle;
+
+_fast_data_ static TIM_HandleTypeDef UnStepTimHandle={0};
 
 #define FASTTICK_TIM                             TIM2
 #define FASTTICK_TIM_CLK_ENABLE                  __HAL_RCC_TIM2_CLK_ENABLE
@@ -134,7 +137,7 @@ _ramfunc_ void STEP_TIM_IRQHandler(void)
 {
     //HAL_TIM_IRQHandler(&StepTimHandle);
     /* TIM Update event */
-    TIM_HandleTypeDef *htim = &StepTimHandle;
+    register TIM_HandleTypeDef *htim = &StepTimHandle;
 
     if (__HAL_TIM_GET_FLAG(htim, TIM_FLAG_UPDATE) != RESET) {
         if (__HAL_TIM_GET_IT_SOURCE(htim, TIM_IT_UPDATE) != RESET) {
@@ -147,7 +150,7 @@ _ramfunc_ void STEP_TIM_IRQHandler(void)
 _ramfunc_ void UNSTEP_TIM_IRQHandler(void)
 {
     // HAL_TIM_IRQHandler(&UnStepTimHandle);
-    TIM_HandleTypeDef *htim = &UnStepTimHandle;
+    register TIM_HandleTypeDef *htim = &UnStepTimHandle;
 
     if (__HAL_TIM_GET_FLAG(htim, TIM_FLAG_UPDATE) != RESET) {
         if (__HAL_TIM_GET_IT_SOURCE(htim, TIM_IT_UPDATE) != RESET) {
@@ -163,7 +166,7 @@ _ramfunc_ void UNSTEP_TIM_IRQHandler(void)
             /* Set the TIM state */
             htim->State = HAL_TIM_STATE_READY;
             // reset the count for next time
-            __HAL_TIM_SET_COUNTER(&UnStepTimHandle, 0);
+            __HAL_TIM_SET_COUNTER(htim, 0);
             // Or this apparently will stop interrupts and reset counter
             //UnStepTickerTimHandle.Instance->CR1 |= (TIM_CR1_UDIS);
             //UnStepTickerTimHandle.Instance->EGR |= (TIM_EGR_UG);
@@ -178,9 +181,9 @@ _ramfunc_ void unsteptimer_start()
     TIM_HandleTypeDef *htim = &UnStepTimHandle;
     __HAL_TIM_SET_COUNTER(htim, 0);
     __HAL_TIM_CLEAR_IT(htim, TIM_IT_UPDATE);
-    NVIC_ClearPendingIRQ(UNSTEP_TIM_IRQn);
+    //NVIC_ClearPendingIRQ(UNSTEP_TIM_IRQn);
     //HAL_StatusTypeDef stat= HAL_TIM_Base_Start_IT(&UnStepTimHandle);
-
+    NVIC->ICPR[(((uint32_t)UNSTEP_TIM_IRQn) >> 5UL)] = (uint32_t)(1UL << (((uint32_t)UNSTEP_TIM_IRQn) & 0x1FUL));
     /* Check the TIM state */
     if (htim->State == HAL_TIM_STATE_READY) {
         /* Set the TIM state */
