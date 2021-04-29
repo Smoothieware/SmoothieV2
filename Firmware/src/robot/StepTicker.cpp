@@ -124,18 +124,6 @@ _ramfunc_  void StepTicker::unstep_tick()
     this->unstep= 0;
 }
 
-// extern "C" void PendSV_Handler(void)
-// {
-//     StepTicker::getInstance()->handle_finish();
-// }
-
-// slightly lower priority than TIMER0, the whole end of block/start of block is done here allowing the timer to continue ticking
-// void StepTicker::handle_finish (void)
-// {
-//     // all moves finished signal block is finished
-//     if(finished_fnc) finished_fnc();
-// }
-
 // step clock
 _ramfunc_  void StepTicker::step_tick (void)
 {
@@ -311,3 +299,25 @@ int StepTicker::register_actuator(StepperMotor* m)
     motor[num_motors++] = m;
     return num_motors - 1;
 }
+
+/*
+Stats...
+500mm/sec @ 100 steps/mm and 200KHz tick
+ΔT  22.252314 ms
+Nfalling    1.113 k
+Nrising 1.113 k
+fmin    49.793 kHz
+fmax    50.209 kHz
+fmean   49.999 kHz
+Tstd    14.571 ns
+Tavg    20 µs
+Dcycle  7.977 %
+Hmin    1.5 µs
+Hmean   1.595 µs
+HSDev   31.848 ns
+Hmax    1.667 µs
+Lmin    18.25 µs
+Lmean   18.405 µs
+LSDev   33.179 ns
+Lmax    18.5 µs
+*/

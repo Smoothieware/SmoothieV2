@@ -39,6 +39,12 @@ uint32_t benchmark_timer_as_us(uint32_t ticks)
         return ticks / ticks_per_us;
 }
 
+/* Converts from benchmark_timer ticks to float us. */
+float benchmark_timer_as_ns(uint32_t ticks)
+{
+        return (float)ticks / ((float)ticks_per_second/1E6F);
+}
+
 /* Converts from mS to benchmark_timer ticks. */
 uint32_t benchmark_timer_ms_as_ticks(uint32_t ms)
 {

@@ -115,17 +115,31 @@ REGISTER_TEST(MemoryTest, memory_pool)
 #endif
 
 #define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
-_ramfunc_ int testramfunc() { return 123; }
+_ramfunc_ static int testramfunc() { return 123; }
 
 REGISTER_TEST(MemoryTest, ramfunc)
 {
     printf("ramfunc is at %p\n", testramfunc);
-    TEST_ASSERT_TRUE((unsigned int)testramfunc >= 0x00000000 && (unsigned int)testramfunc < 0x0000200);
+    TEST_ASSERT_TRUE((unsigned int)testramfunc >= 0x00000298 && (unsigned int)testramfunc < 0x0010000);
     TEST_ASSERT_EQUAL_INT(123, testramfunc());
+}
+
+#define _fast_data_ __attribute__ ((section(".itcm_text")))
+static _fast_data_ char test_array[16]= {1,2};
+
+REGISTER_TEST(MemoryTest, fastdata)
+{
+    printf("fast data is at %p\n", test_array);
+    TEST_ASSERT_TRUE((unsigned int)test_array >= 0x00000298 && (unsigned int)test_array < 0x0010000);
+    TEST_ASSERT_EQUAL_INT(1, test_array[0]);
+    TEST_ASSERT_EQUAL_INT(2, test_array[1]);
+    TEST_ASSERT_EQUAL_INT(0, test_array[2]);
+    TEST_ASSERT_EQUAL_INT(0, test_array[15]);
 }
 
 using systime_t= uint32_t;
 
+// NOTE this seems to be only accurate if compiled no debug with O2 otherwise we get totally bogus results!
 void runMemoryTest(void *addr, uint32_t n)
 {
     register uint32_t* p = (uint32_t *)addr;
@@ -137,6 +151,7 @@ void runMemoryTest(void *addr, uint32_t n)
     register uint32_t r6;
     register uint32_t r7;
     register uint32_t r8;
+    SCB_CleanInvalidateDCache();
 
     systime_t st = benchmark_timer_start();
     while(p < (uint32_t *)((uint32_t)addr+n)) {
@@ -148,38 +163,38 @@ void runMemoryTest(void *addr, uint32_t n)
     }
     systime_t elt = benchmark_timer_elapsed(st);
 
-    printf("elapsed time %lu us over %lu bytes %1.4f mb/sec\n", benchmark_timer_as_us(elt), n, (float)n/benchmark_timer_as_us(elt));
+    printf("elapsed time (%lu) %f us over %lu bytes %1.4f mb/sec\n", elt, benchmark_timer_as_ns(elt), n, (float)n/benchmark_timer_as_ns(elt));
 }
 
 REGISTER_TEST(MemoryTest, time_memory_cached)
 {
-    taskENTER_CRITICAL();
+    __disable_irq();
     printf("Timing memory at 0x08000000 (FLASH)\n");
-    runMemoryTest((void*)0x08000000, 2000000);
+    runMemoryTest((void*)0x08000000, 64000);
 
     printf("Timing memory at 0x00000000 (ITCMRAM)\n");
     runMemoryTest((void*)0x00000000, 64000);
 
-    printf("Timing memory at 0x24000000 (RAM_D1)\n");
-    runMemoryTest((void*)0x24000000, 512000);
-    taskEXIT_CRITICAL();
+    printf("Timing memory at 0x24000000 (RAM_D1)\n ");
+    runMemoryTest((void*)0x24000000, 64000);
+    __enable_irq();
 }
 
 REGISTER_TEST(MemoryTest, time_memory_not_cached)
 {
-    taskENTER_CRITICAL();
+    __disable_irq();
     /* Disable D-Cache */
     SCB_DisableDCache();
     printf("Timing memory at 0x08000000 (FLASH)\n");
-    runMemoryTest((void*)0x08000000, 2000000);
+    runMemoryTest((void*)0x08000000, 64000);
 
     printf("Timing memory at 0x00000000 (ITCMRAM)\n");
     runMemoryTest((void*)0x00000000, 64000);
 
     printf("Timing memory at 0x24000000 (RAM_D1)\n");
-    runMemoryTest((void*)0x24000000, 512000);
+    runMemoryTest((void*)0x24000000, 64000);
 
     /* Enable D-Cache */
     SCB_EnableDCache();
-    taskEXIT_CRITICAL();
+    __enable_irq();
 }

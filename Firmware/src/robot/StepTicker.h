@@ -42,7 +42,7 @@ public:
 
 private:
     static StepTicker *instance;
-    void handle_finish (void);
+
     void unstep_tick();
     void step_tick (void);
     bool start_unstep_ticker();
