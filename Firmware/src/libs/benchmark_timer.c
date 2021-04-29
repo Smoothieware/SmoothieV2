@@ -21,17 +21,6 @@ void benchmark_timer_init(void)
         DWT->CYCCNT = 0; // reset the counter
 }
 
-/* Start a benchmark_timer */
-uint32_t benchmark_timer_start(void)
-{
-	return (DWT->CYCCNT);
-}
-
-uint32_t benchmark_timer_elapsed(uint32_t since)
-{
-	return DWT->CYCCNT - since;
-}
-
 /* Returns number of ticks per second of the benchmark_timer timer */
 uint32_t benchmark_timer_ticks_per_second(void)
 {

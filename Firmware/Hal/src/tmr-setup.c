@@ -94,55 +94,12 @@ int steptimer_setup(uint32_t frequency, uint32_t delay, void *step_handler, void
     NVIC_SetPriority(STEP_TIM_IRQn, 0);
     NVIC_EnableIRQ(STEP_TIM_IRQn);
     NVIC_ClearPendingIRQ(STEP_TIM_IRQn);
-    NVIC_SetPriority(UNSTEP_TIM_IRQn, 0);
+    NVIC_SetPriority(UNSTEP_TIM_IRQn, 1);
     NVIC_EnableIRQ(UNSTEP_TIM_IRQn);
     NVIC_ClearPendingIRQ(UNSTEP_TIM_IRQn);
 
     return 1;
 }
-
-/**
-  * @brief  TIM period elapsed callback
-  * @param  htim: TIM handle
-  * @retval None
-  */
-extern void TIM6_PeriodElapsedCallback();
-
-_ramfunc_ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef * htim)
-{
-    if(htim->Instance == STEP_TIM) {
-        tick_handler();
-
-    }else if(htim->Instance == UNSTEP_TIM) {
-        // call upstream handler
-        untick_handler();
-        // stop the timer as it is a oneshot
-        HAL_TIM_Base_Stop_IT(&UnStepTimHandle);
-        // reset the count for next time
-        __HAL_TIM_SET_COUNTER(&UnStepTimHandle, 0);
-        // Or this apparently will stop interrupts and reset counter
-        //UnStepTickerTimHandle.Instance->CR1 |= (TIM_CR1_UDIS);
-        //UnStepTickerTimHandle.Instance->EGR |= (TIM_EGR_UG);
-
-    }else if(htim->Instance == FASTTICK_TIM) {
-        fasttick_handler();
-
-    } else if(htim->Instance == TIM6) {
-        // defined in stm32h7xx_hal_timebase_tim.c
-        TIM6_PeriodElapsedCallback();
-    }
-}
-
-_ramfunc_ void STEP_TIM_IRQHandler(void)
-{
-    HAL_TIM_IRQHandler(&StepTimHandle);
-}
-
-_ramfunc_ void UNSTEP_TIM_IRQHandler(void)
-{
-    HAL_TIM_IRQHandler(&UnStepTimHandle);
-}
-
 
 void steptimer_stop()
 {
@@ -154,16 +111,85 @@ void steptimer_stop()
     HAL_TIM_Base_DeInit(&UnStepTimHandle);
 }
 
+/**
+  * @brief  TIM period elapsed callback
+  * @param  htim: TIM handle
+  * @retval None
+  */
+extern void TIM6_PeriodElapsedCallback();
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef * htim)
+{
+    // NOTE Step and unstep are handled inline in the ISR Handler
+    if(htim->Instance == FASTTICK_TIM) {
+        fasttick_handler();
+
+    } else if(htim->Instance == TIM6) {
+        // defined in stm32h7xx_hal_timebase_tim.c
+        TIM6_PeriodElapsedCallback();
+    }
+}
+
+_ramfunc_ void STEP_TIM_IRQHandler(void)
+{
+    //HAL_TIM_IRQHandler(&StepTimHandle);
+    /* TIM Update event */
+    TIM_HandleTypeDef *htim = &StepTimHandle;
+
+    if (__HAL_TIM_GET_FLAG(htim, TIM_FLAG_UPDATE) != RESET) {
+        if (__HAL_TIM_GET_IT_SOURCE(htim, TIM_IT_UPDATE) != RESET) {
+            __HAL_TIM_CLEAR_IT(htim, TIM_IT_UPDATE);
+            tick_handler();
+        }
+    }
+}
+
+_ramfunc_ void UNSTEP_TIM_IRQHandler(void)
+{
+    // HAL_TIM_IRQHandler(&UnStepTimHandle);
+    TIM_HandleTypeDef *htim = &UnStepTimHandle;
+
+    if (__HAL_TIM_GET_FLAG(htim, TIM_FLAG_UPDATE) != RESET) {
+        if (__HAL_TIM_GET_IT_SOURCE(htim, TIM_IT_UPDATE) != RESET) {
+            __HAL_TIM_CLEAR_IT(htim, TIM_IT_UPDATE);
+            // call upstream handler
+            untick_handler();
+            // stop the timer as it is a oneshot
+            //HAL_TIM_Base_Stop_IT(&UnStepTimHandle);
+            /* Disable the TIM Update interrupt */
+            __HAL_TIM_DISABLE_IT(htim, TIM_IT_UPDATE);
+            /* Disable the Peripheral */
+            __HAL_TIM_DISABLE(htim);
+            /* Set the TIM state */
+            htim->State = HAL_TIM_STATE_READY;
+            // reset the count for next time
+            __HAL_TIM_SET_COUNTER(&UnStepTimHandle, 0);
+            // Or this apparently will stop interrupts and reset counter
+            //UnStepTickerTimHandle.Instance->CR1 |= (TIM_CR1_UDIS);
+            //UnStepTickerTimHandle.Instance->EGR |= (TIM_EGR_UG);
+
+        }
+    }
+}
+
 // called from within STEP_TIM ISR so must be in SRAM
 _ramfunc_ void unsteptimer_start()
 {
-    __HAL_TIM_SET_COUNTER(&UnStepTimHandle, 0);
-    __HAL_TIM_CLEAR_IT(&UnStepTimHandle, TIM_IT_UPDATE);
+    TIM_HandleTypeDef *htim = &UnStepTimHandle;
+    __HAL_TIM_SET_COUNTER(htim, 0);
+    __HAL_TIM_CLEAR_IT(htim, TIM_IT_UPDATE);
     NVIC_ClearPendingIRQ(UNSTEP_TIM_IRQn);
-    HAL_StatusTypeDef stat= HAL_TIM_Base_Start_IT(&UnStepTimHandle);
-    if(stat != HAL_OK) {
-        // printf("ERROR: unsteptimer_start failed to start unsteptimer\n");
+    //HAL_StatusTypeDef stat= HAL_TIM_Base_Start_IT(&UnStepTimHandle);
+
+    /* Check the TIM state */
+    if (htim->State == HAL_TIM_STATE_READY) {
+        /* Set the TIM state */
+        htim->State = HAL_TIM_STATE_BUSY;
+        /* Enable the TIM Update interrupt */
+        __HAL_TIM_ENABLE_IT(htim, TIM_IT_UPDATE);
+        __HAL_TIM_ENABLE(htim);
     }
+
     // Or this apparently will restart interrupts
     //UnStepTickerTimHandle.Instance->CR1 &= ~(TIM_CR1_UDIS);
 }
@@ -184,7 +210,7 @@ int fasttick_setup(uint32_t frequency, void *timer_handler)
     FastTickTimHandle.Instance = FASTTICK_TIM;
 
     // Get FASTTICK_TIM peripheral clock rate
-    fasttick_timerFreq= 1000000; // 1MHz
+    fasttick_timerFreq = 1000000; // 1MHz
     printf("DEBUG: FASTTICK_TIM input clock rate= %lu\n", fasttick_timerFreq);
 
     /* Compute the prescaler value to have FASTTICK_TIM counter clock equal to 1MHz */
