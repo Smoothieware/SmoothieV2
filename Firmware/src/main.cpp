@@ -687,13 +687,14 @@ static void smoothie_startup(void *)
     Board_LED_Set(3, true);
 
     // create the SlowTicker here as it is used by some modules
-    SlowTicker *slow_ticker = new SlowTicker();
+    SlowTicker *slow_ticker = SlowTicker::getInstance();
 
     // create the FastTicker here as it is used by some modules
-    FastTicker *fast_ticker = new FastTicker();
+    FastTicker *fast_ticker = FastTicker::getInstance();
 
     // create the StepTicker, don't start it yet
-    StepTicker *step_ticker = new StepTicker();
+    StepTicker *step_ticker = StepTicker::getInstance();
+
 #ifdef DEBUG
     // when debug is enabled we cannot run stepticker at full speed
     step_ticker->set_frequency(50000); // 50KHz
@@ -701,9 +702,6 @@ static void smoothie_startup(void *)
     step_ticker->set_frequency(200000); // 200KHz
 #endif
     step_ticker->set_unstep_time(1); // 1us step pulse by default
-
-    // configure the Dispatcher
-    new Dispatcher();
 
     bool ok = false;
 
@@ -764,15 +762,15 @@ static void smoothie_startup(void *)
         }
 
         printf("DEBUG: configure the planner\n");
-        Planner *planner = new Planner();
+        Planner *planner = Planner::getInstance();
         planner->configure(cr);
 
         printf("DEBUG: configure the conveyor\n");
-        Conveyor *conveyor = new Conveyor();
+        Conveyor *conveyor = Conveyor::getInstance();
         conveyor->configure(cr);
 
         printf("DEBUG: configure the robot\n");
-        Robot *robot = new Robot();
+        Robot *robot = Robot::getInstance();
         if(!robot->configure(cr)) {
             printf("ERROR: Configuring robot failed\n");
             break;

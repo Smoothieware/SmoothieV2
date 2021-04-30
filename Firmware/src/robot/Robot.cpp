@@ -108,8 +108,6 @@ Robot *Robot::instance = nullptr;
 
 Robot::Robot() : Module("robot")
 {
-    if(instance == nullptr) instance = this;
-
     this->inch_mode = false;
     this->absolute_mode = true;
     this->e_absolute_mode = true;

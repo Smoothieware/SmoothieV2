@@ -15,8 +15,7 @@ class Dispatcher
 {
 public:
     // setup the Singleton instance
-    static Dispatcher *getInstance() { return instance; }
-    Dispatcher();
+    static Dispatcher *getInstance() { if(instance==nullptr) instance= new Dispatcher; return instance; }
     // delete copy and move constructors and assign operators
     Dispatcher(Dispatcher const&) = delete;             // Copy construct
     Dispatcher(Dispatcher&&) = delete;                  // Move construct
@@ -43,6 +42,7 @@ public:
 
 private:
     static Dispatcher *instance;
+    Dispatcher(){};
 
     // use multimap as multiple handlers may be needed per gcode
     Handlers_t gcode_handlers;

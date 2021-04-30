@@ -26,15 +26,30 @@ Pin stepticker_debug_pin(STEPTICKER_DEBUG_PIN, Pin::AS_OUTPUT);
 //#define _ramfunc_
 
 StepTicker *StepTicker::instance= nullptr;
+bool StepTicker::started= false;
+
+StepTicker *StepTicker::getInstance()
+{
+    if(instance == nullptr) {
+        instance= new StepTicker;
+    }
+
+    return instance;
+}
+void StepTicker::deleteInstance()
+{
+    if(started) {
+        instance->stop();
+    }
+    delete instance;
+    instance= nullptr;
+}
 
 StepTicker::StepTicker()
-{
-    if(instance == nullptr) instance= this;
-}
+{}
 
 StepTicker::~StepTicker()
-{
-}
+{}
 
 // ISR callbacks from timer
 _ramfunc_ void StepTicker::step_timer_handler(void)

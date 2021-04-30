@@ -5,24 +5,40 @@
 // timers are specified in milliseconds
 #define BASE_FREQUENCY 1000
 
-SlowTicker *SlowTicker::instance;
+SlowTicker *SlowTicker::instance= nullptr;
+bool SlowTicker::started= false;
 
 // This module uses a Timer to periodically call registered callbacks
 // Modules register with a function ( callback ) and a frequency, and we then call that function at the given frequency.
-// NOTE we could use TMR1 instead of s/w timer
+
+// This module uses a Timer to periodically call registered callbacks
+// Modules register with a function ( callback ) and a frequency, and we then call that function at the given frequency.
+// We use TMR1 for this
+
+SlowTicker *SlowTicker::getInstance()
+{
+    if(instance == nullptr) {
+        instance= new SlowTicker;
+    }
+
+    return instance;
+}
+
+void SlowTicker::deleteInstance()
+{
+    if(started) {
+        instance->stop();
+    }
+    delete instance;
+    instance= nullptr;
+}
+
 
 SlowTicker::SlowTicker()
-{
-    instance= this;
-}
+{}
 
 SlowTicker::~SlowTicker()
-{
-    instance= nullptr;
-    if(timer_handle != nullptr) {
-        xTimerDelete(timer_handle, 1000);
-    }
-}
+{}
 
 static void timer_handler(TimerHandle_t xTimer)
 {
@@ -57,11 +73,17 @@ bool SlowTicker::start()
 
 bool SlowTicker::stop()
 {
+    if(!started) return true;
+
     if( xTimerStop(timer_handle, 1000) != pdPASS) {
         printf("ERROR: Failed to stop the timer\n");
         return false;
     }
-
+    if(timer_handle != nullptr) {
+        xTimerDelete(timer_handle, 1000);
+    }
+    timer_handle= nullptr;
+    started= false;
     return true;
 }
 

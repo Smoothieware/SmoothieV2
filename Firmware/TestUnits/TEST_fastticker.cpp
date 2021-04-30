@@ -24,17 +24,14 @@ static void timer_callback10khz(void)
 
 REGISTER_TEST(FastTicker, test_2khz_and_10khz)
 {
-        // first test the HAL tick is still running
+    // first test the HAL tick is still running
     uint32_t s = benchmark_timer_start();
     HAL_Delay(10);
     printf("10ms HAL_Delay took: %lu us\n", benchmark_timer_as_us(benchmark_timer_elapsed(s)));
 
     FastTicker *flt= FastTicker::getInstance();
-    if(flt == nullptr) {
-        // This just allows FastTicker to already have been setup
-        flt= new FastTicker;
-        TEST_ASSERT_TRUE(flt == FastTicker::getInstance());
-    }
+
+    TEST_ASSERT_NOT_NULL(flt);
     TEST_ASSERT_FALSE(flt->is_running());
 
     // won't start as nothing has attached to it
@@ -70,4 +67,6 @@ REGISTER_TEST(FastTicker, test_2khz_and_10khz)
 
     TEST_ASSERT_INT_WITHIN(50, 2*2000, timer_cnt2khz);
     TEST_ASSERT_INT_WITHIN(200, 2*10000, timer_cnt10khz);
+
+    FastTicker::deleteInstance();
 }

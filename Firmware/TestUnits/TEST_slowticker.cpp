@@ -19,10 +19,9 @@ static void timer_callback100(void)
 
 REGISTER_TEST(SlowTicker, test_20_and_100_hz)
 {
-    // SlowTicker *slowticker= new SlowTicker;
     SlowTicker *slt= SlowTicker::getInstance();
-    // TEST_ASSERT_TRUE(slowticker == slt);
-    // TEST_ASSERT_TRUE(slt->start());
+    TEST_ASSERT_NOT_NULL(slt);
+    // TEST_ASSERT_TRUE(slt->start()); // already started in main
 
     // 20 Hz
     int n1= slt->attach(20, timer_callback20);

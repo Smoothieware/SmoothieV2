@@ -11,7 +11,7 @@
 // just swaps the parameters
 #define TEST_ASSERT_STRING_S(a, b) TEST_ASSERT_EQUAL_STRING(b, a)
 
-Dispatcher *dispatcher= new Dispatcher;
+Dispatcher *dispatcher= Dispatcher::getInstance();
 
 TEST_DECLARE(Dispatcher)
     bool cb1;

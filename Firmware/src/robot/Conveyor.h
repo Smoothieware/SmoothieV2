@@ -9,9 +9,7 @@ class OutputStream;
 class Conveyor : public Module
 {
 public:
-    static Conveyor *getInstance() { return instance; }
-
-    Conveyor();
+    static Conveyor *getInstance() { if(instance==nullptr) instance= new Conveyor; return instance; }
     // delete copy and move constructors and assign operators
     Conveyor(Conveyor const&) = delete;             // Copy construct
     Conveyor(Conveyor&&) = delete;                  // Move construct
@@ -43,6 +41,7 @@ public:
     void dump_queue();
 
 private:
+    Conveyor();
     static Conveyor *instance;
 
     uint32_t queue_delay_time_ms{100};

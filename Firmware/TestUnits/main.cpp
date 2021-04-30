@@ -538,7 +538,7 @@ int main()   //int argc, char *argv[])
     print_clocks();
 
     // we need to setup and start the slow ticker for some of the tests
-    static SlowTicker *slowticker= new SlowTicker;
+    static SlowTicker *slowticker= SlowTicker::getInstance();
     if(!slowticker->start()) {
         printf("WARNING: SlowTicker did not start\n");
     }

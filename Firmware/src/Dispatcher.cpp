@@ -17,11 +17,6 @@ using namespace std;
 
 Dispatcher *Dispatcher::instance= nullptr;
 
-Dispatcher::Dispatcher()
-{
-    if(instance == nullptr) instance= this;
-}
-
 std::set<std::string> Dispatcher::get_commands() const
 {
 	std::set<std::string> s;

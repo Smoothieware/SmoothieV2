@@ -10,9 +10,14 @@
 class SlowTicker
 {
     public:
-        static SlowTicker *getInstance() { return instance; }
-        SlowTicker();
-        virtual ~SlowTicker();
+        static SlowTicker *getInstance();
+        static void deleteInstance();
+
+        // delete copy and move constructors and assign operators
+        SlowTicker(SlowTicker const&) = delete;             // Copy construct
+        SlowTicker(SlowTicker&&) = delete;                  // Move construct
+        SlowTicker& operator=(SlowTicker const&) = delete;  // Copy assign
+        SlowTicker& operator=(SlowTicker &&) = delete;      // Move assign
 
         bool start();
         bool stop();
@@ -24,6 +29,8 @@ class SlowTicker
 
     private:
         static SlowTicker *instance;
+        SlowTicker();
+        virtual ~SlowTicker();
 
         // set frequency of timer in Hz
         bool set_frequency( int frequency );
@@ -33,5 +40,5 @@ class SlowTicker
         uint32_t max_frequency{0};
         uint32_t interval{0}; // period in ms between calls
         TimerHandle_t timer_handle{0};
-        bool started{false};
+        static bool started;
 };

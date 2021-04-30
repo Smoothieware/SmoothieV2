@@ -31,7 +31,6 @@ Conveyor *Conveyor::instance= nullptr;
 
 Conveyor::Conveyor() : Module("conveyor")
 {
-    if(instance == nullptr) instance= this;
     running = false;
     allow_fetch = false;
     flush= false;

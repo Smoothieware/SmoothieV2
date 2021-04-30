@@ -18,8 +18,9 @@ class Block;
 class StepTicker
 {
 public:
-    StepTicker();
-    ~StepTicker();
+    static StepTicker *getInstance();
+    static void deleteInstance();
+
     // delete copy and move constructors and assign operators
     StepTicker(StepTicker const&) = delete;             // Copy construct
     StepTicker(StepTicker&&) = delete;                  // Move construct
@@ -38,10 +39,11 @@ public:
     // whatever setup the block should register this to know when it is done
     std::function<void()> finished_fnc{nullptr};
 
-    static StepTicker *getInstance() { return instance; }
 
 private:
     static StepTicker *instance;
+    StepTicker();
+    ~StepTicker();
 
     void unstep_tick();
     void step_tick (void);
@@ -67,6 +69,6 @@ private:
     uint8_t num_motors{0};
 
     volatile bool running{false};
-    bool started{false};
+    static bool started;
     bool continuing{false};
 };

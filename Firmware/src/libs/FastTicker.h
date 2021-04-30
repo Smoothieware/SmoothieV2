@@ -8,9 +8,14 @@
 class FastTicker
 {
     public:
-        static FastTicker *getInstance() { return instance; }
-        FastTicker();
-        virtual ~FastTicker();
+        static FastTicker *getInstance();
+        static void deleteInstance();
+
+        // delete copy and move constructors and assign operators
+        FastTicker(FastTicker const&) = delete;             // Copy construct
+        FastTicker(FastTicker&&) = delete;                  // Move construct
+        FastTicker& operator=(FastTicker const&) = delete;  // Copy assign
+        FastTicker& operator=(FastTicker &&) = delete;      // Move assign
 
         bool start();
         bool stop();
@@ -25,6 +30,8 @@ class FastTicker
 
     private:
         static FastTicker *instance;
+        FastTicker();
+        virtual ~FastTicker();
 
         // set frequency of timer in Hz
         bool set_frequency( int frequency );
@@ -33,5 +40,5 @@ class FastTicker
         std::vector<callback_t> callbacks;
         uint32_t max_frequency{0};
         uint32_t interval{0}; // period in us between calls
-        bool started{false};
+        static bool started;
 };

@@ -22,7 +22,9 @@ class Robot : public Module
 {
 public:
     using wcs_t = std::tuple<float, float, float>;
-    Robot();
+
+    static Robot *getInstance() { if(instance == nullptr) instance= new Robot; return instance; }
+
     // delete copy and move constructors and assign operators
     Robot(Robot const&) = delete;             // Copy construct
     Robot(Robot&&) = delete;                  // Move construct
@@ -31,7 +33,6 @@ public:
 
     bool configure(ConfigReader&);
 
-    static Robot *getInstance() { return instance; }
     void on_halt(bool flg);
 
     void reset_axis_position(float position, int axis);
@@ -102,6 +103,7 @@ public:
 
 private:
     static Robot *instance;
+    Robot();
 
     enum MOTION_MODE_T {
         NONE,

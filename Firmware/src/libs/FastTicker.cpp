@@ -13,23 +13,38 @@
 
 
 FastTicker *FastTicker::instance;
+bool FastTicker::started= false;
 
 // This module uses a Timer to periodically call registered callbacks
 // Modules register with a function ( callback ) and a frequency, and we then call that function at the given frequency.
 // We use TMR1 for this
 
-FastTicker::FastTicker()
+FastTicker *FastTicker::getInstance()
 {
-    instance= this;
+    if(instance == nullptr) {
+        instance= new FastTicker;
+    }
+
+    return instance;
 }
+
+void FastTicker::deleteInstance()
+{
+    if(started) {
+        instance->stop();
+    }
+
+    delete instance;
+    instance= nullptr;
+}
+
+FastTicker::FastTicker()
+{}
 
 FastTicker::~FastTicker()
-{
-    instance= nullptr;
-    fasttick_stop();
-}
+{}
 
-#define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
+#define _ramfunc_
 
 _ramfunc_ static void timer_handler()
 {

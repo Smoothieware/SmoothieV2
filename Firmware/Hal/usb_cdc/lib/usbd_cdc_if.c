@@ -150,7 +150,7 @@ static int8_t CDC_IF_Receive(uint8_t *Buf, uint32_t *Len)
         // FIXME: avoid copying 1 byte at a time, use a better ringbuffer or just double buffer
         RingBufferPut(rx_rb, Buf[i]);
     }
-    // FIXME: this is really innefficient of gettign 1 byte at a time, need to double buffer so we can interleave
+    // FIXME: this is really innefficient of getting 1 byte at a time, need to double buffer so we can interleave
     vcom_notify_recvd();
     return (USBD_OK);
 }

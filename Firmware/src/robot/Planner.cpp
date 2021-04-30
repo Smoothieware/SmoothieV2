@@ -27,7 +27,6 @@ Planner *Planner::instance= nullptr;
 
 Planner::Planner()
 {
-    if(instance == nullptr) instance= this;
     memset(this->previous_unit_vec, 0, sizeof this->previous_unit_vec);
     fp_scale = (double)STEPTICKER_FPSCALE / pow((double)STEP_TICKER_FREQUENCY, 2.0); // we scale up by fixed point offset first to avoid tiny values
 }

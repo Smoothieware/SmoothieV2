@@ -23,7 +23,8 @@ bool Adc::running  {false};
 
 // make sure it is aligned on 32byte boundary for cache coherency, need to allocate potentially max size
 // num_samples (8) samples per num_channels (8) channels
-ALIGN_32BYTES(static __IO uint16_t aADCxConvertedData[Adc::num_samples * Adc::num_channels]);
+// We add 32 bytes just to make sure nothign else could share this area as we invalidate the cache after DMA
+ALIGN_32BYTES(static __IO uint16_t aADCxConvertedData[(Adc::num_samples * Adc::num_channels)+32]);
 
 // this will be the actual size of the data based on the number of ADC channels actually in use
 static size_t adc_data_size;

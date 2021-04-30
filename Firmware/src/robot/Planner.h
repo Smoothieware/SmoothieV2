@@ -15,8 +15,7 @@ class Robot;
 class Planner
 {
 public:
-    static Planner *getInstance() { return instance; }
-    Planner();
+    static Planner *getInstance() { if(instance==nullptr) instance= new Planner; return instance; }
     // delete copy and move constructors and assign operators
     Planner(Planner const&) = delete;             // Copy construct
     Planner(Planner&&) = delete;                  // Move construct
@@ -28,6 +27,7 @@ public:
 
 private:
     static Planner *instance;
+    Planner();
     float max_exit_speed(Block *);
     float max_allowable_speed( float acceleration, float target_velocity, float distance);
 
