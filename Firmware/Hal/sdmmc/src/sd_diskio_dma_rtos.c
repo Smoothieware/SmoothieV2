@@ -172,6 +172,14 @@ DRESULT SD_read(BYTE lun, BYTE *buff, DWORD sector, UINT count)
         }
     }
 
+#if (ENABLE_SD_DMA_CACHE_MAINTENANCE == 1)
+    // make sure cache is flushed and invalidated so when DMA updates the RAM
+    // from reading the peripheral the CPU then reads the new data
+    SCB_CleanInvalidateDCache_by_Addr((uint32_t *)((uint32_t)aligned_buffer & ~0x1f),
+                                      ((uint32_t)((uint8_t *)aligned_buffer + (count * FF_MAX_SS) + 0x1f) & ~0x1f) -
+                                      ((uint32_t)aligned_buffer & ~0x1f));
+#endif
+
     if(BSP_SD_ReadBlocks_DMA(0, aligned_buffer,
                              (uint32_t) (sector),
                              count) == BSP_ERROR_NONE) {
@@ -184,10 +192,7 @@ DRESULT SD_read(BYTE lun, BYTE *buff, DWORD sector, UINT count)
                     if (BSP_SD_GetCardState(0) == SD_TRANSFER_OK) {
                         res = RES_OK;
 #if (ENABLE_SD_DMA_CACHE_MAINTENANCE == 1)
-                        /*
-                           the SCB_InvalidateDCache_by_Addr() requires a 32-Byte aligned address,
-                           adjust the address and the D-Cache size to invalidate accordingly.
-                         */
+                        // invalidate again just in case some other thread touched the cache
                         alignedAddr = (uint32_t)aligned_buffer & ~0x1F;
                         SCB_InvalidateDCache_by_Addr((uint32_t*)alignedAddr, count * BLOCKSIZE + ((uint32_t)aligned_buffer - alignedAddr));
 #endif
@@ -235,10 +240,13 @@ DRESULT SD_write(BYTE lun, const BYTE *buff, DWORD sector, UINT count)
         memcpy(aligned_buffer, buff, cbWrite);
     }
 
-    /*
-    * since the MPU is configured as write-through, see main.c file, there isn't any need
-    * to maintain the cache as the cache content is always coherent with the memory
-    */
+#if (ENABLE_SD_DMA_CACHE_MAINTENANCE == 1)
+    // make sure cache is flushed to RAM so the DMA can read the correct data
+    SCB_CleanDCache_by_Addr((uint32_t *)((uint32_t)aligned_buffer & ~0x1f),
+                            ((uint32_t)((uint8_t *)aligned_buffer + (count * FF_MAX_SS) + 0x1f) & ~0x1f) -
+                            ((uint32_t)aligned_buffer & ~0x1f));
+#endif
+
 
     if(BSP_SD_WriteBlocks_DMA(0, aligned_buffer,
                               (uint32_t) (sector),

@@ -912,12 +912,14 @@ static void CPU_CACHE_Enable(void)
     SCB_EnableDCache();
 }
 
+#if 0
 /**
   * @brief  Configure the MPU attributes as Write Through for Internal SRAM1.
   * @note   The Base Address 0x24000000 is the SRAM1 accessible by the SDIO internal DMA.
   *         The Configured Region Size is 512KB because same as SRAM1 size.
   * @param  None
   * @retval None
+  * NOTE the ERRATA for thi schip says write through can corrupt data so we cannot use it
   */
 #define CACHE_WRITE_THROUGH
 static void MPU_Config(void)
@@ -953,13 +955,13 @@ static void MPU_Config(void)
 
     /* Enable the MPU */
     HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
-
 }
+#endif
 
 // called from main, but it is HAL so we put it here
 void main_system_setup()
 {
-    MPU_Config();
+    // MPU_Config();
     // Enable the CPU Cache
     CPU_CACHE_Enable();
     // stm32h7xx HAL library initialization

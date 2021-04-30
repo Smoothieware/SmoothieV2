@@ -152,7 +152,7 @@ void runMemoryTest(void *addr, uint32_t n)
     register uint32_t r7;
     register uint32_t r8;
     SCB_CleanInvalidateDCache();
-
+    benchmark_timer_reset();
     systime_t st = benchmark_timer_start();
     while(p < (uint32_t *)((uint32_t)addr+n)) {
         asm volatile ("ldm.w %[ptr]!,{%[r1],%[r2],%[r3],%[r4],%[r5],%[r6],%[r7],%[r8]}" :
@@ -180,6 +180,7 @@ REGISTER_TEST(MemoryTest, time_memory_cached)
     __enable_irq();
 }
 
+#if 0
 REGISTER_TEST(MemoryTest, time_memory_not_cached)
 {
     __disable_irq();
@@ -198,3 +199,14 @@ REGISTER_TEST(MemoryTest, time_memory_not_cached)
     SCB_EnableDCache();
     __enable_irq();
 }
+#endif
+
+/*
+cache handling macros from micropython
+#define MP_HAL_CLEANINVALIDATE_DCACHE(addr, size) \
+    (SCB_CleanInvalidateDCache_by_Addr((uint32_t *)((uint32_t)addr & ~0x1f), \
+    ((uint32_t)((uint8_t *)addr + size + 0x1f) & ~0x1f) - ((uint32_t)addr & ~0x1f)))
+#define MP_HAL_CLEAN_DCACHE(addr, size) \
+    (SCB_CleanDCache_by_Addr((uint32_t *)((uint32_t)addr & ~0x1f), \
+    ((uint32_t)((uint8_t *)addr + size + 0x1f) & ~0x1f) - ((uint32_t)addr & ~0x1f)))
+*/
