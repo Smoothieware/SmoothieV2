@@ -2,11 +2,14 @@
 
 #include <cstdio>
 
+#include "FreeRTOS.h"
+#include "timers.h"
+
+
 // timers are specified in milliseconds
 #define BASE_FREQUENCY 1000
 
 SlowTicker *SlowTicker::instance= nullptr;
-bool SlowTicker::started= false;
 
 // This module uses a Timer to periodically call registered callbacks
 // Modules register with a function ( callback ) and a frequency, and we then call that function at the given frequency.
@@ -26,43 +29,39 @@ SlowTicker *SlowTicker::getInstance()
 
 void SlowTicker::deleteInstance()
 {
-    if(started) {
+    if(instance != nullptr && instance->started) {
         instance->stop();
     }
     delete instance;
     instance= nullptr;
 }
 
-
-SlowTicker::SlowTicker()
-{}
-
-SlowTicker::~SlowTicker()
-{}
-
 static void timer_handler(TimerHandle_t xTimer)
 {
     SlowTicker::getInstance()->tick();
 }
 
+SlowTicker::SlowTicker()
+{
+    max_frequency= 1; // 1 Hz
+    interval = BASE_FREQUENCY/max_frequency; // default to 1HZ, 1000ms period
+    timer_handle= xTimerCreate("SlowTickerTimer", pdMS_TO_TICKS(interval), pdTRUE, nullptr, timer_handler);
+}
+
+SlowTicker::~SlowTicker()
+{
+    if(timer_handle != nullptr) {
+        xTimerDelete((TimerHandle_t)timer_handle, 1000);
+    }
+    timer_handle= nullptr;
+}
+
 bool SlowTicker::start()
 {
-    if(!started) {
-
-        if(timer_handle != nullptr) {
-            printf("ERROR: Timer already created\n");
-        }
-
-        if(interval == 0) {
-            max_frequency= 1; // 1 Hz
-            interval = BASE_FREQUENCY/max_frequency; // default to 1HZ, 1000ms period
-        }
-
-        timer_handle= xTimerCreate("SlowTickerTimer", pdMS_TO_TICKS(interval), pdTRUE, nullptr, timer_handler);
-    }
+    if(started) return true;
 
     // Start the timer
-    if( xTimerStart( timer_handle, 1000 ) != pdPASS ) {
+    if( xTimerStart( (TimerHandle_t)timer_handle, 1000 ) != pdPASS ) {
         // The timer could not be set into the Active state
         printf("ERROR: Failed to start the timer\n");
         return false;
@@ -75,14 +74,10 @@ bool SlowTicker::stop()
 {
     if(!started) return true;
 
-    if( xTimerStop(timer_handle, 1000) != pdPASS) {
+    if( xTimerStop((TimerHandle_t)timer_handle, 1000) != pdPASS) {
         printf("ERROR: Failed to stop the timer\n");
         return false;
     }
-    if(timer_handle != nullptr) {
-        xTimerDelete(timer_handle, 1000);
-    }
-    timer_handle= nullptr;
     started= false;
     return true;
 }
@@ -101,9 +96,10 @@ int SlowTicker::attach(uint32_t frequency, std::function<void(void)> cb)
         max_frequency = frequency;
     }
 
-    if(started) stop();
+    bool was_started= started;
+    if(was_started) stop();
     callbacks.push_back(std::make_tuple(countdown, period, cb));
-    if(started) start();
+    if(was_started) start();
 
     // return the index it is in
     return callbacks.size()-1;
@@ -125,7 +121,7 @@ bool SlowTicker::set_frequency( int frequency )
     if(started) {
         stop(); // must stop timer first
         // change frequency of timer callback
-        if( xTimerChangePeriod( timer_handle, pdMS_TO_TICKS(interval), 1000 ) != pdPASS ) {
+        if( xTimerChangePeriod( (TimerHandle_t)timer_handle, pdMS_TO_TICKS(interval), 1000 ) != pdPASS ) {
             printf("ERROR: Failed to change timer period\n");
             return false;
         }

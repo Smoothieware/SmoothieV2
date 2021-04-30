@@ -4,6 +4,9 @@
 #include "SlowTicker.h"
 #include "benchmark_timer.h"
 
+#include "FreeRTOS.h"
+#include "timers.h"
+
 static volatile int timer_cnt20= 0;
 static volatile int timer_cnt100= 0;
 
