@@ -387,6 +387,7 @@ static void printTaskList(OutputStream& os)
     //xTaskResumeAll();
 }
 
+#include "MemoryPool.h"
 bool CommandShell::mem_cmd(std::string& params, OutputStream& os)
 {
     HELP("show memory allocation and threads");
@@ -401,7 +402,10 @@ bool CommandShell::mem_cmd(std::string& params, OutputStream& os)
     os.printf("malloc:      total       used       free    largest\n");
     os.printf("Mem:   %11d%11d%11d%11d\n", mem.arena, mem.uordblks, mem.fordblks, mem.ordblks);
 
-    os.printf("Total available RAM: %lu\n", xPortGetFreeHeapSize());
+    os.printf("DTCMRAM: %lu used, %lu bytes free\n", _DTCMRAM->get_size() - _DTCMRAM->available(), _DTCMRAM->available());
+    if(!params.empty()) {
+        os.printf("-- DTCMRAM --\n"); _DTCMRAM->debug(os);
+    }
 
     os.set_no_response();
     return true;

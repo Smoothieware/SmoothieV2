@@ -1,6 +1,21 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "MemoryPool.h"
+
+MemoryPool *_DTCMRAM;
+// Called very early from ResetISR()
+extern "C" void setup_memory_pool()
+{
+    // MemoryPool stuff - needs to be initialised before __libc_init_array
+    // so static ctors can use them
+    extern uint8_t dtcm_text_end;
+    extern uint8_t __top_DTCMRAM;
+
+    // alocate remaining area to memory pool
+    _DTCMRAM= new MemoryPool(&dtcm_text_end, &__top_DTCMRAM - &dtcm_text_end);
+}
+
 void *operator new(size_t size)
 {
     return malloc(size);
@@ -12,11 +27,6 @@ void *operator new[](size_t size)
 }
 
 __attribute__ ((weak)) void operator delete(void *p)
-{
-    free(p);
-}
-
-__attribute__ ((weak)) void operator delete[](void *p)
 {
     free(p);
 }

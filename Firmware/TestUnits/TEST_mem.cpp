@@ -17,35 +17,36 @@ REGISTER_TEST(MemoryTest, stats)
     struct mallinfo mem= mallinfo();
     printf("             total       used       free    largest\n");
     printf("Mem:   %11d%11d%11d%11d\n", mem.arena, mem.uordblks, mem.fordblks, mem.usmblks);
+
+    // make sure new and delete work
+    uint8_t *pt= new uint8_t[1024];
+    TEST_ASSERT_NOT_NULL(pt);
+    struct mallinfo mem2= mallinfo();
+    printf("Malloc'ed data @ %p\n", pt);
+    printf("Mem:   %11d%11d%11d%11d\n", mem2.arena, mem2.uordblks, mem2.fordblks, mem2.usmblks);
+    TEST_ASSERT_TRUE(mem2.uordblks > mem.uordblks);
+    delete[] pt;
+    struct mallinfo mem3= mallinfo();
+    printf("Mem:   %11d%11d%11d%11d\n", mem3.arena, mem3.uordblks, mem3.fordblks, mem3.usmblks);
+    TEST_ASSERT_TRUE(mem3.uordblks == mem.uordblks);
 }
 
-#if 0
-char test_ram2_bss[128] __attribute__ ((section (".bss.$RAM2")));
-// RAM3 is used by USB CDC so it is not fully available
-//char test_ram3_bss[128] __attribute__ ((section (".bss.$RAM3")));
-__attribute__ ((section (".data.$RAM4"))) char test_ram4_data[8]= {1,2,3,4,5,6,7,8};
-__attribute__ ((section (".data.$RAM5"))) char test_ram5_data[4]= {9,8,7,6};
+char test_ram2_bss[128] __attribute__ ((section (".dtcm_text")));
+__attribute__ ((section (".dtcm_text"))) char test_ram4_data[8]= {1,2,3,4,5,6,7,8};
 
 REGISTER_TEST(MemoryTest, other_rams)
 {
-    TEST_ASSERT_EQUAL_INT(0x10080000, (unsigned int)&test_ram2_bss);
-    //TEST_ASSERT_EQUAL_INT(0x20000000, (unsigned int)&test_ram3_bss);
-    TEST_ASSERT_EQUAL_INT(0x20008000, (unsigned int)&test_ram4_data);
-    TEST_ASSERT_EQUAL_INT(0x2000C000, (unsigned int)&test_ram5_data);
+    TEST_ASSERT_EQUAL_PTR(0x20000000, (unsigned int)&test_ram2_bss);
+    TEST_ASSERT_EQUAL_PTR(0x20000080, (unsigned int)&test_ram4_data);
 
     // check bss was cleared
     for (int i = 0; i < 128; ++i) {
         TEST_ASSERT_EQUAL_INT(0, test_ram2_bss[i]);
-        //TEST_ASSERT_EQUAL_INT(0, test_ram3_bss[i]);
     }
 
     // check data areas were copied
     for (int i = 0; i < 8; ++i) {
         TEST_ASSERT_EQUAL_INT(i+1, test_ram4_data[i]);
-    }
-
-    for (int i = 0; i < 4; ++i) {
-        TEST_ASSERT_EQUAL_INT(9-i, test_ram5_data[i]);
     }
 }
 
@@ -59,34 +60,34 @@ public:
 };
 
 #include "MemoryPool.h"
-extern uint8_t __end_bss_RAM2;
-extern uint8_t __top_RAM2;
-
+const size_t test_heap_size= 1024;
+static uint8_t _test_heap[test_heap_size];
 REGISTER_TEST(MemoryTest, memory_pool)
 {
-    MemoryPool RAM2= MemoryPool(&__end_bss_RAM2, &__top_RAM2 - &__end_bss_RAM2);
+    MemoryPool RAM2= MemoryPool(_test_heap, test_heap_size);
     MemoryPool *_RAM2= &RAM2;
 
     OutputStream os(&std::cout);
-    uint32_t ef= &__top_RAM2 - &__end_bss_RAM2;
+    uint32_t ef= test_heap_size;
     _RAM2->debug(os);
     // check amount of memory available
     TEST_ASSERT_EQUAL_INT(ef, _RAM2->available());
-    TEST_ASSERT_EQUAL_INT(0x12000-128, ef);
+    TEST_ASSERT_EQUAL_INT(test_heap_size, ef);
     uint8_t *r2= (uint8_t *)_RAM2->alloc(128);
     _RAM2->debug(os);
     TEST_ASSERT_NOT_NULL(r2);
-    // check it lost expected amount + 4 byte overhead
-    TEST_ASSERT_EQUAL_INT(0x10080000+128+4, (unsigned int)r2);
+    // check it lost expected amount + 4 byte overhead and is where we expect it to be
+    TEST_ASSERT_TRUE(r2 >= _test_heap && r2 < &_test_heap[test_heap_size-1]);
     TEST_ASSERT_TRUE(_RAM2->has(r2));
     TEST_ASSERT_EQUAL_INT(ef-128-4, _RAM2->available());
     _RAM2->dealloc(r2);
+
     // check it deallocated it
     TEST_ASSERT_EQUAL_INT(ef, _RAM2->available());
 
     // test placement new
     DummyClass *r3= new(*_RAM2)DummyClass();
-    TEST_ASSERT_EQUAL_INT(0x10080084, (unsigned int)r3->getInstance());
+    TEST_ASSERT_TRUE((uint8_t*)r3 >= _test_heap && (uint8_t*)r3 < &_test_heap[test_heap_size-1]);
     TEST_ASSERT_EQUAL_INT(ef-sizeof(DummyClass)-4, _RAM2->available());
     TEST_ASSERT_EQUAL_INT(1234, r3->t);
     delete r3;
@@ -94,8 +95,20 @@ REGISTER_TEST(MemoryTest, memory_pool)
 
     _RAM2->debug(os);
 
+    // test placement new[]
+    DummyClass *r34= new(*_RAM2)DummyClass[4];
+    TEST_ASSERT_TRUE((uint8_t*)r34 >= _test_heap && (uint8_t*)r34 < &_test_heap[test_heap_size-1]);
+    TEST_ASSERT_EQUAL_INT(ef-(sizeof(DummyClass)+4)*4+4, _RAM2->available());
+    for (int i = 0; i < 4; ++i) {
+        TEST_ASSERT_EQUAL_INT(1234, r34[i].t);
+    }
+    delete[] r34;
+    TEST_ASSERT_EQUAL_INT(ef, _RAM2->available());
+
+    _RAM2->debug(os);
+
     // test we get correct return if no memory left
-    uint8_t *r4= (uint8_t *)_RAM2->alloc(100000);
+    uint8_t *r4= (uint8_t *)_RAM2->alloc(test_heap_size*2);
     TEST_ASSERT_NULL(r4);
     TEST_ASSERT_EQUAL_INT(ef, _RAM2->available());
 
@@ -112,7 +125,6 @@ REGISTER_TEST(MemoryTest, memory_pool)
     TEST_ASSERT_EQUAL_INT(ef, _RAM2->available());
     _RAM2->debug(os);
 }
-#endif
 
 #define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
 _ramfunc_ static int testramfunc() { return 123; }
@@ -124,13 +136,13 @@ REGISTER_TEST(MemoryTest, ramfunc)
     TEST_ASSERT_EQUAL_INT(123, testramfunc());
 }
 
-#define _fast_data_ __attribute__ ((section(".itcm_text")))
+#define _fast_data_ __attribute__ ((section(".dtcm_text")))
 static _fast_data_ char test_array[16]= {1,2};
 
 REGISTER_TEST(MemoryTest, fastdata)
 {
     printf("fast data is at %p\n", test_array);
-    TEST_ASSERT_TRUE((unsigned int)test_array >= 0x00000298 && (unsigned int)test_array < 0x0010000);
+    TEST_ASSERT_TRUE((unsigned int)test_array >= 0x20000000 && (unsigned int)test_array < 0x20020000);
     TEST_ASSERT_EQUAL_INT(1, test_array[0]);
     TEST_ASSERT_EQUAL_INT(2, test_array[1]);
     TEST_ASSERT_EQUAL_INT(0, test_array[2]);
@@ -174,6 +186,9 @@ REGISTER_TEST(MemoryTest, time_memory_cached)
 
     printf("Timing memory at 0x00000000 (ITCMRAM)\n");
     runMemoryTest((void*)0x00000000, 64000);
+
+    printf("Timing memory at 0x20000000 (DTCMRAM)\n");
+    runMemoryTest((void*)0x20000000, 64000);
 
     printf("Timing memory at 0x24000000 (RAM_D1)\n ");
     runMemoryTest((void*)0x24000000, 64000);

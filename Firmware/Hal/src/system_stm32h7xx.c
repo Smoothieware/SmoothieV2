@@ -251,6 +251,11 @@ void SystemInit (void)
     extern const unsigned char itcm_data;
     memcpy(&itcm_text_start, &itcm_data, (uint32_t) (&itcm_text_end - &itcm_text_start));
 
+    /* Load data into DTCM RAM */
+    extern unsigned char dtcm_text_start;
+    extern const unsigned char dtcm_text_end;
+    extern const unsigned char dtcm_data;
+    memcpy(&dtcm_text_start, &dtcm_data, (uint32_t) (&dtcm_text_end - &dtcm_text_start));
 }
 
 /**

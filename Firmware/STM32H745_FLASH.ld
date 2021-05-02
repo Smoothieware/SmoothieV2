@@ -37,9 +37,6 @@ ENTRY(Reset_Handler)
 
 /* Highest address of the user mode stack */
 _estack = 0x24080000;    /* end of RAM */
-/* Generate a link error if heap and stack don't fit into RAM */
-_Min_Heap_Size = 0x4000;      /* required amount of heap  */
-_Min_Stack_Size = 0x4000; /* required amount of stack */
 
 /* Specify the memory areas */
 MEMORY
@@ -167,9 +164,9 @@ SECTIONS
     . = ALIGN(8);
     PROVIDE ( end = . );
     PROVIDE ( _end = . );
-    . = . + _Min_Heap_Size;
+    /*. = . + _Min_Heap_Size;
     . = . + _Min_Stack_Size;
-    . = ALIGN(8);
+    . = ALIGN(8);*/
   } >RAM_D1
 
   PROVIDE(__HeapBase = _end);
@@ -196,6 +193,20 @@ SECTIONS
     itcm_text_end = .;
   } >ITCMRAM AT> FLASH
 
+
+  /* Copy specific fast data to DTCM RAM */
+  dtcm_data = LOADADDR(.dtcm_text);
+  .dtcm_text :
+  {
+    . = ALIGN(4);
+    dtcm_text_start = .;
+    *(.dtcm_text)
+    *(.dtcm_text*)
+    . = ALIGN(4);
+    dtcm_text_end = .;
+  } >DTCMRAM AT> FLASH
+
+  __top_DTCMRAM = 0x20000000 + 0x20000 ; /* 128K bytes */
 
   /* Remove information from the standard libraries */
   /DISCARD/ :

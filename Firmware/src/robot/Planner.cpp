@@ -9,6 +9,7 @@
 #include "Conveyor.h"
 #include "main.h"
 #include "Module.h"
+#include "MemoryPool.h"
 
 #include <math.h>
 #include <algorithm>
@@ -48,10 +49,12 @@ bool Planner::configure(ConfigReader& cr)
     return true;
 }
 
+
 bool Planner::initialize(uint8_t n)
 {
     Block::init(n); // set the number of motors which determines how big the tick info vector is
-    queue= new PlannerQueue(planner_queue_size);
+    // we place this in DTC RAM for speed
+    queue= new(*_DTCMRAM) PlannerQueue(planner_queue_size);
     return queue != nullptr;
 }
 

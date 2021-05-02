@@ -7,7 +7,7 @@
 
 // TODO move ramfunc define to a utils.h
 #define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
-#define _fast_data_ __attribute__ ((section(".itcm_text")))
+#define _fast_data_ __attribute__ ((section(".dtcm_text")))
 
 _fast_data_ static void (*tick_handler)();
 _fast_data_ static void (*untick_handler)();

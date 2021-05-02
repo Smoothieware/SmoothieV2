@@ -1,6 +1,7 @@
 #include "Block.h"
 #include "AxisDefns.h"
 #include "StepTicker.h"
+#include "MemoryPool.h"
 
 uint8_t Block::n_actuators = 0;
 
@@ -48,7 +49,7 @@ void Block::clear()
     total_move_ticks = 0;
     if(tick_info == nullptr) {
         // we create this once for this block
-        tick_info = new tickinfo_t[n_actuators]; //(tickinfo_t *)malloc(sizeof(tickinfo_t) * n_actuators);
+        tick_info = new(*_DTCMRAM) tickinfo_t[n_actuators]; //(tickinfo_t *)malloc(sizeof(tickinfo_t) * n_actuators);
         if(tick_info == nullptr) {
             // if we ran out of memory just stop here
             abort();

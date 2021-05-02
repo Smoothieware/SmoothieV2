@@ -7,6 +7,7 @@
 #pragma once
 
 #include "Block.h"
+#include "MemoryPool.h"
 
 #include <stddef.h>
 
@@ -16,7 +17,7 @@ public:
     PlannerQueue(size_t length)
     {
         m_size = length;
-        m_buffer = new Block[length];
+        m_buffer = new(*_DTCMRAM) Block[length];
         m_rIndex = 0;
         m_wIndex = 0;
     }
