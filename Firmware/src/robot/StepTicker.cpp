@@ -12,6 +12,8 @@
 
 #include <math.h>
 
+#include "MemoryPool.h"
+
 #ifdef STEPTICKER_DEBUG_PIN
 // debug pins, only used if defined in src/makefile
 #include "Pin.h"
@@ -31,7 +33,7 @@ bool StepTicker::started= false;
 StepTicker *StepTicker::getInstance()
 {
     if(instance == nullptr) {
-        instance= new StepTicker;
+        instance= new(*_DTCMRAM) StepTicker;
     }
 
     return instance;
@@ -46,7 +48,9 @@ void StepTicker::deleteInstance()
 }
 
 StepTicker::StepTicker()
-{}
+{
+    conveyor= Conveyor::getInstance();
+}
 
 StepTicker::~StepTicker()
 {}
@@ -154,7 +158,7 @@ _ramfunc_  void StepTicker::step_tick (void)
     // if nothing has been setup we ignore the ticks
     if(!running) {
         // check if anything new available
-        if(Conveyor::getInstance()->get_next_block(&current_block)) { // returns false if no new block is available
+        if(conveyor->get_next_block(&current_block)) { // returns false if no new block is available
             running = start_next_block(); // returns true if there is at least one motor with steps to issue
             if(!running) return;
         } else {
@@ -185,7 +189,7 @@ _ramfunc_  void StepTicker::step_tick (void)
                     if(current_tick != current_block->decelerate_after) {
                         // We are plateauing
                         current_block->tick_info[m].steps_per_tick = current_block->tick_info[m].plateau_rate;
-                        if(Conveyor::getInstance()->get_continuous_mode()) {
+                        if(conveyor->get_continuous_mode()) {
                             // if we are in continuous mode then we now continue until told to stop
                             continuing= true;
                             ++current_tick;
@@ -210,7 +214,7 @@ _ramfunc_  void StepTicker::step_tick (void)
         if(current_block->tick_info[m].counter >= STEPTICKER_FPSCALE) { // >= 1.0 step time
             current_block->tick_info[m].counter -= STEPTICKER_FPSCALE; // -= 1.0;
             if(continuing){
-                if(!Conveyor::getInstance()->get_continuous_mode()) {
+                if(!conveyor->get_continuous_mode()) {
                     // we were in continuous mode and at the continuing point so clear it
                     continuing= false;
                 }
@@ -257,9 +261,9 @@ _ramfunc_  void StepTicker::step_tick (void)
 
         // get next block
         // do it here so there is no delay in ticks
-        Conveyor::getInstance()->block_finished();
+        conveyor->block_finished();
 
-        if(Conveyor::getInstance()->get_next_block(&current_block)) { // returns false if no new block is available
+        if(conveyor->get_next_block(&current_block)) { // returns false if no new block is available
             running = start_next_block(); // returns true if there is at least one motor with steps to issue
 
         } else {
@@ -301,7 +305,7 @@ _ramfunc_ bool StepTicker::start_next_block()
     } else {
         // this is an edge condition that should never happen, but we need to discard this block if it ever does
         // basically it is a block that has zero steps for all motors
-        Conveyor::getInstance()->block_finished();
+        conveyor->block_finished();
     }
 
     return false;

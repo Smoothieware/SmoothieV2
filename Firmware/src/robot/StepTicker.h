@@ -9,6 +9,7 @@
 
 class StepperMotor;
 class Block;
+class Conveyor;
 
 // handle 2.62 Fixed point
 #define STEP_TICKER_FREQUENCY (StepTicker::getInstance()->get_frequency())
@@ -54,12 +55,13 @@ private:
     static void step_timer_handler(void);
     static void unstep_timer_handler(void);
 
-    std::array<StepperMotor*, k_max_actuators> motor;
+    StepperMotor* motor[k_max_actuators];
 
     uint32_t unstep{0}; // one bit set per motor to indicayte step pin needs to be unstepped
     uint32_t missed_unsteps{0};
 
     Block *current_block{nullptr};
+    Conveyor *conveyor;
 
     uint32_t frequency{100000}; // 100KHz
     uint32_t delay{1}; //microseconds

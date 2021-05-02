@@ -25,13 +25,13 @@ class StepperMotor
 
         void enable(bool state);
         bool is_enabled() const;
-        bool is_moving() const { return moving; };
-        void start_moving() { moving= true; }
-        void stop_moving() { moving= false; }
+        inline bool is_moving() const { return moving; };
+        inline void start_moving() { moving= true; }
+        inline void stop_moving() { moving= false; }
 
         void manual_step(bool dir);
 
-        bool which_direction() const { return direction; }
+        inline bool which_direction() const { return direction; }
 
         float get_steps_per_second()  const { return steps_per_second; }
         float get_steps_per_mm()  const { return steps_per_mm; }
