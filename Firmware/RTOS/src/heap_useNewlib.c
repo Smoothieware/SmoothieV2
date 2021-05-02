@@ -72,21 +72,21 @@
     static int totalBytesProvidedBySBRK = 0;
 #endif
 extern char __HeapBase;  // make sure to define these symbols in linker command file
-extern void _vStackTop(void);
+extern char __HeapTop;
 static int heapBytesRemaining = -1;
 //! sbrk/_sbrk version supporting reentrant newlib (depends upon above symbols defined by linker control file).
 //__attribute__((optimize(0)))
-char * sbrk(int incr) {
+void * sbrk(int incr) {
     static char *currentHeapEnd = &__HeapBase;
-    static char *stackBase= (char *)&_vStackTop - 4096; // (char *)__get_MSP(); // current stack
+    static char *heapTop= (char *)&__HeapTop;
 
     vTaskSuspendAll(); // Note: safe to use before FreeRTOS scheduler started
 
     if(heapBytesRemaining < 0) {
-        heapBytesRemaining = stackBase - currentHeapEnd;
+        heapBytesRemaining = heapTop - currentHeapEnd;
     }
     char *previousHeapEnd = currentHeapEnd;
-    if (currentHeapEnd + incr >= stackBase) {
+    if (currentHeapEnd + incr >= heapTop) {
         #if( configUSE_MALLOC_FAILED_HOOK == 1 )
         {
             extern void vApplicationMallocFailedHook( void );
@@ -110,10 +110,17 @@ char * sbrk(int incr) {
     xTaskResumeAll();
     return (char *) previousHeapEnd;
 }
-//! Synonym for sbrk.
+//! non-reentrant sbrk uses is actually reentrant by using current context
+// ... because the current _reent structure is pointed to by global _impure_ptr
+//char * sbrk(int incr) { return _sbrk_r(_impure_ptr, incr); }
+//! _sbrk is a synonym for sbrk.
 char * _sbrk(int incr) { return sbrk(incr); };
 
-void __malloc_lock(struct _reent *re)     {       vTaskSuspendAll(); };
+void __malloc_lock(struct _reent *re) {
+    BaseType_t insideAnISR = xPortIsInsideInterrupt();
+    configASSERT(insideAnISR == pdFALSE); // Make damn sure no more mallocs inside ISRs!!
+    vTaskSuspendAll();
+};
 void __malloc_unlock(struct _reent *re)   { (void)xTaskResumeAll();  };
 
 // newlib also requires implementing locks for the application's environment memory space,

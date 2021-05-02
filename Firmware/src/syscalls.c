@@ -14,6 +14,15 @@
 
 extern int fatfs_to_errno( FRESULT Result );
 
+#ifdef _REENT_SMALL
+const struct __sFILE_fake __sf_fake_stdin =
+    {_NULL, 0, 0, 0, 0, {_NULL, 0}, 0, _NULL};
+const struct __sFILE_fake __sf_fake_stdout =
+    {_NULL, 0, 0, 0, 0, {_NULL, 0}, 0, _NULL};
+const struct __sFILE_fake __sf_fake_stderr =
+    {_NULL, 0, 0, 0, 0, {_NULL, 0}, 0, _NULL};
+#endif
+
 #if 1
 /*
  * Map newlib calls to fflib

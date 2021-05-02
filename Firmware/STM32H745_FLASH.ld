@@ -35,8 +35,9 @@
 /* Entry Point */
 ENTRY(Reset_Handler)
 
-/* Highest address of the user mode stack */
-_estack = 0x24080000;    /* end of RAM */
+/* Highest address of the system stack */
+_estack = 0x20020000;    /* end of DTCMRAM */
+__top_DTCMRAM = _estack - 4096 ; /* guarantee at least 4k of stack */
 
 /* Specify the memory areas */
 MEMORY
@@ -169,8 +170,9 @@ SECTIONS
     . = ALIGN(8);*/
   } >RAM_D1
 
+  /* start of heap and end of heap */
   PROVIDE(__HeapBase = _end);
-  PROVIDE(_vStackTop = _estack);
+  PROVIDE(__HeapTop = 0x24080000);
 
   /* copy vector table here */
   .itcm_vectors :
@@ -205,8 +207,6 @@ SECTIONS
     . = ALIGN(4);
     dtcm_text_end = .;
   } >DTCMRAM AT> FLASH
-
-  __top_DTCMRAM = 0x20000000 + 0x20000 ; /* 128K bytes */
 
   /* Remove information from the standard libraries */
   /DISCARD/ :

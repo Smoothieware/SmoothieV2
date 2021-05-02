@@ -209,6 +209,7 @@ INCLUDE = (include_dirs).collect { |d| "-I#{d}" }.join(" ") # + " " + (sys_inclu
 
 defines = %w(-DUSE_HAL_DRIVER -DCORE_CM7)
 defines << "-DUSE_FULL_LL_DRIVER"
+#defines << "-D_REENT_SMALL"
 
 if DEBUG
   defines << "-DDEBUG"
