@@ -115,7 +115,21 @@ NONETWORK = ENV['nonetwork'].nil? ? 0 : ENV['nonetwork']
 #hal_src = FileList['Hal/**/*.{c,cpp,s}']
 hal_src = FileList['Hal/STM32H7xx_HAL_Driver/**/*.{c,cpp,s}', 'Hal/src/*.{c,cpp,s}']
 hal_src.exclude(/_template\.c/)
-#hal_src.exclude("Hal/src/i2c.cpp")
+hal_src.exclude("Hal/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_eth.c")
+
+# Network
+if NONETWORK == '1'
+  network_src = []
+else
+  network_src = FileList[
+                  "Hal/network/*.c",
+                  "Hal/network/portable/NetworkInterface/*.c",
+                  "Hal/network/portable/BufferManagement/BufferAllocation_1.c",
+                  "Hal/network/portable/NetworkInterface/Common/*.c",
+                  "Hal/network/services/*.c",
+                ]
+  network_src.exclude(/ff_dev_support\.c/)
+end
 
 # SD support and fatfs
 sdmmc_src = FileList['Hal/sdmmc/**/*.c']
@@ -167,14 +181,15 @@ else
   puts "Building Firmware debug: #{DEBUG}"
 end
 
+# FIXME
+src.exclude(/\/utils\/network\//)
 if NONETWORK == '1'
-  hal_src.exclude(/Hal\/network\//)
   src.exclude(/\/utils\/network\//)
   puts "Excluding Network code"
 end
 
 # Library sources
-HAL_SRCS = hal_src + sdmmc_src + rtos_src + usb_src
+HAL_SRCS = hal_src + sdmmc_src + rtos_src + usb_src + network_src
 
 # All sources
 SRCS = HAL_SRCS + src
@@ -195,17 +210,16 @@ SRCS.each do |s|
   FileUtils.mkdir_p(d) unless Dir.exists?(d)
 end
 
-include_dirs = [Dir.glob(["**/Inc", "**/Include", "**/include", "**/inc"])].flatten +
+include_dirs = ['Hal/network/portable/NetworkInterface', # Must be first ahead of Hal/STM32H7xx_HAL_Driver
+                "Hal/network/portable/Compiler/GCC",
+                "Hal/network/services"] +
+    [Dir.glob(["**/Inc", "**/Include", "**/include", "**/inc"])].flatten +
     [Dir.glob(['./src/**/'])].flatten +
     ['Hal/STM32H7xx_HAL_Driver', 'Hal/STM32H7xx_HAL_Driver/cmsis', 'Hal/src',
      'Hal/sdmmc/fatfs', 'Hal/sdmmc/src', 'Hal/usb_cdc/src', 'Hal/usb_cdc/lib'
     ]
 
-sys_include_dirs = []
-
-# [Dir.glob([PROG + '/**/Inc/**', './mri/**/'])].flatten
-
-INCLUDE = (include_dirs).collect { |d| "-I#{d}" }.join(" ") # + " " + (sys_include_dirs).collect { |d| "-isystem #{d}" }.join(" ")
+INCLUDE = (include_dirs).collect { |d| "-I#{d}" }.join(" ")
 
 defines = %w(-DUSE_HAL_DRIVER -DCORE_CM7)
 defines << "-DUSE_FULL_LL_DRIVER"
@@ -334,6 +348,11 @@ end
 desc 'get disasm of build'
 task :disasm do
   sh "#{OBJDUMP} --disassemble -f -M reg-names-std --demangle #{OBJDIR}/#{PROG}.elf > #{OBJDIR}/#{PROG}.disasm"
+end
+
+desc 'get list of build'
+task :list do
+  sh "#{OBJDUMP} -h -S #{OBJDIR}/#{PROG}.elf > #{OBJDIR}/#{PROG}.list"
 end
 
 task :version do

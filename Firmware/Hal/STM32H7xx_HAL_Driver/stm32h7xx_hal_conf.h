@@ -45,7 +45,7 @@
 /* #define HAL_DFSDM_MODULE_ENABLED */
 #define HAL_DMA_MODULE_ENABLED
 #define HAL_DMA2D_MODULE_ENABLED
-/* #define HAL_ETH_MODULE_ENABLED */
+#define HAL_ETH_MODULE_ENABLED
 #define HAL_EXTI_MODULE_ENABLED
 /* #define HAL_FDCAN_MODULE_ENABLED */
 #define HAL_FLASH_MODULE_ENABLED
@@ -214,8 +214,11 @@
 #define  USE_SD_TRANSCEIVER           0U               /*!< use uSD Transceiver */
 
 /* ########################### Ethernet Configuration ######################### */
+/* ########################### Ethernet Configuration ######################### */
 #define ETH_TX_DESC_CNT         4  /* number of Ethernet Tx DMA descriptors */
 #define ETH_RX_DESC_CNT         4  /* number of Ethernet Rx DMA descriptors */
+#define ETH_RX_BUF_SIZE     ETH_MAX_PACKET_SIZE
+#define ETH_TX_BUF_SIZE     ETH_MAX_PACKET_SIZE
 
 #define ETH_MAC_ADDR0    ((uint8_t)0x02)
 #define ETH_MAC_ADDR1    ((uint8_t)0x00)

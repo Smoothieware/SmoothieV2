@@ -208,6 +208,16 @@ SECTIONS
     dtcm_text_end = .;
   } >DTCMRAM AT> FLASH
 
+
+  .ethernet_data (NOLOAD) :
+  {
+    PROVIDE_HIDDEN (__ethernet_data_start = .);
+    KEEP (*(SORT(.ethernet_data.*)))
+    KEEP (*(.ethernet_data*))
+    PROVIDE_HIDDEN (__ethernet_data_end = .);
+  } >RAM_D2
+
+
   /* Remove information from the standard libraries */
   /DISCARD/ :
   {
