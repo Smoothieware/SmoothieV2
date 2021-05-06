@@ -163,7 +163,10 @@ size_t xPortGetFreeHeapSize( void ) PRIVILEGED_FUNCTION {
 }
 
 // GetMinimumEverFree is not available in newlib's malloc implementation.
-// So, no implementation provided: size_t xPortGetMinimumEverFreeHeapSize( void ) PRIVILEGED_FUNCTION;
+// So, no implementation provided:
+size_t xPortGetMinimumEverFreeHeapSize( void ) PRIVILEGED_FUNCTION {
+    return 0;
+}
 
 //! No implementation needed, but stub provided in case application already calls vPortInitialiseBlocks
 void vPortInitialiseBlocks( void ) PRIVILEGED_FUNCTION {};

@@ -1,8 +1,3 @@
-#include "lwip/opt.h"
-#include "lwip/sys.h"
-#include "lwip/api.h"
-#include "lwip/sockets.h"
-
 #include "main.h"
 #include "OutputStream.h"
 #include "RingBuffer.h"
@@ -11,15 +6,13 @@
 #include "FreeRTOS.h"
 #include "timers.h"
 #include "queue.h"
+#include "task.h"
+#include "semphr.h"
+
+#include "FreeRTOS_IP.h"
+#include "FreeRTOS_Sockets.h"
 
 #include <set>
-
-#if !(LWIP_SOCKET && LWIP_SOCKET_SELECT)
-#error LWIP_SOCKET_SELECT and  LWIP_SOCKET needed
-#endif
-// #if LWIP_NETCONN_FULLDUPLEX != 1
-// #error LWIP_NETCONN_FULLDUPLEX is required for this to work
-// #endif
 
 //#define DEBUG_PRINTF(...)
 #define DEBUG_PRINTF printf
@@ -28,8 +21,9 @@
 #define BUFSIZE 256
 #define MAGIC 0x6013D852
 struct shell_state_t {
-    int socket;
-    struct sockaddr_storage cliaddr;
+    Socket_t socket;
+    SocketSet_t ss;
+    struct freertos_sockaddr cliaddr;
     socklen_t clilen;
     OutputStream *os;
     QueueHandle_t tx_queue;
@@ -37,7 +31,6 @@ struct shell_state_t {
     char line[132];
     size_t cnt;
     bool discard;
-    bool need_write;
     uint32_t magic;
 };
 using shell_t = struct shell_state_t;
@@ -50,8 +43,7 @@ using gc_t = std::tuple<OutputStream*, QueueHandle_t>;
 static RingBuffer<gc_t, MAX_SERV*2> gc;
 
 // callback from command thread to write data to the socket
-// lwip_write should not be called from a different thread
-// so we use a queue to get the shell thread to do the write
+// we use a queue to get the shell thread to do the write
 static int write_back(shell_t *p_shell, const char *rbuf, size_t len)
 {
     if(p_shell->magic != MAGIC) {
@@ -72,8 +64,7 @@ static int write_back(shell_t *p_shell, const char *rbuf, size_t len)
         sz-=n;
         rbuf += n;
     }
-
-    p_shell->need_write= true;
+    FreeRTOS_FD_SET(p_shell->socket, p_shell->ss, eSELECT_WRITE);
     return len;
 }
 
@@ -82,10 +73,12 @@ static int write_back(shell_t *p_shell, const char *rbuf, size_t len)
  **************************************************************/
 static void close_shell(shell_t *p_shell)
 {
+    DEBUG_PRINTF("shell: closing shell connection: %p\n", p_shell->socket);
+
     p_shell->magic= 0; // safety
 
-    DEBUG_PRINTF("shell: closing shell connection: %d\n", p_shell->socket);
-    lwip_close(p_shell->socket);
+    FreeRTOS_FD_CLR(p_shell->socket, p_shell->ss, eSELECT_ALL);
+    FreeRTOS_closesocket(p_shell->socket);
 
     // if we delete the OutputStream now and command thread is still outputting stuff we will crash
     // it needs to stick around until the command has completed
@@ -102,12 +95,11 @@ static void close_shell(shell_t *p_shell)
         gc.push_back({p_shell->os, p_shell->tx_queue});
     }
 
-
     // Free shell state
     if(shells.erase(p_shell) != 1) {
         printf("shell: erasing shell not found\n");
     }
-    mem_free(p_shell);
+    free(p_shell);
 }
 
 // This will delete any OutputStreams that are done
@@ -137,10 +129,10 @@ static bool process_writes(shell_t *p_shell)
 {
     tx_msg_t msg;
     if(xQueuePeek(p_shell->tx_queue, &msg, 0) == pdTRUE) {
-        int n;
         int sz= msg.size - p_shell->wr_off;
-        if((n=lwip_write(p_shell->socket, msg.buf+p_shell->wr_off, sz)) < 0) {
-            printf("shell: error writing: %d\n", errno);
+        BaseType_t n= FreeRTOS_send(p_shell->socket, msg.buf+p_shell->wr_off, sz, 0);
+        if(n < 0) {
+            printf("shell: error writing: %ld\n", n);
             close_shell(p_shell);
             return false;
         }
@@ -157,42 +149,35 @@ static bool process_writes(shell_t *p_shell)
     return true;
 }
 
-static bool abort_shell= false;
+static volatile bool abort_shell= false;
 static void shell_thread(void *arg)
 {
-    LWIP_UNUSED_ARG(arg);
-    int listenfd;
-    struct sockaddr_in shell_saddr;
-    fd_set readset;
-    fd_set writeset;
-    int maxfdp1;
+    Socket_t listenfd;
+    struct freertos_sockaddr shell_saddr;
+    SocketSet_t socketset;
 
     printf("Network: Shell thread started\n");
-
-    // does not do anything unless LWIP_NETCONN_SEM_PER_THREAD==1
-    lwip_socket_thread_init();
 
     memset(&shell_saddr, 0, sizeof (shell_saddr));
 
     /* First acquire our socket for listening for connections */
-    listenfd = lwip_socket(AF_INET, SOCK_STREAM, 0);
-    shell_saddr.sin_family = AF_INET;
-    shell_saddr.sin_addr.s_addr = PP_HTONL(INADDR_ANY);
-    shell_saddr.sin_port = lwip_htons(23); /* telnet server port */
-
-    if(listenfd < 0) {
-        printf("shell_thread: ERROR: Socket create failed: %d", errno);
+    listenfd = FreeRTOS_socket(FREERTOS_AF_INET, FREERTOS_SOCK_STREAM, FREERTOS_IPPROTO_TCP);
+    configASSERT( listenfd != FREERTOS_INVALID_SOCKET );
+    if(listenfd != FREERTOS_INVALID_SOCKET) {
+        printf("shell_thread: ERROR: Socket create failed\n");
         return;
     }
 
-    if (lwip_bind(listenfd, (struct sockaddr *) &shell_saddr, sizeof (shell_saddr)) == -1) {
-        printf("shell_thread: ERROR: Socket bind failed: %d", errno);
+    shell_saddr.sin_port = FreeRTOS_htons(23);
+    BaseType_t err;
+    if ((err=FreeRTOS_bind(listenfd, &shell_saddr, sizeof (shell_saddr))) != 0) {
+        printf("shell_thread: ERROR: Socket bind failed: %ld\n", err);
         return;
     }
 
     /* Put socket into listening mode */
-    if (lwip_listen(listenfd, MAX_SERV) == -1) {
-        printf("shell_thread: ERROR: Listen failed: %d", errno);
+    if ((err=FreeRTOS_listen(listenfd, MAX_SERV)) != 0) {
+        printf("shell_thread: ERROR: Listen failed: %ld", err);
         return;
     }
 
@@ -202,65 +187,55 @@ static void shell_thread(void *arg)
         printf("shell_thread: WARNING: Failed to start the osgarbage timer\n");
     }
 
-    struct timeval timeout;
-    timeout.tv_sec= 0;
-    timeout.tv_usec= 10000; // 10ms
+    TickType_t timeout= portMAX_DELAY; // pdMS_TO_TICKS(1000); // 1 second
 
-    /* Wait forever for network input: This could be connections or data */
+    // create a socket set to handle all the clients
+    socketset= FreeRTOS_CreateSocketSet( );
+    configASSERT( socketset != NULL );
+
+    FreeRTOS_FD_SET(listenfd, socketset, eSELECT_READ | eSELECT_EXCEPT);
+
+    // Wait forever for network input: This could be connections or data
     while(!abort_shell) {
-        maxfdp1 = listenfd + 1;
-
-        /* Determine what sockets need to be in readset */
-        FD_ZERO(&readset);
-        FD_ZERO(&writeset);
-        FD_SET(listenfd, &readset);
-        for(auto p_shell : shells) {
-            if (maxfdp1 < p_shell->socket + 1) {
-                maxfdp1 = p_shell->socket + 1;
-            }
-            FD_SET(p_shell->socket, &readset);
-            if(p_shell->need_write){
-                FD_SET(p_shell->socket, &writeset);
-            }
-        }
-
-        // Wait for data or a new connection, we have a timeout so we can check if we need to wait on write
-        int i = lwip_select(maxfdp1, &readset, &writeset, 0, &timeout);
+        // Wait for data or a new connection
+        BaseType_t i= FreeRTOS_select(socketset, timeout);
 
         if (i == 0) {
             continue;
         }
+
         if(i < 0) {
             // we got an error
-            printf("shell: ERROR: select returned an error: %d\n", errno);
+            printf("shell: ERROR: select returned an error: %ld\n", i);
             continue;
         }
 
-        /* At least one descriptor is ready */
-        if (FD_ISSET(listenfd, &readset)) {
-            /* We have a new connection request */
-            /* create a new control block */
-            shell_t *p_shell = (shell_t *) mem_malloc(sizeof(shell_t));
+        // At least one descriptor is ready
+        if (FreeRTOS_FD_ISSET(listenfd, socketset)) {
+            // We have a new connection request create a new shell
+            shell_t *p_shell = (shell_t *)malloc(sizeof(shell_t));
             if(p_shell != nullptr) {
-                p_shell->socket= lwip_accept(listenfd, (struct sockaddr *) &p_shell->cliaddr, &p_shell->clilen);
-                if (p_shell->socket < 0) {
-                    mem_free(p_shell);
-                    printf("shell: accept socket error: %d\n", errno);
+                p_shell->socket= FreeRTOS_accept(listenfd, &p_shell->cliaddr, &p_shell->clilen);
+                if (p_shell->socket == FREERTOS_INVALID_SOCKET) {
+                    free(p_shell);
+                    printf("shell: accept socket error\n");
 
                 } else {
                     // add shell state to our set of shells
                     shells.insert(p_shell);
 
-                    DEBUG_PRINTF("shell: accepted shell connection: %d\n", p_shell->socket);
+                    DEBUG_PRINTF("shell: accepted shell connection: %p\n", p_shell->socket);
 
                     // initialise command buffer state
-                    p_shell->need_write= false;
                     p_shell->cnt= 0;
                     p_shell->wr_off= 0;
                     p_shell->discard= false;
                     p_shell->os= new OutputStream([p_shell](const char *ibuf, size_t ilen) { return write_back(p_shell, ibuf, ilen); });
 
-                    // setup tx queue so we keep reads and writes in the same thread due to lwip limitations
+                    // we need it to know this so we can clr itself
+                    p_shell->ss= socketset;
+
+                    // setup tx queue so we keep reads and writes in the same thread
                     p_shell->tx_queue= xQueueCreate(4, sizeof(tx_msg_t));
                     if(p_shell->tx_queue == 0) {
                         // Failed to create the queue.
@@ -268,21 +243,27 @@ static void shell_thread(void *arg)
                         close_shell(p_shell);
 
                     } else {
+                        // add it to the socket set
+                        FreeRTOS_FD_SET(p_shell->socket, p_shell->ss, eSELECT_READ | eSELECT_EXCEPT);
+
                         //output_streams.push_back(p_shell->os);
                         p_shell->magic= MAGIC;
-                        lwip_write(p_shell->socket, "Welcome to the Smoothie Shell\n", 30);
+                        static const char msg[]= "Welcome to the Smoothie Shell\n";
+                        configASSERT((unsigned long)FreeRTOS_maywrite(p_shell->socket) >= sizeof(msg));
+                        BaseType_t n= FreeRTOS_send(p_shell->socket, msg, sizeof(msg), 0);
+                        configASSERT(n == sizeof(msg));
                     }
                 }
 
             } else {
                 /* No memory to accept connection. Just accept and then close */
-                int sock;
-                struct sockaddr cliaddr;
+                Socket_t sock;
+                struct freertos_sockaddr cliaddr;
                 socklen_t clilen;
 
-                sock = lwip_accept(listenfd, &cliaddr, &clilen);
-                if (sock >= 0) {
-                    lwip_close(sock);
+                sock = FreeRTOS_accept(listenfd, &cliaddr, &clilen);
+                if (sock != FREERTOS_INVALID_SOCKET) {
+                    FreeRTOS_closesocket(sock);
                 }
                 printf("shell: out of memory on listen\n");
             }
@@ -292,12 +273,12 @@ static void shell_thread(void *arg)
         // we do this first to avoid deadlock when a read request tries to write
         // can still deadlock though if there is a lot to write (eg cat file)
         for(auto p_shell : shells) {
-            if (FD_ISSET(p_shell->socket, &writeset)) {
+            if (FreeRTOS_FD_ISSET(p_shell->socket, p_shell->ss) & eSELECT_WRITE) {
                 // request to write data
                 if(process_writes(p_shell)) {
                     if(uxQueueMessagesWaiting(p_shell->tx_queue) == 0) {
                         // if nothing left to write don't select on write ready anymore
-                        p_shell->need_write= false;
+                        FreeRTOS_FD_CLR(p_shell->socket, p_shell->ss, eSELECT_WRITE);
                     }
 
                 }else {
@@ -308,13 +289,13 @@ static void shell_thread(void *arg)
 
         // check for read requests
         for (auto p_shell : shells) {
-            if (FD_ISSET(p_shell->socket, &readset)) {
+            if (FreeRTOS_FD_ISSET(p_shell->socket, p_shell->ss) & eSELECT_READ) {
                 char buf[BUFSIZE];
                 // This socket is ready for reading.
-                int n = lwip_read(p_shell->socket, buf, BUFSIZE);
+                int n= FreeRTOS_recv(p_shell->socket, buf, BUFSIZE, FREERTOS_MSG_DONTWAIT);
                 if (n > 0) {
                     if(strncmp(buf, "quit\n", 5) == 0 || strncmp(buf, "quit\r\n", 6) == 0) {
-                        lwip_write(p_shell->socket, "Goodbye!\n", 9);
+                        FreeRTOS_send(p_shell->socket, "Goodbye!\n", 9, 0);
                         close_shell(p_shell);
                         break;
                     }
@@ -336,7 +317,7 @@ static void shell_thread(void *arg)
                     }
 
                 } else {
-                    DEBUG_PRINTF("shell: got close on read: %d\n", errno);
+                    DEBUG_PRINTF("shell: got close on read: %d\n", n);
                     close_shell(p_shell);
                     break;
                 }
@@ -344,18 +325,19 @@ static void shell_thread(void *arg)
         }
     }
 
-    for (auto p_shell : shells) close_shell(p_shell);
+    for (auto p_shell : shells){
+        close_shell(p_shell);
+    }
 
-    lwip_close(listenfd);
+    FreeRTOS_closesocket(listenfd);
     xTimerDelete(timer_handle, 0);
-
-    lwip_socket_thread_cleanup();
+    FreeRTOS_DeleteSocketSet(socketset);
 }
 
 void shell_init(void)
 {
     // make same priority as other comms threads
-    sys_thread_new("shell_thread", shell_thread, NULL, 350, COMMS_PRI);
+    xTaskCreate(shell_thread, "shell_thread", 350, NULL, COMMS_PRI, (xTaskHandle *) NULL);
 }
 
 void shell_close()

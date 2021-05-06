@@ -5,18 +5,20 @@
 #include <string>
 
 class OutputStream;
-class Ftpd;
 
 class Network : public Module {
     public:
-        Network();
-        virtual ~Network();
+        static Network* getInstance();
         static bool create(ConfigReader& cr);
+        static void vSetupIFTask(void *pvParameters);
+
         bool configure(ConfigReader& cr);
         void set_abort() { abort_network= true; }
-
+        const char *get_hostname() const { return hostname.c_str(); }
     private:
-        static void vSetupIFTask(void *pvParameters);
+        static Network *instance;
+        Network();
+        virtual ~Network();
 
         void network_thread();
         bool start(void);
@@ -27,10 +29,6 @@ class Network : public Module {
 
         struct netif *lpc_netif;
         std::string hostname;
-        char *ip_address{nullptr};
-        char *ip_mask{nullptr};
-        char *ip_gateway{nullptr};
-        char *dns_server{nullptr};
 
         bool abort_network{false};
         bool enable_shell{false};

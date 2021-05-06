@@ -139,5 +139,10 @@ standard names. */
 #define xPortPendSVHandler PendSV_Handler
 #define xPortSysTickHandler SysTick_Handler
 
+#ifdef DEBUG
+#include <stdio.h>
+#define configPRINTF( X ) printf X
+#endif
+
 #endif /* FREERTOS_CONFIG_H */
 

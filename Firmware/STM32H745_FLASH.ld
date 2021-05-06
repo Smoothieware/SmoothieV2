@@ -42,12 +42,14 @@ __top_DTCMRAM = _estack - 4096 ; /* guarantee at least 4k of stack */
 /* Specify the memory areas */
 MEMORY
 {
-DTCMRAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 128K
-RAM_D1 (xrw)      : ORIGIN = 0x24000000, LENGTH = 512K
-RAM_D2 (xrw)      : ORIGIN = 0x30000000, LENGTH = 288K
-RAM_D3 (xrw)      : ORIGIN = 0x38000000, LENGTH = 64K
 ITCMRAM (xrw)      : ORIGIN = 0x00000000, LENGTH = 64K
-FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 2048K
+FLASH (rx)         : ORIGIN = 0x08000000, LENGTH = 2048K
+DTCMRAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 128K
+AXI_SRAM (xrw)     : ORIGIN = 0x24000000, LENGTH = 512K
+SRAM_1 (xrw)       : ORIGIN = 0x30000000, LENGTH = 128K
+SRAM_2 (xrw)       : ORIGIN = 0x30020000, LENGTH = 128K
+SRAM_3 (xrw)       : ORIGIN = 0x30040000, LENGTH = 32K
+SRAM_4 (xrw)       : ORIGIN = 0x38000000, LENGTH = 64K
 }
 
 /* Define output sections */
@@ -140,7 +142,7 @@ SECTIONS
 
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
-  } >RAM_D1 AT> FLASH
+  } >AXI_SRAM AT> FLASH
 
 
   /* Uninitialized data section */
@@ -157,7 +159,7 @@ SECTIONS
     . = ALIGN(4);
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
-  } >RAM_D1
+  } >AXI_SRAM
 
   /* User_heap_stack section, used to check that there is enough RAM left */
   ._user_heap_stack :
@@ -168,7 +170,7 @@ SECTIONS
     /*. = . + _Min_Heap_Size;
     . = . + _Min_Stack_Size;
     . = ALIGN(8);*/
-  } >RAM_D1
+  } >AXI_SRAM
 
   /* start of heap and end of heap */
   PROVIDE(__HeapBase = _end);
@@ -215,7 +217,7 @@ SECTIONS
     KEEP (*(SORT(.ethernet_data.*)))
     KEEP (*(.ethernet_data*))
     PROVIDE_HIDDEN (__ethernet_data_end = .);
-  } >RAM_D2
+  } >SRAM_2
 
 
   /* Remove information from the standard libraries */

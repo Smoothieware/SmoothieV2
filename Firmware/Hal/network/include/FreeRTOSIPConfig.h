@@ -33,18 +33,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /* Set to 1 to print out debug messages.  If ipconfigHAS_DEBUG_PRINTF is set to
  * 1 then FreeRTOS_debug_printf should be defined to the function used to print
  * out the debugging messages. */
+#ifdef DEBUG
 #define ipconfigHAS_DEBUG_PRINTF    1
 #if ( ipconfigHAS_DEBUG_PRINTF == 1 )
     #define FreeRTOS_debug_printf( X )    configPRINTF( X )
 #endif
+#define ipconfigHAS_DEBUG_PRINTF  0
+#else
 
+#endif
 /* Set to 1 to print out non debugging messages, for example the output of the
  * FreeRTOS_netstat() command, and ping replies.  If ipconfigHAS_PRINTF is set to 1
  * then FreeRTOS_printf should be set to the function used to print out the
  * messages. */
+#ifdef DEBUG
 #define ipconfigHAS_PRINTF    1
 #if ( ipconfigHAS_PRINTF == 1 )
     #define FreeRTOS_printf( X )    configPRINTF( X )
+#endif
 #endif
 
 /* Define the byte order of the target MCU (the MCU FreeRTOS+TCP is executing
@@ -335,7 +341,7 @@ disconnecting stage will timeout after a period of non-activity. */
 #define ipconfigETHERNET_DRIVER_FILTERS_PACKETS	( 1 )
 
 #define ipconfigUSE_HTTP 1
-#define ipconfigUSE_FTP  1
+#define ipconfigUSE_FTP  0
 
 #define ipconfigFTP_HAS_RECEIVED_HOOK        0
 #define ipconfigFTP_HAS_USER_PASSWORD_HOOK   0

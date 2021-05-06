@@ -8,7 +8,7 @@
 #include <unistd.h>
 
 // from fatlib
-#include "ffconf.h"
+#include "ff.h"
 
 #define FF_FILE FILE
 
@@ -20,9 +20,9 @@
 #define ff_feof feof
 #define ff_fread fread
 #define ff_fwrite fwrite
-#define ff_mkdir(a) mkdir(a, 0)
-#define ff_rmdir(a) rmdir(a)
-#define ff_rename(a,b,c) rename(a, b)
+#define ff_mkdir(a) f_mkdir(a, 0)
+#define ff_rmdir(a) f_unlink(a)
+#define ff_rename(a,b,c) f_rename(a, b)
 #define ff_remove(a) unlink(a)
 
 #define ff_findfirst(a, b) (-1)
@@ -30,23 +30,6 @@
 #define ff_finddir(a) (0)
 
 #define FF_SEEK_SET SEEK_SET
-
-/* Structure used with ff_findfirst(), ff_findnext(), etc. */
-typedef struct
-{
-	int xDirectoryEntry;
-    const char * pcFileName;
-	uint32_t ulFileSize;
-	uint8_t ucAttributes;
-
-} FF_FindData_t;
-
-typedef struct
-{
-	uint32_t ulFileSize;
-	uint8_t ucAttrib;
-	char *pcFileName;
-} FF_DirEnt_t;
 
 typedef struct
 {
@@ -57,11 +40,6 @@ typedef struct
 	uint16_t Minute;	/* Min	(0 - 59). */
 	uint16_t Second;	/* Second	(0 - 59). */
 } FF_SystemTime_t;
-
-#define FF_FAT_ATTR_DIR 1
-#define FF_FAT_ATTR_READONLY 2
-
-#define FF_FS_Count() (0)
 
 #define ffconfigMAX_FILENAME FF_MAX_LFN
 

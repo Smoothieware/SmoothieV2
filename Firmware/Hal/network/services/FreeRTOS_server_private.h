@@ -102,6 +102,7 @@ struct xHTTP_CLIENT
 
 typedef struct xHTTP_CLIENT HTTPClient_t;
 
+#if ipconfigUSE_FTP == 1
 struct xFTP_CLIENT
 {
 	/* This define contains fields which must come first within each of the client structs */
@@ -156,13 +157,6 @@ struct xFTP_CLIENT
 
 typedef struct xFTP_CLIENT FTPClient_t;
 
-BaseType_t xHTTPClientWork( TCPClient_t * pxClient );
-BaseType_t xFTPClientWork( TCPClient_t * pxClient );
-
-void vHTTPClientDelete( TCPClient_t * pxClient );
-void vFTPClientDelete( TCPClient_t * pxClient );
-
-
 BaseType_t xMakeAbsolute( struct xFTP_CLIENT * pxClient,
 						  char * pcBuffer,
 						  BaseType_t xBufferLength,
@@ -171,6 +165,13 @@ BaseType_t xMakeRelative( FTPClient_t * pxClient,
 						  char * pcBuffer,
 						  BaseType_t xBufferLength,
 						  const char * pcFileName );
+BaseType_t xFTPClientWork( TCPClient_t * pxClient );
+void vFTPClientDelete( TCPClient_t * pxClient );
+#endif
+
+BaseType_t xHTTPClientWork( TCPClient_t * pxClient );
+
+void vHTTPClientDelete( TCPClient_t * pxClient );
 
 
 struct xTCP_SERVER

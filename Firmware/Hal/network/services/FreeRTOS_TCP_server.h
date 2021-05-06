@@ -111,7 +111,7 @@
 		enum eSERVER_TYPE eType;      /* eSERVER_HTTP | eSERVER_FTP */
 		BaseType_t xPortNumber;       /* e.g. 80, 8080, 21 */
 		BaseType_t xBackLog;          /* e.g. 10, maximum number of connected TCP clients */
-		const char * const pcRootDir; /* Treat this directory as the root directory */
+		const char *pcRootDir;        /* Treat this directory as the root directory */
 	};
 
 	struct xTCP_SERVER;
