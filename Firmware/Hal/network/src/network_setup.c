@@ -51,12 +51,12 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef* heth)
         PA1     ------> ETH_REF_CLK
         PA2     ------> ETH_MDIO
         PA7     ------> ETH_CRS_DV
-        PB11     ------> ETH_TX_EN
-        PB12     ------> ETH_TXD0
+        PB11    ------> ETH_TX_EN
+        PB12    ------> ETH_TXD0
         PC1     ------> ETH_MDC
         PC4     ------> ETH_RXD0
         PC5     ------> ETH_RXD1
-        PG14     ------> ETH_TXD1
+        PG14    ------> ETH_TXD1
         */
         GPIO_InitStruct.Pin = GPIO_PIN_1 | GPIO_PIN_4 | GPIO_PIN_5;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -152,13 +152,13 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef *heth)
     /*
           RMII_REF_CLK ----------------------> PA1
           RMII_MDIO -------------------------> PA2
-          RMII_MDC --------------------------> PC1
           RMII_MII_CRS_DV -------------------> PA7
+          RMII_MII_TXD1 ---------------------> PB13
+          RMII_MDC --------------------------> PC1
           RMII_MII_RXD0 ---------------------> PC4
           RMII_MII_RXD1 ---------------------> PC5
           RMII_MII_TX_EN --------------------> PG11
           RMII_MII_TXD0 ---------------------> PG13
-          RMII_MII_TXD1 ---------------------> PB13
     */
 
     /* Configure PA1, PA2 and PA7 */
