@@ -36,7 +36,11 @@ size_t write_cdc(const char *buf, size_t len)
 {
     size_t sent = 0;
     while(sent < len) {
-        uint32_t n = vcom_write((uint8_t *)buf + sent, len - sent);
+        size_t n;
+        if(vcom_write((uint8_t *)buf + sent, len - sent, &n) == 0) {
+            // we got an error
+            return 0;
+        }
         sent += n;
         if(sent < len) {
             // if(!vcom_connected()) return 0; // indicates error

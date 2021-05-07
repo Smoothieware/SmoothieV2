@@ -17,9 +17,9 @@
 #include "Hal_pin.h"
 #include "StringUtils.h"
 
-Adc *Adc::instances[Adc::num_channels] {nullptr};
+Adc *Adc::instances[Adc::num_channels];
 std::set<uint16_t> Adc::allocated_channels;
-bool Adc::running  {false};
+bool Adc::running;
 
 // make sure it is aligned on 32byte boundary for cache coherency, need to allocate potentially max size
 // num_samples (8) samples per num_channels (8) channels

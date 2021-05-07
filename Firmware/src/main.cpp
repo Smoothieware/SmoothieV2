@@ -59,7 +59,7 @@ static std::string config_error_msg;
 static GCodeProcessor gp;
 static bool loaded_configuration = false;
 static bool config_override = false;
-const char *OVERRIDE_FILE = "/sd/config-override";
+static const char *OVERRIDE_FILE = "/sd/config-override";
 
 // load configuration from override file
 static bool load_config_override(OutputStream& os)
@@ -1115,5 +1115,53 @@ extern "C" void assert_failed(uint8_t* file, uint32_t line)
     /* Infinite loop */
     while (1) {
     }
+}
+#endif
+
+#ifdef configASSERT
+void vAssertCalled( const char *pcFile, uint32_t ulLine )
+{
+volatile uint32_t ulBlockVariable = 0UL;
+volatile const char *pcAssertedFileName;
+volatile int iAssertedErrno;
+volatile uint32_t ulAssertedLine;
+
+    ulAssertedLine = ulLine;
+    iAssertedErrno = errno;
+    pcAssertedFileName = strrchr( pcFile, '/' );
+
+    /* These variables are set so they can be viewed in the debugger, but are
+    not used in the code - the following lines just remove the compiler warning
+    about this. */
+    ( void ) ulAssertedLine;
+    ( void ) iAssertedErrno;
+
+    if( pcAssertedFileName == 0 )
+    {
+        pcAssertedFileName = strrchr( pcFile, '\\' );
+    }
+    if( pcAssertedFileName != NULL )
+    {
+        pcAssertedFileName++;
+    }
+    else
+    {
+        pcAssertedFileName = pcFile;
+    }
+    printf("ERROR: vAssertCalled( %s, %ld\n", pcFile, ulLine);
+
+    // return;
+
+    /* Setting ulBlockVariable to a non-zero value in the debugger will allow
+    this function to be exited. */
+    taskDISABLE_INTERRUPTS();
+    {
+        __asm volatile ("bkpt #0");
+        while( ulBlockVariable == 0UL )
+        {
+            __asm volatile( "NOP" );
+        }
+    }
+    taskENABLE_INTERRUPTS();
 }
 #endif

@@ -35,12 +35,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * out the debugging messages. */
 #ifdef DEBUG
 #define ipconfigHAS_DEBUG_PRINTF    1
-#if ( ipconfigHAS_DEBUG_PRINTF == 1 )
-    #define FreeRTOS_debug_printf( X )    configPRINTF( X )
-#endif
-#define ipconfigHAS_DEBUG_PRINTF  0
+#define FreeRTOS_debug_printf( X )    configPRINTF( X )
 #else
-
+#define ipconfigHAS_DEBUG_PRINTF  0
 #endif
 /* Set to 1 to print out non debugging messages, for example the output of the
  * FreeRTOS_netstat() command, and ping replies.  If ipconfigHAS_PRINTF is set to 1
@@ -48,9 +45,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * messages. */
 #ifdef DEBUG
 #define ipconfigHAS_PRINTF    1
-#if ( ipconfigHAS_PRINTF == 1 )
-    #define FreeRTOS_printf( X )    configPRINTF( X )
-#endif
+#define FreeRTOS_printf( X )    configPRINTF( X )
+#else
+#define ipconfigHAS_PRINTF    0
 #endif
 
 /* Define the byte order of the target MCU (the MCU FreeRTOS+TCP is executing
@@ -146,7 +143,7 @@ extern UBaseType_t uxRand();
 /* If ipconfigDHCP_USES_USER_HOOK is set to 1 then the application writer must
  * provide an implementation of the DHCP callback function,
  * xApplicationDHCPUserHook(). */
-#define ipconfigUSE_DHCP_HOOK                    0
+#define ipconfigUSE_DHCP_HOOK                    1
 
 /* When ipconfigUSE_DHCP is set to 1, DHCP requests will be sent out at
  * increasing time intervals until either a reply is received from a DHCP server
@@ -330,7 +327,7 @@ disconnecting stage will timeout after a period of non-activity. */
 #define ipconfigTCP_HANG_PROTECTION_TIME		( 30 )
 
 #define ipconfigDNS_USE_CALLBACKS				0
-#define ipconfigSUPPORT_SIGNALS					0
+#define ipconfigSUPPORT_SIGNALS					1
 
 #define ipconfigCHECK_IP_QUEUE_SPACE			1
 

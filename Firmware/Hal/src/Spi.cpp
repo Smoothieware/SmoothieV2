@@ -85,7 +85,7 @@
 #define SPI2x_MOSI_AF                     GPIO_AF5_SPI4
 #endif
 
-SPI *SPI::spi_channel[2] {nullptr, nullptr};
+SPI *SPI::spi_channel[2];
 // static
 SPI *SPI::getInstance(int channel)
 {

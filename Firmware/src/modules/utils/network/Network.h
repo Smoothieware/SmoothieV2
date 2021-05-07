@@ -15,6 +15,8 @@ class Network : public Module {
         bool configure(ConfigReader& cr);
         void set_abort() { abort_network= true; }
         const char *get_hostname() const { return hostname.c_str(); }
+        bool is_dhcp() const { return use_dhcp; }
+
     private:
         static Network *instance;
         Network();
@@ -34,4 +36,5 @@ class Network : public Module {
         bool enable_shell{false};
         bool enable_httpd{false};
         bool enable_ftpd{false};
+        bool use_dhcp;
 };

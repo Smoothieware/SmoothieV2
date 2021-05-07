@@ -54,13 +54,13 @@
 
 #include "newlib.h"
 #if (__NEWLIB__ != 3) || (__NEWLIB_MINOR__ > 3)
-  #warning "This wrapper was verified for newlib version 3.0 thru 3.3; please ensure newlib's external requirements for malloc-family are unchanged!"
+#warning "This wrapper was verified for newlib version 3.0 thru 3.3; please ensure newlib's external requirements for malloc-family are unchanged!"
 #endif
 
 #include "FreeRTOS.h" // defines public interface we're implementing here
 #if !defined(configUSE_NEWLIB_REENTRANT) ||  (configUSE_NEWLIB_REENTRANT!=1)
-  #warning "#define configUSE_NEWLIB_REENTRANT 1 // Required for thread-safety of newlib sprintf, strtok, etc..."
-  // If you're *really* sure you don't need FreeRTOS's newlib reentrancy support, remove this warning...
+#warning "#define configUSE_NEWLIB_REENTRANT 1 // Required for thread-safety of newlib sprintf, strtok, etc..."
+// If you're *really* sure you don't need FreeRTOS's newlib reentrancy support, remove this warning...
 #endif
 #include "task.h"
 
@@ -69,46 +69,47 @@
 // ================================================================================================
 
 #ifndef NDEBUG
-    static int totalBytesProvidedBySBRK = 0;
+static int totalBytesProvidedBySBRK = 0;
 #endif
 extern char __HeapBase;  // make sure to define these symbols in linker command file
 extern char __HeapTop;
 static int heapBytesRemaining = -1;
 //! sbrk/_sbrk version supporting reentrant newlib (depends upon above symbols defined by linker control file).
 //__attribute__((optimize(0)))
-void * sbrk(int incr) {
-    static char *currentHeapEnd = &__HeapBase;
-    static char *heapTop= (char *)&__HeapTop;
+void * sbrk(int incr)
+{
+	static char *currentHeapEnd = &__HeapBase;
+	static char *heapTop = (char *)&__HeapTop;
 
-    vTaskSuspendAll(); // Note: safe to use before FreeRTOS scheduler started
+	vTaskSuspendAll(); // Note: safe to use before FreeRTOS scheduler started
 
-    if(heapBytesRemaining < 0) {
-        heapBytesRemaining = heapTop - currentHeapEnd;
-    }
-    char *previousHeapEnd = currentHeapEnd;
-    if (currentHeapEnd + incr >= heapTop) {
-        #if( configUSE_MALLOC_FAILED_HOOK == 1 )
-        {
-            extern void vApplicationMallocFailedHook( void );
-            vApplicationMallocFailedHook();
-        }
-        #elif 0
-            // If you want to alert debugger or halt...
-            while(1) { __asm("bkpt #0"); }; // Stop in GUI as if at a breakpoint (if debugging, otherwise loop forever)
-        #else
-            // If you prefer to believe your application will gracefully trap out-of-memory...
-            _impure_ptr->_errno = ENOMEM; // newlib's thread-specific errno
-            xTaskResumeAll();
-        #endif
-        return (char *)-1; // the malloc-family routine that called sbrk will return 0
-    }
-    currentHeapEnd += incr;
-    heapBytesRemaining -= incr;
-    #ifndef NDEBUG
-        totalBytesProvidedBySBRK += incr;
-    #endif
-    xTaskResumeAll();
-    return (char *) previousHeapEnd;
+	if(heapBytesRemaining < 0) {
+		heapBytesRemaining = heapTop - currentHeapEnd;
+	}
+	char *previousHeapEnd = currentHeapEnd;
+	if (currentHeapEnd + incr >= heapTop) {
+#if( configUSE_MALLOC_FAILED_HOOK == 1 )
+		{
+			extern void vApplicationMallocFailedHook( void );
+			vApplicationMallocFailedHook();
+		}
+#elif 0
+		// If you want to alert debugger or halt...
+		while(1) { __asm("bkpt #0"); }; // Stop in GUI as if at a breakpoint (if debugging, otherwise loop forever)
+#else
+		// If you prefer to believe your application will gracefully trap out-of-memory...
+		_impure_ptr->_errno = ENOMEM; // newlib's thread-specific errno
+		xTaskResumeAll();
+#endif
+		return (char *) - 1; // the malloc-family routine that called sbrk will return 0
+	}
+	currentHeapEnd += incr;
+	heapBytesRemaining -= incr;
+#ifndef NDEBUG
+	totalBytesProvidedBySBRK += incr;
+#endif
+	xTaskResumeAll();
+	return (char *) previousHeapEnd;
 }
 //! non-reentrant sbrk uses is actually reentrant by using current context
 // ... because the current _reent structure is pointed to by global _impure_ptr
@@ -116,10 +117,13 @@ void * sbrk(int incr) {
 //! _sbrk is a synonym for sbrk.
 char * _sbrk(int incr) { return sbrk(incr); };
 
-void __malloc_lock(struct _reent *re) {
-    BaseType_t insideAnISR = xPortIsInsideInterrupt();
-    configASSERT(insideAnISR == pdFALSE); // Make damn sure no more mallocs inside ISRs!!
-    vTaskSuspendAll();
+void __malloc_lock(struct _reent *re)
+{
+#ifdef DEBUG
+	BaseType_t insideAnISR = xPortIsInsideInterrupt();
+	configASSERT(insideAnISR == pdFALSE); // Make damn sure no more mallocs inside ISRs!!
+#endif
+	vTaskSuspendAll();
 };
 void __malloc_unlock(struct _reent *re)   { (void)xTaskResumeAll();  };
 
@@ -133,15 +137,17 @@ void __env_unlock()  { (void)xTaskResumeAll();  };
 /// /brief  Wrap malloc/malloc_r to help debug who requests memory and why.
 /// Add to the linker command line: -Xlinker --wrap=malloc -Xlinker --wrap=_malloc_r
 // Note: These functions are normally unused and stripped by linker.
-void *__wrap_malloc(size_t nbytes) {
-    extern void * __real_malloc(size_t nbytes);
-    void *p = __real_malloc(nbytes); // Solely for debug breakpoint...
-    return p;
+void *__wrap_malloc(size_t nbytes)
+{
+	extern void * __real_malloc(size_t nbytes);
+	void *p = __real_malloc(nbytes); // Solely for debug breakpoint...
+	return p;
 };
-void *__wrap__malloc_r(void *reent, size_t nbytes) {
-    extern void * __real__malloc_r(size_t nbytes);
-    void *p = __real__malloc_r(nbytes); // Solely for debug breakpoint...
-    return p;
+void *__wrap__malloc_r(void *reent, size_t nbytes)
+{
+	extern void * __real__malloc_r(size_t nbytes);
+	void *p = __real__malloc_r(nbytes); // Solely for debug breakpoint...
+	return p;
 };
 
 
@@ -150,22 +156,22 @@ void *__wrap__malloc_r(void *reent, size_t nbytes) {
 // ================================================================================================
 
 void *pvPortMalloc( size_t xSize ) PRIVILEGED_FUNCTION {
-    void *p = malloc(xSize);
-    return p;
+	void *p = malloc(xSize);
+	return p;
 }
 void vPortFree( void *pv ) PRIVILEGED_FUNCTION {
-    free(pv);
+	free(pv);
 };
 
 size_t xPortGetFreeHeapSize( void ) PRIVILEGED_FUNCTION {
-    struct mallinfo mi = mallinfo();
-    return mi.fordblks + heapBytesRemaining;
+	struct mallinfo mi = mallinfo();
+	return mi.fordblks + heapBytesRemaining;
 }
 
 // GetMinimumEverFree is not available in newlib's malloc implementation.
 // So, no implementation provided:
 size_t xPortGetMinimumEverFreeHeapSize( void ) PRIVILEGED_FUNCTION {
-    return 0;
+	return 0;
 }
 
 //! No implementation needed, but stub provided in case application already calls vPortInitialiseBlocks

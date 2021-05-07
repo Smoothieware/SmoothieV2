@@ -12,6 +12,7 @@
 #include "FreeRTOS_IP.h"
 #include "FreeRTOS_Sockets.h"
 #include "FreeRTOS_TCP_server.h"
+#include "FreeRTOS_DHCP.h"
 
 
 #define network_enable_key "enable"
@@ -33,7 +34,7 @@ bool Network::create(ConfigReader& cr)
     if(!network->configure(cr)) {
         printf("INFO: Network not enabled\n");
         delete network;
-        instance= nullptr;
+        instance = nullptr;
         return false;
     }
 
@@ -43,11 +44,11 @@ bool Network::create(ConfigReader& cr)
     return true;
 }
 
-Network *Network::instance= nullptr;
+Network *Network::instance = nullptr;
 Network *Network::getInstance()
 {
     if(instance == nullptr) {
-        instance= new Network();
+        instance = new Network();
     }
     return instance;
 }
@@ -81,10 +82,13 @@ bool Network::configure(ConfigReader& cr)
 
     std::string ip_address_str = cr.get_string(m, ip_address_key, "auto");
     if(!ip_address_str.empty() && ip_address_str != "auto") {
+        use_dhcp= false;
         std::string ip_mask_str = cr.get_string(m, ip_mask_key, "255.255.255.0");
-        std::string ip_gateway_str = cr.get_string(m, ip_gateway_key, "192.168.1.254");
+        std::string ip_gateway_str = cr.get_string(m, ip_gateway_key, "192.168.1.1");
         // setup ucIPAddress, ucNetMask, ucGatewayAddress
-     }
+    }else{
+        use_dhcp= true;
+    }
 
     std::string dns_server_str = cr.get_string(m, dns_server_key, "auto");
     if(!dns_server_str.empty() && dns_server_str != "auto") {
@@ -186,15 +190,15 @@ extern uint32_t _image_end;
 bool Network::update_cmd( std::string& params, OutputStream& os )
 {
     HELP("update the firmware from web");
-    #ifdef BOARD_BAMBINO
+#ifdef BOARD_BAMBINO
     std::string urlbin = "http://smoothieware.org/_media/bin/bb.bin";
     std::string urlmd5 = "http://smoothieware.org/_media/bin/bb.md5";
-    #elif defined(BOARD_PRIME)
+#elif defined(BOARD_PRIME)
     std::string urlbin = "http://smoothieware.org/_media/bin/pa.bin";
     std::string urlmd5 = "http://smoothieware.org/_media/bin/pa.md5";
-    #else
-    #error "board not supported by update_cmd"
-    #endif
+#else
+#error "board not supported by update_cmd"
+#endif
 
     // fetch the md5 of the file from the server
     std::ostringstream oss;
@@ -211,7 +215,7 @@ bool Network::update_cmd( std::string& params, OutputStream& os )
         uint32_t src_len = src_end - src_addr;
         MD5 md5;
         md5.update(src_addr, src_len);
-        std::string md= md5.finalize().hexdigest();
+        std::string md = md5.finalize().hexdigest();
         os.printf("current md5:  %s\n", md.c_str());
         os.printf("fetched md5:  %s\n", oss.str().c_str());
         if(oss.str() == md) {
@@ -247,7 +251,7 @@ bool Network::update_cmd( std::string& params, OutputStream& os )
         if(n > 0) md5.update(buf, n);
     } while(!feof(lp));
     fclose(lp);
-    std::string md= md5.finalize().hexdigest();
+    std::string md = md5.finalize().hexdigest();
 
     os.printf("new file md5: %s\n", md.c_str());
 
@@ -261,7 +265,7 @@ bool Network::update_cmd( std::string& params, OutputStream& os )
 
         // does not return from this
 
-    }else {
+    } else {
         os.printf("downloaded firmware failed verification:\n");
     }
 
@@ -277,22 +281,24 @@ void Network::network_thread()
     const TickType_t xInitialBlockTime = pdMS_TO_TICKS( 300UL );
     xSERVER_CONFIG xServerConfiguration[2];
 
-    int ns= 0;
+    int ns = 0;
     if(enable_httpd) {
         xServerConfiguration[ns].eType = eSERVER_HTTP;
-        xServerConfiguration[ns].xPortNumber= 80;
-        xServerConfiguration[ns].xBackLog= 12;
-        xServerConfiguration[ns].pcRootDir= "/sd";
+        xServerConfiguration[ns].xPortNumber = 80;
+        xServerConfiguration[ns].xBackLog = 12;
+        xServerConfiguration[ns].pcRootDir = "/sd/www";
         ++ns;
     }
 
+#if ipconfigUSE_FTP != 0
     if(enable_ftpd) {
         xServerConfiguration[ns].eType = eSERVER_FTP;
-        xServerConfiguration[ns].xPortNumber= 21;
-        xServerConfiguration[ns].xBackLog= 12;
-        xServerConfiguration[ns].pcRootDir= "";
+        xServerConfiguration[ns].xPortNumber = 21;
+        xServerConfiguration[ns].xBackLog = 12;
+        xServerConfiguration[ns].pcRootDir = "";
         ++ns;
     }
+#endif
 
     if(ns > 0) {
         /* Create the servers defined by the xServerConfiguration array above. */
@@ -312,7 +318,7 @@ void Network::network_thread()
         FreeRTOS_TCPServerWork( pxTCPServer, xInitialBlockTime );
     }
 
-    printf("DEBUG: Network thread: exiting\n");
+    printf("DEBUG: Server thread: exiting\n");
 }
 
 void Network::vSetupIFTask(void *arg)
@@ -324,9 +330,10 @@ void Network::vSetupIFTask(void *arg)
 extern "C" void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent )
 {
     static BaseType_t xTasksAlreadyCreated = pdFALSE;
+    static bool up = false;
 
     /* Both eNetworkUp and eNetworkDown events can be processed here. */
-    if( eNetworkEvent == eNetworkUp ) {
+    if(eNetworkEvent == eNetworkUp && !up) {
         printf("Network is up\n");
 
         /* Print out the network configuration, which may have come from a DHCP
@@ -354,17 +361,25 @@ extern "C" void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent
              * to ensure they are not created before the network is usable.
              */
             xTasksAlreadyCreated = pdTRUE;
-            xTaskCreate(Network::vSetupIFTask, "SetupIFx", 256, NULL, (tskIDLE_PRIORITY + 1UL), (xTaskHandle *) NULL);
+            xTaskCreate(Network::vSetupIFTask, "Servers", 640, NULL, (tskIDLE_PRIORITY + 1UL), (xTaskHandle *) NULL);
         }
+        up = true;
 
-    }else{
-        printf("Network down\n");
+    } else if(eNetworkEvent == eNetworkDown && up) {
+        printf("Network went down\n");
+        up = false;
     }
 }
 
+extern "C" int setup_network_hal();
 bool Network::start()
 {
     printf("DEBUG: Network: starting\n");
+    if(!setup_network_hal()) {
+        printf("ERROR: setup_netork_hal() failed\n");
+        return false;
+    }
+
     /*
         Initialise the RTOS’s TCP/IP stack.  The tasks that use the network
         are created in the vApplicationIPNetworkEventHook() hook function.
@@ -378,21 +393,44 @@ bool Network::start()
     return true;
 }
 
-extern "C" BaseType_t xApplicationGetRandomNumber( uint32_t *pulNumber )
-{
-    *pulNumber = rand();
-    return pdTRUE;
-}
-
-extern "C" uint32_t ulApplicationGetNextSequenceNumber( uint32_t ulSourceAddress,
-        uint16_t usSourcePort,
-        uint32_t ulDestinationAddress,
-        uint16_t usDestinationPort )
-{
-    return rand();
-}
-
 extern "C" const char *pcApplicationHostnameHook( void )
 {
     return Network::getInstance()->get_hostname();
+}
+
+// used to enable or disable dhcp
+extern "C" eDHCPCallbackAnswer_t xApplicationDHCPHook( eDHCPCallbackPhase_t eDHCPPhase, uint32_t ulIPAddress )
+{
+    eDHCPCallbackAnswer_t eReturn;
+    bool use_dhcp= Network::getInstance()->is_dhcp();
+
+    /* This hook is called in a couple of places during the DHCP process, as
+    identified by the eDHCPPhase parameter. */
+    switch( eDHCPPhase ) {
+        case eDHCPPhasePreDiscover  :
+            /* A DHCP discovery is about to be sent out.  eDHCPContinue is
+            returned to allow the discovery to go out.
+
+            If eDHCPUseDefaults had been returned instead then the DHCP process
+            would be stopped and the statically configured IP address would be
+            used.
+
+            If eDHCPStopNoChanges had been returned instead then the DHCP
+            process would be stopped and whatever the current network
+            configuration was would continue to be used. */
+            eReturn = use_dhcp ? eDHCPContinue : eDHCPUseDefaults;
+            break;
+
+        case eDHCPPhasePreRequest  :
+            eReturn = use_dhcp ? eDHCPContinue : eDHCPUseDefaults;
+            break;
+
+        default :
+            /* Cannot be reached, but set eReturn to prevent compiler warnings
+            where compilers are disposed to generating one. */
+            eReturn = eDHCPContinue;
+            break;
+    }
+
+    return eReturn;
 }

@@ -69,17 +69,17 @@ pins used on the headers when selecting a function in the Firmware
 | SDMMC      | PC12    |                          |
 | SDMMC      | PD2     |                          |
 +------------+---------+--------------------------+
-| Ethernet   |         |                          |
+| Ethernet   | Prime   | Nucleo                   |
 +------------+---------+--------------------------+
 | RX_CLK     | PA1     |                          |
 | MDIO       | PA2     |                          |
 | RX_DV      | PA7     |                          |
-| TX_EN      | PB11    |                          |
-| TXD0       | PB12    |                          |
+| TX_EN      | PB11    | PG11                     |
+| TXD0       | PB12    | PG13                     |
 | MDC        | PC1     |                          |
 | RXD0       | PC4     |                          |
 | RXD1       | PC5     |                          |
-| TXD1       | PG14    |                          |
+| TXD1       | PG14    | PB13                     |
 +------------+---------+--------------------------+
 | Quad SPI   |         |                          |
 +------------+---------+--------------------------+

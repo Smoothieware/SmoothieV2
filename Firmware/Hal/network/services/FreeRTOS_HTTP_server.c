@@ -292,8 +292,8 @@
 
 		pxClient->pxFileHandle = ff_fopen( pxClient->pcCurrentFilename, "rb" );
 
-		FreeRTOS_printf( ( "Open file '%s': %s-%s\n", pxClient->pcCurrentFilename,
-						   pxClient->pxFileHandle != NULL ? "Ok" : "Failed", strerror( stdioGET_ERRNO() ) ) );
+		FreeRTOS_printf( ( "Open file '%s': %s-(%d) %s\n", pxClient->pcCurrentFilename,
+						   pxClient->pxFileHandle != NULL ? "Ok" : "Failed", stdioGET_ERRNO(), strerror( stdioGET_ERRNO() ) ) );
 
 		if( pxClient->pxFileHandle == NULL )
 		{

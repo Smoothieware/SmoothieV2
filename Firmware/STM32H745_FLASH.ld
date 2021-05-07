@@ -190,8 +190,6 @@ SECTIONS
   {
     . = ALIGN(4);
     itcm_text_start = .;
-    *(.itcm_text)
-    *(.itcm_text*)
     *(.ramfunc*)
     . = ALIGN(4);
     itcm_text_end = .;

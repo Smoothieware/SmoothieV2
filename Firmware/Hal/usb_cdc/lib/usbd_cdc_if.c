@@ -49,7 +49,7 @@ void teardown_vcom()
 static int8_t CDC_IF_Init(void)
 {
     USBD_CDC_SetRxBuffer(&USBD_Device, rx_buffer);
-    tx_complete= 1;
+    tx_complete = 1;
     return (USBD_OK);
 }
 
@@ -183,20 +183,29 @@ size_t vcom_read(uint8_t *buf, size_t len)
   */
 static int8_t CDC_IF_TransmitCplt(uint8_t *Buf, uint32_t *Len, uint8_t epnum)
 {
-    tx_complete= 1;
+    tx_complete = 1;
     return (0);
 }
 
-size_t vcom_write(uint8_t *buf, size_t len)
+// return 0 on error 1 on ok, written length is loaded into wlen
+int vcom_write(uint8_t *buf, size_t len, size_t *wlen)
 {
-    if(tx_complete == 0) return 0;
-    tx_complete= 0;
-    size_t n= (len > 64) ? 64 : len;
-
-    USBD_CDC_SetTxBuffer(&USBD_Device, buf, n);
-    if (USBD_CDC_TransmitPacket(&USBD_Device) == USBD_OK) {
-        return n;
+    if(tx_complete == 0) {
+        if(wlen != NULL) *wlen = 0;
+        return 1;
     }
-    tx_complete= 1;
-    return 0;
+
+    tx_complete = 0;
+    size_t n = (len > 64) ? 64 : len;
+
+    if(USBD_CDC_SetTxBuffer(&USBD_Device, buf, n) == USBD_FAIL) {
+        return 0;
+    }
+
+    if (USBD_CDC_TransmitPacket(&USBD_Device) == USBD_FAIL) {
+        return 0;
+    }
+
+    if(wlen != NULL) *wlen = n;
+    return 1;
 }

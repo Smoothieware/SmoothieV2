@@ -18,7 +18,7 @@
 #define TX_CPLT  0x02
 #define RX_CPLT  0x04
 
-I2C *I2C::i2c_channel[2] {nullptr, nullptr};
+I2C *I2C::i2c_channel[2];
 // static
 I2C *I2C::getInstance(int channel)
 {

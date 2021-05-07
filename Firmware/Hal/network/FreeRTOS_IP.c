@@ -30,6 +30,7 @@
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+#pragma GCC diagnostic ignored "-Wformat="
 
 /* Standard includes. */
 #include <stdint.h>
