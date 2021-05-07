@@ -1,7 +1,7 @@
 To build the test cases do ```rake testing=1 -m```
-then flash to Bambino, the results print out to the uart/serial
+then flash to Nucleo, the results print out to the uart/serial
 
-To make the Firmware do ```rake target=Bambino -m```
+To make the Firmware do ```rake target=Nucleo -m```
 
 Firmware currently runs on UART at 115200 baud and on USB serial at ttyACM0.
 On USB Serial you need to hit Enter to get it to start.
@@ -27,9 +27,9 @@ Modules that have been ported so far...
 * killbutton
 * player
 
-*NOTE* for the smooothiev2 Prime Alpha replace Bambino above with Primealpha...
+*NOTE* for the smooothiev2 Prime replace Nucleo above with Prime...
 
-```rake target=Primealpha -m```
+```rake target=Prime -m```
 
 builtin config would be called string-config-minialpha.h (but the default is to read the config.ini on sdcard).
 

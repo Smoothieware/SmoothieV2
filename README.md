@@ -1,7 +1,7 @@
-# smoothie version 2 for STM32H754
+# smoothie version 2 for STM32H745 (and STM32H743)
 Smoothie V2 using STM32 HAL and FreeRTOS.
 
-Currently runs on nucleo board
+Currently runs on nucleo 745 board and Devebox 743 board
 
 Firmware/... is for Smoothie firmware code and Test Units
 
