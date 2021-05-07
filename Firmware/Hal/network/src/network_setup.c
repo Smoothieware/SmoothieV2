@@ -113,6 +113,51 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef* heth)
     }
 }
 
+/**
+* @brief ETH MSP De-Initialization
+* This function freeze the hardware resources used in this example
+* @param heth: ETH handle pointer
+* @retval None
+*/
+void HAL_ETH_MspDeInit(ETH_HandleTypeDef* heth)
+{
+    if(heth->Instance == ETH) {
+        /* USER CODE BEGIN ETH_MspDeInit 0 */
+
+        /* USER CODE END ETH_MspDeInit 0 */
+        /* Peripheral clock disable */
+        __HAL_RCC_ETH1MAC_CLK_DISABLE();
+        __HAL_RCC_ETH1TX_CLK_DISABLE();
+        __HAL_RCC_ETH1RX_CLK_DISABLE();
+
+        /**ETH GPIO Configuration
+        PC1     ------> ETH_MDC
+        PA1     ------> ETH_REF_CLK
+        PA2     ------> ETH_MDIO
+        PA7     ------> ETH_CRS_DV
+        PC4     ------> ETH_RXD0
+        PC5     ------> ETH_RXD1
+        PB0     ------> ETH_RXD2
+        PB13     ------> ETH_TXD1
+        PG11     ------> ETH_TX_EN
+        PG13     ------> ETH_TXD0
+        */
+        HAL_GPIO_DeInit(GPIOC, GPIO_PIN_1 | GPIO_PIN_4 | GPIO_PIN_5);
+
+        HAL_GPIO_DeInit(GPIOA, GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_7);
+
+        HAL_GPIO_DeInit(GPIOB, GPIO_PIN_0 | GPIO_PIN_13);
+
+        HAL_GPIO_DeInit(GPIOG, GPIO_PIN_11 | GPIO_PIN_13);
+
+        /* ETH interrupt DeInit */
+        HAL_NVIC_DisableIRQ(ETH_IRQn);
+        /* USER CODE BEGIN ETH_MspDeInit 1 */
+
+        /* USER CODE END ETH_MspDeInit 1 */
+    }
+}
+
 #elif defined(BOARD_NUCLEO)
 void HAL_ETH_MspInit(ETH_HandleTypeDef *heth)
 {
@@ -171,16 +216,16 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef *heth)
 
     allocate_hal_pin(GPIOA, GPIO_PIN_1);
     allocate_hal_pin(GPIOA, GPIO_PIN_2);
-    allocate_hal_pin(GPIOC, GPIO_PIN_1);
     allocate_hal_pin(GPIOA, GPIO_PIN_7);
+    allocate_hal_pin(GPIOB, GPIO_PIN_13);
+    allocate_hal_pin(GPIOC, GPIO_PIN_1);
     allocate_hal_pin(GPIOC, GPIO_PIN_4);
     allocate_hal_pin(GPIOC, GPIO_PIN_5);
     allocate_hal_pin(GPIOG, GPIO_PIN_2);
     allocate_hal_pin(GPIOG, GPIO_PIN_11);
     allocate_hal_pin(GPIOG, GPIO_PIN_13);
-    allocate_hal_pin(GPIOB, GPIO_PIN_13);
 }
-#endif
+
 /**
 * @brief ETH MSP De-Initialization
 * This function freeze the hardware resources used in this example
@@ -198,25 +243,10 @@ void HAL_ETH_MspDeInit(ETH_HandleTypeDef* heth)
         __HAL_RCC_ETH1TX_CLK_DISABLE();
         __HAL_RCC_ETH1RX_CLK_DISABLE();
 
-        /**ETH GPIO Configuration
-        PC1     ------> ETH_MDC
-        PA1     ------> ETH_REF_CLK
-        PA2     ------> ETH_MDIO
-        PA7     ------> ETH_CRS_DV
-        PC4     ------> ETH_RXD0
-        PC5     ------> ETH_RXD1
-        PB0     ------> ETH_RXD2
-        PB13     ------> ETH_TXD1
-        PG11     ------> ETH_TX_EN
-        PG13     ------> ETH_TXD0
-        */
-        HAL_GPIO_DeInit(GPIOC, GPIO_PIN_1 | GPIO_PIN_4 | GPIO_PIN_5);
-
         HAL_GPIO_DeInit(GPIOA, GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_7);
-
-        HAL_GPIO_DeInit(GPIOB, GPIO_PIN_0 | GPIO_PIN_13);
-
-        HAL_GPIO_DeInit(GPIOG, GPIO_PIN_11 | GPIO_PIN_13);
+        HAL_GPIO_DeInit(GPIOB, GPIO_PIN_13);
+        HAL_GPIO_DeInit(GPIOC, GPIO_PIN_1 | GPIO_PIN_4 | GPIO_PIN_5);
+        HAL_GPIO_DeInit(GPIOG, GPIO_PIN_2 | GPIO_PIN_11 | GPIO_PIN_13);
 
         /* ETH interrupt DeInit */
         HAL_NVIC_DisableIRQ(ETH_IRQn);
@@ -225,3 +255,5 @@ void HAL_ETH_MspDeInit(ETH_HandleTypeDef* heth)
         /* USER CODE END ETH_MspDeInit 1 */
     }
 }
+
+#endif
