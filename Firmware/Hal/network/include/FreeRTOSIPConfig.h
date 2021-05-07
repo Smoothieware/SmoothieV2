@@ -338,7 +338,7 @@ disconnecting stage will timeout after a period of non-activity. */
 #define ipconfigETHERNET_DRIVER_FILTERS_PACKETS	( 1 )
 
 #define ipconfigUSE_HTTP 1
-#define ipconfigUSE_FTP  0
+#define ipconfigUSE_FTP  1
 
 #define ipconfigFTP_HAS_RECEIVED_HOOK        0
 #define ipconfigFTP_HAS_USER_PASSWORD_HOOK   0

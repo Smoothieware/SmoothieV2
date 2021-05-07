@@ -288,6 +288,7 @@ void Network::network_thread()
         xServerConfiguration[ns].xBackLog = 12;
         xServerConfiguration[ns].pcRootDir = "/sd/www";
         ++ns;
+        printf("Network: HTTPD started\n");
     }
 
 #if ipconfigUSE_FTP != 0
@@ -297,6 +298,7 @@ void Network::network_thread()
         xServerConfiguration[ns].xBackLog = 12;
         xServerConfiguration[ns].pcRootDir = "";
         ++ns;
+        printf("Network: FTPD started\n");
     }
 #endif
 

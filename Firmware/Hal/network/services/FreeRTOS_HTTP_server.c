@@ -118,14 +118,6 @@
 	}
 /*-----------------------------------------------------------*/
 
-	uint32_t prvFileSize(FILE *fp) {
- 	    fseek(fp, 0, SEEK_END);
-    	uint32_t len = (uint32_t)ftell(fp);
- 	    fseek(fp, 0, SEEK_SET);
-
-	    return len;
-	}
-
 	static void prvFileClose( HTTPClient_t * pxClient )
 	{
 		if( pxClient->pxFileHandle != NULL )
@@ -303,7 +295,7 @@
 		}
 		else
 		{
-			pxClient->uxBytesLeft = ( size_t ) prvFileSize(pxClient->pxFileHandle); // pxClient->pxFileHandle->ulFileSize; //
+			pxClient->uxBytesLeft = ( size_t ) getFileSize(pxClient->pxFileHandle); // pxClient->pxFileHandle->ulFileSize; //
 			xRc = prvSendFile( pxClient );
 		}
 

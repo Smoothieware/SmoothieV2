@@ -184,7 +184,6 @@ end
 # FIXME
 src.exclude(/\/utils\/network\/wget\//)
 src.exclude(/\/utils\/network\/httpd\//)
-src.exclude(/\/utils\/network\/ftpd\//)
 
 if NONETWORK == '1'
   src.exclude(/\/utils\/network\//)
