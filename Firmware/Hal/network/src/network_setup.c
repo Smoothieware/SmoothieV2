@@ -46,17 +46,17 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef* heth)
         __HAL_RCC_GPIOA_CLK_ENABLE();
         __HAL_RCC_GPIOB_CLK_ENABLE();
         __HAL_RCC_GPIOG_CLK_ENABLE();
+
         /**ETH GPIO Configuration
-        PC1     ------> ETH_MDC
         PA1     ------> ETH_REF_CLK
         PA2     ------> ETH_MDIO
         PA7     ------> ETH_CRS_DV
+        PB11     ------> ETH_TX_EN
+        PB12     ------> ETH_TXD0
+        PC1     ------> ETH_MDC
         PC4     ------> ETH_RXD0
         PC5     ------> ETH_RXD1
-        PB0     ------> ETH_RXD2
-        PB13     ------> ETH_TXD1
-        PG11     ------> ETH_TX_EN
-        PG13     ------> ETH_TXD0
+        PG14     ------> ETH_TXD1
         */
         GPIO_InitStruct.Pin = GPIO_PIN_1 | GPIO_PIN_4 | GPIO_PIN_5;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -72,21 +72,14 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef* heth)
         GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
         HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-        GPIO_InitStruct.Pin = GPIO_PIN_0;
-        GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-        GPIO_InitStruct.Pull = GPIO_NOPULL;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-        GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
-        HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-        GPIO_InitStruct.Pin = GPIO_PIN_13;
+        GPIO_InitStruct.Pin = GPIO_PIN_11 | GPIO_PIN_12;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
         GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
         GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
         HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-        GPIO_InitStruct.Pin = GPIO_PIN_11 | GPIO_PIN_13;
+        GPIO_InitStruct.Pin = GPIO_PIN_14;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
         GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -98,16 +91,15 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef* heth)
         NVIC_SetPriority(ETH_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
         NVIC_EnableIRQ(ETH_IRQn);
 
-        allocate_hal_pin(GPIOC, GPIO_PIN_1);
-        allocate_hal_pin(GPIOC, GPIO_PIN_4);
-        allocate_hal_pin(GPIOC, GPIO_PIN_5);
         allocate_hal_pin(GPIOA, GPIO_PIN_1);
         allocate_hal_pin(GPIOA, GPIO_PIN_2);
         allocate_hal_pin(GPIOA, GPIO_PIN_7);
-        allocate_hal_pin(GPIOB, GPIO_PIN_0);
-        allocate_hal_pin(GPIOB, GPIO_PIN_13);
-        allocate_hal_pin(GPIOG, GPIO_PIN_11);
-        allocate_hal_pin(GPIOG, GPIO_PIN_13);
+        allocate_hal_pin(GPIOB, GPIO_PIN_11);
+        allocate_hal_pin(GPIOB, GPIO_PIN_12);
+        allocate_hal_pin(GPIOC, GPIO_PIN_1);
+        allocate_hal_pin(GPIOC, GPIO_PIN_4);
+        allocate_hal_pin(GPIOC, GPIO_PIN_5);
+        allocate_hal_pin(GPIOG, GPIO_PIN_14);
 
         /* USER CODE END ETH_MspInit 1 */
     }
@@ -130,25 +122,10 @@ void HAL_ETH_MspDeInit(ETH_HandleTypeDef* heth)
         __HAL_RCC_ETH1TX_CLK_DISABLE();
         __HAL_RCC_ETH1RX_CLK_DISABLE();
 
-        /**ETH GPIO Configuration
-        PC1     ------> ETH_MDC
-        PA1     ------> ETH_REF_CLK
-        PA2     ------> ETH_MDIO
-        PA7     ------> ETH_CRS_DV
-        PC4     ------> ETH_RXD0
-        PC5     ------> ETH_RXD1
-        PB0     ------> ETH_RXD2
-        PB13     ------> ETH_TXD1
-        PG11     ------> ETH_TX_EN
-        PG13     ------> ETH_TXD0
-        */
-        HAL_GPIO_DeInit(GPIOC, GPIO_PIN_1 | GPIO_PIN_4 | GPIO_PIN_5);
-
-        HAL_GPIO_DeInit(GPIOA, GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_7);
-
-        HAL_GPIO_DeInit(GPIOB, GPIO_PIN_0 | GPIO_PIN_13);
-
-        HAL_GPIO_DeInit(GPIOG, GPIO_PIN_11 | GPIO_PIN_13);
+        HAL_GPIO_DeInit(GPIOA, GPIO_PIN_1  | GPIO_PIN_2 | GPIO_PIN_7);
+        HAL_GPIO_DeInit(GPIOB, GPIO_PIN_11 | GPIO_PIN_12);
+        HAL_GPIO_DeInit(GPIOC, GPIO_PIN_1  | GPIO_PIN_4 | GPIO_PIN_5);
+        HAL_GPIO_DeInit(GPIOG, GPIO_PIN_14);
 
         /* ETH interrupt DeInit */
         HAL_NVIC_DisableIRQ(ETH_IRQn);
@@ -179,7 +156,6 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef *heth)
           RMII_MII_CRS_DV -------------------> PA7
           RMII_MII_RXD0 ---------------------> PC4
           RMII_MII_RXD1 ---------------------> PC5
-          RMII_MII_RXER ---------------------> PG2
           RMII_MII_TX_EN --------------------> PG11
           RMII_MII_TXD0 ---------------------> PG13
           RMII_MII_TXD1 ---------------------> PB13
@@ -201,8 +177,8 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef *heth)
     GPIO_InitStructure.Pin = GPIO_PIN_1 | GPIO_PIN_4 | GPIO_PIN_5;
     HAL_GPIO_Init(GPIOC, &GPIO_InitStructure);
 
-    /* Configure PG2, PG11, PG13 and PG14 */
-    GPIO_InitStructure.Pin =  GPIO_PIN_2 | GPIO_PIN_11 | GPIO_PIN_13;
+    /* Configure PG11, PG13  */
+    GPIO_InitStructure.Pin =  GPIO_PIN_11 | GPIO_PIN_13;
     HAL_GPIO_Init(GPIOG, &GPIO_InitStructure);
 
     /* Enable Ethernet clocks */
@@ -221,7 +197,6 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef *heth)
     allocate_hal_pin(GPIOC, GPIO_PIN_1);
     allocate_hal_pin(GPIOC, GPIO_PIN_4);
     allocate_hal_pin(GPIOC, GPIO_PIN_5);
-    allocate_hal_pin(GPIOG, GPIO_PIN_2);
     allocate_hal_pin(GPIOG, GPIO_PIN_11);
     allocate_hal_pin(GPIOG, GPIO_PIN_13);
 }
@@ -243,10 +218,10 @@ void HAL_ETH_MspDeInit(ETH_HandleTypeDef* heth)
         __HAL_RCC_ETH1TX_CLK_DISABLE();
         __HAL_RCC_ETH1RX_CLK_DISABLE();
 
-        HAL_GPIO_DeInit(GPIOA, GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_7);
+        HAL_GPIO_DeInit(GPIOA, GPIO_PIN_1  | GPIO_PIN_2 | GPIO_PIN_7);
         HAL_GPIO_DeInit(GPIOB, GPIO_PIN_13);
-        HAL_GPIO_DeInit(GPIOC, GPIO_PIN_1 | GPIO_PIN_4 | GPIO_PIN_5);
-        HAL_GPIO_DeInit(GPIOG, GPIO_PIN_2 | GPIO_PIN_11 | GPIO_PIN_13);
+        HAL_GPIO_DeInit(GPIOC, GPIO_PIN_1  | GPIO_PIN_4 | GPIO_PIN_5);
+        HAL_GPIO_DeInit(GPIOG, GPIO_PIN_11 | GPIO_PIN_13);
 
         /* ETH interrupt DeInit */
         HAL_NVIC_DisableIRQ(ETH_IRQn);
