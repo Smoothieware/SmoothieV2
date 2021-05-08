@@ -123,7 +123,7 @@ if NONETWORK == '1'
 else
   network_src = FileList[
                   "Hal/network/*.c",
-                  "Hal/network/src/*.c",
+                  "Hal/network/src/*.{c,cpp}",
                   "Hal/network/portable/NetworkInterface/*.c",
                   "Hal/network/portable/BufferManagement/BufferAllocation_1.c",
                   "Hal/network/portable/NetworkInterface/Common/*.c",

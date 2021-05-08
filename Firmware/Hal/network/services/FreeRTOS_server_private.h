@@ -83,11 +83,12 @@ struct xHTTP_CLIENT
 	TCP_CLIENT_FIELDS;
 	/* --- Keep at the top  --- */
 
-	const char * pcUrlData;
-	const char * pcRestData;
 	char pcCurrentFilename[ 256 ];
 	size_t uxBytesLeft;
 	FF_FILE * pxFileHandle;
+	char pcContentsType[ 40 ];  /* Space for the msg: "text/javascript" */
+	char pcExtraContents[ 40 ]; /* Space for the msg: "Content-Length: 346500" */
+    void *request;
 	union
 	{
 		struct
@@ -125,6 +126,7 @@ struct xFTP_CLIENT
 	char pcFileName[ ffconfigMAX_FILENAME ];
 	char pcConnectionAck[ 128 ];
 	char pcClientAck[ 128 ];
+	char pcNewDir[ ffconfigMAX_FILENAME ];
 	union
 	{
 		struct
@@ -181,14 +183,6 @@ struct xTCP_SERVER
 	char pcCommandBuffer[ ipconfigTCP_COMMAND_BUFFER_SIZE ];
 	/* A buffer to access the file system: read or write data. */
 	char pcFileBuffer[ ipconfigTCP_FILE_BUFFER_SIZE ];
-
-	#if ( ipconfigUSE_FTP != 0 )
-		char pcNewDir[ ffconfigMAX_FILENAME ];
-	#endif
-	#if ( ipconfigUSE_HTTP != 0 )
-		char pcContentsType[ 40 ];  /* Space for the msg: "text/javascript" */
-		char pcExtraContents[ 40 ]; /* Space for the msg: "Content-Length: 346500" */
-	#endif
 	BaseType_t xServerCount;
 	TCPClient_t * pxClients;
 	struct xSERVER

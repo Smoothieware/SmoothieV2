@@ -95,7 +95,7 @@ static int run_tests()
 void safe_sleep(uint32_t ms)
 {
     // here we need to sleep (and yield) for 10ms then check if we need to handle the query command
-    TickType_t delayms= pdMS_TO_TICKS(10); // 10 ms sleep
+    TickType_t delayms = pdMS_TO_TICKS(10); // 10 ms sleep
     while(ms > 0) {
         vTaskDelay(delayms);
         if(ms > 10) {
@@ -124,7 +124,7 @@ extern "C" void vRunTestsTask(void *pvParameters)
     UBaseType_t uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
     printf("High water mark= %lu\n", uxHighWaterMark);
 
-    TickType_t delayms= pdMS_TO_TICKS(1000);
+    TickType_t delayms = pdMS_TO_TICKS(1000);
     for(;;) {
         vTaskDelay(delayms);
     }
@@ -136,18 +136,18 @@ extern "C" size_t write_cdc(const char *buf, size_t len);
 extern "C" size_t read_cdc(char *buf, size_t len);
 extern "C" int setup_cdc(void *taskhandle);
 
-static std::function<size_t(char *, size_t)> capture_fnc= nullptr;
+static std::function<size_t(char *, size_t)> capture_fnc = nullptr;
 
-int maxmq= 20;
-uint32_t timeouts= 0;
+int maxmq = 20;
+uint32_t timeouts = 0;
 extern "C" void usbComTask(void *pvParameters)
 {
-    static OutputStream theos([](const char *buf, size_t len){ return write_cdc(buf, len); });
+    static OutputStream theos([](const char *buf, size_t len) { return write_cdc(buf, len); });
     char linebuf[MAX_LINE_LENGTH];
-    size_t linecnt= 0;
+    size_t linecnt = 0;
     char rxBuff[256];
-    bool first= true;
-    bool discard= false;
+    bool first = true;
+    bool discard = false;
     const TickType_t waitms = pdMS_TO_TICKS( 300 );
 
     // setup the USB CDC and give it the handle of our task to wake up when we get an interrupt
@@ -172,7 +172,7 @@ extern "C" void usbComTask(void *pvParameters)
             if(rdCnt > 0) {
                 for (int i = 0; i < rdCnt; ++i) {
                     if(rxBuff[i] == '\n') {
-                        first= false;
+                        first = false;
                     }
                 }
                 if(!first) {
@@ -184,7 +184,7 @@ extern "C" void usbComTask(void *pvParameters)
     } while(first);
 
     while(1) {
-       // Wait to be notified that there has been a USB irq.
+        // Wait to be notified that there has been a USB irq.
         uint32_t ulNotificationValue = ulTaskNotifyTake( pdFALSE, waitms );
 
         if( ulNotificationValue == 0 ) {
@@ -202,46 +202,46 @@ extern "C" void usbComTask(void *pvParameters)
                 // returns used characters, if used < rdCnt then it is done
                 // so we reset it and give the rest to the normal processing
                 // if used > rdCnt then it is done but we used all the characters
-                size_t used= capture_fnc(rxBuff, rdCnt);
+                size_t used = capture_fnc(rxBuff, rdCnt);
                 if(used < rdCnt) {
-                    capture_fnc= nullptr;
+                    capture_fnc = nullptr;
                     if(used > 0) {
-                        memmove(rxBuff, &rxBuff[used], rdCnt-used);
-                        rdCnt= rdCnt-used;
+                        memmove(rxBuff, &rxBuff[used], rdCnt - used);
+                        rdCnt = rdCnt - used;
                     }
                     // drop through to process the rest
 
-                }else if(used > rdCnt) {
+                } else if(used > rdCnt) {
                     // we used all the data but we are done now
-                    capture_fnc= nullptr;
+                    capture_fnc = nullptr;
                     continue;
-                }else{
+                } else {
                     continue;
                 }
             }
 
             // process line character by character (pretty slow)
             for (size_t i = 0; i < rdCnt; ++i) {
-                linebuf[linecnt]= rxBuff[i];
+                linebuf[linecnt] = rxBuff[i];
 
                 // the following are single character commands that are dispatched immediately
                 if(linebuf[linecnt] == 24) { // ^X
                     // discard all recieved data
-                    linebuf[linecnt+1]= '\0'; // null terminate
+                    linebuf[linecnt + 1] = '\0'; // null terminate
                     send_message_queue(&linebuf[linecnt], &theos);
-                    linecnt= 0;
-                    discard= false;
+                    linecnt = 0;
+                    discard = false;
                     break;
                 } else if(linebuf[linecnt] == '?') {
-                    linebuf[linecnt+1]= '\0'; // null terminate
+                    linebuf[linecnt + 1] = '\0'; // null terminate
                     send_message_queue(&linebuf[linecnt], &theos);
                 } else if(linebuf[linecnt] == '!') {
-                    linebuf[linecnt+1]= '\0'; // null terminate
+                    linebuf[linecnt + 1] = '\0'; // null terminate
                     send_message_queue(&linebuf[linecnt], &theos);
                 } else if(linebuf[linecnt] == '~') {
-                    linebuf[linecnt+1]= '\0'; // null terminate
+                    linebuf[linecnt + 1] = '\0'; // null terminate
                     send_message_queue(&linebuf[linecnt], &theos);
-                // end of immediate commands
+                    // end of immediate commands
 
                 } else if(discard) {
                     // we discard long lines until we get the newline
@@ -256,8 +256,8 @@ extern "C" void usbComTask(void *pvParameters)
                 } else if(linebuf[linecnt] == '\n') {
                     linebuf[linecnt] = '\0'; // remove the \n and nul terminate
                     send_message_queue(linebuf, &theos);
-                    linecnt= 0;
-                    maxmq= std::min(get_message_queue_space(), maxmq);
+                    linecnt = 0;
+                    maxmq = std::min(get_message_queue_space(), maxmq);
 
                 } else if(linebuf[linecnt] == '\r') {
                     // ignore CR
@@ -269,53 +269,53 @@ extern "C" void usbComTask(void *pvParameters)
                 } else {
                     ++linecnt;
                 }
-           }
-       }
-   }
+            }
+        }
+    }
 }
 
-TickType_t delayms= pdMS_TO_TICKS(1);
+TickType_t delayms = pdMS_TO_TICKS(1);
 #include "md5.h"
 // test fast streaming from host
 // reception is mostly in comms thread
 void fast_download_test(OutputStream *os)
 {
     os->puts("Starting fast download test\nok\n");
-    size_t cnt= 0;
+    size_t cnt = 0;
     MD5 md5;
-    volatile bool done= false;
+    volatile bool done = false;
 
     // capture any input, return used number of characters
     // if we return < n or > n then capture_fnc is terminated
     // < n means process the rest of the buffer normally
     // Note that this call is in comms thread not command thread
-    capture_fnc= ([&md5, &done, &cnt](char *b, size_t n) {
+    capture_fnc = ([&md5, &done, &cnt](char *b, size_t n) {
         size_t s;
         // if we get a 0x04 then that is the end of the stream
         char *p = (char *)memchr(b, 4, n); // see if we have termination character
         if(p != NULL) {
             // we do
-            s= p-b; // number of characters before the terminator
-            if(p == b+n-1) {
+            s = p - b; // number of characters before the terminator
+            if(p == b + n - 1) {
                 // we used the entire buffer as terminator is at end
-                n= n+1; // mark it so we terminate but used all the buffer
-            }else{
+                n = n + 1; // mark it so we terminate but used all the buffer
+            } else {
                 // we used partial buffer
-                n= s+1;
+                n = s + 1;
             }
 
-        }else{
+        } else {
             // we can use entire buffer and keep going
-            s= n;
+            s = n;
         }
 
-        if(s > 0){
+        if(s > 0) {
             md5.update(b, s);
-            cnt+=s;
+            cnt += s;
         }
 
         // do this last as we may get preempted
-        if(p!=NULL) done= true;
+        if(p != NULL) done = true;
 
         return n;
     });
@@ -331,12 +331,12 @@ void fast_download_test(OutputStream *os)
 void send_test(OutputStream *os)
 {
     os->puts("Starting send test...\n");
-    const int n= 4096;
+    const int n = 4096;
     os->printf("Sending %d bytes...\n", n);
-    char *buf= (char *)malloc(n+1);
+    char *buf = (char *)malloc(n + 1);
     //assert(buf != NULL);
-    buf[0]= 0;
-    for (int i = 0; i < n/16; ++i) {
+    buf[0] = 0;
+    for (int i = 0; i < n / 16; ++i) {
         strcat(buf, "123456789ABCDEF\n");
     }
     write_cdc(buf, n);
@@ -344,7 +344,7 @@ void send_test(OutputStream *os)
 
     // now send lots of little lines
     os->printf("Sending 1000 lines...\n", n);
-    buf= strdup("ok\n");
+    buf = strdup("ok\n");
     for (int i = 0; i < 1000; ++i) {
         write_cdc(buf, strlen(buf));
     }
@@ -356,9 +356,9 @@ extern "C" void dispatch(void *pvParameters)
 {
     char *line;
     OutputStream *os;
-    bool download_mode= false;
+    bool download_mode = false;
     MD5 md5;
-    size_t cnt= 0, lcnt= 0;
+    size_t cnt = 0, lcnt = 0;
     while(1) {
         // now read lines and dispatch them
         if( receive_message_queue(&line, &os) ) {
@@ -366,14 +366,14 @@ extern "C" void dispatch(void *pvParameters)
             // then just md5 the data until we are done
             if(download_mode) {
                 if(strcmp(line, "M29") == 0) {
-                    download_mode= false;
+                    download_mode = false;
                     os->printf("Done saving file.\nok\n");
                     printf("md5: %s, cnt: %u, timeouts: %lu, maxmq: %d\n", md5.finalize().hexdigest().c_str(), cnt, timeouts, maxmq);
                     continue;
                 }
                 md5.update(line, strlen(line));
                 md5.update("\n", 1);
-                cnt += (strlen(line)+1);
+                cnt += (strlen(line) + 1);
                 ++lcnt;
                 os->puts("ok\n");
                 continue;
@@ -389,7 +389,7 @@ extern "C" void dispatch(void *pvParameters)
                     default: os->printf("Got 1 char line: %s\n", line);
                 }
 
-            }else{
+            } else {
 
                 if(strcmp(line, "mem") == 0) {
                     char pcWriteBuffer[500];
@@ -402,23 +402,23 @@ extern "C" void dispatch(void *pvParameters)
                     struct mallinfo mi = mallinfo();
                     os->printf("\n\nfree malloc memory= %d, free sbrk memory= %d, Total free= %d\n", mi.fordblks, xPortGetFreeHeapSize() - mi.fordblks, xPortGetFreeHeapSize());
 
-                }else if(strcmp(line, "rxtest") == 0) {
+                } else if(strcmp(line, "rxtest") == 0) {
                     // do a download test
                     fast_download_test(os);
 
-                }else if(strcmp(line, "txtest") == 0) {
+                } else if(strcmp(line, "txtest") == 0) {
                     // do a USB send test
                     send_test(os);
 
-                }else if(strncmp(line, "M28 ", 4) == 0) {
-                    download_mode= true;
-                    cnt= 0;
-                    lcnt= 0;
+                } else if(strncmp(line, "M28 ", 4) == 0) {
+                    download_mode = true;
+                    cnt = 0;
+                    lcnt = 0;
                     md5.reinit();
-                    timeouts= 0;
+                    timeouts = 0;
                     os->printf("Writing to file: SIMULATION\n");
 
-                }else{
+                } else {
                     os->printf("Got line: %s\n", line);
                 }
 
@@ -502,10 +502,9 @@ extern "C" void assert_failed(uint8_t* file, uint32_t line)
 
     //__disable_irq();
     __asm volatile ("bkpt #0");
-  /* Infinite loop */
-  while (1)
-  {
-  }
+    /* Infinite loop */
+    while (1) {
+    }
 }
 #endif
 
@@ -538,7 +537,7 @@ int main()   //int argc, char *argv[])
     print_clocks();
 
     // we need to setup and start the slow ticker for some of the tests
-    static SlowTicker *slowticker= SlowTicker::getInstance();
+    static SlowTicker *slowticker = SlowTicker::getInstance();
     if(!slowticker->start()) {
         printf("WARNING: SlowTicker did not start\n");
     }
@@ -567,3 +566,46 @@ int main()   //int argc, char *argv[])
     // should never reach here
     __asm volatile ("bkpt #0");
 }
+
+#ifdef configASSERT
+void vAssertCalled( const char *pcFile, uint32_t ulLine )
+{
+    volatile uint32_t ulBlockVariable = 0UL;
+    volatile const char *pcAssertedFileName;
+    volatile int iAssertedErrno;
+    volatile uint32_t ulAssertedLine;
+
+    ulAssertedLine = ulLine;
+    iAssertedErrno = errno;
+    pcAssertedFileName = strrchr( pcFile, '/' );
+
+    /* These variables are set so they can be viewed in the debugger, but are
+    not used in the code - the following lines just remove the compiler warning
+    about this. */
+    ( void ) ulAssertedLine;
+    ( void ) iAssertedErrno;
+
+    if( pcAssertedFileName == 0 ) {
+        pcAssertedFileName = strrchr( pcFile, '\\' );
+    }
+    if( pcAssertedFileName != NULL ) {
+        pcAssertedFileName++;
+    } else {
+        pcAssertedFileName = pcFile;
+    }
+    printf("ERROR: vAssertCalled( %s, %ld\n", pcFile, ulLine);
+
+    // return;
+
+    /* Setting ulBlockVariable to a non-zero value in the debugger will allow
+    this function to be exited. */
+    taskDISABLE_INTERRUPTS();
+    {
+        __asm volatile ("bkpt #0");
+        while( ulBlockVariable == 0UL ) {
+            __asm volatile( "NOP" );
+        }
+    }
+    taskENABLE_INTERRUPTS();
+}
+#endif

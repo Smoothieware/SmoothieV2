@@ -66,8 +66,8 @@
 
 /* Some defines to make the code more readbale */
 #define pcCOMMAND_BUFFER	pxClient->pxParent->pcCommandBuffer
-#define pcNEW_DIR			pxClient->pxParent->pcNewDir
 #define pcFILE_BUFFER		pxClient->pxParent->pcFileBuffer
+#define pcNEW_DIR			pxClient->pcNewDir
 
 /* This FTP server will only do binary transfers */
 #define TMODE_BINARY		1

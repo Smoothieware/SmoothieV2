@@ -365,7 +365,7 @@ extern "C" void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent
              * to ensure they are not created before the network is usable.
              */
             xTasksAlreadyCreated = pdTRUE;
-            xTaskCreate(Network::vSetupIFTask, "Servers", 640, NULL, (tskIDLE_PRIORITY + 1UL), (xTaskHandle *) NULL);
+            xTaskCreate(Network::vSetupIFTask, "Servers", 1024, NULL, (tskIDLE_PRIORITY + 1UL), (xTaskHandle *) NULL);
         }
         up = true;
 
