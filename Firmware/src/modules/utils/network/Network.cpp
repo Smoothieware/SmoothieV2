@@ -282,6 +282,7 @@ void Network::network_thread()
     xSERVER_CONFIG xServerConfiguration[2];
 
     int ns = 0;
+#if ipconfigUSE_HTTP != 0
     if(enable_httpd) {
         xServerConfiguration[ns].eType = eSERVER_HTTP;
         xServerConfiguration[ns].xPortNumber = 80;
@@ -290,6 +291,7 @@ void Network::network_thread()
         ++ns;
         printf("Network: HTTPD started\n");
     }
+#endif
 
 #if ipconfigUSE_FTP != 0
     if(enable_ftpd) {
