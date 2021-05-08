@@ -1725,7 +1725,7 @@ static BaseType_t prvRetrieveFileWork( FTPClient_t * pxClient )
 static BaseType_t prvListSendPrep( FTPClient_t * pxClient )
 {
 	BaseType_t xFindResult;
-	int iErrorNo= 0;
+	int iErrorNo = 0;
 
 	if( pxClient->bits1.bIsListen != pdFALSE_UNSIGNED ) {
 		/* True if PASV is used */
@@ -1749,16 +1749,16 @@ static BaseType_t prvListSendPrep( FTPClient_t * pxClient )
 
 	xFindResult = ff_findfirst( pcNEW_DIR, &pxClient->xFindData );
 
-	pxClient->bits1.bDirHasEntry = ( xFindResult == 0 );
+	pxClient->bits1.bDirHasEntry = (xFindResult == 0);
 
 //	iErrorNo = stdioGET_ERRNO();
 //	if( ( xFindResult < 0 ) && ( iErrorNo == pdFREERTOS_ERRNO_ENMFILE ) ) {
-	if(xFindResult != 0) {
+	if(xFindResult == FR_NO_FILE) {
 		FreeRTOS_printf( ( "prvListSendPrep: Empty directory? (%s)\n", pxClient->pcCurrentDir ) );
 		prvSendReply( pxClient->xTransferSocket, "total 0\r\n", 0 );
 		pxClient->xDirCount++;
 	} else if( xFindResult > 1  ) {
-		FreeRTOS_printf( ( "prvListSendPrep: rc = %ld iErrorNo = %d\n", xFindResult, iErrorNo ) );
+		FreeRTOS_printf( ( "prvListSendPrep: rc = %ld\n", xFindResult) );
 		prvSendReply( pxClient->xSocket, REPL_451, 0 );
 	}
 
@@ -1798,14 +1798,14 @@ static BaseType_t prvListSendWork( FTPClient_t * pxClient )
 			iRc = ff_findnext( &pxClient->xFindData );
 			// iErrorNo = stdioGET_ERRNO();
 			// xEndOfDir = ( iRc < 0 ) && ( iErrorNo == pdFREERTOS_ERRNO_ENMFILE );
-			xEndOfDir= iRc == 0 ? pdFALSE : pdTRUE;
+			xEndOfDir = iRc == 0 ? pdFALSE : pdTRUE;
 
-			pxClient->bits1.bDirHasEntry = ( xEndOfDir == pdFALSE ) && ( iRc == 0 );
+			pxClient->bits1.bDirHasEntry = (xEndOfDir == pdFALSE);
 
-			if( ( iRc > 0 ) ) { // && ( xEndOfDir == pdFALSE ) ) {
+			if( ( iRc > 0 ) && ( iRc != FR_NO_FILE ) ) {
 				FreeRTOS_printf( ( "prvListSendWork: Error (rc %ld)\n", iRc) );
-				                   //( const char * ) strerror( iErrorNo ),
-				                   //( unsigned ) iRc ) );
+				//( const char * ) strerror( iErrorNo ),
+				//( unsigned ) iRc ) );
 			}
 		}
 
@@ -1817,20 +1817,33 @@ static BaseType_t prvListSendWork( FTPClient_t * pxClient )
 
 		if( pxClient->bits1.bDirHasEntry == pdFALSE_UNSIGNED ) {
 			uint32_t ulTotalCount;
-			uint32_t ulFreeCount;
-			uint32_t ulPercentage= 0;
+			uint32_t ulUsedCount;
+			uint32_t ulPercentage = 0;
+			DWORD fre_clust;
+			FATFS *fs;
+			FRESULT res = f_getfree("/sd", (DWORD*)&fre_clust, &fs);
+			if(FR_OK == res) {
+				// Get total sectors and free sectors
+				DWORD tot_sect = (fs->n_fatent - 2) * fs->csize;
+				DWORD fre_sect = fre_clust * fs->csize;
 
-			ulTotalCount = 1024;
+				ulPercentage = ( uint32_t ) ( (100ULL * fre_sect) / tot_sect );
+				ulTotalCount = tot_sect / 2;
+				ulUsedCount = (tot_sect-fre_sect) / 2;
 
-			// ulFreeCount = ff_diskfree( pxClient->pcCurrentDir, &ulTotalCount );
-			// ulPercentage = ( uint32_t ) ( ( 100ULL * ulFreeCount + ulTotalCount / 2 ) / ulTotalCount );
+			} else {
+				FF_PRINTF("prvListSendWork: f_getfree Error %d\n", res);
+				ulTotalCount = 0;
+				ulPercentage = 0;
+				ulUsedCount = 0;
+			}
 
 			/* Prepare the ACK which will be sent when all data has been sent. */
 			snprintf( pxClient->pcClientAck, sizeof( pxClient->pcClientAck ),
 			          "226-Options: -l\r\n"
 			          "226-%ld matches total\r\n"
-			          "226 Total %lu KB (%lu %% free)\r\n",
-			          pxClient->xDirCount, ulTotalCount / 1024, ulPercentage );
+			          "226 Used %lu Total %lu KB (%lu %% free)\r\n",
+			          pxClient->xDirCount, ulUsedCount, ulTotalCount, ulPercentage );
 		}
 
 		if( xWriteLength ) {
@@ -2001,11 +2014,11 @@ static BaseType_t prvChangeDir( FTPClient_t * pxClient,
 	// 	xValid = pdTRUE;
 	// }
 
-	FRESULT fr= f_chdir(pcNEW_DIR);
-	if(fr==FR_OK) {
-		xValid= pdTRUE;
-	}else{
-		xValid= pdFALSE;
+	FRESULT fr = f_chdir(pcNEW_DIR);
+	if(fr == FR_OK) {
+		xValid = pdTRUE;
+	} else {
+		xValid = pdFALSE;
 	}
 
 	if( xValid == pdFALSE ) {
