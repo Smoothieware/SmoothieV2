@@ -103,14 +103,13 @@ bool Network::configure(ConfigReader& cr)
     using std::placeholders::_1;
     using std::placeholders::_2;
 
-    // THEDISPATCHER->add_handler( "net", std::bind( &Network::handle_net_cmd, this, _1, _2) );
+    THEDISPATCHER->add_handler( "net", std::bind( &Network::handle_net_cmd, this, _1, _2) );
     // THEDISPATCHER->add_handler( "wget", std::bind( &Network::wget_cmd, this, _1, _2) );
     // THEDISPATCHER->add_handler( "update", std::bind( &Network::update_cmd, this, _1, _2) );
 
     return true;
 }
 
-#if 0
 static void netstat(OutputStream& os)
 {
     // TODO need to make FreeRTOS_printf() redirect to strings
@@ -124,24 +123,18 @@ bool Network::handle_net_cmd( std::string& params, OutputStream& os )
 {
     HELP("net - show network status, -n also shows netstat");
 
-    static char tmp_buff[16];
-    if(lpc_netif->flags & NETIF_FLAG_LINK_UP) {
-        os.printf("hostname: %s\n", netif_get_hostname(lpc_netif));
-        os.printf("Link UP\n");
-        if (lpc_netif->ip_addr.addr) {
-            os.printf("IP_ADDR    : %s\n", ipaddr_ntoa_r((const ip_addr_t *) &lpc_netif->ip_addr, tmp_buff, 16));
-            os.printf("NET_MASK   : %s\n", ipaddr_ntoa_r((const ip_addr_t *) &lpc_netif->netmask, tmp_buff, 16));
-            os.printf("GATEWAY_IP : %s\n", ipaddr_ntoa_r((const ip_addr_t *) &lpc_netif->gw, tmp_buff, 16));
-            os.printf("MAC Address: %02X:%02X:%02X:%02X:%02X:%02X\n",
-                      lpc_netif->hwaddr[0], lpc_netif->hwaddr[1], lpc_netif->hwaddr[2],
-                      lpc_netif->hwaddr[3], lpc_netif->hwaddr[4], lpc_netif->hwaddr[5]);
-
-        } else {
-            os.printf("no ip set\n");
-        }
-
-        const ip_addr_t *dnsaddr = dns_getserver(0);
-        os.printf("DNS Server: %s\n", ipaddr_ntoa_r((const ip_addr_t *)dnsaddr, tmp_buff, 16));
+    if(FreeRTOS_IsNetworkUp() == pdTRUE) {
+        uint32_t ulIPAddress, ulNetMask, ulGatewayAddress, ulDNSServerAddress;
+        char cBuffer[ 16 ];
+        FreeRTOS_GetAddressConfiguration( &ulIPAddress, &ulNetMask, &ulGatewayAddress, &ulDNSServerAddress );
+        FreeRTOS_inet_ntoa( ulIPAddress, cBuffer );
+        os.printf( "IP Address: %s\n", cBuffer );
+        FreeRTOS_inet_ntoa( ulNetMask, cBuffer );
+        os.printf( "Subnet Mask: %s\n", cBuffer );
+        FreeRTOS_inet_ntoa( ulGatewayAddress, cBuffer );
+        os.printf( "Gateway Address: %s\n", cBuffer );
+        FreeRTOS_inet_ntoa( ulDNSServerAddress, cBuffer );
+        os.printf( "DNS Server Address: %s\n", cBuffer );
 
     } else {
         os.printf("Link DOWN\n");
@@ -158,6 +151,7 @@ bool Network::handle_net_cmd( std::string& params, OutputStream& os )
     return true;
 }
 
+#if 0
 // extern
 bool wget(const char *url, const char *fn, OutputStream& os);
 
