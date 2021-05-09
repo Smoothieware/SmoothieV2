@@ -80,7 +80,7 @@ static BaseType_t prvSendFile( HTTPClient_t * pxClient );
 static BaseType_t prvSendReply( HTTPClient_t * pxClient,
                                 BaseType_t xCode );
 
-extern int parse_request(const char *buf, uint32_t len, void **request);
+extern int parse_request_release(void *request);
 
 
 typedef struct xTYPE_COUPLE {
@@ -117,7 +117,7 @@ void vHTTPClientDelete( TCPClient_t * pxTCPClient )
 
 	if(pxClient->request != NULL) {
 		// free up request parsing resources
-		parse_request(NULL, 0, &pxClient->request);
+		parse_request_release(pxClient->request);
 		pxClient->request = NULL;
 	}
 
@@ -205,6 +205,7 @@ static BaseType_t prvSendFile( HTTPClient_t * pxClient )
 				xRc = FreeRTOS_send( pxClient->xSocket, pcFILE_BUFFER, uxCount, 0 );
 
 				if( xRc < 0 ) {
+
 					break;
 				}
 			}
@@ -390,7 +391,9 @@ BaseType_t xHTTPClientWork( TCPClient_t * pxTCPClient )
 
 #else
 
-// new httpserver handling
+// new httpserver handling with llhttp parser
+extern int parse_request(const char *buf, uint32_t len, void *p_request);
+extern void *parse_request_create();
 extern int parse_request_get_method(void *request);
 extern const char *parse_request_get_url(void *request);
 extern const char *parse_request_get_header(const char *hdr, void *request);
@@ -399,6 +402,8 @@ extern const int parse_request_get_headers(const char *hdrs[], int len, void *re
 static BaseType_t prvHandleRequest(HTTPClient_t *pxClient)
 {
 	BaseType_t xRc;
+	pxClient->bits.ulFlags = 0; // clear flags
+
 	if(parse_request_get_method(pxClient->request) == 1) { // GET
 		const char *url= parse_request_get_url(pxClient->request);
 
@@ -473,19 +478,22 @@ BaseType_t xHTTPClientWork( TCPClient_t * pxTCPClient )
 		prvSendFile( pxClient );
 	}
 
-
 	xRc = FreeRTOS_recv( pxClient->xSocket, ( void * ) pcCOMMAND_BUFFER, sizeof( pcCOMMAND_BUFFER ), 0 );
 
 	if( xRc > 0 ) {
 		if(pxClient->request == NULL) {
-			parse_request(NULL, 0, &pxClient->request);
+			pxClient->request= parse_request_create();
+			if(pxClient->request == NULL) {
+				return -pdFREERTOS_ERRNO_ENOMEM;
+			}
 		}
-		int needmore = parse_request(pcCOMMAND_BUFFER, xRc, &pxClient->request);
+		int needmore = parse_request(pcCOMMAND_BUFFER, xRc, pxClient->request);
 		if(needmore == 1) {
 			// we have the request and headers
 			FreeRTOS_printf( ("xHTTPClientWork: parsing request complete\n") );
 			xRc = prvHandleRequest(pxClient);
-			parse_request(NULL, 0, &pxClient->request);
+			parse_request_release(pxClient->request);
+			pxClient->request= NULL;
 
 		} else if(needmore == 0) {
 			// go around again
@@ -493,7 +501,8 @@ BaseType_t xHTTPClientWork( TCPClient_t * pxTCPClient )
 
 		} else if(needmore < 0) {
 			FreeRTOS_printf( ("xHTTPClientWork: parser error = %d\n", needmore) );
-			parse_request(NULL, 0, &pxClient->request);
+			parse_request_release(pxClient->request);
+			pxClient->request= NULL;
 			xRc = -1;
 		}
 
@@ -501,7 +510,8 @@ BaseType_t xHTTPClientWork( TCPClient_t * pxTCPClient )
 		/* The connection will be closed and the client will be deleted. */
 		FreeRTOS_printf( ( "xHTTPClientWork: rc = %ld\n", xRc ) );
 		if(pxClient->request != NULL) {
-			parse_request(NULL, 0, &pxClient->request);
+			parse_request_release(pxClient->request);
+			pxClient->request= NULL;
 		}
 	}
 

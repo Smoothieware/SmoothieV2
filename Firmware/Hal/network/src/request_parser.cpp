@@ -22,7 +22,7 @@ static int handle_on_message_complete(llhttp_t  *llh)
 {
     Request_t *req = (Request_t*)llh->data;
     req->done = true;
-    printf("on_message_complete\n");
+    printf("on_message_complete: %p - %p\n", req, llh);
     return HPE_OK;
 }
 
@@ -66,21 +66,15 @@ static int handle_on_header_value_complete(llhttp_t *llh)
     return HPE_OK;
 }
 
-/*
-    returns  0 if more data needed
-             1 if completed ok
-            -1 if there was a parse error
-*/
-extern "C" int parse_request(const char *buf, uint32_t len, Request_t **p_request)
+extern "C" void *parse_request_create()
 {
-    if(buf == nullptr && len == 0) {
-        if(*p_request == nullptr) {
-            printf("request_parser: initialize\n");
-            *p_request = new Request_t;
+    Request_t *p_request = new Request_t;
+    printf("request_parser: create: %p\n", p_request);
 
-            llhttp_t *parser = new llhttp_t;
-            llhttp_settings_t *settings = new llhttp_settings_t;
-
+    if(p_request != nullptr) {
+        llhttp_t *parser = new llhttp_t;
+        llhttp_settings_t *settings = new llhttp_settings_t;
+        if(parser != nullptr && settings != nullptr) {
             /* Initialize user callbacks and settings */
             llhttp_settings_init(settings);
 
@@ -92,27 +86,41 @@ extern "C" int parse_request(const char *buf, uint32_t len, Request_t **p_reques
             settings->on_header_field = handle_on_header_field;
 
             llhttp_init(parser, HTTP_REQUEST, settings);
-            parser->data = *p_request;
-            (*p_request)->parser = parser;
-            return 1;
+            parser->data = p_request;
+            p_request->parser = parser;
 
-        } else {
-            // release
-            printf("request_parser: cleanup\n");
-            delete (llhttp_settings_t*)(*p_request)->parser->settings;
-            delete (*p_request)->parser;
-            delete (*p_request);
-            *p_request = nullptr;
-            return 1;
+        }else{
+            delete p_request;
+            p_request= nullptr;
         }
     }
 
-    enum llhttp_errno err = llhttp_execute((*p_request)->parser, buf, len);
+    return p_request;
+}
+
+extern "C" int parse_request_release(Request_t *p_request)
+{
+    // release
+    printf("request_parser: release: %p\n", p_request);
+    delete (llhttp_settings_t*)p_request->parser->settings;
+    delete p_request->parser;
+    delete p_request;
+    return 1;
+}
+
+/*
+    returns  0 if more data needed
+             1 if completed ok
+            -1 if there was a parse error
+*/
+extern "C" int parse_request(const char *buf, uint32_t len, Request_t *p_request)
+{
+    enum llhttp_errno err = llhttp_execute(p_request->parser, buf, len);
     if (err == HPE_OK) {
         /* Successfully parsed! */
-        return (*p_request)->done ? 1 : 0;
+        return p_request->done ? 1 : 0;
     } else {
-        printf("Parse error: %s %s\n", llhttp_errno_name(err), (*p_request)->parser->reason);
+        printf("Parse error: %s %s\n", llhttp_errno_name(err), p_request->parser->reason);
         return -err;
     }
 }
@@ -152,7 +160,7 @@ extern "C" const int parse_request_get_headers(const char *hdrs[], int len, void
     int n = 0;
     if(req != nullptr) {
         for(auto& h : req->headers) {
-            hdrs[n++]= h.first.c_str();
+            hdrs[n++] = h.first.c_str();
         }
     }
     return n;

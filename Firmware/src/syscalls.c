@@ -101,6 +101,8 @@ int _open(char *path, int flags, ...)
         free(fh);
         errno= fatfs_to_errno(res);
         return -1;
+    }else {
+    	errno= 0;
     }
 
     // save the fn to fh mapping

@@ -89,16 +89,12 @@ struct xHTTP_CLIENT
 	char pcContentsType[ 40 ];  /* Space for the msg: "text/javascript" */
 	char pcExtraContents[ 40 ]; /* Space for the msg: "Content-Length: 346500" */
     void *request;
-	union
-	{
-		struct
-		{
-			uint32_t
-				bReplySent : 1;
+	union {
+		struct {
+			uint32_t bReplySent : 1;
 		};
 		uint32_t ulFlags;
-	}
-	bits;
+	} bits;
 };
 
 typedef struct xHTTP_CLIENT HTTPClient_t;

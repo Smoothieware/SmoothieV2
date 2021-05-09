@@ -310,6 +310,11 @@ task :upload do
   sh "st-flash --freq=4000 write #{OBJDIR}/#{PROG}.bin 0x08000000"
 end
 
+desc "Upload via st prog"
+task :uploadbig do
+  sh "~/bin/flash-stm32 #{OBJDIR}/#{PROG}.bin"
+end
+
 # desc "Upload via openocd"
 # task :upload do
 #   sh "./flashit.openocd #{OBJDIR}/#{PROG}.elf"
