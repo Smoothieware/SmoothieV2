@@ -74,11 +74,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * call to FreeRTOS_gethostbyname() will return immediately, without even creating
  * a socket.
  */
-#define ipconfigUSE_DNS_CACHE				( 1 )
-#define ipconfigDNS_CACHE_NAME_LENGTH		( 16 )
-#define ipconfigDNS_CACHE_ENTRIES			( 4 )
-#define ipconfigDNS_REQUEST_ATTEMPTS		( 4 )
-#define ipconfigDNS_CACHE_ADDRESSES_PER_ENTRY   ( 4 )
+// #define ipconfigUSE_DNS_CACHE				( 0 )
+// #define ipconfigDNS_CACHE_NAME_LENGTH		( 256 )
+// #define ipconfigDNS_CACHE_ENTRIES			( 4 )
+// #define ipconfigDNS_REQUEST_ATTEMPTS		( 4 )
+// #define ipconfigDNS_CACHE_ADDRESSES_PER_ENTRY   ( 1 )
 
 
 /* The IP stack executes it its own task (although any application task can make
@@ -105,8 +105,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * number generation is performed via this macro to allow applications to use their
  * own random number generation method.  For example, it might be possible to
  * generate a random number by sampling noise on an analogue input. */
-extern UBaseType_t uxRand();
-#define ipconfigRAND32()	uxRand()
+// extern UBaseType_t uxRand();
+// #define ipconfigRAND32()	uxRand()
 
 /* If ipconfigUSE_NETWORK_EVENT_HOOK is set to 1 then FreeRTOS+TCP will call the
  * network event hook at the appropriate times.  If ipconfigUSE_NETWORK_EVENT_HOOK
@@ -199,8 +199,7 @@ extern UBaseType_t uxRand();
  * stack.  ipconfigEVENT_QUEUE_LENGTH sets the maximum number of events that can
  * be queued for processing at any one time.  The event queue must be a minimum of
  * 5 greater than the total number of network buffers. */
-#define ipconfigEVENT_QUEUE_LENGTH \
-    ( ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS + 5 )
+#define ipconfigEVENT_QUEUE_LENGTH   ( ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS + 5 )
 
 /* The address of a socket is the combination of its IP address and its port
  * number.  FreeRTOS_bind() is used to manually allocate a port number to a socket
@@ -333,7 +332,7 @@ disconnecting stage will timeout after a period of non-activity. */
 
 #define ipconfigETHERNET_MINIMUM_PACKET_BYTES	( 60 )
 
-#define ipconfigARP_STORES_REMOTE_ADDRESSES		( 1 )
+#define ipconfigARP_STORES_REMOTE_ADDRESSES		( 0 )
 
 #define ipconfigETHERNET_DRIVER_FILTERS_PACKETS	( 1 )
 

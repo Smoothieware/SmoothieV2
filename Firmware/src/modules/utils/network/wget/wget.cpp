@@ -31,9 +31,8 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "lwip/sys.h"
-#include "lwip/sockets.h"
-#include "lwip/netdb.h"
+#include "FreeRTOS_IP.h"
+#include "FreeRTOS_Sockets.h"
 
 #include "http.h"
 
@@ -62,61 +61,49 @@ static bool splitURL(const char *furl, std::string& host, std::string& rurl)
     return false;
 }
 
-// return a socket connected to a hostname, or -1
-static int connectsocket(const char* host, int port)
+// return a socket connected to a hostname, or 0
+static Socket_t connectsocket(const char* host, int port)
 {
+    uint32_t dest_ip;
 
-    struct addrinfo* result= NULL;
-    sockaddr_in addr= {0};
-    int s= -1;
-    int err=lwip_getaddrinfo(host, NULL, NULL, &result);
-    if(err != 0) {
-        ERROR_PRINTF("failed to getaddrinfo: %d - did you set a dns server?\n", err);
-        goto error;
+    // try dotted ip first
+    dest_ip= FreeRTOS_inet_addr(host);
+    if(dest_ip == 0) {
+        // try to resolve hostname via DNS
+        dest_ip = FreeRTOS_gethostbyname(host);
     }
 
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    addr.sin_addr.s_addr = INADDR_ANY;
-    for (struct addrinfo* ai = result; ai != NULL; ai = ai->ai_next) {
-        if (ai->ai_family != AF_INET)
-            continue;
-
-        const sockaddr_in *ai_in = (const sockaddr_in*)ai->ai_addr;
-        addr.sin_addr = ai_in->sin_addr;
-        break;
+    if(dest_ip == 0) {
+        ERROR_PRINTF("wget connectsocket: failed to get hosts address\n");
+        return 0;
     }
 
-    lwip_freeaddrinfo(result);
+    struct freertos_sockaddr addr;
+    addr.sin_port = FreeRTOS_htons(port);
+    addr.sin_addr = dest_ip;
 
-    if (addr.sin_addr.s_addr == INADDR_ANY){
-        ERROR_PRINTF("s_addr is bad\n");
-        goto error;
+    /* create a TCP socket */
+    Socket_t sock = FreeRTOS_socket(FREERTOS_AF_INET, FREERTOS_SOCK_STREAM, FREERTOS_IPPROTO_TCP);
+    if(sock == FREERTOS_INVALID_SOCKET) {
+        ERROR_PRINTF("wget connectsocket: failed no memory\n");
+        return 0;
     }
 
-    s = lwip_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (s == -1){
-        ERROR_PRINTF("failed to open socket: %d\n", errno);
-        goto error;
+    // tell it to use random internal port
+    FreeRTOS_bind(sock, NULL, sizeof(freertos_sockaddr));
+
+    BaseType_t rc = FreeRTOS_connect(sock, &addr, sizeof(addr));
+    if(rc != 0 ) {
+        ERROR_PRINTF("wget connectsocket: connect failed: %ld\n", rc);
+        FreeRTOS_closesocket(sock);
+        return 0;
     }
 
-    if (lwip_connect(s, (const sockaddr*)&addr, sizeof(addr))){
-        ERROR_PRINTF("failed to connect: %d\n", errno);
-        goto error;
-    }
-
-    return s;
-
-error:
-    if (s != -1)
-        lwip_close(s);
-    if (result)
-        lwip_freeaddrinfo(result);
-    return -1;
+    return sock;
 }
 
 // Response data/funcs
-struct HttpResponse {
+using HttpResponse_t = struct {
     int code, error;
     FILE *fp;
     OutputStream& os;
@@ -124,22 +111,34 @@ struct HttpResponse {
 
 static void* response_realloc(void* opaque, void* ptr, int size)
 {
-    return realloc(ptr, size);
+    // for some reason using realloc we have a 16byte memory leak each time
+    // return realloc(ptr, size);
+    if(ptr == 0) {
+        return malloc(size);
+    }
+    if(ptr != 0 && size == 0) {
+        free(ptr);
+        return 0;
+    }
+    void *new_ptr= malloc(size);
+    memcpy(new_ptr, ptr, size);
+    free(ptr);
+    return new_ptr;
 }
 
 static void response_body(void* opaque, const char* data, int size)
 {
-    DEBUG_PRINTF("Body: size %d\n", size);
+    DEBUG_PRINTF("wget response_bodyBody: size %d\n", size);
 
-    HttpResponse* response = (HttpResponse*)opaque;
+    HttpResponse_t* response = (HttpResponse_t*)opaque;
     if(response->fp == NULL) {
         response->os.write(data, size);
 
-    }else if(response->error == 0) {
-        int n= fwrite(data, 1, size, response->fp);
+    } else if(response->error == 0) {
+        int n = fwrite(data, 1, size, response->fp);
         if(n != size) {
-            DEBUG_PRINTF("file write error: %d", errno);
-            response->error= 1;
+            DEBUG_PRINTF("wget response_body: file write error: %d", errno);
+            response->error = 1;
         }
     }
 }
@@ -153,23 +152,16 @@ static void response_header(void* opaque, const char* ckey, int nkey, const char
 
 static void response_code(void* opaque, int code)
 {
-    HttpResponse* response = (HttpResponse*)opaque;
+    HttpResponse_t* response = (HttpResponse_t*)opaque;
     response->code = code;
 }
-
-static const http_funcs responseFuncs = {
-    response_realloc,
-    response_body,
-    response_header,
-    response_code,
-};
 
 bool wget(const char *url, const char *fn, OutputStream& os)
 {
     std::string host, req;
 
     if(!splitURL(url, host, req)) {
-        ERROR_PRINTF("bad url: %s\n", url);
+        ERROR_PRINTF("wget: bad url: %s - must be of the form http://ip_or_name/file\n", url);
         return false;
     }
 
@@ -179,32 +171,40 @@ bool wget(const char *url, const char *fn, OutputStream& os)
     request.append(host);
     request.append("\r\n\r\n\r\n");
 
-    DEBUG_PRINTF("request: %s to host: %s\n", request.c_str(), host.c_str());
+    DEBUG_PRINTF("wget: request: %s to host: %s\n", request.c_str(), host.c_str());
 
-    int conn = connectsocket(host.c_str(), 80);
-    if (conn < 0) {
-        ERROR_PRINTF("Failed to connect socket: %d\n", errno);
+    Socket_t conn = connectsocket(host.c_str(), 80);
+    if (conn == 0) {
+        ERROR_PRINTF("wget: Failed to connect socket\n");
         return false;
     }
 
-    size_t len = lwip_send(conn, request.c_str(), request.size(), 0);
-    if (len != request.size()) {
-        ERROR_PRINTF("Failed to send request: %d\n", errno);
-        lwip_close(conn);
+    // FIXME allow for partial send of data
+    BaseType_t len = FreeRTOS_send(conn, request.c_str(), request.size(), 0);
+    if (len != (BaseType_t)request.size()) {
+        ERROR_PRINTF("wget: Failed to send request: %ld\n", len);
+        FreeRTOS_closesocket(conn);
         return false;
     }
 
-    HttpResponse response{0, 0, NULL, os};
+    HttpResponse_t response{0, 0, NULL, os};
 
     if(fn != nullptr) {
         FILE *fp = fopen(fn, "w");
         if(fp == NULL) {
-            ERROR_PRINTF("failed to open file: %s\n", fn);
-            lwip_close(conn);
+            ERROR_PRINTF("wget: failed to open file: %s\n", fn);
+            FreeRTOS_closesocket(conn);
             return false;
         }
-        response.fp= fp;
+        response.fp = fp;
     }
+
+    http_funcs responseFuncs {
+        response_realloc,
+        response_body,
+        response_header,
+        response_code,
+    };
 
     http_roundtripper rt;
     http_init(&rt, responseFuncs, &response);
@@ -213,11 +213,11 @@ bool wget(const char *url, const char *fn, OutputStream& os)
     char buffer[1024];
     while (needmore) {
         const char* data = buffer;
-        int ndata = lwip_recv(conn, buffer, sizeof(buffer), 0);
-        if (ndata <= 0) {
-            ERROR_PRINTF("Error receiving data: %d\n", errno);
+        BaseType_t ndata = FreeRTOS_recv(conn, buffer, sizeof(buffer), 0);
+        if (ndata < 0) {
+            ERROR_PRINTF("wget: Error receiving data: %ld\n", ndata);
             http_free(&rt);
-            lwip_close(conn);
+            FreeRTOS_closesocket(conn);
             if(response.fp != NULL) fclose(response.fp);
             return false;
         }
@@ -231,23 +231,23 @@ bool wget(const char *url, const char *fn, OutputStream& os)
     }
 
     if (http_iserror(&rt)) {
-        ERROR_PRINTF("Error parsing HTTP data\n");
+        ERROR_PRINTF("wget: Error parsing HTTP data\n");
         http_free(&rt);
-        lwip_close(conn);
+        FreeRTOS_closesocket(conn);
         if(response.fp != NULL) fclose(response.fp);
         return false;
     }
 
     if (response.error != 0) {
-        ERROR_PRINTF("Error writing data to file\n");
+        ERROR_PRINTF("wget: Error writing data to file\n");
         http_free(&rt);
-        lwip_close(conn);
+        FreeRTOS_closesocket(conn);
         if(response.fp != NULL) fclose(response.fp);
         return false;
     }
 
     http_free(&rt);
-    lwip_close(conn);
+    FreeRTOS_closesocket(conn);
     if(response.fp != NULL) fclose(response.fp);
 
     return response.code == 200;

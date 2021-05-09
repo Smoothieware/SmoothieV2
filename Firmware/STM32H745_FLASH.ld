@@ -217,6 +217,9 @@ SECTIONS
     PROVIDE_HIDDEN (__ethernet_data_end = .);
   } >SRAM_2
 
+  /* to take md5sum of the flash .bin */
+  _image_start = LOADADDR(.isr_vector);
+  _image_end = LOADADDR(.dtcm_text) + SIZEOF(.dtcm_text);
 
   /* Remove information from the standard libraries */
   /DISCARD/ :

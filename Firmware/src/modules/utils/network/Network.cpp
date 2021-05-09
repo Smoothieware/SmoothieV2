@@ -104,7 +104,7 @@ bool Network::configure(ConfigReader& cr)
     using std::placeholders::_2;
 
     THEDISPATCHER->add_handler( "net", std::bind( &Network::handle_net_cmd, this, _1, _2) );
-    // THEDISPATCHER->add_handler( "wget", std::bind( &Network::wget_cmd, this, _1, _2) );
+    THEDISPATCHER->add_handler( "wget", std::bind( &Network::wget_cmd, this, _1, _2) );
     // THEDISPATCHER->add_handler( "update", std::bind( &Network::update_cmd, this, _1, _2) );
 
     return true;
@@ -151,7 +151,6 @@ bool Network::handle_net_cmd( std::string& params, OutputStream& os )
     return true;
 }
 
-#if 0
 // extern
 bool wget(const char *url, const char *fn, OutputStream& os);
 
@@ -160,7 +159,7 @@ bool Network::wget_cmd( std::string& params, OutputStream& os )
     HELP("wget url [outfn] - fetch a url and save to outfn or print the contents");
     std::string url = stringutils::shift_parameter(params);
     if(url.empty()) {
-        os.printf("url required\n");
+        os.printf("url required: eg http://smoothieware.org/firmware.bin\n");
         return true;
     }
 
@@ -177,6 +176,7 @@ bool Network::wget_cmd( std::string& params, OutputStream& os )
     return true;
 }
 
+#if 0
 #include "md5.h"
 extern uint32_t _image_start;
 extern uint32_t _image_end;

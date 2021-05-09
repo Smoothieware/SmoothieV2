@@ -4,7 +4,7 @@
  */
 
 /*
- * FreeRTOS+TCP V2.3.2
+ * FreeRTOS+TCP V2.3.3
  * Copyright (C) 2020 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -168,6 +168,7 @@ static int32_t ETH_PHY_IO_WriteReg( uint32_t DevAddr,
 static void vClearOptionBit( volatile uint32_t * pulValue,
                              uint32_t ulValue );
 
+static size_t uxGetOwnCount( ETH_HandleTypeDef * heth );
 
 /*-----------------------------------------------------------*/
 
@@ -811,7 +812,6 @@ static void vClearOptionBit( volatile uint32_t * pulValue,
 }
 /*-----------------------------------------------------------*/
 
-#if ( ipconfigHAS_PRINTF != 0 )
 static size_t uxGetOwnCount( ETH_HandleTypeDef * heth )
 {
     BaseType_t xIndex;
@@ -832,7 +832,6 @@ static size_t uxGetOwnCount( ETH_HandleTypeDef * heth )
 
     return xCount;
 }
-#endif
 /*-----------------------------------------------------------*/
 
 static void prvEMACHandlerTask( void * pvParameters )
@@ -841,6 +840,8 @@ static void prvEMACHandlerTask( void * pvParameters )
  * be occupied.  In stat case, the program will wait (block) for the counting
  * semaphore. */
     const TickType_t ulMaxBlockTime = pdMS_TO_TICKS( 100UL );
+    size_t uxTXDescriptorsUsed = 0U;
+    size_t uxRXDescriptorsUsed = ETH_RX_DESC_CNT;
 
     ( void ) pvParameters;
 
@@ -849,8 +850,6 @@ static void prvEMACHandlerTask( void * pvParameters )
         BaseType_t xResult = 0;
 
         #if ( ipconfigHAS_PRINTF != 0 )
-        size_t uxTXDescriptorsUsed = 0U;
-        size_t uxRXDescriptorsUsed = ETH_RX_DESC_CNT;
             {
                 size_t uxUsed;
                 size_t uxOwnCount;

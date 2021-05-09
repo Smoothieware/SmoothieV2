@@ -194,6 +194,8 @@ float TemperatureSwitch::get_highest_temperature()
 {
     float high_temp = 0.0;
 
+    // TODO optimize by getting a list of valid temperature controls in config
+    //   maybe then only get caled in ctx if it is on.
     // scan all temperature controls with the specified designator
     std::vector<Module*> controllers = Module::lookup_group("temperature control");
     for(auto m : controllers) {
