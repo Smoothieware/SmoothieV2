@@ -111,8 +111,8 @@ using HttpResponse_t = struct {
 
 static void* response_realloc(void* opaque, void* ptr, int size)
 {
-    // for some reason using realloc we have a 16byte memory leak each time
-    // return realloc(ptr, size);
+    // NOTE the standared says size == 0 is implementation dependent and not guaranteed to free
+    // so we do it explicitly here, used this way realloc seems to work ok otherwise we get a memory leak
     if(ptr == 0) {
         return malloc(size);
     }
@@ -120,10 +120,7 @@ static void* response_realloc(void* opaque, void* ptr, int size)
         free(ptr);
         return 0;
     }
-    void *new_ptr= malloc(size);
-    memcpy(new_ptr, ptr, size);
-    free(ptr);
-    return new_ptr;
+    return realloc(ptr, size);
 }
 
 static void response_body(void* opaque, const char* data, int size)
