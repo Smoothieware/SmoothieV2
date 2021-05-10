@@ -112,13 +112,7 @@ bool Network::configure(ConfigReader& cr)
     return true;
 }
 
-static void netstat(OutputStream& os)
-{
-    // TODO need to make FreeRTOS_printf() redirect to strings
-    // and then os.printf() the string
-    FreeRTOS_netstat();
-    os.printf("not implemented\r\n");
-}
+extern "C" void netstat(OutputStream&);
 
 #define HELP(m) if(params == "-h") { os.printf("%s\n", m); return true; }
 bool Network::handle_net_cmd( std::string& params, OutputStream& os )
@@ -290,7 +284,7 @@ void Network::set_abort()
         shell_close();
     }
     pxTCPServer = nullptr;
-    abort_network= true;
+    abort_network = true;
 }
 
 /* Main TCP thread loop */
