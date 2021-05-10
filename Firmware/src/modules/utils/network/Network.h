@@ -13,7 +13,7 @@ class Network : public Module {
         static void vSetupIFTask(void *pvParameters);
 
         bool configure(ConfigReader& cr);
-        void set_abort() { abort_network= true; }
+        void set_abort();
         const char *get_hostname() const { return hostname.c_str(); }
         bool is_dhcp() const { return use_dhcp; }
 

@@ -27,7 +27,8 @@ USBD_CDC_LineCodingTypeDef linecoding = {
 extern USBD_HandleTypeDef USBD_Device;
 
 static RingBuffer_t *rx_rb;
-static uint8_t rx_buffer[CDC_DATA_FS_OUT_PACKET_SIZE];
+static uint8_t rx_buffer[CDC_DATA_FS_OUT_PACKET_SIZE] __attribute__((section(".usb_data")));
+static uint8_t tx_buffer[CDC_DATA_FS_OUT_PACKET_SIZE] __attribute__((section(".usb_data")));
 static volatile int tx_complete;
 
 void setup_vcom()
@@ -150,7 +151,7 @@ static int8_t CDC_IF_Receive(uint8_t *Buf, uint32_t *Len)
         // FIXME: avoid copying 1 byte at a time, use a better ringbuffer or just double buffer
         RingBufferPut(rx_rb, Buf[i]);
     }
-    // FIXME: this is really innefficient of getting 1 byte at a time, need to double buffer so we can interleave
+    // FIXME: this is really innefficient if getting 1 byte at a time, need to double buffer so we can interleave
     vcom_notify_recvd();
     return (USBD_OK);
 }
@@ -187,25 +188,24 @@ static int8_t CDC_IF_TransmitCplt(uint8_t *Buf, uint32_t *Len, uint8_t epnum)
     return (0);
 }
 
-// return 0 on error 1 on ok, written length is loaded into wlen
-int vcom_write(uint8_t *buf, size_t len, size_t *wlen)
+// return bytes written, or -1 on error
+int vcom_write(uint8_t *buf, size_t len)
 {
     if(tx_complete == 0) {
-        if(wlen != NULL) *wlen = 0;
-        return 1;
+    	// still busy from last write
+        return 0;
     }
 
     tx_complete = 0;
-    size_t n = (len > 64) ? 64 : len;
+    size_t n = (len > CDC_DATA_FS_OUT_PACKET_SIZE) ? CDC_DATA_FS_OUT_PACKET_SIZE : len;
+    memcpy(tx_buffer, buf, n);
 
-    if(USBD_CDC_SetTxBuffer(&USBD_Device, buf, n) == USBD_FAIL) {
-        return 0;
-    }
-
+    // we transfer it to the tx_buffer as the USB can access SRAM1 faster than AXI_SRAM
+    // However it does not appear to be using DMA so not sure if this is valid.
+	USBD_CDC_SetTxBuffer(&USBD_Device, tx_buffer, n);
     if (USBD_CDC_TransmitPacket(&USBD_Device) == USBD_FAIL) {
-        return 0;
+        return -1;
     }
 
-    if(wlen != NULL) *wlen = n;
-    return 1;
+    return n;
 }

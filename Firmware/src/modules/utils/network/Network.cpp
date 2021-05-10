@@ -61,6 +61,8 @@ Network::~Network()
 {
 }
 
+TCPServer_t *pxTCPServer = NULL;
+
 // this is set by config
 static uint8_t ucMACAddress[ 6 ] = { 0x44, 0x11, 0x22, 0x33, 0x44, 0x55 };
 static uint8_t ucIPAddress[ 4 ] = { 192, 168, 1, 45 };
@@ -82,12 +84,12 @@ bool Network::configure(ConfigReader& cr)
 
     std::string ip_address_str = cr.get_string(m, ip_address_key, "auto");
     if(!ip_address_str.empty() && ip_address_str != "auto") {
-        use_dhcp= false;
+        use_dhcp = false;
         std::string ip_mask_str = cr.get_string(m, ip_mask_key, "255.255.255.0");
         std::string ip_gateway_str = cr.get_string(m, ip_gateway_key, "192.168.1.1");
         // setup ucIPAddress, ucNetMask, ucGatewayAddress
-    }else{
-        use_dhcp= true;
+    } else {
+        use_dhcp = true;
     }
 
     std::string dns_server_str = cr.get_string(m, dns_server_key, "auto");
@@ -121,7 +123,7 @@ static void netstat(OutputStream& os)
 #define HELP(m) if(params == "-h") { os.printf("%s\n", m); return true; }
 bool Network::handle_net_cmd( std::string& params, OutputStream& os )
 {
-    HELP("net - show network status, -n also shows netstat");
+    HELP("net - show network status, -n also shows netstat, -k shuts down network");
 
     if(FreeRTOS_IsNetworkUp() == pdTRUE) {
         uint32_t ulIPAddress, ulNetMask, ulGatewayAddress, ulDNSServerAddress;
@@ -140,10 +142,21 @@ bool Network::handle_net_cmd( std::string& params, OutputStream& os )
         os.printf("Link DOWN\n");
     }
 
-    if(!params.empty()) {
+    bool bnetstat = false;
+    bool bkill = false;
+    while(!params.empty()) {
+        std::string s = stringutils::shift_parameter( params );
+        if(s == "-n") bnetstat = true;
+        else if(s == "-k") bkill = true;
+    }
+
+    if(bnetstat) {
         // do netstat-like dump
         os.puts("\nNetstat...\n");
         netstat(os);
+    }
+    if(bkill) {
+        set_abort();
     }
 
     os.set_no_response();
@@ -267,12 +280,23 @@ bool Network::update_cmd( std::string& params, OutputStream& os )
 }
 #endif
 
+void Network::set_abort()
+{
+    if(enable_ftpd || enable_httpd) {
+        FreeRTOS_TCPServerSignal(pxTCPServer);
+    }
+    if(enable_shell) {
+        extern void shell_close(void);
+        shell_close();
+    }
+    pxTCPServer = nullptr;
+    abort_network= true;
+}
+
 /* Main TCP thread loop */
 void Network::network_thread()
 {
     // setup the servers
-    TCPServer_t *pxTCPServer = NULL;
-    const TickType_t xInitialBlockTime = pdMS_TO_TICKS( 300UL );
     xSERVER_CONFIG xServerConfiguration[2];
 
     int ns = 0;
@@ -311,6 +335,7 @@ void Network::network_thread()
     }
 
     // This loop keeps the servers running if there are any to run
+    const TickType_t xInitialBlockTime = pdMS_TO_TICKS( 5000UL );
     while (pxTCPServer != NULL && !abort_network) {
         // Run the HTTP and/or FTP servers, as configured above.
         FreeRTOS_TCPServerWork( pxTCPServer, xInitialBlockTime );
@@ -323,6 +348,7 @@ void Network::vSetupIFTask(void *arg)
 {
     Network *network = Network::getInstance();
     network->network_thread();
+    vTaskDelete(NULL);
 }
 
 extern "C" void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent )
@@ -400,7 +426,7 @@ extern "C" const char *pcApplicationHostnameHook( void )
 extern "C" eDHCPCallbackAnswer_t xApplicationDHCPHook( eDHCPCallbackPhase_t eDHCPPhase, uint32_t ulIPAddress )
 {
     eDHCPCallbackAnswer_t eReturn;
-    bool use_dhcp= Network::getInstance()->is_dhcp();
+    bool use_dhcp = Network::getInstance()->is_dhcp();
 
     /* This hook is called in a couple of places during the DHCP process, as
     identified by the eDHCPPhase parameter. */

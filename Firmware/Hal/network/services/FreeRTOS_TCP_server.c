@@ -218,14 +218,18 @@ void FreeRTOS_TCPServerWork( TCPServer_t * pxServer,
 
 	/* Let the server do one working cycle. */
 	xRc = FreeRTOS_select( pxServer->xSocketSet, xBlockingTime );
-
+	int abort = xRc & eSELECT_INTR;
 	if( xRc != 0 ) {
 		for( xIndex = 0; xIndex < pxServer->xServerCount; xIndex++ ) {
 			struct freertos_sockaddr xAddress;
 			Socket_t xNexSocket;
 			socklen_t xSocketLength;
 
-			Socket_t sock= pxServer->xServers[xIndex].xSocket;
+			Socket_t sock = pxServer->xServers[xIndex].xSocket;
+			if(abort) {
+				FreeRTOS_closesocket(sock);
+				continue;
+			}
 			// check if the listen socket has a read (or exception)
 			if(sock == FREERTOS_NO_SOCKET || (FreeRTOS_FD_ISSET(sock, pxServer->xSocketSet) & (eSELECT_READ | eSELECT_EXCEPT)) == 0) {
 				// no it doesn't so try next one
@@ -250,7 +254,7 @@ void FreeRTOS_TCPServerWork( TCPServer_t * pxServer,
 		/* Almost C++ */
 		xRc = pxThis->fWorkFunction( pxThis );
 
-		if( xRc < 0 ) {
+		if(abort || xRc < 0 ) {
 			*ppxClient = pxThis->pxNextClient;
 			/* Close handles, resources */
 			pxThis->fDeleteFunction( pxThis );
@@ -303,9 +307,7 @@ BaseType_t FreeRTOS_TCPServerSignal( TCPServer_t * pxServer )
 	for( xIndex = 0; xIndex < pxServer->xServerCount; xIndex++ ) {
 		if( pxServer->xServers[ xIndex ].xSocket != FREERTOS_NO_SOCKET ) {
 			FreeRTOS_SignalSocket( pxServer->xServers[ xIndex ].xSocket );
-			xResult = pdTRUE;
-			break;
-		}
+			xResult = pdTRUE;		}
 	}
 
 	return xResult;
@@ -328,7 +330,6 @@ BaseType_t FreeRTOS_TCPServerSignalFromISR( TCPServer_t * pxServer,
 		if( pxServer->xServers[ xIndex ].xSocket != FREERTOS_NO_SOCKET ) {
 			FreeRTOS_SignalSocketFromISR( pxServer->xServers[ xIndex ].xSocket, pxHigherPriorityTaskWoken );
 			xResult = pdTRUE;
-			break;
 		}
 	}
 

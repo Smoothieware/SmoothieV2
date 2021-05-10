@@ -208,6 +208,13 @@ SECTIONS
     dtcm_text_end = .;
   } >DTCMRAM AT> FLASH
 
+ .usb_data (NOLOAD) :
+  {
+    PROVIDE_HIDDEN (__usb_data_start = .);
+    KEEP (*(SORT(.usb_data.*)))
+    KEEP (*(.usb_data*))
+    PROVIDE_HIDDEN (__usb_data_end = .);
+  } >SRAM_1
 
   .ethernet_data (NOLOAD) :
   {
@@ -216,6 +223,7 @@ SECTIONS
     KEEP (*(.ethernet_data*))
     PROVIDE_HIDDEN (__ethernet_data_end = .);
   } >SRAM_2
+
 
   /* to take md5sum of the flash .bin */
   _image_start = LOADADDR(.isr_vector);

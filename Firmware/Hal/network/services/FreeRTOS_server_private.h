@@ -85,14 +85,17 @@ struct xHTTP_CLIENT
 
 	char pcCurrentFilename[ 256 ];
 	size_t uxBytesLeft;
-	FF_FILE * pxFileHandle;
+    union {
+	   FF_FILE *pxFileHandle;
+       void *websocketstate;
+    };
 	char pcContentsType[40];  /* Space for the msg: "text/javascript" */
 	char pcExtraContents[512]; /* Space for the websocket headers */
     void *request;
 	union {
 		struct {
 			uint32_t bReplySent:1;
-            uint32_t bUpgraded:1;
+            uint32_t bWebSocket:1;
 		};
 		uint32_t ulFlags;
 	} bits;
@@ -123,7 +126,7 @@ struct xFTP_CLIENT
 	char pcFileName[ ffconfigMAX_FILENAME ];
 	char pcConnectionAck[ 128 ];
 	char pcClientAck[ 128 ];
-	char pcNewDir[ ffconfigMAX_FILENAME ];
+	char pcNewDir[ffconfigMAX_FILENAME*2];
 	union
 	{
 		struct

@@ -392,6 +392,7 @@ static void prvTransferCloseDir( FTPClient_t * pxClient )
 void vFTPClientDelete( TCPClient_t * pxTCPClient )
 {
 	FTPClient_t * pxClient = ( FTPClient_t * ) pxTCPClient;
+    FreeRTOS_printf( ("deleting FTPclient: %p", pxClient) );
 
 	/* Close any directory-listing-handles (not used by +FAT ). */
 	prvTransferCloseDir( pxClient );

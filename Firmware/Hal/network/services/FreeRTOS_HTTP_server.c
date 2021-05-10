@@ -81,7 +81,7 @@ static BaseType_t prvSendReply( HTTPClient_t * pxClient,
                                 BaseType_t xCode );
 
 extern int parse_request_release(void *request);
-
+extern BaseType_t delete_websocket_handler(HTTPClient_t *pclient);
 
 typedef struct xTYPE_COUPLE {
     const char * pcExtension;
@@ -107,13 +107,12 @@ static TypeCouple_t pxTypeCouples[] = {
 void vHTTPClientDelete( TCPClient_t * pxTCPClient )
 {
     HTTPClient_t * pxClient = ( HTTPClient_t * ) pxTCPClient;
+    FreeRTOS_printf( ("deleting HTTPclient: %p\n", pxClient) );
 
     /* This HTTP client stops, close / release all resources. */
     if( pxClient->xSocket != FREERTOS_NO_SOCKET ) {
         FreeRTOS_FD_CLR( pxClient->xSocket, pxClient->pxParent->xSocketSet, eSELECT_ALL );
-        if(!pxClient->bits.bUpgraded) {
-            FreeRTOS_closesocket( pxClient->xSocket );
-        }
+        FreeRTOS_closesocket( pxClient->xSocket );
         pxClient->xSocket = FREERTOS_NO_SOCKET;
     }
 
@@ -121,6 +120,11 @@ void vHTTPClientDelete( TCPClient_t * pxTCPClient )
         // free up request parsing resources
         parse_request_release(pxClient->request);
         pxClient->request = NULL;
+    }
+
+    if(pxClient->bits.bWebSocket != 0) {
+        delete_websocket_handler(pxClient);
+        pxClient->bits.bWebSocket= 0;
     }
 
     prvFileClose( pxClient );
@@ -309,7 +313,7 @@ static BaseType_t handle_incoming_websocket(HTTPClient_t *pxClient, const char *
     strcat( pxClient->pcExtraContents, "Connection: Upgrade\r\n" );
     strcat( pxClient->pcExtraContents, "Sec-WebSocket-Accept: " );
     strcat( pxClient->pcExtraContents, (char *)encoded_key );
-    strcat( pxClient->pcExtraContents, "\r\n");
+    strcat( pxClient->pcExtraContents, "\r\n\r\n");
 
     // TODO we need to make sure this gets entirely sent
     len = strlen(pxClient->pcExtraContents);
@@ -319,12 +323,13 @@ static BaseType_t handle_incoming_websocket(HTTPClient_t *pxClient, const char *
         printf("handle_incoming_websocket: websocket now open\n");
         xRc = 0;
     } else if(xRc >= 0) {
-        printf("handle_incoming_websocket: more to send\n");
+        printf("WARNING: handle_incoming_websocket: more to send\n");
         // TODO handle this
     }
     return xRc;
 }
 
+extern BaseType_t create_websocket_handler(HTTPClient_t *pclient, int is_command, char *buf, uint32_t len);
 static BaseType_t prvHandleUpgradeRequest(HTTPClient_t *pxClient, char *buf, uint32_t len)
 {
     // its a websocket upgrade request
@@ -340,18 +345,7 @@ static BaseType_t prvHandleUpgradeRequest(HTTPClient_t *pxClient, char *buf, uin
                 v = parse_request_get_header("Sec-WebSocket-Key", pxClient->request);
                 if(v != NULL) {
                     if(handle_incoming_websocket(pxClient, v) == 0) {
-                        // TODO at this point the socket no longer belongs to the HTTP server
-                        // so we need to pretend the client is closed, so HTTPD no longer
-                        // deals with it, but we need to leave the socket open
-                        // Fireoff a thread to manage the websocket data
-                        // close the http server client instance except leave the socket alone
-
-                        // if(strcmp(url, "/command") == 0) {
-                        //     handle_command(pxClient, buf, len);
-                        // } else {
-                        //     handle_upload(pxClient, buf, len);
-                        // }
-                        return 0;
+                        return create_websocket_handler(pxClient, strcmp(url, "/command")==0?1:0, buf, len);
                     }
                 }
             }
@@ -372,11 +366,12 @@ static BaseType_t prvHandleUpgradeRequest(HTTPClient_t *pxClient, char *buf, uin
         xRc = prvSendReply( pxClient, WEB_BAD_REQUEST );
     }
 
-    // we need to check xRc to make sure everythign was sent ok before we shutdown
+    // we need to check xRc to make sure everything was sent ok before we shutdown
     (void) xRc;
     return -1;
 }
 
+extern BaseType_t websocket_work(HTTPClient_t *pclient);
 BaseType_t xHTTPClientWork( TCPClient_t * pxTCPClient )
 {
     BaseType_t xRc;
@@ -384,12 +379,17 @@ BaseType_t xHTTPClientWork( TCPClient_t * pxTCPClient )
 
     if(pxClient->xSocket == FREERTOS_NO_SOCKET) return 0;
 
+    if(pxClient->bits.bWebSocket) {
+        // it has been upgraded to a websocket so call the websocket handler instead
+        return websocket_work(pxClient);
+    }
+
     if( pxClient->pxFileHandle != NULL ) {
         if((FreeRTOS_FD_ISSET(pxClient->xSocket, pxClient->pxParent->xSocketSet) & eSELECT_WRITE) != 0) {
             // continue sending file
             xRc= prvSendFile( pxClient );
             if(xRc < 0) {
-                FreeRTOS_printf( ("xHTTPClientWork: prvSendFile failed: %d\n", xRc) );
+                FreeRTOS_printf( ("xHTTPClientWork: prvSendFile failed: %ld\n", xRc) );
                 return xRc; // if it got an error we can stop here
             }
         }
@@ -428,9 +428,10 @@ BaseType_t xHTTPClientWork( TCPClient_t * pxTCPClient )
             xRc = prvHandleUpgradeRequest(pxClient, &pcCOMMAND_BUFFER[off], xRc - off);
             parse_request_release(pxClient->request);
             pxClient->request = NULL;
-            // we need to leave the socket open, and delete the rest
-            if(xRc >= 0) pxClient->bits.bUpgraded = 1;
-            xRc = -1;
+            if(xRc >= 0) {
+                // this is now a web socket
+                pxClient->bits.bWebSocket = 1;
+            }
 
         } else if(needmore == 0) {
             // go around again

@@ -27,6 +27,8 @@
  * http://aws.amazon.com/freertos
  * http://www.FreeRTOS.org
  */
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-function"
 
 #include <string.h>
 

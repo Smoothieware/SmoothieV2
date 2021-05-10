@@ -114,9 +114,9 @@ static void os_garbage_collector( TimerHandle_t xTimer )
 }
 
 static volatile bool abort_shell = false;
+static Socket_t listenfd;
 static void shell_thread(void *arg)
 {
-    Socket_t listenfd;
     struct freertos_sockaddr shell_saddr;
     SocketSet_t socketset;
 
@@ -275,6 +275,8 @@ static void shell_thread(void *arg)
     FreeRTOS_closesocket(listenfd);
     xTimerDelete(timer_handle, 0);
     FreeRTOS_DeleteSocketSet(socketset);
+    vTaskDelete(NULL);
+
     printf("Network: Shell thread ended\n");
 }
 
@@ -287,4 +289,5 @@ void shell_init(void)
 void shell_close()
 {
     abort_shell = true;
+    FreeRTOS_SignalSocket(listenfd);
 }

@@ -181,9 +181,6 @@ else
   puts "Building Firmware debug: #{DEBUG}"
 end
 
-# FIXME
-src.exclude(/\/utils\/network\/httpd\//)
-
 if NONETWORK == '1'
   src.exclude(/\/utils\/network\//)
   puts "Excluding Network code"
@@ -213,6 +210,7 @@ end
 
 include_dirs = ['Hal/network/portable/NetworkInterface', # Must be first ahead of Hal/STM32H7xx_HAL_Driver
                 "Hal/network/portable/Compiler/GCC",
+                "Hal/network/src",
                 "Hal/network/services"] +
     [Dir.glob(["**/Inc", "**/Include", "**/include", "**/inc"])].flatten +
     [Dir.glob(['./src/**/'])].flatten +
