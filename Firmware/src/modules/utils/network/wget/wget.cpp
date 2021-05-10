@@ -102,6 +102,7 @@ static Socket_t connectsocket(const char* host, int port)
     return sock;
 }
 
+// TODO we could replace this http parser with the llhttp we already use in the server
 // Response data/funcs
 using HttpResponse_t = struct {
     int code, error;

@@ -14,6 +14,7 @@ typedef struct _request {
     std::string url;
     std::string last_hdr;
     std::string hdr_value;
+    std::string body;
     llhttp_t *parser;
     bool done{false};
 } Request_t;
@@ -31,7 +32,6 @@ static int handle_on_url(llhttp_t *llh, const char *at, size_t length)
     Request_t *req = (Request_t*)llh->data;
     req->url.append(at, length);
     req->method = llh->method;
-    printf("on_url: method: %s - %s\n", llhttp_method_name((llhttp_method_t)llh->method), req->url.c_str());
     return HPE_OK;
 }
 
@@ -66,6 +66,14 @@ static int handle_on_header_value_complete(llhttp_t *llh)
     return HPE_OK;
 }
 
+static int handle_on_body(llhttp_t *llh, const char *at, size_t length)
+{
+    printf("on_body: at %p, len %u\n", at, length);
+    Request_t *req = (Request_t*)llh->data;
+    req->body.assign(at, length);
+    return HPE_OK;
+}
+
 extern "C" void *parse_request_create()
 {
     Request_t *p_request = new Request_t;
@@ -84,6 +92,7 @@ extern "C" void *parse_request_create()
             settings->on_header_value = handle_on_header_value;
             settings->on_header_value_complete = handle_on_header_value_complete;
             settings->on_header_field = handle_on_header_field;
+            settings->on_body = handle_on_body;
 
             llhttp_init(parser, HTTP_REQUEST, settings);
             parser->data = p_request;
@@ -111,6 +120,7 @@ extern "C" int parse_request_release(Request_t *p_request)
 /*
     returns  0 if more data needed
              1 if completed ok
+             2-n if completed but was a UPGRADE request, and data offset-2 is returned
             -1 if there was a parse error
 */
 extern "C" int parse_request(const char *buf, uint32_t len, Request_t *p_request)
@@ -119,6 +129,12 @@ extern "C" int parse_request(const char *buf, uint32_t len, Request_t *p_request
     if (err == HPE_OK) {
         /* Successfully parsed! */
         return p_request->done ? 1 : 0;
+    } else if (err == HPE_PAUSED_UPGRADE) {
+        uint32_t offset= p_request->parser->error_pos - buf;
+        printf("parse: UPGRADE: %d, error_pos: %p, offset: %lu\n",
+            p_request->parser->upgrade, p_request->parser->error_pos,
+            offset);
+        return (int)(2+offset);
     } else {
         printf("Parse error: %s %s\n", llhttp_errno_name(err), p_request->parser->reason);
         return -err;

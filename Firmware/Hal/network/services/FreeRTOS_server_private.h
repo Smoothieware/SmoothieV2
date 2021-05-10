@@ -86,12 +86,13 @@ struct xHTTP_CLIENT
 	char pcCurrentFilename[ 256 ];
 	size_t uxBytesLeft;
 	FF_FILE * pxFileHandle;
-	char pcContentsType[ 40 ];  /* Space for the msg: "text/javascript" */
-	char pcExtraContents[ 40 ]; /* Space for the msg: "Content-Length: 346500" */
+	char pcContentsType[40];  /* Space for the msg: "text/javascript" */
+	char pcExtraContents[512]; /* Space for the websocket headers */
     void *request;
 	union {
 		struct {
-			uint32_t bReplySent : 1;
+			uint32_t bReplySent:1;
+            uint32_t bUpgraded:1;
 		};
 		uint32_t ulFlags;
 	} bits;
