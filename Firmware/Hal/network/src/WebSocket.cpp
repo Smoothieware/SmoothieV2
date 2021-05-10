@@ -28,13 +28,22 @@ public:
     bool is_command;
     std::string data;
     const uint8_t *payload;
-    char line[132];
-    using READ_STATE_T = enum{HEADER, BODY, DONE};
+    char *buffer{nullptr};
+    size_t bufsize{0};
+    using READ_STATE_T = enum {HEADER, BODY};
     READ_STATE_T read_state{HEADER};
+    char line[132];
     size_t cnt{0};
+    size_t file_cnt{0};
+    uint32_t size;
+    union {
+        OutputStream *os;
+        FILE *fp;
+    };
+    uint16_t plen;
+    uint16_t o;
+    uint16_t m;
     bool discard{false};
-    OutputStream *os{nullptr};
-    uint16_t o, m, plen;
 };
 
 /* Read data from a websocket and decode it.
@@ -50,7 +59,7 @@ static BaseType_t websocket_decode(WebSocketState& state, char *buf, size_t len)
         // We need at least 6 bytes
         if(state.data.size() < 6) return 0;
 
-        uint8_t *hdr= (uint8_t*)state.data.data();
+        uint8_t *hdr = (uint8_t*)state.data.data();
 
         // parse initial 6 bytes of header
         if((hdr[0] & 0x80) == 0) {
@@ -83,7 +92,7 @@ static BaseType_t websocket_decode(WebSocketState& state, char *buf, size_t len)
             return -2;
         }
 
-        state.read_state= WebSocketState::BODY;
+        state.read_state = WebSocketState::BODY;
     }
 
     if(len < state.plen) {
@@ -92,12 +101,12 @@ static BaseType_t websocket_decode(WebSocketState& state, char *buf, size_t len)
     }
 
     // make sure we have the full payload
-    if(state.data.size() < state.o+state.plen) return 0;
+    if(state.data.size() < state.o + state.plen) return 0;
 
-    const uint8_t *hdr= (const uint8_t *)state.data.data(); // pointer to header
+    const uint8_t *hdr = (const uint8_t *)state.data.data(); // pointer to header
 
     // point payload at the payload part
-    const uint8_t *payload= (const uint8_t *)(state.data.data()+state.o);
+    const uint8_t *payload = (const uint8_t *)(state.data.data() + state.o);
 
     // now unmask the data
     uint8_t opcode = hdr[0] & 0x0F;
@@ -107,7 +116,7 @@ static BaseType_t websocket_decode(WebSocketState& state, char *buf, size_t len)
         case 0x02: // bin
             /* unmask */
             for (int i = 0; i < state.plen; i++) {
-                buf[i]= payload[i] ^ hdr[state.m + i % 4];
+                buf[i] = payload[i] ^ hdr[state.m + i % 4];
             }
             break;
         case 0x08: // close
@@ -119,99 +128,17 @@ static BaseType_t websocket_decode(WebSocketState& state, char *buf, size_t len)
     }
 
     // reset the state
-    state.read_state= WebSocketState::HEADER;
+    state.read_state = WebSocketState::HEADER;
     if(state.data.size() > (state.o + state.plen)) {
         // leave partial buffer in data
-        state.data= state.data.substr(state.o + state.plen);
+        state.data = state.data.substr(state.o + state.plen);
 
-    }else{
+    } else {
         state.data.clear();
     }
 
     return state.plen;
 }
-
-static BaseType_t handle_upload(HTTPClient_t *pclient, WebSocketState& state)
-{
-    return -1;
-}
-
-#if 0
-    BaseType_t err;
-    WebsocketState state(conn);
-    const uint16_t buflen = 2000;
-    uint8_t *buf = (uint8_t *)malloc(buflen);
-    if(buf == NULL) return ERR_MEM;
-    uint16_t n;
-    std::string name;
-    uint32_t size= 0;
-    uint32_t filecnt= 0;
-    enum STATE { NAME, SIZE, BODY};
-    enum STATE uploadstate= NAME;
-    FILE *fp= nullptr;
-
-    // read from connection until it closes
-    while ((err = websocket_read(state, buf, buflen, n)) == ERR_OK) {
-        //printf("handle_upload: got len %d, complete: %d, state: %d\n", n, state.complete, uploadstate);
-        if(uploadstate == NAME) {
-            name.assign((char*)buf, n);
-            uploadstate= SIZE;
-
-        } else if(uploadstate == SIZE) {
-            std::string s((char*)buf, n);
-            size= strtoul(s.c_str(), nullptr, 10);
-            // open file, if it fails send error message and close connection
-            fp= fopen(name.c_str(), "wb");
-            if(fp == NULL) {
-                printf("handle_upload: failed to open file for write\n");
-                websocket_write(conn, "error file open failed", 22);
-                break;
-            }
-            uploadstate= BODY;
-            filecnt= 0;
-
-        } else if(uploadstate == BODY) {
-            // write to file, if it fails send error message and close connection
-            size_t l= fwrite(buf, 1, n, fp);
-            if(l != n) {
-                printf("handle_upload: failed to write to file\n");
-                websocket_write(conn, "error file write failed", 23);
-                fclose(fp);
-                break;
-            }
-#if 0
-            int cnt = 0;
-            for (int i = 0; i < n; ++i) {
-                printf("%02X(%c) ", buf[i], buf[i] >= ' ' && buf[i] <= '~' ? buf[i] : '_');
-                if(++cnt >= 8) {
-                    printf("\n");
-                    cnt = 0;
-                }
-            }
-            printf("\n");
-#endif
-            filecnt += n;
-            if(filecnt >= size) {
-                // close file
-                fclose(fp);
-                printf("handle_upload: Done upload of file %s, of size: %lu (%lu)\n", name.c_str(), size, filecnt);
-                websocket_write(conn, "ok upload successful", 17);
-                uploadstate= NAME;
-                break;
-            }
-
-        } else {
-            printf("handle_upload: state error\n");
-        }
-    }
-    free(buf);
-
-    // send exit string
-    netconn_write(conn, endbuf, sizeof(endbuf), NETCONN_NOCOPY);
-    printf("handle_upload: websocket closing\n");
-    return ERR_OK;
-}
-#endif
 
 // helper that just sends the entire buffer
 static bool send_all(Socket_t conn, const char *data, size_t len)
@@ -266,35 +193,127 @@ static int websocket_write(Socket_t conn, const char *data, size_t len, uint8_t 
     return len;
 }
 
-
 static const char endbuf[] = {0x88, 0x02, 0x03, 0xe8};
 
-static BaseType_t handle_command(HTTPClient_t *pclient, WebSocketState& state)
+static BaseType_t handle_upload(HTTPClient_t *pclient, WebSocketState& state)
 {
-    const size_t bufsize = 1024;
-    char buf[bufsize];
     BaseType_t rc;
 
     // check if the socket has any data to read
     if((FreeRTOS_FD_ISSET(state.conn, pclient->pxParent->xSocketSet) & (eSELECT_READ | eSELECT_EXCEPT)) != 0) {
         // read a buffer of data
-        rc = FreeRTOS_recv(state.conn, buf, bufsize, 0);
+        rc = FreeRTOS_recv(state.conn, state.buffer, state.bufsize, 0);
+        if(rc < 0) {
+            printf("websocket handle_upload: error reading: %ld\n", rc);
+            return rc;
+        }
+        if(rc > 0) {
+            state.data.append(state.buffer, rc);
+        }
+    }
+
+    // decode the websocket packet and copy it to buf
+    rc = websocket_decode(state, state.buffer, state.bufsize);
+    if(rc == 0) {
+        // we need more data
+        return 0;
+
+    } else if(rc < 0) {
+        // we got an error
+        if(rc == -1) {
+            // send exit string if we got one
+            send_all(state.conn, endbuf, sizeof(endbuf));
+        }
+        printf("handle_command: websocket closing: rc=%ld\n", rc);
+        return rc;
+    }
+
+    // we have a complete message
+    if(state.cnt == 0) {
+        // get name
+        if((size_t)rc >= sizeof(state.line)-1) {
+            // truncate it
+            rc= sizeof(state.line)-1;
+        }
+        memcpy(state.line, state.buffer, rc);
+        state.line[rc]= '\0';
+        state.cnt = 1;
+        printf("handle_upload: got file name: %s\n", state.line);
+
+    } else if(state.cnt == 1) {
+        // get file size
+        std::string s(state.buffer, rc);
+        state.size = strtoul(s.c_str(), nullptr, 10);
+        // open file, if it fails send error message and close connection
+        state.fp = fopen(state.line, "wb");
+        if(state.fp == NULL) {
+            printf("handle_upload: failed to open file for write: %d\n", errno);
+            websocket_write(state.conn, "error file open failed", 22);
+            rc = -1;
+        } else {
+            state.cnt = 2;
+            state.file_cnt = 0;
+            printf("handle_upload: got file size: %lu\n", state.size);
+        }
+
+    } else if(state.cnt == 2) {
+        // write to file, if it fails send error message and close connection
+        int l = fwrite(state.buffer, 1, rc, state.fp);
+        if(l != rc) {
+            printf("handle_upload: failed to write to file: %d\n", errno);
+            websocket_write(state.conn, "error file write failed", 23);
+            fclose(state.fp);
+            rc = -1;
+        }
+
+        state.file_cnt += rc;
+        if(state.file_cnt >= state.size) {
+            // close file
+            fclose(state.fp);
+            printf("handle_upload: Done upload of file %s, of size: %lu (%u)\n", state.line, state.size, state.file_cnt);
+            websocket_write(state.conn, "ok upload successful", 17);
+            printf("handle_upload: websocket closing\n");
+            // send exit string
+            rc = -1;
+        }
+
+    } else {
+        printf("handle_upload: state error: %d\n", state.cnt);
+        rc = -1;
+    }
+
+    if(rc == -1) {
+        printf("handle_upload: sending endbuf\n");
+        send_all(state.conn, endbuf, sizeof(endbuf));
+    }
+
+    return rc;
+}
+
+static BaseType_t handle_command(HTTPClient_t *pclient, WebSocketState & state)
+{
+    BaseType_t rc;
+
+    // check if the socket has any data to read
+    if((FreeRTOS_FD_ISSET(state.conn, pclient->pxParent->xSocketSet) & (eSELECT_READ | eSELECT_EXCEPT)) != 0) {
+        // read a buffer of data
+        rc = FreeRTOS_recv(state.conn, state.buffer, state.bufsize, 0);
         if(rc < 0) {
             printf("websocket handle_command: error reading: %ld\n", rc);
             return rc;
         }
         if(rc > 0) {
-            state.data.append(buf, rc);
+            state.data.append(state.buffer, rc);
         }
     }
 
     // decode the websocket packet and copy it to buf
-    rc= websocket_decode(state, buf, bufsize);
+    rc = websocket_decode(state, state.buffer, state.bufsize);
     if(rc == 0) {
         // we need more data
         return 0;
 
-    }else if(rc < 0) {
+    } else if(rc < 0) {
         // we got an error
         // make sure command thread does not try to write to the soon to be closed (and deleted) conn
         state.os->set_closed();
@@ -307,24 +326,32 @@ static BaseType_t handle_command(HTTPClient_t *pclient, WebSocketState& state)
     }
 
     // we now have a decoded websocket payload that is rc bytes long
-    process_command_buffer(rc, buf, state.os, state.line, state.cnt, state.discard);
+    process_command_buffer(rc, state.buffer, state.os, state.line, state.cnt, state.discard);
     return rc;
 }
 
 // setup the websocket handler, for command or upload, buf/len are the excess already read and part of the payload
 extern "C" BaseType_t create_websocket_handler(HTTPClient_t *pclient, int is_command, char *buf, uint32_t len)
 {
-    WebSocketState *ws= new WebSocketState(pclient->xSocket, is_command==1);
-    pclient->websocketstate= ws;
+    WebSocketState *ws = new WebSocketState(pclient->xSocket, is_command == 1);
+    pclient->websocketstate = ws;
     if(buf != nullptr && len > 0) {
         // initial payload if any
         ws->data.assign(buf, len);
     }
 
-    if(is_command==1) {
+    if(is_command == 1) {
         // create the OutputStream that commands can write to
         // FIXME this may need to stay around until command thread is done with it
-        ws->os= new OutputStream([ws](const char *ibuf, size_t ilen) { return websocket_write(ws->conn, ibuf, ilen, 0x01); });
+        ws->os = new OutputStream([ws](const char *ibuf, size_t ilen) { return websocket_write(ws->conn, ibuf, ilen, 0x01); });
+        ws->buffer = (char*)malloc(132);
+        ws->bufsize = 132;
+
+    } else {
+        // it is upload
+        ws->fp = nullptr;
+        ws->buffer = (char*)malloc(1024);
+        ws->bufsize = 1024;
     }
     printf("create_websocket_handler: %p\n", ws);
     return 0;
@@ -333,14 +360,18 @@ extern "C" BaseType_t create_websocket_handler(HTTPClient_t *pclient, int is_com
 extern "C" BaseType_t delete_websocket_handler(HTTPClient_t *pclient)
 {
     if(pclient->websocketstate != nullptr) {
-        WebSocketState* ws= (WebSocketState*)pclient->websocketstate;
+        WebSocketState* ws = (WebSocketState*)pclient->websocketstate;
         if(ws->os != nullptr) {
             // we may need to delay this
             delete ws->os;
-            ws->os= nullptr;
+            ws->os = nullptr;
+        }
+        if(ws->buffer != nullptr) {
+            free(ws->buffer);
+            ws->buffer = nullptr;
         }
         delete ws;
-        pclient->websocketstate= nullptr;
+        pclient->websocketstate = nullptr;
         printf("delete_websocket_handler: %p\n", ws);
     }
     return 0;
@@ -348,11 +379,11 @@ extern "C" BaseType_t delete_websocket_handler(HTTPClient_t *pclient)
 
 extern "C" BaseType_t websocket_work(HTTPClient_t *pclient)
 {
-    WebSocketState *ws= static_cast<WebSocketState*>(pclient->websocketstate);
+    WebSocketState *ws = static_cast<WebSocketState*>(pclient->websocketstate);
     if(ws->is_command) {
         return handle_command(pclient, *ws);
 
-    }else{
+    } else {
         return handle_upload(pclient, *ws);
     }
     return -1;

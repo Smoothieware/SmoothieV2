@@ -35,7 +35,7 @@ extern "C" void netstat(OutputStream& os)
     } else {
         const ListItem_t * pxEndTCP = listGET_END_MARKER( &xBoundTCPSocketsList );
         const ListItem_t * pxEndUDP = listGET_END_MARKER( &xBoundUDPSocketsList );
-        os.printf( "Prot Port IP-Remote         : Port  R/T Status       Alive   tmout Child\n" );
+        os.printf( "Prot Port IP-Remote         : Port R/T Status        Alive   tmout Child\n" );
 
         for( pxIterator = listGET_HEAD_ENTRY( &xBoundTCPSocketsList );
              pxIterator != pxEndTCP;
