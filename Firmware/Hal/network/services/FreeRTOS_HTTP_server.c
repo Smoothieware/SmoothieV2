@@ -166,6 +166,11 @@ static BaseType_t prvSendReply( HTTPClient_t * pxClient,
     pxClient->pcContentsType[ 0 ] = '\0';
     pxClient->pcExtraContents[ 0 ] = '\0';
 
+    // FIXME this presumes it is entirely sent, which maybe false
+    BaseType_t uxSpace = FreeRTOS_tx_space( pxClient->xSocket );
+    if(xRc > uxSpace) {
+    	printf("prvSendReply: WARNING not enough soace to send entire reply\n");
+    }
     xRc = FreeRTOS_send( pxClient->xSocket, ( const void * ) pcBuffer, xRc, 0 );
     pxClient->bits.bReplySent = pdTRUE_UNSIGNED;
 
@@ -208,11 +213,9 @@ static BaseType_t prvSendFile( HTTPClient_t * pxClient )
                 ff_fread( pcFILE_BUFFER, 1, uxCount, pxClient->pxFileHandle );
                 pxClient->uxBytesLeft -= uxCount;
 
-                // FIXME this presumes it is entirely sent, which is false
                 xRc = FreeRTOS_send( pxClient->xSocket, pcFILE_BUFFER, uxCount, 0 );
 
                 if( xRc < 0 ) {
-
                     break;
                 }
             }
@@ -308,16 +311,24 @@ static BaseType_t handle_incoming_websocket(HTTPClient_t *pxClient, const char *
         return -1;
     }
 
-    strcpy( pxClient->pcExtraContents, "HTTP/1.1 101 Switching Protocols\r\n" );
-    strcat( pxClient->pcExtraContents, "Upgrade: websocket\r\n" );
-    strcat( pxClient->pcExtraContents, "Connection: Upgrade\r\n" );
-    strcat( pxClient->pcExtraContents, "Sec-WebSocket-Accept: " );
-    strcat( pxClient->pcExtraContents, (char *)encoded_key );
-    strcat( pxClient->pcExtraContents, "\r\n\r\n");
+    char *buf= pxClient->pcExtraContents;
+    size_t bufsize= sizeof(pxClient->pcExtraContents);
+    strncpy(buf, "HTTP/1.1 101 Switching Protocols\r\n", bufsize);
+    strncat(buf, "Upgrade: websocket\r\n", bufsize-strlen(buf));
+    strncat(buf, "Connection: Upgrade\r\n", bufsize-strlen(buf));
+    strncat(buf, "Sec-WebSocket-Accept: ", bufsize-strlen(buf));
+    strncat(buf, (char *)encoded_key, bufsize-strlen(buf));
+    strncat(buf, "\r\n\r\n", bufsize-strlen(buf));
+
+    len = strlen(pxClient->pcExtraContents);
+	configASSERT(len+1 < bufsize);
 
     // TODO we need to make sure this gets entirely sent
-    len = strlen(pxClient->pcExtraContents);
-    BaseType_t xRc = FreeRTOS_send( pxClient->xSocket, ( const void * ) pxClient->pcExtraContents, len, 0);
+    BaseType_t uxSpace = FreeRTOS_tx_space( pxClient->xSocket );
+    if(len > uxSpace) {
+    	printf("handle_incoming_websocket: WARNING not enough soace to send entire header\n");
+    }
+    BaseType_t xRc = FreeRTOS_send(pxClient->xSocket, (const void *) pxClient->pcExtraContents, len, 0);
 
     if(xRc == len) {
         printf("handle_incoming_websocket: websocket now open\n");

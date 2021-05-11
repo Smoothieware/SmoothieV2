@@ -90,7 +90,7 @@ struct xHTTP_CLIENT
        void *websocketstate;
     };
 	char pcContentsType[40];  /* Space for the msg: "text/javascript" */
-	char pcExtraContents[512]; /* Space for the websocket headers */
+	char pcExtraContents[256]; /* Space for the websocket headers */
     void *request;
 	union {
 		struct {

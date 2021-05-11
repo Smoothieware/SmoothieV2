@@ -140,23 +140,18 @@ static BaseType_t websocket_decode(WebSocketState& state, char *buf, size_t len)
     return state.plen;
 }
 
-// helper that just sends the entire buffer
+// helper that just sends the entire buffer using a blocking write
 static bool send_all(Socket_t conn, const char *data, size_t len)
 {
     size_t sent = 0;
     while(sent < len) {
-        BaseType_t n;
-        n = FreeRTOS_send(conn, data + sent, len - sent, 0);
+        BaseType_t n= FreeRTOS_send(conn, data + sent, len - sent, 0);
         if(n < 0) {
             // we got an error
             printf("websocket send_all: error writing: %ld\n", n);
             return false;
         }
         sent += n;
-        if(sent < len) {
-            // yield up some time
-            taskYIELD();
-        }
     }
     return true;
 }
@@ -273,6 +268,7 @@ static BaseType_t handle_upload(HTTPClient_t *pclient, WebSocketState& state)
             printf("handle_upload: Done upload of file %s, of size: %lu (%u)\n", state.line, state.size, state.file_cnt);
             websocket_write(state.conn, "ok upload successful", 17);
             printf("handle_upload: websocket closing\n");
+            state.cnt= 3;
             // send exit string
             rc = -1;
         }
@@ -353,6 +349,8 @@ extern "C" BaseType_t create_websocket_handler(HTTPClient_t *pclient, int is_com
         ws->buffer = (char*)malloc(1024);
         ws->bufsize = 1024;
     }
+    BaseType_t timeout = pdMS_TO_TICKS(500UL);
+    FreeRTOS_setsockopt(pclient->xSocket, 0, FREERTOS_SO_SNDTIMEO, (void *)&timeout, sizeof(BaseType_t));
     printf("create_websocket_handler: %p\n", ws);
     return 0;
 }
@@ -361,10 +359,12 @@ extern "C" BaseType_t delete_websocket_handler(HTTPClient_t *pclient)
 {
     if(pclient->websocketstate != nullptr) {
         WebSocketState* ws = (WebSocketState*)pclient->websocketstate;
-        if(ws->os != nullptr) {
-            // we may need to delay this
-            delete ws->os;
-            ws->os = nullptr;
+        if(ws->is_command) {
+            if(ws->os != nullptr) {
+                // we may need to delay this
+                delete ws->os;
+                ws->os = nullptr;
+            }
         }
         if(ws->buffer != nullptr) {
             free(ws->buffer);
