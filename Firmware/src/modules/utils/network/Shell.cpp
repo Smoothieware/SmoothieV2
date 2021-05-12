@@ -151,7 +151,6 @@ static void shell_thread(void *arg)
         printf("shell_thread: WARNING: Failed to start the osgarbage timer\n");
     }
 
-    TickType_t timeout = portMAX_DELAY; // pdMS_TO_TICKS(1000); // 1 second
 
     // create a socket set to handle all the clients
     socketset = FreeRTOS_CreateSocketSet( );
@@ -159,6 +158,7 @@ static void shell_thread(void *arg)
 
     FreeRTOS_FD_SET(listenfd, socketset, eSELECT_READ | eSELECT_EXCEPT);
 
+    TickType_t timeout = portMAX_DELAY; // pdMS_TO_TICKS(1000); // 1 second
     // Wait forever for network input: This could be connections or data
     while(!abort_shell) {
         // Wait for data or a new connection
@@ -174,7 +174,7 @@ static void shell_thread(void *arg)
         if(i < 0) {
             // we got an error
             printf("shell: ERROR: select returned an error: %ld\n", i);
-            continue;
+            break;
         }
 
         // At least one descriptor is ready
@@ -229,7 +229,7 @@ static void shell_thread(void *arg)
 
         // check for read requests
         for (auto p_shell : shells) {
-            if (FreeRTOS_FD_ISSET(p_shell->socket, p_shell->ss) & (eSELECT_READ | eSELECT_EXCEPT)) {
+            if (FreeRTOS_FD_ISSET(p_shell->socket, p_shell->ss)) {
                 FreeRTOS_printf( ("DEBUG: shell: pshell %p was SET: %02lX\n", p_shell, FreeRTOS_FD_ISSET(p_shell->socket, p_shell->ss)) );
                 char buf[BUFSIZE];
                 // This socket is ready for reading.
@@ -259,8 +259,8 @@ static void shell_thread(void *arg)
                         }
                     }
 
-                } else {
-                    FreeRTOS_printf( ("shell: got close or error on read: %d\n", n) );
+                } else if(n < 0) {
+                    FreeRTOS_printf( ("shell: got error on read: %d\n", n) );
                     close_shell(p_shell);
                     break;
                 }
@@ -272,9 +272,9 @@ static void shell_thread(void *arg)
         close_shell(p_shell);
     }
 
+    FreeRTOS_DeleteSocketSet(socketset);
     FreeRTOS_closesocket(listenfd);
     xTimerDelete(timer_handle, 0);
-    FreeRTOS_DeleteSocketSet(socketset);
     vTaskDelete(NULL);
 
     printf("Network: Shell thread ended\n");

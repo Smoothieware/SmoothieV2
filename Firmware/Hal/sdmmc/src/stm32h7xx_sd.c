@@ -557,7 +557,6 @@ static void SD_MspInit(SD_HandleTypeDef *hsd)
         __HAL_RCC_SDMMC1_CLK_ENABLE();
 
         /* Enable GPIOs clock */
-        __HAL_RCC_GPIOB_CLK_ENABLE();
         __HAL_RCC_GPIOC_CLK_ENABLE();
         __HAL_RCC_GPIOD_CLK_ENABLE();
 

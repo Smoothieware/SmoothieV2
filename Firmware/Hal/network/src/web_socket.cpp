@@ -145,6 +145,7 @@ static bool send_all(Socket_t conn, const char *data, size_t len)
 {
     size_t sent = 0;
     while(sent < len) {
+        // this will block (and suspend the current thread) until it can write some more
         BaseType_t n= FreeRTOS_send(conn, data + sent, len - sent, 0);
         if(n < 0) {
             // we got an error
@@ -156,7 +157,7 @@ static bool send_all(Socket_t conn, const char *data, size_t len)
     return true;
 }
 
-// this is called from the command thread and must block until everything is written
+// this is usually called from the command thread and must block until everything is written
 static int websocket_write(Socket_t conn, const char *data, size_t len, uint8_t mode = 0x01)
 {
     uint8_t hdr[4];
@@ -175,13 +176,14 @@ static int websocket_write(Socket_t conn, const char *data, size_t len, uint8_t 
         return -1;
     }
 
-    bool err = send_all(conn, (const char *)hdr, l);
-    if(!err) {
+    // send header
+    if(!send_all(conn, (const char *)hdr, l)) {
         printf("websocket_write: error writing header\n");
         return -1;
     }
-    err = send_all(conn, data, len);
-    if(!err) {
+
+    // send body
+    if(!send_all(conn, data, len)) {
         printf("websocket_write: error writing body\n");
         return -1;
     }
@@ -349,6 +351,8 @@ extern "C" BaseType_t create_websocket_handler(HTTPClient_t *pclient, int is_com
         ws->buffer = (char*)malloc(1024);
         ws->bufsize = 1024;
     }
+
+    // we change the write socket to blocking as all websocket writes currently need to complete
     BaseType_t timeout = pdMS_TO_TICKS(500UL);
     FreeRTOS_setsockopt(pclient->xSocket, 0, FREERTOS_SO_SNDTIMEO, (void *)&timeout, sizeof(BaseType_t));
     printf("create_websocket_handler: %p\n", ws);
@@ -361,7 +365,10 @@ extern "C" BaseType_t delete_websocket_handler(HTTPClient_t *pclient)
         WebSocketState* ws = (WebSocketState*)pclient->websocketstate;
         if(ws->is_command) {
             if(ws->os != nullptr) {
-                // we may need to delay this
+                if(!ws->os->is_done()) {
+                    printf("delete_websocket_handler: WARNING outputstream is not done yet: %p\n", ws);
+                    // TODO we need to delay this
+                }
                 delete ws->os;
                 ws->os = nullptr;
             }
@@ -377,6 +384,7 @@ extern "C" BaseType_t delete_websocket_handler(HTTPClient_t *pclient)
     return 0;
 }
 
+// This gets called from the http server when there is something to do
 extern "C" BaseType_t websocket_work(HTTPClient_t *pclient)
 {
     WebSocketState *ws = static_cast<WebSocketState*>(pclient->websocketstate);
