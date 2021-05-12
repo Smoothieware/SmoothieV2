@@ -162,4 +162,10 @@ void TIM6_DAC_IRQHandler(void)
     HAL_TIM_IRQHandler(&TimHandle);
 }
 
+void TIM6_Deinit()
+{
+	HAL_TIM_Base_Stop_IT(&TimHandle);
+    HAL_TIM_Base_DeInit(&TimHandle);
+}
+
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

@@ -184,7 +184,7 @@ void Configure_USART(void)
 
 	/* Disable USART prior modifying configuration registers */
 	/* Note: Commented as corresponding to Reset value */
-	// LL_USART_Disable(USARTx_INSTANCE);
+	LL_USART_Disable(USARTx_INSTANCE);
 
 	/* Set fields of initialization structure                   */
 	/*  - Prescaler           : LL_USART_PRESCALER_DIV1         */
@@ -209,8 +209,6 @@ void Configure_USART(void)
 	LL_USART_Init(USARTx_INSTANCE, &usart_initstruct);
 #endif
 
-
-
 	/* (5) Enable USART *********************************************************/
 	LL_USART_Enable(USARTx_INSTANCE);
 
@@ -220,9 +218,13 @@ void Configure_USART(void)
 
 	/* Enable RXNE and Error interrupts */
 	LL_USART_EnableIT_RXNE(USARTx_INSTANCE);
+
+	LL_USART_DisableIT_ERROR(USARTx_INSTANCE);
 	LL_USART_DisableIT_TC(USARTx_INSTANCE);
 	LL_USART_DisableIT_TXE(USARTx_INSTANCE);
-	LL_USART_EnableIT_ERROR(USARTx_INSTANCE);
+	LL_USART_DisableIT_TXFT(USARTx_INSTANCE);
+	LL_USART_DisableIT_TXFE(USARTx_INSTANCE);
+	LL_USART_DisableIT_TCBGT(USARTx_INSTANCE);
 
 	allocate_hal_pin(USARTx_TX_GPIO_PORT, USARTx_TX_PIN);
 	allocate_hal_pin(USARTx_RX_GPIO_PORT, USARTx_RX_PIN);
@@ -236,7 +238,9 @@ int setup_uart()
 
 void stop_uart()
 {
-	HAL_NVIC_DisableIRQ(USARTx_IRQn);
+	NVIC_DisableIRQ(USARTx_IRQn);
+	LL_USART_Disable(USARTx_INSTANCE);
+	CLEAR_BIT(USARTx_INSTANCE->CR1, (USART_CR1_PEIE | USART_CR1_TCIE | USART_CR1_RXNEIE_RXFNEIE | USART_CR1_TXEIE_TXFNFIE));
 }
 
 size_t read_uart(char * buf, size_t length)

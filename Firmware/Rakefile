@@ -223,7 +223,9 @@ INCLUDE = (include_dirs).collect { |d| "-I#{d}" }.join(" ")
 defines = %w(-DUSE_HAL_DRIVER -DCORE_CM7)
 defines << "-DUSE_FULL_LL_DRIVER"
 #defines << "-D_REENT_SMALL"
-
+if NONETWORK == '1'
+  defines << "-DNONETWORK"
+end
 if DEBUG
   defines << "-DDEBUG"
   defines << "-DUSE_FULL_ASSERT"
@@ -365,7 +367,6 @@ task :version do
   $version = ' -D__GITVERSIONSTRING__=\"' + "#{v1[11..-1].chomp}-#{v2}".chomp + '\"'
 end
 
-=begin
 # make sure the flashloader has been built
 file "../flashloader/flashloader_#{TARGET}/flashloader.bin" do |t|
   puts "Running rake on flashloader"
@@ -386,7 +387,6 @@ file "#{OBJDIR}/flashloader.o" => ["#{OBJDIR}/flashloader.bin"] do |t|
     sh "#{OBJCOPY} --redefine-sym _binary_smoothiev2_#{TARGET}_flashloader_bin_#{n}=_binary_flashloader_bin_#{n} #{t.name}"
   end
 end
-=end
 
 file "#{OBJDIR}/#{PROG}.bin" => ["#{OBJDIR}/#{PROG}.elf"] do |t|
   puts "Creating #{t.name}"
@@ -394,15 +394,15 @@ file "#{OBJDIR}/#{PROG}.bin" => ["#{OBJDIR}/#{PROG}.elf"] do |t|
   sh "md5sum #{OBJDIR}/#{PROG}.bin | cut -c1-32 | tr -d '\\n' > #{OBJDIR}/#{PROG}.md5"
 end
 
-# file "#{OBJDIR}/#{PROG}.elf" => ["#{OBJDIR}/libhal.a", "#{OBJDIR}/flashloader.o"] + OBJ do |t|
-#   puts "Linking #{t.name} to #{SPIFI ? 'SPIFI' : 'FLASH'}"
-#   sh "#{$using_cpp ? LDCPP : LD} #{OBJ} #{OBJDIR}/flashloader.o -L#{OBJDIR} -lhal #{LDFLAGS} -o #{t.name}"
-# end
-
-file "#{OBJDIR}/#{PROG}.elf" => ["#{OBJDIR}/libhal.a"] + OBJ do |t|
-  puts "Linking #{t.name}"
-  sh "#{$using_cpp ? LDCPP : LD} #{OBJ} -L#{OBJDIR} -lhal #{LDFLAGS} -o #{t.name}"
+file "#{OBJDIR}/#{PROG}.elf" => ["#{OBJDIR}/libhal.a", "#{OBJDIR}/flashloader.o"] + OBJ do |t|
+  puts "Linking #{t.name} to Internal FLASH"
+  sh "#{$using_cpp ? LDCPP : LD} #{OBJ} #{OBJDIR}/flashloader.o -L#{OBJDIR} -lhal #{LDFLAGS} -o #{t.name}"
 end
+
+# file "#{OBJDIR}/#{PROG}.elf" => ["#{OBJDIR}/libhal.a"] + OBJ do |t|
+#   puts "Linking #{t.name} to Internal Flash"
+#   sh "#{$using_cpp ? LDCPP : LD} #{OBJ} -L#{OBJDIR} -lhal #{LDFLAGS} -o #{t.name}"
+# end
 
 file "#{OBJDIR}/libhal.a" => HAL_OBJ do |t|
   puts "Creating #{t.name}"

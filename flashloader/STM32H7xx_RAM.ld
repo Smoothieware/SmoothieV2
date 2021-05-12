@@ -128,7 +128,8 @@ SECTIONS
     *(.data)           /* .data sections */
     *(.data*)          /* .data* sections */
 
-    . = ALIGN(4);
+    . = ALIGN(8);
+    KEEP (*(.last_word))
     _edata = .;        /* define a global symbol at data end */
   } >DTCMRAM AT> ITCMRAM
 

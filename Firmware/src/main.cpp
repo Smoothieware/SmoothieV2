@@ -379,12 +379,6 @@ bool process_command_buffer(size_t n, char *rx_buf, OutputStream *os, char *line
 }
 
 static volatile bool abort_comms = false;
-void set_abort_comms()
-{
-    abort_comms = true;
-    Network *network= static_cast<Network *>(Module::lookup("network"));
-    if(network != nullptr) network->set_abort();
-}
 
 extern "C" size_t write_cdc(const char *buf, size_t len);
 extern "C" size_t read_cdc(char *buf, size_t len);
@@ -476,7 +470,7 @@ static void usb_comms(void *)
     printf("DEBUG: USB Comms thread exiting\n");
     vTaskDelete(NULL);
 }
-
+extern "C" void stop_uart();
 static void uart_comms(void *)
 {
     printf("DEBUG: UART Comms thread running\n");
@@ -505,9 +499,20 @@ static void uart_comms(void *)
             process_command_buffer(n, rx_buf, &os, line, cnt, discard);
         }
     }
+    stop_uart();
     output_streams.erase(&os);
     printf("DEBUG: UART Comms thread exiting\n");
     vTaskDelete(NULL);
+}
+
+void set_abort_comms()
+{
+    abort_comms = true;
+
+#ifndef NONETWORK
+    Network *network= static_cast<Network *>(Module::lookup("network"));
+    if(network != nullptr) network->set_abort();
+#endif
 }
 
 // this prints the string to all consoles that are connected and active

@@ -43,6 +43,9 @@ static void CPU_CACHE_Enable(void);
 static void FS_FileOperations(void);
 static void Error_Handler(void);
 
+// put a magic number at the very end
+ __attribute__ ((section (".last_word"))) uint64_t magic=0x1234567898765432LL;
+
 /* Private functions ---------------------------------------------------------*/
 
 /**

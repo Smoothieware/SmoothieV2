@@ -82,8 +82,8 @@ bool CommandShell::initialize()
     THEDISPATCHER->add_handler( "ed", std::bind( &CommandShell::edit_cmd, this, _1, _2) );
 #ifdef USE_DFU
     THEDISPATCHER->add_handler( "dfu", std::bind( &CommandShell::dfu_cmd, this, _1, _2) );
-    THEDISPATCHER->add_handler( "flash", std::bind( &CommandShell::flash_cmd, this, _1, _2) );
 #endif
+    THEDISPATCHER->add_handler( "flash", std::bind( &CommandShell::flash_cmd, this, _1, _2) );
 
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 20, std::bind(&CommandShell::m20_cmd, this, _1, _2));
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 115, std::bind(&CommandShell::m115_cmd, this, _1, _2));
@@ -1464,11 +1464,11 @@ bool CommandShell::reset_cmd(std::string& params, OutputStream& os)
 extern "C" void shutdown_sdmmc();
 extern "C" void shutdown_cdc();
 
-#ifdef USE_DFU
 static void stop_everything(void)
 {
     // stop stuff
     set_abort_comms();
+    stop_uart();
     f_unmount("sd");
     FastTicker::getInstance()->stop();
     StepTicker::getInstance()->stop();
@@ -1484,10 +1484,12 @@ static void stop_everything(void)
 extern uint8_t _binary_flashloader_bin_start[];
 extern uint8_t _binary_flashloader_bin_end[];
 extern uint8_t _binary_flashloader_bin_size[];
+extern "C" void jump_to_program(uint32_t prog_addr);
 bool CommandShell::flash_cmd(std::string& params, OutputStream& os)
 {
     HELP("flash image - flash flashme.bin");
 
+#if 0
     // check the flashme.bin is on the disk first
     FILE *fp = fopen("/sd/flashme.bin", "r");
     if(fp == NULL) {
@@ -1495,32 +1497,34 @@ bool CommandShell::flash_cmd(std::string& params, OutputStream& os)
         return true;
     }
     fclose(fp);
+#endif
 
     stop_everything();
 
-    __disable_irq();
-
-    // binary file compiled to load and run at 0x10000000
+    // binary file compiled to load and run at 0x00000000
     // this program will flash the flashme.bin found on the sdcard then reset
     uint8_t *data_start     = _binary_flashloader_bin_start;
     //uint8_t *data_end       = _binary_flashloader_bin_end;
     size_t data_size  = (size_t)_binary_flashloader_bin_size;
-    // copy to RAM
-    uint32_t *addr = (uint32_t*)0x10000000;
+    // copy to ITCMRAM
+    uint32_t *addr = (uint32_t*)0x00000000;
     // copy to execution area at addr
-    memcpy(addr, data_start, data_size);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnonnull"
+    // it really is copying to memory address 0
+    memcpy(addr, data_start, data_size + 8);
+#pragma GCC diagnostic pop
+    jump_to_program(0);
 
-    /* get and set the stack pointer of the new image */
-    __set_MSP(*addr++);
-
-    /* jump to new image's execution area */
-    ((void (*)(void)) * addr)();
+    // try a soft reset
+    //NVIC_SystemReset();
 
     // should never get here
     __asm("bkpt #0");
     return true;
 }
 
+#ifdef USE_DFU
 extern "C" bool DFU_Tasks(void (*)(void));
 bool CommandShell::dfu_cmd(std::string& params, OutputStream& os)
 {

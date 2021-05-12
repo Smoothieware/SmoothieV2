@@ -4,10 +4,21 @@ require 'pathname'
 
 verbose(ENV['verbose'] == '1')
 
-PROG = 'theapp'
+PROG = 'flashloader'
 
 # include a defaults file if present
 load 'rakefile.defaults' if File.exists?('rakefile.defaults')
+
+if ENV['target'].nil?
+  TARGET = 'Devebox'
+elsif (ENV['target'] != 'Nucleo' && ENV['target'] != 'Prime'&& ENV['target'] != 'Devebox')
+  puts "ERROR: Must specify target=[Nucleo|Prime|Devebox]"
+  exit 0
+else
+  TARGET = ENV['target']
+end
+
+puts "Target is #{TARGET}"
 
 DEBUG = ENV['debug'] == '1'
 #DEBUG = true
@@ -106,7 +117,7 @@ SRCS = HAL_SRCS + APP_SRCS
 
 $using_cpp= SRCS.find { |i| File.extname(i) == ".cpp" }.nil? ? false : true
 
-OBJDIR = "Build"
+OBJDIR = "#{PROG}_#{TARGET}"
 OBJ = APP_SRCS.collect { |fn| File.join(OBJDIR, File.dirname(fn), File.basename(fn).ext('o')) }
 
 HAL_OBJ = HAL_SRCS.collect { |fn| File.join(OBJDIR, File.dirname(fn), File.basename(fn).ext('o')) }
@@ -131,13 +142,34 @@ sys_include_dirs = []
 
 INCLUDE = (include_dirs).collect { |d| "-I#{d}" }.join(" ")
 
-defines = %w(-DUSE_HAL_DRIVER -DSTM32H743xx -DCORE_CM7 -DUSE_FULL_LL_DRIVER)
+defines = %w(-DUSE_HAL_DRIVER -DCORE_CM7 -DUSE_FULL_LL_DRIVER)
 if DEBUG
   defines << "-DDEBUG"
 end
 
-# devebox uart
-defines << '-DUSE_UART4 -DUART4_PINSET=8'
+# Target specified #defines
+defines << "-DBUILD_TARGET=\\\"#{TARGET}\\\" "
+if TARGET == 'Nucleo'
+  defines << '-DUSE_UART3'
+  defines << '-DUART3_PINSET=8'
+  defines << '-DBOARD_NUCLEO'
+  defines << '-DSTM32H745xx'
+  defines << '-DHSE_VALUE=8000000'
+elsif TARGET == 'Prime'
+  # on G5
+  defines << '-DUSE_UART0'
+  defines << "-DUART0_PINSET=15"
+  defines << '-DBOARD_PRIME'
+  defines << '-DSTM32H745xx'
+elsif TARGET == 'Devebox'
+  defines << '-DUSE_UART4'
+  defines << '-DUART4_PINSET=8'
+  defines << '-DBOARD_DEVEBOX'
+  defines << '-DSTM32H743xx'
+  defines << '-DHSE_VALUE=25000000'
+else
+  raise("Error unhandled target")
+end
 
 DEFINES= defines.join(' ')
 

@@ -137,7 +137,7 @@ static void SD_RxCpltCallback(SD_HandleTypeDef *hsd);
 static void SD_DriveTransceiver_1_8V_Callback(FlagStatus status);
 #endif
 #endif /* (USE_HAL_SD_REGISTER_CALLBACKS == 1)   */
-static void SD_EXTI_Callback(void);
+//static void SD_EXTI_Callback(void);
 /**
   * @}
   */
@@ -907,6 +907,7 @@ static void SD_DriveTransceiver_1_8V_Callback(FlagStatus status)
 #endif
 #endif/* (USE_HAL_SD_REGISTER_CALLBACKS == 1) */
 
+#if 0
 /**
   * @brief  SD EXTI line detection callbacks.
   * @retval None
@@ -940,6 +941,7 @@ static void SD_EXTI_Callback(void)
   (void)BSP_IO_ClearIT(0, sd_pin);
 #endif
 }
+#endif
 
 /**
   * @brief  Initializes the SD MSP.

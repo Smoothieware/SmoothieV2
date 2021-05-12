@@ -39,7 +39,7 @@
 /* Variables */
 //#undef errno
 extern int errno;
-#define MAX_STACK_SIZE 0x2000
+#define MAX_STACK_SIZE 0x1000
 
 extern int __io_putchar(int ch) __attribute__((weak));
 extern int __io_getchar(void) __attribute__((weak));
@@ -93,21 +93,16 @@ int _write(int file, char *ptr, int len)
 	return len;
 }
 
+extern char end;
+extern char _estack;
 caddr_t _sbrk(int incr)
 {
-	extern char end asm("end");
-	static char *heap_end;
-	static char *max_heap;
+	static char *heap_end= (char *)&end;
+	static char *max_heap= (char *)(((char*)&_estack)-(char*)MAX_STACK_SIZE);
 	char *prev_heap_end;
 
-	if (heap_end == 0) {
-		heap_end = &end;
-		max_heap= heap_end;
-		max_heap += 0x4000;
-	}
-
 	prev_heap_end = heap_end;
-	if (heap_end + incr > max_heap)
+	if (heap_end + incr >= max_heap)
 	{
 //		write(1, "Heap and stack collision\n", 25);
 //		abort();
