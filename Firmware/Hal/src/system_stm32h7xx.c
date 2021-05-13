@@ -1008,11 +1008,10 @@ void jump_to_program(uint32_t prog_addr)
 		__ISB();
 	}
 
-	NVIC_DisableIRQ(TIM6_DAC_IRQn);
 	/* Re-enable all interrupts */
 	__enable_irq();
 
-	SCB->VTOR = prog_addr;       /* Vector Table Relocation in ITCMRAM */
+	SCB->VTOR = prog_addr;       /* Vector Table Relocation in DTCMRAM */
 	/* Set up the jump to booloader address + 4 */
 	SysMemBootJump = (void (*)(void)) (*((uint32_t *) ((BootAddr + 4))));
 	/* Set the main stack pointer to the flashloader stack */

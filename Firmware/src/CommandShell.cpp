@@ -1473,7 +1473,7 @@ static void stop_everything(void)
     Adc::stop();
     shutdown_sdmmc(); // NVIC_DisableIRQ(SDIO_IRQn);
     set_abort_comms();
-    vTaskDelay(pdMS_TO_TICKS(5000));
+    vTaskDelay(pdMS_TO_TICKS(2000));
     stop_uart();
     shutdown_cdc(); // NVIC_DisableIRQ(USB0_IRQn);
     vTaskSuspendAll();
@@ -1529,7 +1529,7 @@ bool CommandShell::flash_cmd(std::string& params, OutputStream& os)
     // copy to DTCMRAM
     uint32_t *addr = (uint32_t*)0x20000000;
     // copy to execution area at addr
-    memcpy(addr, data_start, data_size + 4);
+    memcpy(addr, data_start, data_size);
     jump_to_program((uint32_t)addr);
 
     // try a soft reset

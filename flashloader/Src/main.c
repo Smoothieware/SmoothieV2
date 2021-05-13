@@ -26,22 +26,12 @@
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-FATFS SDFatFs;  /* File system object for SD card logical drive */
-FIL MyFile;     /* File object */
-char SDPath[4]; /* SD card logical drive path */
+static FATFS SDFatFs;  /* File system object for SD card logical drive */
+static char SDPath[4]; /* SD card logical drive path */
 
-typedef enum {
-	APPLICATION_IDLE = 0,
-	APPLICATION_RUNNING,
-	APPLICATION_SD_UNPLUGGED,
-} FS_FileOperationsTypeDef;
-
-FS_FileOperationsTypeDef Appli_state = APPLICATION_IDLE;
 /* Private function prototypes -----------------------------------------------*/
 static void SystemClock_Config(void);
 static void CPU_CACHE_Enable(void);
-static void FS_FileOperations(void);
-static void Error_Handler(void);
 
 // put a magic number at the very end
 __attribute__ ((section (".last_word"))) uint64_t magic = 0x1234567898765432LL;
@@ -50,46 +40,20 @@ __attribute__ ((section (".last_word"))) uint64_t magic = 0x1234567898765432LL;
 extern void Board_LED_Init();
 extern void Board_LED_Set(uint8_t led, int on);
 
-/**
-  * @brief  Main program
-  * @param  None
-  * @retval None
-  */
-int main(void)
-{
-	/* Enable the CPU Cache */
-	CPU_CACHE_Enable();
-
-	/* stm32h7xx HAL library initialization:
-	- Configure the Systick to generate an interrupt each 1 msec
-	- Set NVIC Group Priority to 4
-	- Global MSP (MCU Support Package) initialization
-	*/
-	HAL_Init();
-	Board_LED_Init();
-
-	/* Configure the system clock to 400 MHz */
-	SystemClock_Config();
-	extern int setup_uart();
-	setup_uart();
-	puts("Welcome to Smoothie Boot loader\n");
-	/*##-1- Link the micro SD disk I/O driver ##################################*/
-	if(FATFS_LinkDriver(&SD_Driver, SDPath) == 0) {
-		FS_FileOperations();
-		// do_update();
-	}
-	puts("Success!!\n");
-	HAL_Delay(5000);
-	NVIC_SystemReset();
-	while (1);
-}
-
-#if 0
-extern int do_flash(void);
+#if 1
+extern int do_flash(FIL *, uint32_t);
 void do_update()
 {
+	FIL fp;     /* File object */
+
+	if(f_mount(&SDFatFs, (TCHAR const*)SDPath, 0) != FR_OK) {
+		printf("ERROR: failed to mount: %s", SDPath);
+		HAL_Delay(1000);
+		NVIC_SystemReset();
+	}
+
 	printf("Opening flashme.bin from SD Card...\n");
-	rc = f_open(&Fil, "flashme.bin", FA_READ);
+	FRESULT rc = f_open(&fp, "flashme.bin", FA_READ);
 	if (rc) {
 		printf("ERROR: no flashme.bin found - reset in 5 seconds\r\n");
 		Board_LED_Set(0, 1);
@@ -99,44 +63,16 @@ void do_update()
 		HAL_Delay(5000);
 		NVIC_SystemReset();
 	}
-	printf("Done.\r\n");
 
 	printf("Flashing contents of flashme.bin...\r\n");
 
-	spifi_init();
-	spifi_command_mode();
-
-	uint8_t cnt = 0;
-	uint32_t page = 0;
-	for (;; ) {
-		/* Read a chunk of file */
-		rc = f_read(&Fil, (void *)cbuf, BUFFER_SIZE, &br);
-		if (rc || !br) {
-			break;					/* Error or end of file */
-		}
-
-		// flash it
-		spifi_4K_write(SPIFLASH_BASE_ADDRESS + page, (int *)cbuf);
-		page += 4096;
-
-		// count up leds to show progress
-		cnt++;
-		Board_LED_Set(0, cnt & 1);
-		Board_LED_Set(1, cnt & 2);
-		Board_LED_Set(2, cnt & 4);
-		Board_LED_Set(3, cnt & 8);
-	}
-
-	spifi_memory_mode();
-
-	if (rc) {
-		printf("Flash Failed.\r\n");
+	if(do_flash(&fp, f_size(&fp)) == 0) {
+		printf("ERROR: flash failed\n");
 		Board_LED_Set(0, 1);
 		Board_LED_Set(1, 0);
-		die(rc);
 	}
 
-	rc = f_close(&Fil);
+	rc = f_close(&fp);
 	rc = f_rename("flashme.bin", "flashme.old");
 	if (rc) {
 		printf("Rename Failed.\r\n");
@@ -146,13 +82,15 @@ void do_update()
 	HAL_Delay(1000);
 	NVIC_SystemReset();
 }
-#endif
+
+#else
 
 static FRESULT scan_files (char* pat)
 {
 	DIR dir;
 	FILINFO finfo;
 	FATFS *fs;
+
 	FRESULT res = f_opendir(&dir, pat);
 	assert(FR_OK == res);
 	DWORD p1, s1, s2;
@@ -190,6 +128,7 @@ static void FS_FileOperations(void)
 	uint32_t byteswritten, bytesread;                     /* File write/read counts */
 	uint8_t wtext[] = "This is STM32 working with FatFs"; /* File write buffer */
 	uint8_t rtext[1024];                                   /* File read buffer */
+	FIL MyFile;     /* File object */
 
 	/* Register the file system object to the FatFs module */
 	if(f_mount(&SDFatFs, (TCHAR const*)SDPath, 0) == FR_OK) {
@@ -226,6 +165,41 @@ static void FS_FileOperations(void)
 	printf("Failed\n");
 	/* Error */
 	Error_Handler();
+}
+#endif
+
+/**
+  * @brief  Main program
+  * @param  None
+  * @retval None
+  */
+int main(void)
+{
+	/* Enable the CPU Cache */
+	CPU_CACHE_Enable();
+
+	/* stm32h7xx HAL library initialization:
+	- Configure the Systick to generate an interrupt each 1 msec
+	- Set NVIC Group Priority to 4
+	- Global MSP (MCU Support Package) initialization
+	*/
+	HAL_Init();
+	Board_LED_Init();
+
+	/* Configure the system clock to 400 MHz */
+	SystemClock_Config();
+	extern int setup_uart();
+	setup_uart();
+	puts("Welcome to Smoothie Boot loader\n");
+	/*##-1- Link the micro SD disk I/O driver ##################################*/
+	if(FATFS_LinkDriver(&SD_Driver, SDPath) == 0) {
+		// FS_FileOperations();
+		do_update();
+	}
+	puts("Success!!\n");
+	HAL_Delay(5000);
+	NVIC_SystemReset();
+	while (1);
 }
 
 /**
@@ -369,9 +343,4 @@ void assert_failed(uint8_t* file, uint32_t line)
 }
 #endif
 
-static void Error_Handler(void)
-{
-	puts("In Error Handler\n");
-	while(1) ;
-}
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
