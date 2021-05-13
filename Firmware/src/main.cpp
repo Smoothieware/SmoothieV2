@@ -386,10 +386,10 @@ extern "C" int setup_cdc(void *taskhandle);
 
 static void usb_comms(void *)
 {
-    printf("DEBUG: USB Comms thread running\n");
+    puts("DEBUG: USB Comms thread running\n");
 
     if(!setup_cdc(xTaskGetCurrentTaskHandle())) {
-        printf("FATAL: CDC setup failed\n");
+        puts("FATAL: CDC setup failed\n");
         return;
     }
 
@@ -397,7 +397,7 @@ static void usb_comms(void *)
     const size_t usb_rx_buf_sz = 1024;
     char *usb_rx_buf = (char *)malloc(usb_rx_buf_sz);
     if(usb_rx_buf == nullptr) {
-        printf("FATAL: no memory for usb_rx_buf\n");
+        puts("FATAL: no memory for usb_rx_buf\n");
         return;
     }
 
@@ -413,6 +413,7 @@ static void usb_comms(void *)
     while (!done && !abort_comms) {
         // Wait to be notified that there has been a USB irq.
         ulTaskNotifyTake( pdTRUE, waitms );
+        if(abort_comms) break;
         n = read_cdc(usb_rx_buf, usb_rx_buf_sz);
         if(n > 0) {
             for (size_t i = 0; i < n; ++i) {
@@ -467,13 +468,13 @@ static void usb_comms(void *)
         } while(n > 0);
     }
     output_streams.erase(&os);
-    printf("DEBUG: USB Comms thread exiting\n");
+    puts("DEBUG: USB Comms thread exiting");
     vTaskDelete(NULL);
 }
-extern "C" void stop_uart();
+
 static void uart_comms(void *)
 {
-    printf("DEBUG: UART Comms thread running\n");
+    puts("DEBUG: UART Comms thread running");
     set_notification_uart(xTaskGetCurrentTaskHandle());
 
     // create an output stream that writes to the uart
@@ -492,6 +493,7 @@ static void uart_comms(void *)
 
         if( ulNotificationValue != 1 ) {
             /* The call to ulTaskNotifyTake() timed out. check anyway */
+            if(abort_comms) break;
         }
 
         size_t n = read_uart(rx_buf, sizeof(rx_buf));
@@ -499,9 +501,8 @@ static void uart_comms(void *)
             process_command_buffer(n, rx_buf, &os, line, cnt, discard);
         }
     }
-    stop_uart();
     output_streams.erase(&os);
-    printf("DEBUG: UART Comms thread exiting\n");
+    puts("DEBUG: UART Comms thread exiting");
     vTaskDelete(NULL);
 }
 
@@ -556,7 +557,7 @@ extern "C" bool DFU_requested_detach();
  */
 static void command_handler()
 {
-    printf("DEBUG: Command thread running\n");
+    puts("DEBUG: Command thread running");
 
     for(;;) {
         char *line;
@@ -909,8 +910,8 @@ static void smoothie_startup(void *)
         }
 
     } else {
-        puts("ERROR: Configure failed\n");
-        config_error_msg = "There was a fatal error in the config.ini this must be fixed to continue\nOnly some shell commands are allowed and sdcard access\n";
+        puts("ERROR: Configure failed");
+        config_error_msg = "There was a fatal error in the config.ini this must be fixed to continue\nOnly some shell commands are allowed and sdcard access";
         puts(config_error_msg.c_str());
         // Module::broadcast_halt(true);
      }

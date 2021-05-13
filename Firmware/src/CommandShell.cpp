@@ -1467,13 +1467,14 @@ extern "C" void shutdown_cdc();
 static void stop_everything(void)
 {
     // stop stuff
-    set_abort_comms();
-    stop_uart();
     f_unmount("sd");
     FastTicker::getInstance()->stop();
     StepTicker::getInstance()->stop();
     Adc::stop();
     shutdown_sdmmc(); // NVIC_DisableIRQ(SDIO_IRQn);
+    set_abort_comms();
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    stop_uart();
     shutdown_cdc(); // NVIC_DisableIRQ(USB0_IRQn);
     vTaskSuspendAll();
     vTaskEndScheduler(); // NVIC_DisableIRQ(SysTick_IRQn);
@@ -1504,20 +1505,16 @@ bool CommandShell::flash_cmd(std::string& params, OutputStream& os)
     // Disable all interrupts
     __disable_irq();
 
-    // binary file compiled to load and run at 0x00000000
+    // binary file compiled to load and run at 0x20000000
     // this program will flash the flashme.bin found on the sdcard then reset
     uint8_t *data_start     = _binary_flashloader_bin_start;
     //uint8_t *data_end       = _binary_flashloader_bin_end;
     size_t data_size  = (size_t)_binary_flashloader_bin_size;
-    // copy to ITCMRAM
-    uint32_t *addr = (uint32_t*)0x00000000;
+    // copy to DTCMRAM
+    uint32_t *addr = (uint32_t*)0x20000000;
     // copy to execution area at addr
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wnonnull"
-    // it really is copying to memory address 0
     memcpy(addr, data_start, data_size + 4);
-#pragma GCC diagnostic pop
-    jump_to_program(0);
+    jump_to_program((uint32_t)addr);
 
     // try a soft reset
     //NVIC_SystemReset();

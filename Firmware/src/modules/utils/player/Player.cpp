@@ -66,7 +66,7 @@ bool Player::configure(ConfigReader& cr)
 {
     ConfigReader::section_map_t m;
     if(!cr.get_section("player", m)) {
-        printf("WARNING:configure-player: no player section found, defaults used\n");
+        printf("INFO:configure-player: no player section found, defaults used\n");
     }
 
     this->on_boot_gcode = cr.get_string(m, on_boot_gcode_key, "/sd/on_boot.gcode");

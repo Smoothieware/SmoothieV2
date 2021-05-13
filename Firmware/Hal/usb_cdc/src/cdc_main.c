@@ -101,6 +101,7 @@ int setup_cdc(xTaskHandle h)
 void shutdown_cdc()
 {
     USBD_Stop(&USBD_Device);
+    HAL_Delay(250);
     USBD_DeInit(&USBD_Device);
     NVIC_DisableIRQ(OTG_FS_IRQn);
     teardown_vcom();

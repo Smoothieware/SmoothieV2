@@ -44,12 +44,12 @@ _Min_Stack_Size = 0x8000; /* required amount of stack */
 /* Specify the memory areas */
 MEMORY
 {
-DTCMRAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 128K
-RAM_D1 (xrw)      : ORIGIN = 0x24000000, LENGTH = 512K
-RAM_D2 (xrw)      : ORIGIN = 0x30000000, LENGTH = 288K
-RAM_D3 (xrw)      : ORIGIN = 0x38000000, LENGTH = 64K
-ITCMRAM (xrw)      : ORIGIN = 0x00000000, LENGTH = 64K
-FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 2048K
+DTCMRAM (xrw)    : ORIGIN = 0x20000000, LENGTH = 128K
+RAM_D1 (xrw)     : ORIGIN = 0x24000000, LENGTH = 512K
+RAM_D2 (xrw)     : ORIGIN = 0x30000000, LENGTH = 288K
+RAM_D3 (xrw)     : ORIGIN = 0x38000000, LENGTH = 64K
+ITCMRAM (xrw)    : ORIGIN = 0x00000000, LENGTH = 64K
+FLASH (rx)       : ORIGIN = 0x8000000, LENGTH = 2048K
 }
 
 /* Define output sections */
@@ -61,7 +61,7 @@ SECTIONS
     . = ALIGN(4);
     KEEP(*(.isr_vector)) /* Startup code */
     . = ALIGN(4);
-  } >ITCMRAM
+  } >DTCMRAM
 
   /* The program code and other data goes into FLASH */
   .text :
@@ -78,7 +78,7 @@ SECTIONS
 
     . = ALIGN(4);
     _etext = .;        /* define a global symbols at end of code */
-  } >ITCMRAM
+  } >DTCMRAM
 
   /* Constant data goes into FLASH */
   .rodata :
@@ -87,35 +87,35 @@ SECTIONS
     *(.rodata)         /* .rodata sections (constants, strings, etc.) */
     *(.rodata*)        /* .rodata* sections (constants, strings, etc.) */
     . = ALIGN(4);
-  } >ITCMRAM
+  } >DTCMRAM
 
-  .ARM.extab   : { *(.ARM.extab* .gnu.linkonce.armextab.*) } >ITCMRAM
+  .ARM.extab   : { *(.ARM.extab* .gnu.linkonce.armextab.*) } >DTCMRAM
   .ARM : {
     __exidx_start = .;
     *(.ARM.exidx*)
     __exidx_end = .;
-  } >ITCMRAM
+  } >DTCMRAM
 
   .preinit_array     :
   {
     PROVIDE_HIDDEN (__preinit_array_start = .);
     KEEP (*(.preinit_array*))
     PROVIDE_HIDDEN (__preinit_array_end = .);
-  } >ITCMRAM
+  } >DTCMRAM
   .init_array :
   {
     PROVIDE_HIDDEN (__init_array_start = .);
     KEEP (*(SORT(.init_array.*)))
     KEEP (*(.init_array*))
     PROVIDE_HIDDEN (__init_array_end = .);
-  } >ITCMRAM
+  } >DTCMRAM
   .fini_array :
   {
     PROVIDE_HIDDEN (__fini_array_start = .);
     KEEP (*(SORT(.fini_array.*)))
     KEEP (*(.fini_array*))
     PROVIDE_HIDDEN (__fini_array_end = .);
-  } >ITCMRAM
+  } >DTCMRAM
 
   /* used by the startup to initialize data */
   _sidata = LOADADDR(.data);
@@ -132,7 +132,7 @@ SECTIONS
     KEEP (*(.last_word))
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
-  } >DTCMRAM AT> ITCMRAM
+  } >RAM_D1 AT> DTCMRAM
 
 
   /* Uninitialized data section */

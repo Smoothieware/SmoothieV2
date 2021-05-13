@@ -16,10 +16,12 @@ void setup_xprintf()
     xPrintMutex= xSemaphoreCreateMutex();
 }
 
+size_t write_uart(const char * buf, size_t length);
 // replace newlib printf, snprintf, vsnprintf
 static void my_outchar(void *, char c)
 {
-    putchar(c);
+    write_uart(&c, 1);
+    //putchar(c);
 }
 
 #include "xformatc.h"
