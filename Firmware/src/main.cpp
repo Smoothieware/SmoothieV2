@@ -386,7 +386,7 @@ extern "C" int setup_cdc(void *taskhandle);
 
 static void usb_comms(void *)
 {
-    puts("DEBUG: USB Comms thread running\n");
+    puts("DEBUG: USB Comms thread running");
 
     if(!setup_cdc(xTaskGetCurrentTaskHandle())) {
         puts("FATAL: CDC setup failed\n");

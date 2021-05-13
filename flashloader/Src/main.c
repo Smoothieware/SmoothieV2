@@ -72,13 +72,13 @@ int main(void)
 	SystemClock_Config();
 	extern int setup_uart();
 	setup_uart();
-	printf("Welcome to Smoothie Boot loader\n");
+	puts("Welcome to Smoothie Boot loader\n");
 	/*##-1- Link the micro SD disk I/O driver ##################################*/
 	if(FATFS_LinkDriver(&SD_Driver, SDPath) == 0) {
 		FS_FileOperations();
 		// do_update();
 	}
-	printf("Success!!\n");
+	puts("Success!!\n");
 	HAL_Delay(5000);
 	NVIC_SystemReset();
 	while (1);
@@ -255,9 +255,12 @@ static void SystemClock_Config(void)
 	RCC_ClkInitTypeDef RCC_ClkInitStruct;
 	RCC_OscInitTypeDef RCC_OscInitStruct;
 	HAL_StatusTypeDef ret = HAL_OK;
-
-	/*!< Supply configuration update enable */
+	// Supply configuration update enable
+#ifdef STM32H745xx
+	HAL_PWREx_ConfigSupply(PWR_DIRECT_SMPS_SUPPLY);
+#else
 	HAL_PWREx_ConfigSupply(PWR_LDO_SUPPLY);
+#endif
 
 	/* The voltage scaling allows optimizing the power consumption when the device is
 	   clocked below the maximum system frequency, to update the voltage scaling value
@@ -271,12 +274,26 @@ static void SystemClock_Config(void)
 	* in the RCC_OscInitTypeDef structure.
 	*/
 	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+#ifdef BOARD_NUCLEO
+	RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS;
+#else
 	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+#endif
 	RCC_OscInitStruct.HSIState = RCC_HSI_OFF;
 	RCC_OscInitStruct.CSIState = RCC_CSI_OFF;
 	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
 	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
 
+#ifdef BOARD_NUCLEO
+	RCC_OscInitStruct.PLL.PLLM = 1;
+	RCC_OscInitStruct.PLL.PLLN = 100;
+	RCC_OscInitStruct.PLL.PLLP = 2;
+	RCC_OscInitStruct.PLL.PLLQ = 4;
+	RCC_OscInitStruct.PLL.PLLR = 2;
+	RCC_OscInitStruct.PLL.PLLFRACN = 0;
+	RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_1;
+	RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
+#else
 	RCC_OscInitStruct.PLL.PLLM = 5;
 	RCC_OscInitStruct.PLL.PLLN = 160;
 	RCC_OscInitStruct.PLL.PLLP = 2;
@@ -285,6 +302,7 @@ static void SystemClock_Config(void)
 	RCC_OscInitStruct.PLL.PLLFRACN = 0;
 	RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_2;
 	RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
+#endif
 
 	ret = HAL_RCC_OscConfig(&RCC_OscInitStruct);
 	if(ret != HAL_OK) {
@@ -353,7 +371,7 @@ void assert_failed(uint8_t* file, uint32_t line)
 
 static void Error_Handler(void)
 {
-	printf("In Error Handler\n");
+	puts("In Error Handler\n");
 	while(1) ;
 }
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

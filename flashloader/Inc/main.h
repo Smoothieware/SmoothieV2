@@ -24,7 +24,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32h7xx_hal.h"
 #include "stm32h7xx_hal_sd.h"
-#include "stm32h743i_eval_sd.h"
+#include "stm32h74x_sd.h"
 
 
 /* FatFs includes component */

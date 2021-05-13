@@ -208,6 +208,13 @@ SECTIONS
     dtcm_text_end = .;
   } >DTCMRAM AT> FLASH
 
+  /* force the flashloader bin to the end of the image so we can easily check the magic number */
+  .flashload_o :
+  {
+  	. = ALIGN(4);
+  	*(.flashloader_data)
+  } >FLASH
+
  .usb_data (NOLOAD) :
   {
     PROVIDE_HIDDEN (__usb_data_start = .);

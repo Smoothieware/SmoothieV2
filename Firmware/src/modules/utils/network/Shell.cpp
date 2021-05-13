@@ -283,7 +283,7 @@ static void shell_thread(void *arg)
 void shell_init(void)
 {
     // make same priority as other comms threads
-    xTaskCreate(shell_thread, "shell_thread", 350, NULL, COMMS_PRI, NULL);
+    xTaskCreate(shell_thread, "shell_thread", 350, NULL, tskIDLE_PRIORITY + COMMS_PRI, NULL);
 }
 
 void shell_close()

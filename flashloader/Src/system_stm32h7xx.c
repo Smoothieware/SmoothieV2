@@ -232,11 +232,11 @@ void SystemInit (void)
 
 
   /* Configure the Vector Table location add offset address ------------------*/
-#ifdef VECT_TAB_SRAM
-  SCB->VTOR = D1_AXISRAM_BASE  | VECT_TAB_OFFSET;       /* Vector Table Relocation in Internal SRAM */
-#else
-  SCB->VTOR = FLASH_BANK1_BASE | VECT_TAB_OFFSET;       /* Vector Table Relocation in Internal FLASH */
-#endif
+// #ifdef VECT_TAB_SRAM
+//   SCB->VTOR = D1_AXISRAM_BASE  | VECT_TAB_OFFSET;        Vector Table Relocation in Internal SRAM
+// #else
+//   SCB->VTOR = FLASH_BANK1_BASE | VECT_TAB_OFFSET;       /* Vector Table Relocation in Internal FLASH */
+// #endif
 
     SCB->VTOR = 0x20000000;       /* Vector Table Relocation in ITCMRAM */
 }

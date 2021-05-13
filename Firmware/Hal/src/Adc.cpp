@@ -24,7 +24,7 @@ bool Adc::running;
 // make sure it is aligned on 32byte boundary for cache coherency, need to allocate potentially max size
 // num_samples (8) samples per num_channels (8) channels
 // We add 32 bytes just to make sure nothign else could share this area as we invalidate the cache after DMA
-ALIGN_32BYTES(static __IO uint16_t aADCxConvertedData[(Adc::num_samples * Adc::num_channels)+32]);
+ALIGN_32BYTES(static __IO uint16_t aADCxConvertedData[(Adc::num_samples * Adc::num_channels) + 32]);
 
 // this will be the actual size of the data based on the number of ADC channels actually in use
 static size_t adc_data_size;
@@ -194,12 +194,6 @@ bool Adc::post_config_setup()
     // num_samples (8) samples per channel
     adc_data_size = nc * num_samples; // actual data size
 
-    /* ### - 4 - Start conversion in DMA mode ################################# */
-    if (HAL_ADC_Start_DMA(&AdcHandle, (uint32_t *)aADCxConvertedData, adc_data_size) != HAL_OK) {
-        printf("ERROR: ADC1 Start DMA failed\n");
-        return false;
-    }
-
     return true;
 }
 
@@ -213,12 +207,18 @@ bool Adc::deinit()
 bool Adc::start()
 {
     running = true;
+    if (HAL_ADC_Start_DMA(&AdcHandle, (uint32_t *)aADCxConvertedData, adc_data_size) != HAL_OK) {
+        printf("ERROR: ADC1 Start DMA failed\n");
+        return false;
+    }
+
     return true;
 }
 
 bool Adc::stop()
 {
     running = false;
+    HAL_ADC_Stop_DMA(&AdcHandle);
     return true;
 }
 

@@ -117,8 +117,8 @@ SECTIONS
     PROVIDE_HIDDEN (__fini_array_end = .);
   } >DTCMRAM
 
-  /* used by the startup to initialize data */
-  _sidata = LOADADDR(.data);
+  /* used by the startup to initialize data
+  _sidata = LOADADDR(.data);*/
 
   /* Initialized data sections goes into RAM, load LMA copy after code */
   .data :
@@ -127,12 +127,15 @@ SECTIONS
     _sdata = .;        /* create a global symbol at data start */
     *(.data)           /* .data sections */
     *(.data*)          /* .data* sections */
-
-    . = ALIGN(8);
-    KEEP (*(.last_word))
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
-  } >RAM_D1 AT> DTCMRAM
+  } >DTCMRAM
+
+  .magic_area :
+  {
+    . = ALIGN(8);
+    KEEP (*(.last_word))
+  } >DTCMRAM
 
 
   /* Uninitialized data section */

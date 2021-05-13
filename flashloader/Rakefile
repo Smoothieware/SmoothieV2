@@ -95,7 +95,7 @@ hal_src = FileList["Drivers/STM32H7xx_HAL_Driver/Src/*.{c,cpp,s}"]
 hal_src.exclude(/_template\.c/)
 
 # the startup file
-startup_src = ["Src/startup_stm32h743xx.s"]
+startup_src = ["Src/startup_stm32h7xx.s"]
 
 # application
 app_src = FileList["Src/*.{c,cpp}"]
