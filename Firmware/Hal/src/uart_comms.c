@@ -71,7 +71,6 @@ void USART_CharReception_Callback(void)
 
 	/* Read Received character. RXNE flag is cleared by reading of RDR register */
 	received_char = LL_USART_ReceiveData8(USARTx_INSTANCE);
-
 	// stick in circular buffer
 	RingBufferPut(rxrb, received_char);
 
@@ -91,6 +90,21 @@ void USARTx_IRQHandler(void)
 		/* RXNE flag will be cleared by reading of RDR register (done in call) */
 		/* Call function in charge of handling Character reception */
 		USART_CharReception_Callback();
+	} else {
+		/* Disable USARTx_IRQn */
+		NVIC_DisableIRQ(USARTx_IRQn);
+		/* Error handling example :
+		  - Read USART ISR register to identify flag that leads to IT raising
+		  - Perform corresponding error handling treatment according to flag
+		*/
+		__IO uint32_t isr_reg = LL_USART_ReadReg(USARTx_INSTANCE, ISR);
+		(void)isr_reg;
+		LL_USART_ClearFlag_NE(USARTx_INSTANCE);
+		LL_USART_ClearFlag_ORE(USARTx_INSTANCE);
+		LL_USART_ClearFlag_PE(USARTx_INSTANCE);
+		LL_USART_ClearFlag_FE(USARTx_INSTANCE);
+		LL_USART_ReceiveData8(USARTx_INSTANCE);
+		// maybe re enable interrupt?
 	}
 }
 
@@ -218,13 +232,8 @@ void Configure_USART(void)
 
 	/* Enable RXNE and Error interrupts */
 	LL_USART_EnableIT_RXNE(USARTx_INSTANCE);
-
+	//LL_USART_EnableIT_ERROR(USARTx_INSTANCE);
 	LL_USART_DisableIT_ERROR(USARTx_INSTANCE);
-	LL_USART_DisableIT_TC(USARTx_INSTANCE);
-	LL_USART_DisableIT_TXE(USARTx_INSTANCE);
-	LL_USART_DisableIT_TXFT(USARTx_INSTANCE);
-	LL_USART_DisableIT_TXFE(USARTx_INSTANCE);
-	LL_USART_DisableIT_TCBGT(USARTx_INSTANCE);
 
 	allocate_hal_pin(USARTx_TX_GPIO_PORT, USARTx_TX_PIN);
 	allocate_hal_pin(USARTx_RX_GPIO_PORT, USARTx_RX_PIN);

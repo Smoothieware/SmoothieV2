@@ -40,7 +40,7 @@ bool Player::create(ConfigReader& cr)
     printf("DEBUG: configure player\n");
     Player *player = new Player();
     if(!player->configure(cr)) {
-        printf("WARNING: Failed to configure Player\n");
+        printf("INFO: Failed to configure Player\n");
     }
 
     return true;

@@ -130,6 +130,7 @@ SECTIONS
 
     . = ALIGN(8);
     KEEP (*(.last_word))
+    . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
   } >DTCMRAM AT> ITCMRAM
 

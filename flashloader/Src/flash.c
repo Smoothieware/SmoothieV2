@@ -106,9 +106,7 @@ int do_flash(void)
 		  SECTORError will contain the faulty sector and then to know the code error on this sector,
 		  user can call function 'HAL_FLASH_GetError()'
 		*/
-		/* Infinite loop */
-		while (1) {
-		}
+		return 0;
 	}
 
 	/* -4- Program the user Flash area word by word
@@ -122,8 +120,7 @@ int do_flash(void)
 		} else {
 			/* Error occurred while writing data in Flash memory.
 			   User can add here some code to deal with this error */
-			while (1) {
-			}
+			return 0;
 		}
 	}
 
@@ -150,15 +147,8 @@ int do_flash(void)
 
 	/* -7- Check if there is an issue to program data*/
 	if (MemoryProgramStatus == 0) {
-		/* No error detected. Switch on LED1*/
-	} else {
-		/* Error detected. Toggle LED3*/
-		while (1) {
-		}
+		return 1;
 	}
-
-	/* Infinite loop */
-	while (1) {
-	}
+	return 0;
 }
 

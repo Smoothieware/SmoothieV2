@@ -112,8 +112,8 @@ void Configure_USART(void)
 	/* (2) NVIC Configuration for USART interrupts */
 	/*  - Set priority for USARTx_IRQn */
 	/*  - Enable USARTx_IRQn */
-	NVIC_SetPriority(USARTx_IRQn, 4);
-	NVIC_EnableIRQ(USARTx_IRQn);
+	// NVIC_SetPriority(USARTx_IRQn, 4);
+	// NVIC_EnableIRQ(USARTx_IRQn);
 
 	/* (3) Enable USART peripheral clock and clock source ***********************/
 	USARTx_CLK_ENABLE();
@@ -157,10 +157,8 @@ void Configure_USART(void)
 	}
 
 	/* Enable RXNE and Error interrupts */
-	LL_USART_EnableIT_RXNE(USARTx_INSTANCE);
-	LL_USART_DisableIT_TC(USARTx_INSTANCE);
-	LL_USART_DisableIT_TXE(USARTx_INSTANCE);
-	LL_USART_EnableIT_ERROR(USARTx_INSTANCE);
+	//LL_USART_EnableIT_RXNE(USARTx_INSTANCE);
+	//LL_USART_EnableIT_ERROR(USARTx_INSTANCE);
 }
 
 int setup_uart()

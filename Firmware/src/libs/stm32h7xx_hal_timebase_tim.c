@@ -164,8 +164,12 @@ void TIM6_DAC_IRQHandler(void)
 
 void TIM6_Deinit()
 {
+	HAL_SuspendTick();
 	HAL_TIM_Base_Stop_IT(&TimHandle);
     HAL_TIM_Base_DeInit(&TimHandle);
+    __HAL_RCC_TIM6_CLK_DISABLE();
+    __HAL_TIM_CLEAR_IT(&TimHandle, TIM_IT_UPDATE);
+    NVIC_DisableIRQ(TIM6_DAC_IRQn);
 }
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

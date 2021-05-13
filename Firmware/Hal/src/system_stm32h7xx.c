@@ -980,8 +980,11 @@ void jump_to_program(uint32_t prog_addr)
 {
 	// transfer control to the flashloader in RAM
 	void (*SysMemBootJump)(void);
-	/* Set the address of the entry point to bootloader */
+	/* Set the address of the entry point to flashloader */
 	volatile uint32_t BootAddr = prog_addr;
+
+	/* Set the clock to the default state */
+	// HAL_RCC_DeInit();
 
 	/* Disable all interrupts */
 	__disable_irq();
@@ -990,24 +993,32 @@ void jump_to_program(uint32_t prog_addr)
 	/* disable Hal tick timer */
 	TIM6_Deinit();
 
-	/* Set the clock to the default state */
-	HAL_RCC_DeInit();
-	/* Clear Interrupt Enable Register & Interrupt Pending Register */
-	for (int i = 0; i < 5; i++) {
-		NVIC->ICER[i] = 0xFFFFFFFF;
-		NVIC->ICPR[i] = 0xFFFFFFFF;
+	// make sure everything has written through
+	__DSB();
+	__ISB();
+
+	// Clear All Interrupt Enable Registers & Interrupt Pending Registers
+	// we do it twice in case we get an interrupt while we do this
+	for (int j = 0; j < 2; j++) {
+		for (int i = 0; i < 5; i++) {
+			NVIC->ICER[i] = 0xFFFFFFFF;
+			NVIC->ICPR[i] = 0xFFFFFFFF;
+		}
+		__DSB();
+		__ISB();
 	}
 
+	NVIC_DisableIRQ(TIM6_DAC_IRQn);
 	/* Re-enable all interrupts */
 	__enable_irq();
 
 	SCB->VTOR = prog_addr;       /* Vector Table Relocation in ITCMRAM */
 	/* Set up the jump to booloader address + 4 */
 	SysMemBootJump = (void (*)(void)) (*((uint32_t *) ((BootAddr + 4))));
-	/* Set the main stack pointer to the bootloader stack */
+	/* Set the main stack pointer to the flashloader stack */
 	__set_MSP(*(uint32_t *)BootAddr);
 
-	/* Call the function to jump to bootloader location */
+	/* Call the function to jump to flashloader location */
 	SysMemBootJump();
 }
 

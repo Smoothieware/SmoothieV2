@@ -1501,6 +1501,9 @@ bool CommandShell::flash_cmd(std::string& params, OutputStream& os)
 
     stop_everything();
 
+    // Disable all interrupts
+    __disable_irq();
+
     // binary file compiled to load and run at 0x00000000
     // this program will flash the flashme.bin found on the sdcard then reset
     uint8_t *data_start     = _binary_flashloader_bin_start;
@@ -1512,7 +1515,7 @@ bool CommandShell::flash_cmd(std::string& params, OutputStream& os)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnonnull"
     // it really is copying to memory address 0
-    memcpy(addr, data_start, data_size + 8);
+    memcpy(addr, data_start, data_size + 4);
 #pragma GCC diagnostic pop
     jump_to_program(0);
 
