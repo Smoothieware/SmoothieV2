@@ -296,7 +296,7 @@ BaseType_t xFTPClientWork( TCPClient_t * pxTCPClient )
 		pxClient->bits.bHelloSent = pdTRUE_UNSIGNED;
 
 		xLength = snprintf( pcCOMMAND_BUFFER, sizeof( pcCOMMAND_BUFFER ),
-		                    "220 Welcome to the FreeRTOS+TCP FTP server\r\n" );
+		                    "220 Welcome to the Smoothieware FTP server\r\n" );
 		prvSendReply( pxClient->xSocket, pcCOMMAND_BUFFER, xLength );
 	}
 
@@ -783,19 +783,26 @@ static BaseType_t prvProcessCommand( FTPClient_t * pxClient,
 
 			case ECMD_FEAT: {
 				static const char pcFeatAnswer[] =
-				    "211-Features:\x0a"
+				    "211-Features:\x0d\x0a"
 
 				    /* The MDTM command is only allowed when
 				     * there is support for date&time. */
 #if ( ffconfigTIME_SUPPORT != 0 )
-				    " MDTM\x0a"
+				    " MDTM\x0d\x0a"
 #endif
-				    " REST STREAM\x0a"
+				    " REST STREAM\x0d\x0a"
 				    " SIZE\x0d\x0a"
+				    " FLAS\x0d\x0a"
 				    "211 End\x0d\x0a";
 				pcMyReply = pcFeatAnswer;
 			}
 			break;
+
+			case ECMD_FLASH:
+				pcMyReply= REPL_221;
+				pxClient->bits.bLoggedIn = pdFALSE_UNSIGNED;
+				pxClient->bits.bDoFlash = pdTRUE_UNSIGNED;
+				break;
 
 			case ECMD_UNKNOWN:
 				FreeRTOS_printf( ( "ftp::processCmd: Cmd %s unknown\n", pcRestCommand ) );

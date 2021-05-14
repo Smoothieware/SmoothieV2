@@ -70,5 +70,6 @@ const FTPCommand_t xFTPCommands[ FTP_CMD_COUNT ] =
 	{ 4, "NOOP", ECMD_NOOP,	   pdFALSE, pdFALSE },
 	{ 4, "EMPT", ECMD_EMPTY,   pdFALSE, pdFALSE },
 	{ 4, "CLOS", ECMD_CLOSE,   pdTRUE,	pdFALSE },
+	{ 4, "FLAS", ECMD_FLASH,   pdTRUE,	pdFALSE },
 	{ 4, "UNKN", ECMD_UNKNOWN, pdFALSE, pdFALSE },
 };

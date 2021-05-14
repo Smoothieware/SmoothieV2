@@ -134,7 +134,7 @@ int do_flash(FIL *fp, uint32_t size)
 	printf("DEBUG: starting flash of file\n");
 
 	// Program the user Flash area word by word
-	uint8_t cnt= 0;
+	uint16_t cnt= 0;
 	uint64_t FlashWord[4];
 	UINT br;
 	Address = FLASH_BASE_ADDR;
@@ -152,10 +152,10 @@ int do_flash(FIL *fp, uint32_t size)
 
 			// count up leds to show progress
 			cnt++;
-			Board_LED_Set(0, cnt & 0x80);
-			Board_LED_Set(1, cnt & 0x40);
-			Board_LED_Set(2, cnt & 0x20);
-			Board_LED_Set(3, cnt & 0x10);
+			Board_LED_Set(0, cnt & 0x0800);
+			Board_LED_Set(1, cnt & 0x0400);
+			Board_LED_Set(2, cnt & 0x0200);
+			Board_LED_Set(3, cnt & 0x0100);
 
 		} else {
 			printf("ERROR: flash programming error\n");

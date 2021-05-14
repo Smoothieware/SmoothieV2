@@ -48,7 +48,7 @@ void YModem::add(char c)
 int YModem::_inbyte(int msec)
 {
 	while (inbuf.empty()) {
-		vTaskDelay(pdMS_TO_TICKS(1));
+		vTaskDelay(pdMS_TO_TICKS(10));
 		msec -= 10;
 		if (msec <= 0)
 			return -1;

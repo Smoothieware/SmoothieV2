@@ -31,13 +31,23 @@ dev = "/dev/tty{}".format(args.device)
 
 print("Uploading file: {} to {}".format(file_path, dev))
 
+ser = serial.Serial(dev, 115200, timeout=0.1)
+ser.flushInput()  # Flush startup text in serial input
+
+gotok = False
+while not gotok:
+    ser.write(b'\n')
+
+    rep = ser.read_until()
+    s = rep.decode(encoding='latin1', errors='ignore')
+    gotok = s.startswith('ok')
+
+ser.flushInput()
+ser.write(b'ry -q\n')
+ser.close()
+
 fin = open(dev, "rb", buffering=0)
 fout = open(dev, "wb", buffering=0)
-
-fout.write(b'\n')
-rep1 = fin.readline()
-fout.write(b'ry -q\n')
-# rep2= fin.readline()
 
 if args.verbose:
     varg = '-vvv'
@@ -54,7 +64,7 @@ try:
 
     result, err = p.communicate()
     if p.returncode != 0:
-        print("Failed")
+        print("Failed: {}".format(err))
         ok = False
     else:
         print("uploaded ok")
@@ -72,7 +82,9 @@ if ok and args.flash:
     s.flushInput()  # Flush startup text in serial input
 
     s.write(b'rm flashme.bin\n')
+    s.flushInput()
     s.write(b'mv smoothiev2.bin flashme.bin\n')
     s.flushInput()
+    s.write(b'flash\n')
+    s.flushInput()
     s.close()
-    print("now do flash")

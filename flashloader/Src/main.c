@@ -70,6 +70,8 @@ void do_update()
 	}
 
 	rc = f_close(&fp);
+
+	f_unlink("flashme.old");
 	rc = f_rename("flashme.bin", "flashme.old");
 	if (rc) {
 		printf("ERROR: Rename Failed.\r\n");

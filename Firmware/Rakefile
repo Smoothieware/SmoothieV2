@@ -311,7 +311,13 @@ end
 
 desc "Upload via st prog"
 task :uploadbig do
-  sh "~/bin/flash-stm32 #{OBJDIR}/#{PROG}.bin"
+  if TARGET == 'Nucleo'
+    sh "~/bin/flash-stm32 #{OBJDIR}/#{PROG}.bin"
+  elsif TARGET == 'Devebox'
+    sh "upload-ym.py -f #{OBJDIR}/#{PROG}.bin ACM0"
+  else
+    die "Unknown upload protocol for target #{TARGET}"
+  end
 end
 
 # desc "Upload via openocd"

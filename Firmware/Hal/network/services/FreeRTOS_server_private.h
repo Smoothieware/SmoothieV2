@@ -136,7 +136,8 @@ struct xFTP_CLIENT
 				bLoggedIn : 1,
 				bStatusUser : 1,
 				bInRename : 1,
-				bReadOnly : 1;
+				bReadOnly : 1,
+                bDoFlash  : 1;
 		};
 		uint32_t ulFTPFlags;
 	}
