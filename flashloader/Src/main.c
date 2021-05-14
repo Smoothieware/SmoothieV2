@@ -40,7 +40,6 @@ __attribute__ ((section (".last_word"))) uint64_t magic = 0x1234567898765432LL;
 extern void Board_LED_Init();
 extern void Board_LED_Set(uint8_t led, int on);
 
-#if 1
 extern int do_flash(FIL *, uint32_t);
 void do_update()
 {
@@ -52,121 +51,34 @@ void do_update()
 		NVIC_SystemReset();
 	}
 
-	printf("Opening flashme.bin from SD Card...\n");
+	printf("DEBUG: Opening flashme.bin from SD Card...\n");
 	FRESULT rc = f_open(&fp, "flashme.bin", FA_READ);
 	if (rc) {
 		printf("ERROR: no flashme.bin found - reset in 5 seconds\r\n");
-		Board_LED_Set(0, 1);
-		Board_LED_Set(1, 1);
-		Board_LED_Set(2, 1);
-		Board_LED_Set(3, 1);
+		Board_LED_Set(0, 0);
 		HAL_Delay(5000);
 		NVIC_SystemReset();
 	}
 
-	printf("Flashing contents of flashme.bin...\r\n");
+	printf("DEBUG: Flashing contents of flashme.bin...\r\n");
 
 	if(do_flash(&fp, f_size(&fp)) == 0) {
 		printf("ERROR: flash failed\n");
+		Board_LED_Set(0, 0);
+	}else{
 		Board_LED_Set(0, 1);
-		Board_LED_Set(1, 0);
 	}
 
 	rc = f_close(&fp);
 	rc = f_rename("flashme.bin", "flashme.old");
 	if (rc) {
-		printf("Rename Failed.\r\n");
+		printf("ERROR: Rename Failed.\r\n");
 	}
 
-	printf("Flash completed. Rebooting in 1 second\r\n");
+	printf("DEBUG: Flash completed. Rebooting in 1 second\r\n");
 	HAL_Delay(1000);
 	NVIC_SystemReset();
 }
-
-#else
-
-static FRESULT scan_files (char* pat)
-{
-	DIR dir;
-	FILINFO finfo;
-	FATFS *fs;
-
-	FRESULT res = f_opendir(&dir, pat);
-	assert(FR_OK == res);
-	DWORD p1, s1, s2;
-	p1 = s1 = s2 = 0;
-	for(;;) {
-		res = f_readdir(&dir, &finfo);
-		if ((res != FR_OK) || !finfo.fname[0]) break;
-		if (finfo.fattrib & AM_DIR) {
-			s2++;
-		} else {
-			s1++; p1 += finfo.fsize;
-		}
-		printf("%c%c%c%c%c %u/%02u/%02u %02u:%02u %9lu  %s\n",
-		       (finfo.fattrib & AM_DIR) ? 'D' : '-',
-		       (finfo.fattrib & AM_RDO) ? 'R' : '-',
-		       (finfo.fattrib & AM_HID) ? 'H' : '-',
-		       (finfo.fattrib & AM_SYS) ? 'S' : '-',
-		       (finfo.fattrib & AM_ARC) ? 'A' : '-',
-		       (finfo.fdate >> 9) + 1980, (finfo.fdate >> 5) & 15, finfo.fdate & 31,
-		       (finfo.ftime >> 11), (finfo.ftime >> 5) & 63,
-		       (DWORD)finfo.fsize, finfo.fname);
-	}
-	printf("%4lu File(s),%10lu bytes total\n%4lu Dir(s)", s1, p1, s2);
-	res = f_getfree(pat, (DWORD*)&p1, &fs);
-	assert(FR_OK == res);
-	printf(", %10lu bytes free\n", p1 * fs->csize * 512);
-	f_closedir(&dir);
-
-	return 1;
-}
-
-static void FS_FileOperations(void)
-{
-	FRESULT res;                                          /* FatFs function common result code */
-	uint32_t byteswritten, bytesread;                     /* File write/read counts */
-	uint8_t wtext[] = "This is STM32 working with FatFs"; /* File write buffer */
-	uint8_t rtext[1024];                                   /* File read buffer */
-	FIL MyFile;     /* File object */
-
-	/* Register the file system object to the FatFs module */
-	if(f_mount(&SDFatFs, (TCHAR const*)SDPath, 0) == FR_OK) {
-		/* Create and Open a new text file object with write access */
-		if(f_open(&MyFile, "STM32.TXT", FA_CREATE_ALWAYS | FA_WRITE) == FR_OK) {
-			/* Write data to the text file */
-			res = f_write(&MyFile, wtext, sizeof(wtext), (void *)&byteswritten);
-
-			if((byteswritten > 0) && (res == FR_OK)) {
-				/* Close the open text file */
-				f_close(&MyFile);
-
-				/* Open the text file object with read access */
-				if(f_open(&MyFile, "STM32.TXT", FA_READ) == FR_OK) {
-					/* Read data from the text file */
-					res = f_read(&MyFile, rtext, sizeof(rtext), (void *)&bytesread);
-
-					if((bytesread > 0) && (res == FR_OK)) {
-						/* Close the open text file */
-						f_close(&MyFile);
-
-						/* Compare read data with the expected data */
-						if((bytesread == byteswritten)) {
-							scan_files(SDPath);
-							Board_LED_Set(0, 1);
-							return;
-						}
-					}
-				}
-			}
-		}
-	}
-	Board_LED_Set(0, 0);
-	printf("Failed\n");
-	/* Error */
-	Error_Handler();
-}
-#endif
 
 /**
   * @brief  Main program
@@ -190,15 +102,12 @@ int main(void)
 	SystemClock_Config();
 	extern int setup_uart();
 	setup_uart();
-	puts("Welcome to Smoothie Boot loader\n");
+	puts("Welcome to Smoothie flash loader\n");
 	/*##-1- Link the micro SD disk I/O driver ##################################*/
 	if(FATFS_LinkDriver(&SD_Driver, SDPath) == 0) {
-		// FS_FileOperations();
 		do_update();
 	}
-	puts("Success!!\n");
-	HAL_Delay(5000);
-	NVIC_SystemReset();
+	// should not get here
 	while (1);
 }
 

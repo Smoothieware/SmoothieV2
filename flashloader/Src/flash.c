@@ -152,10 +152,10 @@ int do_flash(FIL *fp, uint32_t size)
 
 			// count up leds to show progress
 			cnt++;
-			Board_LED_Set(0, cnt & 1);
-			Board_LED_Set(1, cnt & 2);
-			Board_LED_Set(2, cnt & 4);
-			Board_LED_Set(3, cnt & 8);
+			Board_LED_Set(0, cnt & 0x80);
+			Board_LED_Set(1, cnt & 0x40);
+			Board_LED_Set(2, cnt & 0x20);
+			Board_LED_Set(3, cnt & 0x10);
 
 		} else {
 			printf("ERROR: flash programming error\n");

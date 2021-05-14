@@ -22,6 +22,36 @@
 extern List_t xBoundTCPSocketsList;
 extern List_t xBoundUDPSocketsList;
 
+#if ((ipconfigHAS_DEBUG_PRINTF == 0 ) || (ipconfigHAS_PRINTF == 0))
+static const char * FreeRTOS_GetTCPStateName( UBaseType_t ulState )
+{
+    static const char * const pcStateNames[] = {
+        "eCLOSED",
+        "eTCP_LISTEN",
+        "eCONNECT_SYN",
+        "eSYN_FIRST",
+        "eSYN_RECEIVED",
+        "eESTABLISHED",
+        "eFIN_WAIT_1",
+        "eFIN_WAIT_2",
+        "eCLOSE_WAIT",
+        "eCLOSING",
+        "eLAST_ACK",
+        "eTIME_WAIT",
+        "eUNKNOWN",
+    };
+    BaseType_t xIndex = ( BaseType_t ) ulState;
+
+    if( ( xIndex < 0 ) || ( xIndex >= ARRAY_SIZE( pcStateNames ) ) ) {
+        /* The last item is called 'eUNKNOWN' */
+        xIndex = ARRAY_SIZE( pcStateNames );
+        xIndex--;
+    }
+
+    return pcStateNames[ xIndex ];
+}
+#endif /* ( ( ipconfigHAS_DEBUG_PRINTF != 0 ) || ( ipconfigHAS_PRINTF != 0 ) ) */
+
 extern "C" void netstat(OutputStream& os)
 {
     /* Show a simple listing of all created sockets and their connections */
