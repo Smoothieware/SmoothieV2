@@ -47,6 +47,15 @@ print("Downloading file: {}, size: {} to {}".format(filename, filesize, dev))
 ser = serial.Serial(dev, 115200, timeout=5)
 ser.flushInput()  # Flush startup text in serial input
 
+gotok = False
+while not gotok:
+    ser.write(b'\n')
+    rep = ser.read_until()
+    s = rep.decode(encoding='latin1', errors='ignore')
+    gotok = s.startswith('ok')
+
+ser.flushInput()  # Flush startup text in serial input
+
 ser.write(bytes('dl {} {}\n'.format(outfile, filesize).encode('latin1')))
 
 # wait for READY or FAIL

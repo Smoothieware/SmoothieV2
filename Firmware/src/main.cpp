@@ -61,6 +61,37 @@ static bool loaded_configuration = false;
 static bool config_override = false;
 static const char *OVERRIDE_FILE = "/sd/config-override";
 
+bool check_flashme_file(OutputStream& os, bool errors)
+{
+    // check the flashme.bin is on the disk first
+    FILE *fp = fopen("/sd/flashme.bin", "r");
+    if(fp == NULL) {
+        if(errors) os.printf("ERROR: No flashme.bin file found\n");
+        return false;
+    }
+    // check it has the correct magic number for this build
+    int fs= fseek(fp, -8, SEEK_END);
+    if(fs != 0) {
+        os.printf("ERROR: could not seek to end of file to check magic number: %d\n", errno);
+        fclose(fp);
+        return false;
+    }
+    uint64_t buf;
+    size_t n= fread(&buf, 1, sizeof(buf), fp);
+    if(n != sizeof(buf)) {
+        os.printf("ERROR: could not read magic number: %d\n", errno);
+        fclose(fp);
+        return false;
+    }
+    fclose(fp);
+    if(buf != 0x1234567898765432LL) {
+        os.printf("ERROR: bad magic number in file, this is not a valid firmware binary image\n");
+        return false;
+    }
+
+    return true;
+}
+
 // load configuration from override file
 static bool load_config_override(OutputStream& os)
 {
@@ -727,6 +758,8 @@ static void smoothie_startup(void *)
             break;
         }
 
+
+
         std::fstream fs;
         fs.open("/sd/config.ini", std::fstream::in);
         if(!fs.is_open()) {
@@ -966,6 +999,15 @@ static void smoothie_startup(void *)
         // led 3,4 off indicates boot phase 2 complete
         Board_LED_Set(2, false);
         Board_LED_Set(3, false);
+    }
+
+    {
+        OutputStream os(&std::cout);
+        if(check_flashme_file(os, false)) {
+            // we have a valid flashme file, so flash
+            dispatch_line(os, "flash");
+        }
+        puts("INFO: No valid flashme.bin file found");
     }
 
     // run the command handler in this thread

@@ -1557,7 +1557,6 @@ static void stop_everything(void)
     Adc::stop();
     shutdown_sdmmc(); // NVIC_DisableIRQ(SDIO_IRQn);
     set_abort_comms();
-    vTaskDelay(pdMS_TO_TICKS(2000));
     stop_uart();
     shutdown_cdc(); // NVIC_DisableIRQ(USB0_IRQn);
     vTaskSuspendAll();
@@ -1570,39 +1569,19 @@ extern uint8_t _binary_flashloader_bin_start[];
 extern uint8_t _binary_flashloader_bin_end[];
 extern uint8_t _binary_flashloader_bin_size[];
 extern "C" void jump_to_program(uint32_t prog_addr);
+bool check_flashme_file(OutputStream& os, bool showerrors);
+
 bool CommandShell::flash_cmd(std::string& params, OutputStream& os)
 {
     HELP("flash the flashme.bin file");
 
-    // check the flashme.bin is on the disk first
-    FILE *fp = fopen("/sd/flashme.bin", "r");
-    if(fp == NULL) {
-        os.printf("ERROR: No flashme.bin file found\n");
-        return true;
-    }
-    // check it has the correct magic number for this build
-    int fs= fseek(fp, -8, SEEK_END);
-    if(fs != 0) {
-        os.printf("ERROR: could not seek to end of file to check magic number: %d\n", errno);
-        fclose(fp);
-        return true;
-    }
-    uint64_t buf;
-    size_t n= fread(&buf, 1, sizeof(buf), fp);
-    if(n != sizeof(buf)) {
-        os.printf("ERROR: could not read magic number: %d\n", errno);
-        fclose(fp);
-        return true;
-    }
-    fclose(fp);
-    if(buf != 0x1234567898765432LL) {
-        os.printf("ERROR: bad magic number in file, this is not a valid firmware binary image\n");
+    if(!check_flashme_file(os, true)) {
         return true;
     }
 
     os.printf("flashing please standby for reset\n");
 
-    vTaskDelay(pdMS_TO_TICKS(500));
+    vTaskDelay(pdMS_TO_TICKS(100));
     stop_everything();
 
     // Disable all interrupts
