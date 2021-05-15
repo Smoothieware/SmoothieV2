@@ -25,11 +25,13 @@ USBD_CDC_LineCodingTypeDef linecoding = {
 
 /* USB handler declaration */
 extern USBD_HandleTypeDef USBD_Device;
+extern void vcom_notify_recvd();
 
 static RingBuffer_t *rx_rb;
 static uint8_t rx_buffer[CDC_DATA_FS_OUT_PACKET_SIZE] __attribute__((section(".usb_data")));
 static uint8_t tx_buffer[CDC_DATA_FS_OUT_PACKET_SIZE] __attribute__((section(".usb_data")));
 static volatile int tx_complete;
+static volatile int connected;
 
 void setup_vcom()
 {
@@ -51,6 +53,7 @@ static int8_t CDC_IF_Init(void)
 {
     USBD_CDC_SetRxBuffer(&USBD_Device, rx_buffer);
     tx_complete = 1;
+    connected = 0;
     return (USBD_OK);
 }
 
@@ -120,7 +123,8 @@ static int8_t CDC_IF_Control(uint8_t cmd, uint8_t *pbuf, uint16_t length)
             break;
 
         case CDC_SET_CONTROL_LINE_STATE:
-            /* Add your code here */
+            connected= 1;
+            vcom_notify_recvd();
             break;
 
         case CDC_SEND_BREAK:
@@ -143,7 +147,6 @@ static int8_t CDC_IF_Control(uint8_t cmd, uint8_t *pbuf, uint16_t length)
   * @param  Len: Number of data received (in bytes)
   * @retval Result of the operation: USBD_OK if all operations are OK else USBD_FAIL
   */
-extern void vcom_notify_recvd();
 static int8_t CDC_IF_Receive(uint8_t *Buf, uint32_t *Len)
 {
     // we have a buffer from Host, stick it in the rx buffer and inform thread to read
@@ -208,4 +211,9 @@ int vcom_write(uint8_t *buf, size_t len)
     }
 
     return n;
+}
+
+int vcom_connected()
+{
+	return connected;
 }

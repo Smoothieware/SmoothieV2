@@ -383,6 +383,7 @@ static volatile bool abort_comms = false;
 extern "C" size_t write_cdc(const char *buf, size_t len);
 extern "C" size_t read_cdc(char *buf, size_t len);
 extern "C" int setup_cdc(void *taskhandle);
+extern "C" int vcom_connected();
 
 static void usb_comms(void *)
 {
@@ -405,69 +406,54 @@ static void usb_comms(void *)
     static const char *welcome_message = "Welcome to Smoothie\nok\n";
     const TickType_t waitms = pdMS_TO_TICKS( 300 );
 
-    size_t n, il = 0;
-    bool done = false;
+    size_t n;
+    bool done = vcom_connected() == 1;
 
-    // first we wait for an initial '\n' sent from host
-    // anything preceding the first '\n' is discarded
+    printf("DEBUG: Waiting for USB\n");
+    // first we wait for connetion
     while (!done && !abort_comms) {
         // Wait to be notified that there has been a USB irq.
-        ulTaskNotifyTake( pdTRUE, waitms );
+        ulTaskNotifyTake(pdTRUE, waitms);
         if(abort_comms) break;
-        n = read_cdc(usb_rx_buf, usb_rx_buf_sz);
-        if(n > 0) {
-            for (size_t i = 0; i < n; ++i) {
-                if(usb_rx_buf[i] == '\n') {
-                    if(config_error_msg.empty()) {
-                        write_cdc(welcome_message, strlen(welcome_message));
-                    } else {
-                        write_cdc(config_error_msg.c_str(), config_error_msg.size());
-                    }
-                    done = true;
-                    if(i + 1 < n) {
-                        // we had another command after the first \n
-                        il = i + 1;
-                        n -= il;
-                    } else {
-                        il = 0;
-                    }
-                    break;
-                }
-            }
+        if(vcom_connected() == 1) {
+            done= true;
         }
     }
 
-    // create an output stream that writes to the cdc
-    static OutputStream os([](const char *buf, size_t len) { return write_cdc(buf, len); });
-    output_streams.insert(&os);
-
-    // now read lines and dispatch them
-    char line[MAX_LINE_LENGTH];
-    size_t cnt = 0;
-    bool discard = false;
-
-    if(il > 0 && !abort_comms) {
-        // process anything after the first \n
-        process_command_buffer(n, &usb_rx_buf[il], &os, line, cnt, discard);
-    }
+    printf("DEBUG: USB connected\n");
 
     while(!abort_comms) {
-        // Wait to be notified that there has been a received vcom packet.
-        // treat as a counting semaphore, so will only block if count is zero.
-        uint32_t ulNotificationValue = ulTaskNotifyTake( pdFALSE, waitms );
+        // create an output stream that writes to the cdc
+        static OutputStream os([](const char *buf, size_t len) { return write_cdc(buf, len); });
+        output_streams.insert(&os);
 
-        if( ulNotificationValue == 0 ) {
-            /* The call to ulTaskNotifyTake() timed out. check anyway */
-        }
-        do {
-            // may have more data than our buffer size so read until it is drained
-            n = read_cdc(usb_rx_buf, usb_rx_buf_sz);
-            if(n > 0) {
-                process_command_buffer(n, usb_rx_buf, &os, line, cnt, discard);
+        os.puts(welcome_message);
+
+        // now read lines and dispatch them
+        char line[MAX_LINE_LENGTH];
+        size_t cnt = 0;
+        bool discard = false;
+
+        while(!abort_comms) {
+            // Wait to be notified that there has been a received vcom packet.
+            // treat as a counting semaphore, so will only block if count is zero.
+            uint32_t ulNotificationValue = ulTaskNotifyTake( pdFALSE, waitms );
+
+            if( ulNotificationValue == 0 ) {
+                /* The call to ulTaskNotifyTake() timed out. check anyway */
             }
-        } while(n > 0);
+            do {
+                // may have more data than our buffer size so read until it is drained
+                n = read_cdc(usb_rx_buf, usb_rx_buf_sz);
+                if(n > 0) {
+                    process_command_buffer(n, usb_rx_buf, &os, line, cnt, discard);
+                }
+            } while(n > 0);
+        }
+        output_streams.erase(&os);
     }
-    output_streams.erase(&os);
+
+    free(usb_rx_buf);
     puts("DEBUG: USB Comms thread exiting");
     vTaskDelete(NULL);
 }
