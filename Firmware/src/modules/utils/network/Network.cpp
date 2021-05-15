@@ -61,7 +61,31 @@ Network::~Network()
 {
 }
 
-TCPServer_t *pxTCPServer = NULL;
+// FIXME replace with H/W crc
+static uint32_t crc32(uint8_t* buf, int length)
+{
+    static const uint32_t crc32_table[] =
+    {
+        0x4DBDF21C, 0x500AE278, 0x76D3D2D4, 0x6B64C2B0,
+        0x3B61B38C, 0x26D6A3E8, 0x000F9344, 0x1DB88320,
+        0xA005713C, 0xBDB26158, 0x9B6B51F4, 0x86DC4190,
+        0xD6D930AC, 0xCB6E20C8, 0xEDB71064, 0xF0000000
+    };
+
+    int n;
+    uint32_t crc=0;
+
+    for (n = 0; n < length; n++)
+    {
+        crc = (crc >> 4) ^ crc32_table[(crc ^ (buf[n] >> 0)) & 0x0F];  /* lower nibble */
+        crc = (crc >> 4) ^ crc32_table[(crc ^ (buf[n] >> 4)) & 0x0F];  /* upper nibble */
+    }
+
+    return crc;
+}
+
+
+static TCPServer_t *pxTCPServer = NULL;
 
 // this is set by config
 static uint8_t ucMACAddress[ 6 ] = { 0x44, 0x11, 0x22, 0x33, 0x44, 0x55 };
@@ -69,6 +93,7 @@ static uint8_t ucIPAddress[ 4 ] = { 192, 168, 1, 45 };
 static uint8_t ucNetMask[ 4 ] = { 255, 255, 255, 0 };
 static uint8_t ucGatewayAddress[ 4 ] = { 192, 168, 1, 1 };
 static uint8_t ucDNSServerAddress[ 4 ] = { 192, 168, 1, 1 };
+extern "C" uint64_t get_uid();
 
 bool Network::configure(ConfigReader& cr)
 {
@@ -87,7 +112,7 @@ bool Network::configure(ConfigReader& cr)
         use_dhcp = false;
         std::string ip_mask_str = cr.get_string(m, ip_mask_key, "255.255.255.0");
         std::string ip_gateway_str = cr.get_string(m, ip_gateway_key, "192.168.1.1");
-        // setup ucIPAddress, ucNetMask, ucGatewayAddress
+        // TODO setup ucIPAddress, ucNetMask, ucGatewayAddress
     } else {
         use_dhcp = true;
     }
@@ -96,6 +121,16 @@ bool Network::configure(ConfigReader& cr)
     if(!dns_server_str.empty() && dns_server_str != "auto") {
         // setup ucDNSServerAddress
     }
+
+    // setup MAC address
+    uint64_t uid= get_uid();
+    uint32_t h = crc32((uint8_t *)&uid, sizeof(uint64_t));
+    ucMACAddress[0] = 0x00;   // OUI
+    ucMACAddress[1] = 0x1F;   // OUI
+    ucMACAddress[2] = 0x11;   // OUI
+    ucMACAddress[3] = 0x02;   // Openmoko allocation for smoothie board
+    ucMACAddress[4] = 0x04;   // 04-14  03 bits -> chip id, 1 bits -> hashed serial
+    ucMACAddress[5] = h & 0xFF; // 00-FF  8bits -> hashed serial
 
     enable_shell = cr.get_bool(m, shell_enable_key, false);
     enable_ftpd = cr.get_bool(m, ftp_enable_key, false);
@@ -274,8 +309,11 @@ bool Network::update_cmd( std::string& params, OutputStream& os )
 }
 #endif
 
+extern "C" void xNetworkDeInitialise();
 void Network::set_abort()
 {
+#if 0
+    // FIXME this causes a HardFault
     if(enable_ftpd || enable_httpd) {
         FreeRTOS_TCPServerSignal(pxTCPServer);
     }
@@ -284,6 +322,10 @@ void Network::set_abort()
         shell_close();
     }
     pxTCPServer = nullptr;
+#else
+    // at least stop interrupts
+    xNetworkDeInitialise();
+#endif
     abort_network = true;
 }
 

@@ -206,6 +206,10 @@ static uint8_t * pucGetRXBuffer( size_t uxSize )
     return pucReturn;
 }
 /*-----------------------------------------------------------*/
+void xNetworkDeInitialise()
+{
+	HAL_ETH_MspDeInit(&xEthHandle);
+}
 
 BaseType_t xNetworkInterfaceInitialise( void )
 {
