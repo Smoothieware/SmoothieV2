@@ -380,6 +380,14 @@ bool process_command_buffer(size_t n, char *rx_buf, OutputStream *os, char *line
 
 static volatile bool abort_comms = false;
 
+// this allows a capture of a buffer rather than byte by byte
+// mainly used for fast downloads over USB (so no serial at the moment)
+static std::function<bool(char*, size_t)> fast_capture_fnc;
+void set_fast_capture(std::function<bool(char*, size_t)> cf)
+{
+    fast_capture_fnc = cf;
+}
+
 extern "C" size_t write_cdc(const char *buf, size_t len);
 extern "C" size_t read_cdc(char *buf, size_t len);
 extern "C" int setup_cdc(void *taskhandle);
@@ -446,6 +454,12 @@ static void usb_comms(void *)
                 // may have more data than our buffer size so read until it is drained
                 n = read_cdc(usb_rx_buf, usb_rx_buf_sz);
                 if(n > 0) {
+                    if(fast_capture_fnc) {
+                        if(!fast_capture_fnc(usb_rx_buf, n)) {
+                            fast_capture_fnc= nullptr;
+                        }
+                        continue;
+                    }
                     process_command_buffer(n, usb_rx_buf, &os, line, cnt, discard);
                 }
             } while(n > 0);

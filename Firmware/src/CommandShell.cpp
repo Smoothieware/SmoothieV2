@@ -62,6 +62,7 @@ bool CommandShell::initialize()
     THEDISPATCHER->add_handler( "config-set", std::bind( &CommandShell::config_set_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "config-get", std::bind( &CommandShell::config_get_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "ry", std::bind( &CommandShell::ry_cmd, this, _1, _2) );
+    THEDISPATCHER->add_handler( "dl", std::bind( &CommandShell::download_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "truncate", std::bind( &CommandShell::truncate_cmd, this, _1, _2) );
 
     THEDISPATCHER->add_handler( "mem", std::bind( &CommandShell::mem_cmd, this, _1, _2) );
@@ -1352,6 +1353,89 @@ bool CommandShell::config_set_cmd(std::string& params, OutputStream& os)
     return true;
 }
 
+bool CommandShell::download_cmd(std::string& params, OutputStream& os)
+{
+    HELP("dl filename size - fast streaming binary download");
+
+    std::string fn = stringutils::shift_parameter( params );
+    std::string sizestr = stringutils::shift_parameter( params );
+
+    os.set_no_response(true);
+
+    if(fn.empty() || sizestr.empty()) {
+        os.printf("Usage: dl filename size\n");
+        return true;
+    }
+
+    /*
+        Protocol used is...
+          wait for READY\n
+          stream filesize bytes of data
+
+          if we get anything back during stream abort
+          otherwise wait for FAIL - reason\n or SUCCESS\n
+    */
+
+    if(!Conveyor::getInstance()->is_idle()) {
+        os.printf("download not allowed while printing or busy\n");
+        return true;
+    }
+
+
+    char *e = NULL;
+    ssize_t file_size = strtol(sizestr.c_str(), &e, 10);
+    if (e <= sizestr.c_str() || file_size <= 0) {
+        os.printf("FAIL - file size is bad: %d\n", file_size);
+        return true;
+    }
+
+    FILE *fp= fopen(fn.c_str(), "w");
+    if(fp == nullptr) {
+        os.printf("FAIL - could not open file: %d\n", errno);
+        return true;
+    }
+
+    volatile ssize_t state= 0;
+    set_fast_capture([&fp, &state](char *buf, size_t len) {
+        // note this is being run in the Comms thread
+        if(state >= 0) {
+            if(fwrite(buf, 1, len, fp) != len) {
+                state= -1;
+            }else{
+                state += len;
+            }
+        }
+        return true;
+    });
+
+    // tell host we are ready for the file
+    os.printf("READY - %d\n", file_size);
+
+    int timeout= 0;
+    while(state >= 0 && state < file_size) {
+        // wait for download to complete
+        vTaskDelay(pdMS_TO_TICKS(100));
+        if(++timeout > 200) {
+            state= -2;
+            errno= ETIMEDOUT;
+            break;
+        }
+    }
+
+    fclose(fp);
+
+    os.printf(state <= 0 ? "FAIL - %d\n" : "SUCCESS\n", errno);
+
+    if(state < 0) {
+        // allow incoming buffers to drain
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+
+    set_fast_capture(nullptr);
+
+    return true;
+}
+
 bool CommandShell::ry_cmd(std::string& params, OutputStream& os)
 {
     HELP("ymodem recieve");
@@ -1493,7 +1577,7 @@ bool CommandShell::flash_cmd(std::string& params, OutputStream& os)
     // check the flashme.bin is on the disk first
     FILE *fp = fopen("/sd/flashme.bin", "r");
     if(fp == NULL) {
-        os.printf("No flashme.bin file found\n");
+        os.printf("ERROR: No flashme.bin file found\n");
         return true;
     }
     // check it has the correct magic number for this build
@@ -1516,6 +1600,9 @@ bool CommandShell::flash_cmd(std::string& params, OutputStream& os)
         return true;
     }
 
+    os.printf("flashing please standby for reset\n");
+
+    vTaskDelay(pdMS_TO_TICKS(500));
     stop_everything();
 
     // Disable all interrupts
