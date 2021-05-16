@@ -90,9 +90,10 @@ extern "C" void netstat(OutputStream& os)
                 configASSERT( copied_len < ( int32_t ) sizeof( ucChildText ) );
             }
 
-            os.printf( "TCP %5d %-16lxip:%5d %d/%d %-13.13s %6lu %6u%s\n",
+            char ipbuf[16];
+            os.printf( "TCP %5d %-16sip:%5d %d/%d %-13.13s %6lu %6u%s\n",
                        pxSocket->usLocalPort,         /* Local port on this machine */
-                       pxSocket->u.xTCP.ulRemoteIP,   /* IP address of remote machine */
+                       FreeRTOS_inet_ntoa(FreeRTOS_htonl(pxSocket->u.xTCP.ulRemoteIP), ipbuf),   /* IP address of remote machine */
                        pxSocket->u.xTCP.usRemotePort, /* Port on remote machine */
                        ( pxSocket->u.xTCP.rxStream != NULL ) ? 1 : 0,
                        ( pxSocket->u.xTCP.txStream != NULL ) ? 1 : 0,

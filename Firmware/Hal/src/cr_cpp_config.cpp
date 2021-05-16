@@ -47,7 +47,6 @@ extern "C" void free(void *) {
 }
 #endif
 
-#ifndef DEBUG
 #ifndef CPP_USE_CPPLIBRARY_TERMINATE_HANDLER
 /******************************************************************
  * __verbose_terminate_handler()
@@ -76,4 +75,4 @@ extern "C" void __cxa_pure_virtual()
   for(;;);
 }
 #endif
-#endif
+
