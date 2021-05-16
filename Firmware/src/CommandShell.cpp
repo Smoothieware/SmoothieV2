@@ -1367,20 +1367,10 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
         return true;
     }
 
-    /*
-        Protocol used is...
-          wait for READY\n
-          stream filesize bytes of data
-
-          if we get anything back during stream abort
-          otherwise wait for FAIL - reason\n or SUCCESS\n
-    */
-
     if(!Conveyor::getInstance()->is_idle()) {
         os.printf("download not allowed while printing or busy\n");
         return true;
     }
-
 
     char *e = NULL;
     ssize_t file_size = strtol(sizestr.c_str(), &e, 10);

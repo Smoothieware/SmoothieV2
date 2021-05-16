@@ -124,6 +124,13 @@ MD5::MD5(const std::string &text)
     finalize();
 }
 
+MD5::MD5(const char *buf, size_t length)
+{
+    init();
+    update(buf, length);
+    finalize();
+}
+
 //////////////////////////////
 
 void MD5::init()
@@ -352,7 +359,7 @@ std::string MD5::hexdigest() const
     return std::string(buf);
 }
 
-// return the slected number of bytes from the digest
+// return the selected number of bytes from the digest
 void MD5::bindigest(void *buf, int len) const
 {
     memcpy(buf, digest, len);
@@ -366,3 +373,12 @@ void MD5::bindigest(void *buf, int len) const
 
 //     return md5.hexdigest();
 // }
+
+// for c uses
+extern "C" void md5hash(const char *inp, size_t inlen, char *outp, size_t outlen)
+{
+    std::string in(inp, inlen);
+    MD5 md5(in);
+    if(outlen > 16) outlen= 16;
+    md5.bindigest(outp, outlen);
+}

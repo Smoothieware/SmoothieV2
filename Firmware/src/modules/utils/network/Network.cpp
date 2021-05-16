@@ -5,6 +5,7 @@
 #include "Dispatcher.h"
 #include "OutputStream.h"
 #include "StringUtils.h"
+#include "md5.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -61,30 +62,6 @@ Network::~Network()
 {
 }
 
-// FIXME replace with H/W crc
-static uint32_t crc32(uint8_t* buf, int length)
-{
-    static const uint32_t crc32_table[] =
-    {
-        0x4DBDF21C, 0x500AE278, 0x76D3D2D4, 0x6B64C2B0,
-        0x3B61B38C, 0x26D6A3E8, 0x000F9344, 0x1DB88320,
-        0xA005713C, 0xBDB26158, 0x9B6B51F4, 0x86DC4190,
-        0xD6D930AC, 0xCB6E20C8, 0xEDB71064, 0xF0000000
-    };
-
-    int n;
-    uint32_t crc=0;
-
-    for (n = 0; n < length; n++)
-    {
-        crc = (crc >> 4) ^ crc32_table[(crc ^ (buf[n] >> 0)) & 0x0F];  /* lower nibble */
-        crc = (crc >> 4) ^ crc32_table[(crc ^ (buf[n] >> 4)) & 0x0F];  /* upper nibble */
-    }
-
-    return crc;
-}
-
-
 static TCPServer_t *pxTCPServer = NULL;
 
 // this is set by config
@@ -93,7 +70,8 @@ static uint8_t ucIPAddress[ 4 ] = { 192, 168, 1, 45 };
 static uint8_t ucNetMask[ 4 ] = { 255, 255, 255, 0 };
 static uint8_t ucGatewayAddress[ 4 ] = { 192, 168, 1, 1 };
 static uint8_t ucDNSServerAddress[ 4 ] = { 192, 168, 1, 1 };
-extern "C" uint64_t get_uid();
+extern "C" void get_uid(uint32_t*, size_t);
+extern "C" void inet_addr_convert(uint32_t addr, uint8_t uc_octet[4]);
 
 bool Network::configure(ConfigReader& cr)
 {
@@ -109,10 +87,27 @@ bool Network::configure(ConfigReader& cr)
 
     std::string ip_address_str = cr.get_string(m, ip_address_key, "auto");
     if(!ip_address_str.empty() && ip_address_str != "auto") {
+        // setup a manual IP address
         use_dhcp = false;
         std::string ip_mask_str = cr.get_string(m, ip_mask_key, "255.255.255.0");
         std::string ip_gateway_str = cr.get_string(m, ip_gateway_key, "192.168.1.1");
-        // TODO setup ucIPAddress, ucNetMask, ucGatewayAddress
+        // setup ucIPAddress, ucNetMask, ucGatewayAddress
+        uint32_t ip = FreeRTOS_inet_addr(ip_address_str.c_str());
+        inet_addr_convert(ip, ucIPAddress);
+        ip = FreeRTOS_inet_addr(ip_mask_str.c_str());
+        inet_addr_convert(ip, ucNetMask);
+        ip = FreeRTOS_inet_addr(ip_gateway_str.c_str());
+        inet_addr_convert(ip, ucGatewayAddress);
+
+        // confirm to debug log
+        char ipbuf[16];
+        uint32_t nip = FreeRTOS_inet_addr_quick(ucIPAddress[0], ucIPAddress[1], ucIPAddress[2], ucIPAddress[3]);
+        printf("DEBUG: ip= %s\n", FreeRTOS_inet_ntoa(nip, ipbuf));
+        nip = FreeRTOS_inet_addr_quick(ucNetMask[0], ucNetMask[1], ucNetMask[2], ucNetMask[3]);
+        printf("DEBUG: netmask= %s\n", FreeRTOS_inet_ntoa(nip, ipbuf));
+        nip = FreeRTOS_inet_addr_quick(ucGatewayAddress[0], ucGatewayAddress[1], ucGatewayAddress[2], ucGatewayAddress[3]);
+        printf("DEBUG: gateway= %s\n", FreeRTOS_inet_ntoa(nip, ipbuf));
+
     } else {
         use_dhcp = true;
     }
@@ -120,17 +115,28 @@ bool Network::configure(ConfigReader& cr)
     std::string dns_server_str = cr.get_string(m, dns_server_key, "auto");
     if(!dns_server_str.empty() && dns_server_str != "auto") {
         // setup ucDNSServerAddress
+        uint32_t ip = FreeRTOS_inet_addr(dns_server_str.c_str());
+        inet_addr_convert(ip, ucDNSServerAddress);
+
+        // confirm to debug log
+        char ipbuf[16];
+        uint32_t nip = FreeRTOS_inet_addr_quick(ucDNSServerAddress[0], ucDNSServerAddress[1], ucDNSServerAddress[2], ucDNSServerAddress[3]);
+        printf("DEBUG: dns address= %s\n", FreeRTOS_inet_ntoa(nip, ipbuf));
     }
 
-    // setup MAC address
-    uint64_t uid= get_uid();
-    uint32_t h = crc32((uint8_t *)&uid, sizeof(uint64_t));
-    ucMACAddress[0] = 0x00;   // OUI
-    ucMACAddress[1] = 0x1F;   // OUI
-    ucMACAddress[2] = 0x11;   // OUI
-    ucMACAddress[3] = 0x02;   // Openmoko allocation for smoothie board
-    ucMACAddress[4] = 0x04;   // 04-14  03 bits -> chip id, 1 bits -> hashed serial
-    ucMACAddress[5] = h & 0xFF; // 00-FF  8bits -> hashed serial
+    {
+        // setup MAC address
+        uint32_t h;
+        uint32_t uid[3];
+        get_uid(uid, 3); // get chip unique ID 96 bits
+        MD5((const char *)uid, sizeof(uid)).bindigest((char *)&h, sizeof(h)); // get hash of it
+        ucMACAddress[0] = 0x00;   // OUI
+        ucMACAddress[1] = 0x1F;   // OUI
+        ucMACAddress[2] = 0x11;   // OUI
+        ucMACAddress[3] = 0x02;   // Openmoko allocation for smoothie board
+        ucMACAddress[4] = 0x05;   // 04-14  03 bits -> chip id, 1 bits -> hashed serial (04 is V1, 05 is V2)
+        ucMACAddress[5] = h & 0xFF; // 00-FF  8bits -> hashed serial
+    }
 
     enable_shell = cr.get_bool(m, shell_enable_key, false);
     enable_ftpd = cr.get_bool(m, ftp_enable_key, false);

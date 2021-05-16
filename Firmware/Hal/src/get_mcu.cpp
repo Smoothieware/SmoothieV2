@@ -38,7 +38,15 @@ std::string get_mcu()
     return mcu;
 }
 
-extern "C" uint64_t get_uid()
+extern "C" void get_uid(uint32_t *buf, size_t len)
 {
-    return ((uint64_t)HAL_GetUIDw1() << 32) | HAL_GetUIDw0();
+    if(len >= 1) {
+        buf[0]= HAL_GetUIDw0();
+    }
+    if(len >= 2) {
+        buf[1]= HAL_GetUIDw1();
+    }
+    if(len >= 3) {
+        buf[2]= HAL_GetUIDw2();
+    }
 }
