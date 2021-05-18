@@ -104,6 +104,7 @@ bool get_ntp_time()
         return false;
     }
 
+    FreeRTOS_closesocket(sockfd);
 
     // These two fields contain the time-stamp seconds as the packet left the NTP server.
     // The number of seconds correspond to the seconds passed since 1900.

@@ -202,7 +202,6 @@ bool Network::handle_net_cmd( std::string& params, OutputStream& os )
 
 // extern
 bool wget(const char *url, const char *fn, OutputStream& os);
-
 bool Network::wget_cmd( std::string& params, OutputStream& os )
 {
     HELP("wget url [outfn] - fetch a url and save to outfn or print the contents");
