@@ -149,6 +149,7 @@ bool Network::configure(ConfigReader& cr)
     THEDISPATCHER->add_handler( "net", std::bind( &Network::handle_net_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "wget", std::bind( &Network::wget_cmd, this, _1, _2) );
     // THEDISPATCHER->add_handler( "update", std::bind( &Network::update_cmd, this, _1, _2) );
+    THEDISPATCHER->add_handler( "ntp", std::bind( &Network::ntp_cmd, this, _1, _2) );
 
     return true;
 }
@@ -221,6 +222,17 @@ bool Network::wget_cmd( std::string& params, OutputStream& os )
     }
     os.printf("\n");
 
+    return true;
+}
+
+bool get_ntp_time();
+bool Network::ntp_cmd( std::string& params, OutputStream& os )
+{
+    HELP("ntp - set current date/time from NTP");
+    // fetch time from ntp and set clock
+    if(!get_ntp_time()) {
+        os.printf("NTP failed\n");
+    }
     return true;
 }
 

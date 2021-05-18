@@ -1521,7 +1521,6 @@ bool CommandShell::truncate_cmd(std::string& params, OutputStream& os)
 extern "C" void rtc_get_datetime(char *buf, size_t len);
 extern "C" int rtc_setdatetime(uint8_t year, uint8_t month, uint8_t day, uint8_t weekday, uint8_t hour, uint8_t minute, uint8_t seconds);
 
-bool get_ntp_time();
 bool CommandShell::date_cmd(std::string& params, OutputStream& os)
 {
     HELP("date [-ntp | YYMMDDhhmmss] - set or get current date/time");
@@ -1531,14 +1530,6 @@ bool CommandShell::date_cmd(std::string& params, OutputStream& os)
         char buf[20];
         rtc_get_datetime(buf, sizeof(buf));
         printf("%s\n", buf);
-        return true;
-    }
-    if(dt == "-ntp") {
-        // fetch time from ntp and set clock
-        if(!get_ntp_time()) {
-            os.printf("NTP failed\n");
-            return true;
-        }
 
     } else {
         // set date/time
