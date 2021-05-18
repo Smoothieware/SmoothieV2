@@ -67,8 +67,15 @@ bool get_ntp_time()
     // Set the first byte's bits to 00,011,011 for li = 0, vn = 3, and mode = 3. The rest will be left set to zero.
     *((char*)&packet + 0) = 0x1b; // Represents 27 in base 10 or 00011011 in base 2.
 
-    // Create a UDP socket, convert the host-name to an IP address, set the port number,
-    // connect to the server, send the packet, and then read in the return packet.
+    uint32_t server = FreeRTOS_gethostbyname(host_name); // Convert URL to IP.
+    if(server == 0) {
+        printf("ERROR: ntpclient: no such host: %s", host_name);
+        return false;
+    }
+
+    struct freertos_sockaddr serv_addr;
+    serv_addr.sin_port = FreeRTOS_htons(portno);
+    serv_addr.sin_addr = server;
 
     Socket_t sockfd = FreeRTOS_socket(FREERTOS_AF_INET, FREERTOS_SOCK_DGRAM, FREERTOS_IPPROTO_UDP); // Create a UDP socket.
 
@@ -77,16 +84,6 @@ bool get_ntp_time()
         return false;
     }
 
-    uint32_t server = FreeRTOS_gethostbyname(host_name); // Convert URL to IP.
-
-    if(server == 0) {
-        printf("ERROR: ntpclient: no such host: %s", host_name);
-        return false;
-    }
-    struct freertos_sockaddr serv_addr;
-    serv_addr.sin_port = FreeRTOS_htons(portno);
-    serv_addr.sin_addr = server;
-
     // Send it the NTP packet it wants. If n == -1, it failed.
     BaseType_t len = FreeRTOS_sendto(sockfd, &packet, sizeof(ntp_packet), 0, &serv_addr, sizeof(serv_addr));
     if (len != (BaseType_t)sizeof(ntp_packet)) {
@@ -94,6 +91,10 @@ bool get_ntp_time()
         FreeRTOS_closesocket(sockfd);
         return false;
     }
+
+    // set a timeout
+    BaseType_t timeout= pdMS_TO_TICKS(10000); // 10 seconds
+    FreeRTOS_setsockopt(sockfd, 0, FREERTOS_SO_RCVTIMEO, (void *)&timeout, sizeof(BaseType_t));
 
     // Wait and receive the packet back from the server. If n == -1, it failed.
     uint32_t xAddressSize= sizeof(serv_addr);
