@@ -216,7 +216,7 @@ bool Pin::from_string(const std::string& value)
     // ^ = set pin to pull up
     // v = set pin to pull down
     // - = set pin to no pull up or down
-    // default to pull up for input pins, neither for output
+    // default to -
     this->pullup = true;
     this->pulldown = false;
     for(char c : value.substr(pos + 1)) {

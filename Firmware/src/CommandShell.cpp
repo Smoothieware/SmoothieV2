@@ -64,6 +64,7 @@ bool CommandShell::initialize()
     THEDISPATCHER->add_handler( "ry", std::bind( &CommandShell::ry_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "dl", std::bind( &CommandShell::download_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "truncate", std::bind( &CommandShell::truncate_cmd, this, _1, _2) );
+    THEDISPATCHER->add_handler( "date", std::bind( &CommandShell::date_cmd, this, _1, _2) );
 
     THEDISPATCHER->add_handler( "mem", std::bind( &CommandShell::mem_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "switch", std::bind( &CommandShell::switch_cmd, this, _1, _2) );
@@ -1514,6 +1515,32 @@ bool CommandShell::truncate_cmd(std::string& params, OutputStream& os)
         os.printf("File %s truncated to %d bytes\n", fn.c_str(), size);
     }
 
+    return true;
+}
+
+extern "C" void rtc_get_datetime(char *buf, size_t len);
+extern "C" int rtc_setdatetime(uint8_t year, uint8_t month, uint8_t day, uint8_t weekday, uint8_t hour, uint8_t minute, uint8_t seconds);
+
+bool CommandShell::date_cmd(std::string& params, OutputStream& os)
+{
+    HELP("date [YYMMDDhhmmss] - set or get current date/time");
+    std::string dt= stringutils::shift_parameter(params);
+
+    if(dt.empty()) {
+        char buf[20];
+        rtc_get_datetime(buf, sizeof(buf));
+        printf("%s\n", buf);
+        return true;
+    }
+
+    // TODO set date/time
+    uint8_t yr= std::stoi(dt.substr(0, 2));
+    uint8_t mn= std::stoi(dt.substr(2, 2));
+    uint8_t dy= std::stoi(dt.substr(4, 2));
+    uint8_t hh= std::stoi(dt.substr(6, 2));
+    uint8_t mm= std::stoi(dt.substr(8, 2));
+    uint8_t ss= std::stoi(dt.substr(10, 2));
+    rtc_setdatetime(yr, mn, dy, 1, hh, mm, ss);
     return true;
 }
 

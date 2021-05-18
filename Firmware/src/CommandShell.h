@@ -40,6 +40,7 @@ private:
     bool grblDH_cmd(std::string& params, OutputStream& os);
     bool test_cmd(std::string& params, OutputStream& os);
     bool version_cmd(std::string& params, OutputStream& os);
+    bool date_cmd(std::string& params, OutputStream& os);
     bool m20_cmd(GCode& gcode, OutputStream& os);
     bool m115_cmd(GCode& gcode, OutputStream& os);
     bool ry_cmd(std::string& params, OutputStream& os);

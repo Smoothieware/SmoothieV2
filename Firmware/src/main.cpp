@@ -1018,6 +1018,8 @@ static void smoothie_startup(void *)
 
 extern "C" void setup_xprintf();
 extern "C" void main_system_setup();
+extern "C" int rtc_init();
+
 std::string get_mcu();
 
 int main(int argc, char *argv[])
@@ -1038,6 +1040,9 @@ int main(int argc, char *argv[])
 
     // led 4 indicates boot phase 1 complete
     Board_LED_Set(3, true);
+    if(rtc_init() != 1) {
+        printf("ERROR: Failed to init RTC\n");
+    }
 
     // launch the startup thread which will become the command thread that executes all incoming commands
     // set to be lower priority than comms, although it maybe better to invert them as we don;t really
