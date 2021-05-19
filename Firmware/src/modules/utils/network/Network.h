@@ -16,6 +16,8 @@ class Network : public Module {
         void set_abort();
         const char *get_hostname() const { return hostname.c_str(); }
         bool is_dhcp() const { return use_dhcp; }
+        const char *get_ntp_server() const { return ntp_server.c_str(); }
+        int get_timezone() const { return timezone; }
 
     private:
         static Network *instance;
@@ -30,12 +32,14 @@ class Network : public Module {
         bool update_cmd( std::string& params, OutputStream& os );
         bool ntp_cmd( std::string& params, OutputStream& os );
 
-        struct netif *lpc_netif;
+        int timezone{0};
         std::string hostname;
+        std::string ntp_server;
 
         bool abort_network{false};
         bool enable_shell{false};
         bool enable_httpd{false};
         bool enable_ftpd{false};
+        bool enable_ntp{true};
         bool use_dhcp;
 };

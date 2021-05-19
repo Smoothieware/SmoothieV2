@@ -9,6 +9,7 @@
  *
  */
 #include "OutputStream.h"
+#include "Network.h"
 
 #include "FreeRTOS_IP.h"
 #include "FreeRTOS_Sockets.h"
@@ -26,10 +27,11 @@ extern "C" int rtc_setdatetime(uint8_t year, uint8_t month, uint8_t day, uint8_t
 bool get_ntp_time()
 {
     int portno = 123; // NTP UDP port number.
-    const char* host_name = "europe.pool.ntp.org"; // NTP server host-name.
+    Network *network = Network::getInstance();
+    const char* host_name = network->get_ntp_server(); // NTP server host-name.
+    int timezone= network->get_timezone(); // get the timezone +/- GMT
 
     // Structure that defines the 48 byte NTP packet protocol.
-
     typedef struct {
 
         uint8_t li_vn_mode;      // Eight bits. li, vn, and mode.
@@ -118,9 +120,14 @@ bool get_ntp_time()
     // This leaves the seconds since the UNIX epoch of 1970.
     // (1900)------------------(1970)**************************************(Time Packet Left the Server)
     time_t txTm = ((time_t)packet.txTm_s - NTP_TIMESTAMP_DELTA);
+    // adjust for timezone
+    if(timezone != 0) {
+        txTm += (timezone*3600);
+    }
     struct tm *tm = gmtime(&txTm) ;
-    printf("DEBUG: ntpclient: %d-%d-%d %d:%d:%d\n", tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
+    printf("DEBUG: ntpclient: %d-%d-%d %d:%d:%d TZ:%+d\n", tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, timezone);
 
+    // set the RTC time and date
     rtc_setdatetime(tm->tm_year+1900-2000, tm->tm_mon+1, tm->tm_mday, tm->tm_wday==0?7:tm->tm_wday,
                     tm->tm_hour, tm->tm_min, tm->tm_sec);
     return true;

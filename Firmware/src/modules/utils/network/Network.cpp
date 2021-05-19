@@ -20,11 +20,14 @@
 #define shell_enable_key "shell_enable"
 #define ftp_enable_key "ftp_enable"
 #define webserver_enable_key "webserver_enable"
+#define ntp_enable_key "ntp_enable"
 #define ip_address_key  "ip_address"
 #define ip_mask_key "ip_mask"
 #define ip_gateway_key "ip_gateway"
 #define hostname_key "hostname"
 #define dns_server_key "dns_server"
+#define ntp_server_key "ntp_server"
+#define timezone_key "timezone"
 
 REGISTER_MODULE(Network, Network::create)
 
@@ -141,6 +144,9 @@ bool Network::configure(ConfigReader& cr)
     enable_shell = cr.get_bool(m, shell_enable_key, false);
     enable_ftpd = cr.get_bool(m, ftp_enable_key, false);
     enable_httpd = cr.get_bool(m, webserver_enable_key, false);
+    enable_ntp = cr.get_bool(m, ntp_enable_key, true);
+    ntp_server = cr.get_string(m, ntp_server_key, "pool.ntp.org");
+    timezone = cr.get_int(m, timezone_key, 0);
 
     // register command handlers
     using std::placeholders::_1;
@@ -385,6 +391,13 @@ void Network::network_thread()
     if(enable_shell) {
         extern void shell_init(void);
         shell_init();
+    }
+
+    if(enable_ntp) {
+        // set clock
+        if(!get_ntp_time()) {
+            printf("ERROR: NTP get time failed\n");
+        }
     }
 
     // This loop keeps the servers running if there are any to run
