@@ -150,6 +150,7 @@ void HAL_RTC_MspInit(RTC_HandleTypeDef *hrtc)
     RCC_OscInitStruct.LSIState = RCC_LSI_OFF;
     HAL_StatusTypeDef res= HAL_RCC_OscConfig(&RCC_OscInitStruct);
     assert_param(res == HAL_OK);
+    (void)res;
 
     PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_RTC;
     PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;

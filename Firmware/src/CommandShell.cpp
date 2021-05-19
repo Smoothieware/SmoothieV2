@@ -1523,13 +1523,13 @@ extern "C" int rtc_setdatetime(uint8_t year, uint8_t month, uint8_t day, uint8_t
 
 bool CommandShell::date_cmd(std::string& params, OutputStream& os)
 {
-    HELP("date [-ntp | YYMMDDhhmmss] - set or get current date/time");
+    HELP("date [YYMMDDhhmmss] - set or get current date/time");
     std::string dt= stringutils::shift_parameter(params);
 
     if(dt.empty()) {
         char buf[20];
         rtc_get_datetime(buf, sizeof(buf));
-        printf("%s\n", buf);
+        os.printf("%s\n", buf);
 
     } else {
         // set date/time
