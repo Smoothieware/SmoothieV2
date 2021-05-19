@@ -64,8 +64,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * performed, for example FreeRTOS_send() and FreeRTOS_recv().  The timeouts can be
  * set per socket, using setsockopt().  If not set, the times below will be
  * used as defaults. */
-#define ipconfigSOCK_DEFAULT_RECEIVE_BLOCK_TIME    ( pdMS_TO_TICKS(100) )
-#define ipconfigSOCK_DEFAULT_SEND_BLOCK_TIME       ( pdMS_TO_TICKS(500) )
+#define ipconfigSOCK_DEFAULT_RECEIVE_BLOCK_TIME    ( pdMS_TO_TICKS(1000) )
+#define ipconfigSOCK_DEFAULT_SEND_BLOCK_TIME       ( pdMS_TO_TICKS(1000) )
 
 /* Include support for DNS caching.  For TCP, having a small DNS cache is very
  * useful.  When a cache is present, ipconfigDNS_REQUEST_ATTEMPTS can be kept low

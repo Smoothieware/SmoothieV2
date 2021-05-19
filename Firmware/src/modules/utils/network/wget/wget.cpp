@@ -94,7 +94,8 @@ static Socket_t connectsocket(const char* host, int port)
 
     BaseType_t rc = FreeRTOS_connect(sock, &addr, sizeof(addr));
     if(rc != 0 ) {
-        ERROR_PRINTF("wget connectsocket: connect failed: %ld\n", rc);
+        char buf[128];
+        ERROR_PRINTF("wget connectsocket: connect failed: %s (%ld)\n", FreeRTOS_strerror_r(-rc, buf, sizeof(buf)), rc);
         FreeRTOS_closesocket(sock);
         return 0;
     }
@@ -225,6 +226,12 @@ bool wget(const char *url, const char *fn, OutputStream& os)
             needmore = http_data(&rt, data, ndata, &read);
             ndata -= read;
             data += read;
+
+            if(response.code != 0 && response.code != 200) {
+                ERROR_PRINTF("wget: Got unexpected response code: %d\n", response.code);
+                needmore= false;
+                break;
+            }
         }
     }
 

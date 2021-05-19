@@ -234,7 +234,7 @@ SECTIONS
 
   /* to take md5sum of the flash .bin */
   _image_start = LOADADDR(.isr_vector);
-  _image_end = LOADADDR(.dtcm_text) + SIZEOF(.dtcm_text);
+  _image_end = LOADADDR(.flashload_o) + SIZEOF(.flashload_o);
 
   /* Remove information from the standard libraries */
   /DISCARD/ :

@@ -154,7 +154,7 @@ bool Network::configure(ConfigReader& cr)
 
     THEDISPATCHER->add_handler( "net", std::bind( &Network::handle_net_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "wget", std::bind( &Network::wget_cmd, this, _1, _2) );
-    // THEDISPATCHER->add_handler( "update", std::bind( &Network::update_cmd, this, _1, _2) );
+    THEDISPATCHER->add_handler( "update", std::bind( &Network::update_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "ntp", std::bind( &Network::ntp_cmd, this, _1, _2) );
 
     return true;
@@ -241,7 +241,6 @@ bool Network::ntp_cmd( std::string& params, OutputStream& os )
     return true;
 }
 
-#if 0
 #include "md5.h"
 extern uint32_t _image_start;
 extern uint32_t _image_end;
@@ -249,12 +248,12 @@ extern uint32_t _image_end;
 bool Network::update_cmd( std::string& params, OutputStream& os )
 {
     HELP("update the firmware from web");
-#ifdef BOARD_BAMBINO
-    std::string urlbin = "http://smoothieware.org/_media/bin/bb.bin";
-    std::string urlmd5 = "http://smoothieware.org/_media/bin/bb.md5";
-#elif defined(BOARD_PRIME)
-    std::string urlbin = "http://smoothieware.org/_media/bin/pa.bin";
-    std::string urlmd5 = "http://smoothieware.org/_media/bin/pa.md5";
+#ifdef BOARD_NUCLEO
+    std::string urlbin = "http://smoothieware.org/_media/bin/nu.bin";
+    std::string urlmd5 = "http://smoothieware.org/_media/bin/nu.md5";
+#elif defined(BOARD_DEVEBOX)
+    std::string urlbin = "http://smoothieware.org/_media/bin/de.bin";
+    std::string urlmd5 = "http://smoothieware.org/_media/bin/de.md5";
 #else
 #error "board not supported by update_cmd"
 #endif
@@ -264,7 +263,7 @@ bool Network::update_cmd( std::string& params, OutputStream& os )
     OutputStream tos(&oss);
     // fetch the md5 into the ostringstream
     if(!wget(urlmd5.c_str(), nullptr, tos)) {
-        os.printf("failed to get firmware checksum\n");
+        os.printf("failed to get firmware checksum (file not found?)\n");
         return true;
     }
 
@@ -322,7 +321,7 @@ bool Network::update_cmd( std::string& params, OutputStream& os )
         // flash it
         THEDISPATCHER->dispatch("flash", os);
 
-        // does not return from this
+        // if this returns there was an error
 
     } else {
         os.printf("downloaded firmware failed verification:\n");
@@ -330,7 +329,6 @@ bool Network::update_cmd( std::string& params, OutputStream& os )
 
     return true;
 }
-#endif
 
 extern "C" void xNetworkDeInitialise();
 void Network::set_abort()
