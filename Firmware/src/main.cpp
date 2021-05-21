@@ -1040,6 +1040,7 @@ int main(int argc, char *argv[])
 
     // led 4 indicates boot phase 1 complete
     Board_LED_Set(3, true);
+
     if(rtc_init() != 1) {
         printf("ERROR: Failed to init RTC\n");
     }
