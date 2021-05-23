@@ -45,6 +45,8 @@ public:
     bool get_stop_request() const { return stop_request; }
 
 private:
+    static void outchar(void *, char c);
+
 	// Hack to allow us to create a ostream writing to a supplied write function
 	class FdBuf : public std::stringbuf
 	{
@@ -56,7 +58,6 @@ private:
 		wrfnc fnc;
 	};
 	void *xWriteMutex;
-
 	std::ostream *os;
 	FdBuf *fdbuf;
 	std::string prepending;

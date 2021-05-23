@@ -8,6 +8,8 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 
+#include "xformatc.h"
+
 OutputStream::OutputStream(wrfnc f) : deleteos(true)
 {
 	clear_flags();
@@ -65,29 +67,38 @@ int OutputStream::puts(const char *str)
 	return this->write(str, n);
 }
 
+// used by printf only,and must be protected by xWriteMutex
+void OutputStream::outchar(void *arg, char c)
+{
+    OutputStream *o= static_cast<OutputStream*>(arg);
+    if(o->prepend_ok) {
+        o->prepending.append(&c, 1);
+    } else {
+        o->os->write(&c, 1);
+    }
+}
+
 int OutputStream::printf(const char *format, ...)
 {
 	if(os == nullptr) return 0;
 
-	char buffer[132];
-	va_list args;
-	va_start(args, format);
+    if(xWriteMutex != nullptr)
+        xSemaphoreTake(xWriteMutex, portMAX_DELAY);
 
-	size_t size = vsnprintf(buffer, sizeof(buffer), format, args);
-	if (size >= sizeof(buffer)) {
-		// too big for internal buffer so allocate it from heap
-		char *buf= (char *)malloc(size+1);
-		size = vsnprintf(buf, size+1, format, args);
-		int n= this->write(buf, size);
-		free(buf);
-		va_end(args);
-		return n;
+    *os << std::nounitbuf; // no auto flush on every write
 
-	}else{
-		va_end(args);
-	}
+    va_list list;
 
-	return this->write(buffer, size);
+    va_start(list, format);
+    unsigned count = xvformat(outchar, this, format, list);
+    va_end(list);
+
+    *os << std::unitbuf; // auto flush on every write
+
+    if(xWriteMutex != nullptr)
+        xSemaphoreGive(xWriteMutex);
+
+    return count;
 }
 
 int OutputStream::FdBuf::sync()
