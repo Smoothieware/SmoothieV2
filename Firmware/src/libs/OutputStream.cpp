@@ -72,7 +72,7 @@ void OutputStream::outchar(void *arg, char c)
 {
     OutputStream *o= static_cast<OutputStream*>(arg);
     if(o->prepend_ok) {
-        o->prepending.append(&c, 1);
+        o->prepending.append(1, c);
     } else {
         o->os->write(&c, 1);
     }
@@ -80,7 +80,7 @@ void OutputStream::outchar(void *arg, char c)
 
 int OutputStream::printf(const char *format, ...)
 {
-	if(os == nullptr) return 0;
+	if(os == nullptr || closed) return 0;
 
     if(xWriteMutex != nullptr)
         xSemaphoreTake(xWriteMutex, portMAX_DELAY);
@@ -93,6 +93,7 @@ int OutputStream::printf(const char *format, ...)
     unsigned count = xvformat(outchar, this, format, list);
     va_end(list);
 
+    *os << std::flush;
     *os << std::unitbuf; // auto flush on every write
 
     if(xWriteMutex != nullptr)
