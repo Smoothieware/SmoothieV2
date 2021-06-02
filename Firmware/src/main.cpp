@@ -478,10 +478,10 @@ extern "C" int vcom_connected();
 
 static void usb_comms(void *)
 {
-    puts("DEBUG: USB Comms thread running");
+    printf("DEBUG: USB Comms thread running");
 
     if(!setup_cdc(xTaskGetCurrentTaskHandle())) {
-        puts("FATAL: CDC setup failed\n");
+        printf("FATAL: CDC setup failed\n");
         return;
     }
 
@@ -489,7 +489,7 @@ static void usb_comms(void *)
     const size_t usb_rx_buf_sz = 1024;
     char *usb_rx_buf = (char *)malloc(usb_rx_buf_sz);
     if(usb_rx_buf == nullptr) {
-        puts("FATAL: no memory for usb_rx_buf\n");
+        printf("FATAL: no memory for usb_rx_buf\n");
         return;
     }
 
@@ -551,13 +551,13 @@ static void usb_comms(void *)
     }
 
     free(usb_rx_buf);
-    puts("DEBUG: USB Comms thread exiting");
+    printf("DEBUG: USB Comms thread exiting");
     vTaskDelete(NULL);
 }
 
 static void uart_comms(void *)
 {
-    puts("DEBUG: UART Comms thread running");
+    printf("DEBUG: UART Comms thread running");
     set_notification_uart(xTaskGetCurrentTaskHandle());
 
     // create an output stream that writes to the uart
@@ -585,7 +585,7 @@ static void uart_comms(void *)
         }
     }
     output_streams.erase(&os);
-    puts("DEBUG: UART Comms thread exiting");
+    printf("DEBUG: UART Comms thread exiting");
     vTaskDelete(NULL);
 }
 
@@ -640,7 +640,7 @@ extern "C" bool DFU_requested_detach();
  */
 static void command_handler()
 {
-    puts("DEBUG: Command thread running");
+    printf("DEBUG: Command thread running");
 
     for(;;) {
         char *line;
@@ -995,9 +995,9 @@ static void smoothie_startup(void *)
         }
 
     } else {
-        puts("ERROR: Configure failed");
+        printf("ERROR: Configure failed");
         config_error_msg = "There was a fatal error in the config.ini this must be fixed to continue\nOnly some shell commands are allowed and sdcard access";
-        puts(config_error_msg.c_str());
+        printf(config_error_msg.c_str());
         // Module::broadcast_halt(true);
      }
 
@@ -1058,8 +1058,11 @@ static void smoothie_startup(void *)
         if(check_flashme_file(os, false)) {
             // we have a valid flashme file, so flash
             THEDISPATCHER->dispatch("flash", os);
+            // we should not get here, if we did there was a problem with the flashme.bin file
+            printf("ERROR: Problem with the flashme.bin file, no update done");
+        }else{
+            printf("INFO: No valid flashme.bin file found");
         }
-        puts("INFO: No valid flashme.bin file found");
     }
 
     // run the command handler in this thread
