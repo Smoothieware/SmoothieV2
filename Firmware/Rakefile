@@ -395,6 +395,11 @@ file "#{OBJDIR}/flashloader.o" => ["#{OBJDIR}/flashloader.bin"] do |t|
   end
 end
 
+file "#{OBJDIR}/#{PROG}.dfu" => ["#{OBJDIR}/#{PROG}.bin"] do |t|
+  puts "Creating #{t.name}"
+  sh "python3 ../tools/dfu.py -b 0x8000000:#{OBJDIR}/#{PROG}.bin #{OBJDIR}/#{PROG}.dfu"
+end
+
 file "#{OBJDIR}/#{PROG}.bin" => ["#{OBJDIR}/#{PROG}.elf"] do |t|
   puts "Creating #{t.name}"
   sh "#{OBJCOPY} -O binary #{OBJDIR}/#{PROG}.elf #{OBJDIR}/#{PROG}.bin"
