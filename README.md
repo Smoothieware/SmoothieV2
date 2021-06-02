@@ -1,9 +1,7 @@
 # smoothie version 2 for STM32H745 (and STM32H743)
 Smoothie V2 using STM32 HAL and FreeRTOS.
 
-Currently runs on nucleo 745 board and Devebox 743 board
-
-Firmware/... is for Smoothie firmware code and Test Units
+Currently runs on the NUCLEO-H745ZI-Q board and Devebox 743 board
 
 Currently uses the following toolchain..
     gcc version 9.2.1 20191025 (release) [ARM/arm-9-branch revision 277599]

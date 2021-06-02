@@ -1,18 +1,17 @@
+Currently runs on the NUCLEO-H745ZI-Q board and Devebox 743 board.
+
 To build the test cases do ```rake testing=1 -m```
-then flash to Nucleo, the results print out to the uart/serial
+then flash to Nucleo, the results print out to the uart/serial found on the STLinkV3 USB serial.
 
 To make the Firmware do ```rake target=Nucleo -m```
 
 Firmware currently runs on UART at 115200 baud and on USB serial at ttyACM0.
-On USB Serial you need to hit Enter to get it to start.
 
-The config file is called config.ini on the sdcard and examples are shown in the ConfigSamples diretory, config-3d.ini is for a 3d printer, and config-laser.ini is for laser, these would be renamed config.ini and copied to the sdcard.
-
-The config.ini may also be builtin and is defined in string-config-bambino.h, a #define is needed in the main.cpp to use the builtin config.ini.
+The config file is called config.ini on the sdcard and examples are shown in the ConfigSamples directory, config-3d.ini is for a 3d printer, and config-laser.ini is for laser, these would be renamed config.ini and copied to the sdcard.
 
 Currently the max stepping rate is limited to 150Khz as this seems the upper limit to handle the step interrupt.
 
-Enough modules have been ported to run a 3D printer, also a laser is supported.
+Enough modules have been ported to run a 3D printer, a CNC Router and also a laser is supported.
 
 Modules that have been ported so far...
 
@@ -26,16 +25,13 @@ Modules that have been ported so far...
 * currentcontrol
 * killbutton
 * player
+* network
 
 *NOTE* for the smooothiev2 Prime replace Nucleo above with Prime...
 
 ```rake target=Prime -m```
 
-builtin config would be called string-config-minialpha.h (but the default is to read the config.ini on sdcard).
-
-The Prime Alpha is currently working quite well.
-
-on the Prime Alpha there are 4 leds..
+On the Prime there are 4 leds..
 
 1. led3 - smoothie led, flashes slowly when idle, does not flash when busy
 2. led4 - smoothie led, on when executing moves, flashes when in HALT
@@ -43,43 +39,33 @@ on the Prime Alpha there are 4 leds..
 Both flash if there was a serious config error.
 All 4 leds flash if there is no sdcard inserted.
 
-The debug UART port is on PF.10 (TX) and PF.11 (RX) on the PrimeAlpha (G5 pin 4 and 5)
-The debug UART port is on P6.4 (TX) and P6.5 (RX) on the Bambino Socket 2 pin 4,5.
+The debug UART port is on the STLink3 ACM0 on the Nucleo,
 baud rate 115200.
 
 Initial Bootstrap
 -----------------
 V2 does not have a bootloader, the firmware itself can flash itself and do updates etc.
-To bootstrap the inital firmware (or to recover from bad firmware or bricking) you can use a jlink to flash the firmnware, but as most will not have a jlink (although for developement this is highly encouraged so you can debug, as untested firmware PRs probably will not be accepted).
-The LPC4330 has several methods built into the ROM to allow initial loading of programs into RAM the two most convenient are DFU over USB or loading over the serial uart, both are described below. Basically we provide a flashloader.bin that loads and runs into RAM then acesses a file ```flashme.bin``` on the sdcard and flashes that into the SPIFI.
+To bootstrap the inital firmware (or to recover from bad firmware or bricking) you can use a jlink to flash the firmware or use the STLINKV3 drag and drop, or use the builtin USB flashing and dfu-util.
 
+Subsequent Updates
+------------------
+If the firmware is running then just copy the firmware bin to the sdcard as flashme.bin and reboot. You can use the ```update``` command if you have a network connected. There are also various ways to get the firnware onto the sdcard over the serial ports, and then use the ```flash``` command.
 
 Debugging and Flashing
 ----------------------
-You can use a JLink to initially flash and debug, plug it into the jtag port.
-Run the jlink gdb server:
-```/opt/jlink/JLinkGDBServer -device LPC4330_M4 -speed auto -rtos GDBServer/RTOSPlugin_FreeRTOS.so -timeout 10000```
+Use a JLink to debug...
+
+    /opt/jlink/JLinkGDBServer -device STM32H745ZI_M7 -if SWD -halt -speed 4000  -timeout 10000
 
 Then run gdb:
-```arm-none-eabi-gdb-64bit -ex "target remote localhost:2331" smoothiev2_Primealpha/smoothiev2.elf```
 
-The ```arm-none-eabi-gdb-64bit``` binary is in the tools directory, it is a fixed version that handles Hard Faults correctly.
+    arm-none-eabi-gdb-64bit -ex "target remote localhost:2331" smoothiev2_Nucleo/smoothiev2.elf
+
+The ```arm-none-eabi-gdb-64bit``` binary is in the tools directory, it is a fixed version that handles Hard Faults correctly. 9You canalso use the arm-none tools if you have it installed.
 
 To flash use the load command in gdb, it is recommended you do a ```mon reset``` before and after the load.
 
 Once flashed you use the c command to run.
-
-Once an image has been flashed, new images can be downloaded and flashed using dfu-util or by copying the firmware file to sdcard called flashme.bin and using the flash command.
-There is a YModem reciever and the script in the tools folder called upload-ym.py can be used to write a firmware bin file to the sdcard. This python script uses the linux command sx to do the actual ymodem. You could also use the ymodem built into most screen programs.
-
-If you do not have a jlink you can use the built in ROM UART3 bootloader and load the flashloader.bin file (from here https://github.com/Smoothieware/SmoothieV2/blob/master/flashloader/bins/flashloader.bin?raw=true) using the  ```tools/boot-uart.py``` program. This will flash the flashme.bin file on the sdcard.
-To use this you must set the boot pins to  P2.9=1 P2.8=0 P1.2=0 P1.1=0 (on underside of proto board marked BOOT3, BOOT2, BOOT1, BOOT0), and use
-P2.3 and P2.4 for the UART.  Then reset the board, once flashed set back to the intial BOOT from SPIFI 0001.
-
-Another option is to use the ROM based USB loader, you need to prepend the required header using ```dfu-prefix -L -a flashloader.bin```, then put the system into USB boot mode P2.9=0 P2.8=1 P1.2=0 P1.1=1 (Pull BOOT2 high) then reset then use 
-```dfu-util -R -d 1fc9:000c -D flashloader.bin``` (you may need to use sudo on this) to load the modified flashloader.bin. This again would flash the flashme.bin file on sdcard.
-There are some files available on NXP website called lpcscrypt that can also flash over the USB direct into SPIFI.
-
 
 Flashing V2 Smoothie using J-Link (Windows)
 ===========================================
