@@ -34,7 +34,15 @@ static void SystemClock_Config(void);
 static void CPU_CACHE_Enable(void);
 
 // put a magic number at the very end
-__attribute__ ((section (".last_word"))) uint64_t magic = 0x1234567898765432LL;
+#ifdef BOARD_NUCLEO
+__attribute__ ((section (".last_word"))) uint64_t magic = 0x1234567898765401LL;
+#elif defined(BOARD_DEVEBOX)
+__attribute__ ((section (".last_word"))) uint64_t magic = 0x1234567898765402LL;
+#elif defined(BOARD_PRIME)
+__attribute__ ((section (".last_word"))) uint64_t magic = 0x1234567898765403LL;
+#else
+#error not a recognized BOARD defined
+#endif
 
 /* Private functions ---------------------------------------------------------*/
 extern void Board_LED_Init();

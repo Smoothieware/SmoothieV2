@@ -402,8 +402,10 @@ end
 
 file "#{OBJDIR}/#{PROG}.bin" => ["#{OBJDIR}/#{PROG}.elf"] do |t|
   puts "Creating #{t.name}"
-  sh "#{OBJCOPY} -O binary #{OBJDIR}/#{PROG}.elf #{OBJDIR}/#{PROG}.bin"
-  sh "md5sum #{OBJDIR}/#{PROG}.bin | cut -c1-32 | tr -d '\\n' > #{OBJDIR}/#{PROG}.md5"
+  sh "#{OBJCOPY} -O binary #{OBJDIR}/#{PROG}.elf #{OBJDIR}/#{PROG}.xbin"
+  sh "md5sum #{OBJDIR}/#{PROG}.xbin | cut -c1-32 | tr -d '\\n' > #{OBJDIR}/#{PROG}.md5"
+  # append the md5sum to the binary
+  sh "cat #{OBJDIR}/#{PROG}.xbin #{OBJDIR}/#{PROG}.md5 > #{OBJDIR}/#{PROG}.bin"
 end
 
 file "#{OBJDIR}/#{PROG}.elf" => ["#{OBJDIR}/libhal.a", "#{OBJDIR}/flashloader.o"] + OBJ do |t|

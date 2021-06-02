@@ -288,6 +288,8 @@ bool Network::update_cmd( std::string& params, OutputStream& os )
         return true;
     }
 
+    os.printf("Downloading updated firmware from server...\n");
+
     // fetch firmware from server
     if(!wget(urlbin.c_str(), "/sd/flashme.bin", os)) {
         os.printf("failed to get updated firmware\n");
@@ -301,31 +303,14 @@ bool Network::update_cmd( std::string& params, OutputStream& os )
         return true;
     }
 
-    // calculate md5 of file
-    MD5 md5;
-    uint8_t buf[64];
-    do {
-        size_t n = fread(buf, 1, sizeof buf, lp);
-        if(n > 0) md5.update(buf, n);
-    } while(!feof(lp));
-    fclose(lp);
-    std::string md = md5.finalize().hexdigest();
-
-    os.printf("new file md5: %s\n", md.c_str());
+    // The files contain an MD5 which is checked by the flash command, so no need to check here
+    os.printf("Flashing the updated firmware\nif successful the system will reboot\nthis can take about 20 seconds\n");
 
     // flash it
-    if(oss.str() == md) {
-        // md5 is correct
-        os.printf("Updating the firmware from the web\n if successful the system will reboot\n this can take about 20 seconds\n");
+    THEDISPATCHER->dispatch("flash", os);
 
-        // flash it
-        THEDISPATCHER->dispatch("flash", os);
-
-        // if this returns there was an error
-
-    } else {
-        os.printf("downloaded firmware failed verification:\n");
-    }
+    // if this returns there was an error
+    os.printf("Flash failed, maybe a corrupted download or an incorrect firmware file\n");
 
     return true;
 }

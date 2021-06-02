@@ -61,6 +61,17 @@ static bool loaded_configuration = false;
 static bool config_override = false;
 static const char *OVERRIDE_FILE = "/sd/config-override";
 
+#ifdef BOARD_NUCLEO
+#define MAGIC_NUMBER 0x1234567898765401LL
+#elif defined(BOARD_DEVEBOX)
+#define MAGIC_NUMBER 0x1234567898765402LL
+#elif defined(BOARD_PRIME)
+#define MAGIC_NUMBER 0x1234567898765403LL
+#else
+#error not a recognized BOARD defined
+#endif
+
+#include "md5.h"
 bool check_flashme_file(OutputStream& os, bool errors)
 {
     // check the flashme.bin is on the disk first
@@ -70,22 +81,63 @@ bool check_flashme_file(OutputStream& os, bool errors)
         return false;
     }
     // check it has the correct magic number for this build
-    int fs= fseek(fp, -8, SEEK_END);
+    int fs= fseek(fp, -8-32, SEEK_END);
     if(fs != 0) {
         os.printf("ERROR: could not seek to end of file to check magic number: %d\n", errno);
         fclose(fp);
         return false;
     }
-    uint64_t buf;
-    size_t n= fread(&buf, 1, sizeof(buf), fp);
-    if(n != sizeof(buf)) {
+    long ft= ftell(fp) + 8; // end of file but before md5
+    uint64_t magicno;
+    size_t n= fread(&magicno, 1, sizeof(magicno), fp);
+    if(n != sizeof(magicno)) {
         os.printf("ERROR: could not read magic number: %d\n", errno);
         fclose(fp);
         return false;
     }
+
+    // this is a different magic for different boards
+    if(magicno != MAGIC_NUMBER) {
+        os.printf("ERROR: bad magic number in file, this is not a valid firmware binary image for this board\n");
+        fclose(fp);
+        return false;
+    }
+
+    // read the md5 at the end of the file
+    char md5[33];
+    n= fread(md5, 1, sizeof(md5)-1, fp);
+    if(n != sizeof(md5)-1) {
+        os.printf("ERROR: could not read md5: %d\n", errno);
+        fclose(fp);
+        return false;
+    }
+    md5[32]= '\0';
+
+    // read file except for last 32 bytes and calculate the md5sum
+    rewind(fp);
+    MD5 md5sum;
+    uint8_t buf[1024];
+    size_t cnt= 0;
+    do {
+        n = fread(buf, 1, sizeof buf, fp);
+        if(n <= 0) break;
+        cnt += n;
+        if(cnt <= (size_t)ft) {
+            md5sum.update(buf, n);
+        }else{
+            n = n - (cnt-ft);
+            if(n > 0) md5sum.update(buf, n);
+            break;
+        }
+    } while(!feof(fp));
     fclose(fp);
-    if(buf != 0x1234567898765432LL) {
-        os.printf("ERROR: bad magic number in file, this is not a valid firmware binary image\n");
+
+    std::string calc= md5sum.finalize().hexdigest();
+    //printf("cnt: %d, ft: %ld - 1: %s, 2: %s\n", cnt, ft, calc.c_str(), md5);
+
+    // check md5sum of the file
+    if(strcmp(calc.c_str(), md5) != 0){
+        os.printf("ERROR: md5sum does not match\n");
         return false;
     }
 
@@ -1005,7 +1057,7 @@ static void smoothie_startup(void *)
         OutputStream os(&std::cout);
         if(check_flashme_file(os, false)) {
             // we have a valid flashme file, so flash
-            dispatch_line(os, "flash");
+            THEDISPATCHER->dispatch("flash", os);
         }
         puts("INFO: No valid flashme.bin file found");
     }
