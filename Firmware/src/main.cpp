@@ -478,7 +478,7 @@ extern "C" int vcom_connected();
 
 static void usb_comms(void *)
 {
-    printf("DEBUG: USB Comms thread running");
+    printf("DEBUG: USB Comms thread running\n");
 
     if(!setup_cdc(xTaskGetCurrentTaskHandle())) {
         printf("FATAL: CDC setup failed\n");
@@ -551,13 +551,13 @@ static void usb_comms(void *)
     }
 
     free(usb_rx_buf);
-    printf("DEBUG: USB Comms thread exiting");
+    printf("DEBUG: USB Comms thread exiting\n");
     vTaskDelete(NULL);
 }
 
 static void uart_comms(void *)
 {
-    printf("DEBUG: UART Comms thread running");
+    printf("DEBUG: UART Comms thread running\n");
     set_notification_uart(xTaskGetCurrentTaskHandle());
 
     // create an output stream that writes to the uart
@@ -585,7 +585,7 @@ static void uart_comms(void *)
         }
     }
     output_streams.erase(&os);
-    printf("DEBUG: UART Comms thread exiting");
+    printf("DEBUG: UART Comms thread exiting\n");
     vTaskDelete(NULL);
 }
 
@@ -640,7 +640,7 @@ extern "C" bool DFU_requested_detach();
  */
 static void command_handler()
 {
-    printf("DEBUG: Command thread running");
+    printf("DEBUG: Command thread running\n");
 
     for(;;) {
         char *line;
@@ -792,6 +792,7 @@ static void smoothie_startup(void *)
 #endif
     step_ticker->set_unstep_time(1); // 1us step pulse by default
 
+    bool flash_on_boot= true;
     bool ok = false;
 
     // open the config file
@@ -849,6 +850,7 @@ static void smoothie_startup(void *)
                 } else {
                     printf("INFO: auxilliary play led set to %s\n", aux_play_led->to_string().c_str());
                 }
+                flash_on_boot= cr.get_bool(m, "flash_on_boot", true);
             }
         }
 
@@ -995,8 +997,8 @@ static void smoothie_startup(void *)
         }
 
     } else {
-        printf("ERROR: Configure failed");
-        config_error_msg = "There was a fatal error in the config.ini this must be fixed to continue\nOnly some shell commands are allowed and sdcard access";
+        printf("ERROR: Configure failed\n");
+        config_error_msg = "There was a fatal error in the config.ini this must be fixed to continue\nOnly some shell commands are allowed and sdcard access\n";
         printf(config_error_msg.c_str());
         // Module::broadcast_halt(true);
      }
@@ -1053,16 +1055,20 @@ static void smoothie_startup(void *)
         Board_LED_Set(3, false);
     }
 
-    {
+    if(flash_on_boot) {
         OutputStream os(&std::cout);
         if(check_flashme_file(os, false)) {
             // we have a valid flashme file, so flash
             THEDISPATCHER->dispatch("flash", os);
             // we should not get here, if we did there was a problem with the flashme.bin file
-            printf("ERROR: Problem with the flashme.bin file, no update done");
+            printf("ERROR: Problem with the flashme.bin file, no update done\n");
+            config_error_msg = "ERROR: There was a problem flashing the flashme.bin file, it seems to be invalid\n";
+
         }else{
-            printf("INFO: No valid flashme.bin file found");
+            printf("INFO: No valid flashme.bin file found\n");
         }
+    } else {
+        printf("INFO: flash on boot is disabled\n");
     }
 
     // run the command handler in this thread
