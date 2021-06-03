@@ -201,17 +201,6 @@ task :clean do
   FileUtils.rm_rf(OBJDIR)
 end
 
-desc 'only clean src and tests'
-task :cleansrc do
-  FileUtils.rm_rf("#{OBJDIR}/src")
-  FileUtils.rm_rf("#{OBJDIR}/TestUnits")
-end
-
-desc 'only clean tests'
-task :cleantests do
-  FileUtils.rm_rf("#{OBJDIR}/TestUnits")
-end
-
 desc 'default is to build'
 task :default => [:build] #, :size]
 
@@ -236,7 +225,6 @@ end
 file "#{OBJDIR}/#{PROG}.bin" => ["#{OBJDIR}/#{PROG}.elf"] do |t|
   puts "Creating #{t.name}"
   sh "#{OBJCOPY} -O binary #{OBJDIR}/#{PROG}.elf #{OBJDIR}/#{PROG}.bin"
-  sh "md5sum #{OBJDIR}/#{PROG}.bin | cut -c1-32 | tr -d '\\n' > #{OBJDIR}/#{PROG}.md5"
 end
 
 file "#{OBJDIR}/#{PROG}.elf" => ["#{OBJDIR}/libhal.a"] + OBJ do |t|
