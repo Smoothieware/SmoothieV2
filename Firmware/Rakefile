@@ -1,6 +1,7 @@
 require 'rake'
 require 'pathname'
 #require 'fileutils'
+require 'digest'
 
 verbose(ENV['verbose'] == '1')
 TESTING = ENV['testing'].nil? ? false : ENV['testing'] == '1'
@@ -402,10 +403,14 @@ end
 
 file "#{OBJDIR}/#{PROG}.bin" => ["#{OBJDIR}/#{PROG}.elf"] do |t|
   puts "Creating #{t.name}"
-  sh "#{OBJCOPY} -O binary #{OBJDIR}/#{PROG}.elf #{OBJDIR}/#{PROG}.xbin"
-  sh "md5sum #{OBJDIR}/#{PROG}.xbin | cut -c1-32 | tr -d '\\n' > #{OBJDIR}/#{PROG}.md5"
+  sh "#{OBJCOPY} -O binary #{OBJDIR}/#{PROG}.elf #{OBJDIR}/#{PROG}.bin"
+  # get MD5 of the binary
+  md5 = Digest::MD5.file "#{OBJDIR}/#{PROG}.bin"
+  m = md5.hexdigest
+  # create MD5 file
+  open("#{OBJDIR}/#{PROG}.md5", 'w') { |f| f << m }
   # append the md5sum to the binary
-  sh "cat #{OBJDIR}/#{PROG}.xbin #{OBJDIR}/#{PROG}.md5 > #{OBJDIR}/#{PROG}.bin"
+  open("#{OBJDIR}/#{PROG}.bin", 'a') { |f| f << m }
 end
 
 file "#{OBJDIR}/#{PROG}.elf" => ["#{OBJDIR}/libhal.a", "#{OBJDIR}/flashloader.o"] + OBJ do |t|
