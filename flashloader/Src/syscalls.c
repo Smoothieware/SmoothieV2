@@ -39,7 +39,6 @@
 /* Variables */
 //#undef errno
 extern int errno;
-#define MAX_STACK_SIZE 0x1000
 
 extern int __io_putchar(int ch) __attribute__((weak));
 extern int __io_getchar(void) __attribute__((weak));
@@ -94,11 +93,11 @@ int _write(int file, char *ptr, int len)
 }
 
 extern char end;
-extern char _estack;
+extern char _eheap;
 caddr_t _sbrk(int incr)
 {
 	static char *heap_end= (char *)&end;
-	static char *max_heap= (char *)(((char*)&_estack)-(char*)MAX_STACK_SIZE);
+	static char *max_heap= (char*)&_eheap;
 	char *prev_heap_end;
 
 	prev_heap_end = heap_end;

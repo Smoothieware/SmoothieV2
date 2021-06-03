@@ -10,7 +10,7 @@ PROG = 'flashloader'
 load 'rakefile.defaults' if File.exists?('rakefile.defaults')
 
 if ENV['target'].nil?
-  TARGET = 'Devebox'
+  TARGET = 'Nucleo'
 elsif (ENV['target'] != 'Nucleo' && ENV['target'] != 'Prime'&& ENV['target'] != 'Devebox')
   puts "ERROR: Must specify target=[Nucleo|Prime|Devebox]"
   exit 0
