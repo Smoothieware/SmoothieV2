@@ -370,7 +370,7 @@ task :list do
 end
 
 task :version do
-  v1= `git symbolic-ref HEAD 2> /dev/null`
+  v1= `git symbolic-ref HEAD`
   v2= `git log --pretty=format:%h -1`
   $version = ' -D__GITVERSIONSTRING__=\"' + "#{v1[11..-1].chomp}-#{v2}".chomp + '\"'
 end

@@ -18,6 +18,8 @@ or for Debian Stretch (and Ubuntu) get the tar from here...
         export ARMTOOLS=/downloaddir/gcc-arm-none-eabi-{version}/bin
         (replacing {version} with the version you downloaded)
 
+To build on Windows10, first install git, ruby, python3, and gcc-arm-none-eabi versions for windows (use google) make sure they are added to the PATH, then run as for Linux.
+
 To build ```cd Firmware; rake -m```
 
 To build unit tests ```cd Firmware; rake testing=1 -m```
