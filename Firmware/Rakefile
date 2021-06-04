@@ -418,11 +418,6 @@ file "#{OBJDIR}/#{PROG}.elf" => ["#{OBJDIR}/libhal.a", "#{OBJDIR}/flashloader.o"
   sh "#{$using_cpp ? LDCPP : LD} #{OBJ} -L#{OBJDIR} -lhal #{LDFLAGS} #{OBJDIR}/flashloader.o -o #{t.name}"
 end
 
-# file "#{OBJDIR}/#{PROG}.elf" => ["#{OBJDIR}/libhal.a"] + OBJ do |t|
-#   puts "Linking #{t.name} to Internal Flash"
-#   sh "#{$using_cpp ? LDCPP : LD} #{OBJ} -L#{OBJDIR} -lhal #{LDFLAGS} -o #{t.name}"
-# end
-
 file "#{OBJDIR}/libhal.a" => HAL_OBJ do |t|
   puts "Creating #{t.name}"
   sh "#{AR} #{ARFLAGS} #{t.name} #{HAL_OBJ}"
@@ -433,9 +428,6 @@ file "#{OBJDIR}/src/version.o" => [:version, 'src/version.cpp'] do |t|
   puts "Compiling src/version.cpp"
   sh "#{CCPP} #{CPPFLAGS} #{INCLUDE} #{DEFINES} #{$version} -c -o #{t.name} src/version.cpp"
 end
-
-#arm-none-eabi-objcopy -R .stack -O ihex ../LPC1768/main.elf ../LPC1768/main.hex
-#arm-none-eabi-objdump -d -f -M reg-names-std --demangle ../LPC1768/main.elf >../LPC1768/main.disasm
 
 rule '.o' => lambda{ |objfile| obj2src(objfile, 'cpp') } do |t|
   puts "Compiling #{t.source}"
