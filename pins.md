@@ -4,14 +4,21 @@ pins used on the headers when selecting a function in the Firmware
 
 | Name       | pin     | comment                  |
 | ---------- | ------- | ------------------------ |
-| ADC1_0     | PA0_C   |                          |
-| ADC1_1     | PA1_C   |                          |
+| ADC1_0     | PA0_C   | ADC1 are for thermistors |
+| ADC1_1     | PA1_C   | Using DMA                |
 | ADC1_2     | PF11    |                          |
 | ADC1_3     | PF12    |                          |
 | ADC1_4     | PB0     |                          |
 | ADC1_5     | PC2     |                          |
 | ADC1_6     | PC3     |                          |
 | ADC1_7     | PA3     |                          |
+|            |         |                          |
+| ADC3_0     | PC2_C   | ADC3 are for Muxxed      |
+| ADC3_1     | PF10    | voltage inputs           |
+| ADC3_2     | PF8     |                          |
+| ADC3_3     | PF6     |                          |
+| ADC3_4     | PF4     |                          |
+| ADC3_5     | PH5     |                          |
 |            |         |                          |
 | PWM1_1     | PE9     |                          |
 | PWM1_2     | PE11    |                          |
@@ -81,12 +88,12 @@ pins used on the headers when selecting a function in the Firmware
 | RXD1       | PC5     |                          |
 | TXD1       | PG14    | PB13                     |
 +------------+---------+--------------------------+
-| Quad SPI   |         |                          |
+| Quad SPI   | Prime   | Devebox                  |
 +------------+---------+--------------------------+
-| IO0        | PF8     |                          |
-| IO1        | PF9     |                          |
+| IO0        | PD11    |                          |
+| IO1        | PF9     | PD12                     |
 | IO2        | PE2     |                          |
-| IO3        | PF6     |                          |
+| IO3        | PD13    |                          |
 | NCS        | PB6     |                          |
-| CLK        | PF10    |                          |
+| CLK        | PB2     |                          |
 +------------+---------+--------------------------+

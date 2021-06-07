@@ -1,6 +1,13 @@
 #include "Builtin.h"
 
-
+/*
+ADC3    IN0 Single-ended        ADC3_INP0       PC2_C
+ADC3    IN6 Single-ended        ADC3_INP6       PF10
+ADC3    IN7 Single-ended        ADC3_INP7       PF8
+ADC3    IN8 Single-ended        ADC3_INP8       PF6
+ADC3    IN9 Single-ended        ADC3_INP9       PF4
+ADC3    IN16 Single-ended       ADC3_INP16      PH5
+*/
 
 #if defined(STM32H745xx) || defined(STM32H743xx)
 #include "stm32h7xx_hal.h"
