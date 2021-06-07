@@ -18,7 +18,6 @@
 //#include "max31855.h"
 //#include "AD8495.h"
 //#include "PT100_E3D.h"
-#include "Builtin.h"
 
 #define UNDEFINED -1
 
@@ -177,8 +176,6 @@ bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t
     sensor = nullptr; // In case we fail to create a new sensor.
     if(sensor_type.compare("thermistor") == 0) {
         sensor = new Thermistor();
-    } else if(sensor_type.compare("chip") == 0) {
-        sensor = new Builtin();
 
 //  } else if(sensor_type.compare("max31855") == 0) { // needs porting
 //      sensor = new Max31855();

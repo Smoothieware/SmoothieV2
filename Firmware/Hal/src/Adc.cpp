@@ -300,7 +300,7 @@ uint32_t Adc::read()
 #endif
 }
 
-float Adc::read_voltage()
+float Adc::read_raw()
 {
     // just return the voltage on the pin
     uint16_t median_buffer[num_samples];
@@ -317,6 +317,9 @@ float Adc::read_voltage()
     float v = 3.3F * ((float)adc / get_max_value());
     return v;
 }
+
+extern "C" void HAL_ADC3_MspInit(ADC_HandleTypeDef *hadc);
+extern "C" void HAL_ADC3_MspDeInit(ADC_HandleTypeDef *hadc);
 
 /**
 * @brief  ADC MSP Init
@@ -375,9 +378,7 @@ extern "C" void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
         NVIC_EnableIRQ(DMA1_Stream1_IRQn);
 
     } else if(hadc->Instance == ADC3) {
-        __HAL_RCC_ADC3_CLK_ENABLE();
-        /* ADC Periph interface clock configuration */
-        __HAL_RCC_ADC_CONFIG(RCC_ADCCLKSOURCE_CLKP);
+        HAL_ADC3_MspInit(hadc);
     }
 
 }
@@ -412,11 +413,7 @@ extern "C" void HAL_ADC_MspDeInit(ADC_HandleTypeDef *hadc)
         NVIC_DisableIRQ(DMA1_Stream1_IRQn);
 
     } else if(hadc->Instance == ADC3) {
-        __HAL_RCC_ADC3_FORCE_RESET();
-        __HAL_RCC_ADC3_RELEASE_RESET();
-        /* ADC Periph clock disable
-         (automatically reset all ADC's) */
-        __HAL_RCC_ADC3_CLK_DISABLE();
+        HAL_ADC3_MspDeInit(hadc);
     }
 }
 

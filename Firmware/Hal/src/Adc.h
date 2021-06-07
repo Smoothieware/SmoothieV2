@@ -22,7 +22,7 @@ public:
 
     // specific to each instance
     uint32_t read();
-    float read_voltage();
+    float read_raw();
     int get_channel() const { return channel; }
     uint32_t get_errors() const { return not_ready_error; }
     bool is_valid() const { return valid; }

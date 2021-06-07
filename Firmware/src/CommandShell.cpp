@@ -16,6 +16,7 @@
 #include "FastTicker.h"
 #include "StepTicker.h"
 #include "Adc.h"
+#include "Adc3.h"
 #include "GCodeProcessor.h"
 
 #include "FreeRTOS.h"
@@ -725,6 +726,16 @@ bool CommandShell::get_cmd(std::string& params, OutputStream& os)
                     os.printf("temp request failed\n");
                 }
             }
+            // get chip temperature
+            Adc3 *adc= Adc3::getInstance();
+            float t= adc->read_temp();
+            os.printf("chip temp: %f\n", t);
+
+        } else if(type == "chip") {
+            // get chip temperature
+            Adc3 *adc= Adc3::getInstance();
+            float t= adc->read_temp();
+            os.printf("chip temp: %f\n", t);
 
         } else {
             Module *m = Module::lookup("temperature control", type.c_str());
@@ -737,6 +748,8 @@ bool CommandShell::get_cmd(std::string& params, OutputStream& os)
                 os.printf("%s temp: %f/%f @%d\n", type.c_str(), temp.current_temperature, temp.target_temperature, temp.pwm);
             }
         }
+
+
 
     } else if (what == "fk" || what == "ik") {
         // string p= shift_parameter( params );

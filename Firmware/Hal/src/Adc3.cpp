@@ -77,6 +77,48 @@ static uint32_t ADC3_Init(void)
     return ret;
 }
 
+// MSP init and deinit TODO needs to know which channels are being used
+extern "C" void HAL_ADC3_MspInit(ADC_HandleTypeDef *hadc)
+{
+  __HAL_RCC_ADC3_CLK_ENABLE();
+  __HAL_RCC_ADC_CONFIG(RCC_ADCCLKSOURCE_CLKP);
+
+#if 0
+  GPIO_InitTypeDef          GPIO_InitStruct;
+  /* Enable GPIO clock ****************************************/
+  ADCx_CHANNEL_GPIO_CLK_ENABLE();
+
+  /*##-2- Configure peripheral GPIO ##########################################*/
+  /* ADC Channel GPIO pin configuration */
+  GPIO_InitStruct.Pin = ADCx_CHANNEL_PIN;
+  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(ADCx_CHANNEL_GPIO_PORT, &GPIO_InitStruct);
+#endif
+}
+
+/**
+  * @brief ADC MSP De-Initialization
+  *        This function frees the hardware resources used in this example:
+  *          - Disable the Peripheral's clock
+  *          - Revert GPIO to their default state
+  * @param hadc: ADC handle pointer
+  * @retval None
+  */
+extern "C" void HAL_ADC3_MspDeInit(ADC_HandleTypeDef *hadc)
+{
+    __HAL_RCC_ADC3_FORCE_RESET();
+    __HAL_RCC_ADC3_RELEASE_RESET();
+    __HAL_RCC_ADC3_CLK_DISABLE();
+    NVIC_DisableIRQ(ADC3_IRQn);
+
+#if 0
+  /*##-2- Disable peripherals and GPIO Clocks ################################*/
+  /* De-initialize the ADC Channel GPIO pin */
+  HAL_GPIO_DeInit(ADCx_CHANNEL_GPIO_PORT, ADCx_CHANNEL_PIN);
+#endif
+}
+
 extern "C" void ADC3_IRQHandler(void)
 {
     HAL_ADC_IRQHandler(&AdcHandle);
@@ -108,16 +150,17 @@ static bool select_channel(uint32_t channel)
     return true;
 }
 
+// suspend task until we get the result
 static uint32_t ADC3_GetValue(void)
 {
-    const TickType_t xBlockTime= pdMS_TO_TICKS(100);
+    const TickType_t xBlockTime= pdMS_TO_TICKS(20);
     uint32_t value;
     size_t xReceivedBytes = xMessageBufferReceive(xMessageBuffer, (void *)&value, sizeof(value), xBlockTime);
     if(xReceivedBytes > 0) {
         return value;
     }
 
-    printf("ADC3: ERROR Timeout waiting for conversion\n");
+    printf("ERROR: ADC3 - Timeout waiting for conversion\n");
     return 0xFFFFFFFF;
 
     // if (HAL_ADC_PollForConversion(&AdcHandle, 10) == HAL_OK) {
@@ -127,7 +170,6 @@ static uint32_t ADC3_GetValue(void)
     // }
 }
 
-// TODO should use interrupt and suspend task until we get the result
 #define VREFANALOG_VOLTAGE  3300
 static float ADC3_read_temp()
 {
