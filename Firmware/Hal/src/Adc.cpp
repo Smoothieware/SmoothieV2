@@ -430,6 +430,7 @@ extern "C" void DMA1_Stream1_IRQHandler(void)
     HAL_DMA_IRQHandler(AdcHandle.DMA_Handle);
 }
 
+extern "C" void HAL_ADC3_ConvCpltCallback(ADC_HandleTypeDef *hadc);
 /**
   * @brief  Conversion DMA callback in non-blocking mode
   * @param  hadc: ADC handle
@@ -437,10 +438,15 @@ extern "C" void DMA1_Stream1_IRQHandler(void)
   */
 extern "C" void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
-    // Invalidate Data Cache to get the updated content of the SRAM on the ADC converted data buffer
-    SCB_InvalidateDCache_by_Addr((uint32_t *) aADCxConvertedData, adc_data_size);
-    Adc::sample_isr();
-    //Adc::sample_isr(1); // copy second half while first half is being filled
+    if(hadc->Instance == ADCx) {
+        // Invalidate Data Cache to get the updated content of the SRAM on the ADC converted data buffer
+        SCB_InvalidateDCache_by_Addr((uint32_t *) aADCxConvertedData, adc_data_size);
+        Adc::sample_isr();
+        //Adc::sample_isr(1); // copy second half while first half is being filled
+
+    }else{
+        HAL_ADC3_ConvCpltCallback(hadc);
+    }
 }
 
 /**
@@ -450,6 +456,8 @@ extern "C" void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
   */
 extern "C" void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
 {
+    if(hadc->Instance != ADC1) return;
+
     // Invalidate Data Cache to get the updated content of the SRAM on the ADC converted data buffer
     //SCB_InvalidateDCache_by_Addr((uint32_t *) aADCxConvertedData, adc_data_size);
     //Adc::sample_isr(0); // copy first half while second half is being filled

@@ -742,6 +742,7 @@ static FATFS fatfs; /* File system object */
 #endif
 
 // voltage monitors, name -> channel
+// TODO will need scale as well
 static std::map<std::string, int32_t> voltage_monitors;
 
 float get_voltage_monitor(const char* name)
@@ -941,6 +942,14 @@ static void smoothie_startup(void *)
                     }
                 }
             }
+            // defaults for internal
+            if(voltage_monitors.find("vref") == voltage_monitors.end()) {
+                voltage_monitors["vref"]= -1;
+            }
+            if(voltage_monitors.find("vbat") == voltage_monitors.end()) {
+                voltage_monitors["vbat"]= -2;
+            }
+            #ifdef BOARD_PRIME
             // setup defaults if not defined
             if(voltage_monitors.find("vmotor") == voltage_monitors.end()) {
                 voltage_monitors["vmotor"]= 0;
@@ -948,12 +957,7 @@ static void smoothie_startup(void *)
             if(voltage_monitors.find("vfet") == voltage_monitors.end()) {
                 voltage_monitors["vfet"]= 1;
             }
-            if(voltage_monitors.find("vref") == voltage_monitors.end()) {
-                voltage_monitors["vref"]= -1;
-            }
-            if(voltage_monitors.find("vbat") == voltage_monitors.end()) {
-                voltage_monitors["vbat"]= -2;
-            }
+            #endif
         }
 
         // setup ADC

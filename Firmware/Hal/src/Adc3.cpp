@@ -2,9 +2,14 @@
 
 #include <cctype>
 #include <limits>
+#include <stdio.h>
 
 #include "stm32h7xx_hal.h"
 #include "Hal_pin.h"
+
+#include "FreeRTOS.h"
+#include "message_buffer.h"
+#include "task.h"
 
 /*
     ADC3    IN0 Single-ended        ADC3_INP0       PC2_C
@@ -27,6 +32,8 @@ static uint32_t adc_channel_lut[] = {
     ADC_CHANNEL_9,
     ADC_CHANNEL_16,
 };
+
+static MessageBufferHandle_t xMessageBuffer;
 
 static uint32_t ADC3_Init(void)
 {
@@ -64,7 +71,23 @@ static uint32_t ADC3_Init(void)
         return HAL_ERROR;
     }
 
+    NVIC_SetPriority(ADC3_IRQn, configLIBRARY_LOWEST_INTERRUPT_PRIORITY);
+    NVIC_EnableIRQ(ADC3_IRQn);
+
     return ret;
+}
+
+extern "C" void ADC3_IRQHandler(void)
+{
+    HAL_ADC_IRQHandler(&AdcHandle);
+}
+
+extern "C" void HAL_ADC3_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+    uint32_t value = HAL_ADC_GetValue(hadc);
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE; /* Initialised to pdFALSE. */
+    xMessageBufferSendFromISR(xMessageBuffer, (void *)&value, sizeof(value), &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 // one of ADC_CHANNEL_TEMPSENSOR ADC_CHANNEL_VREFINT ADC_CHANNEL_VBAT
@@ -87,35 +110,55 @@ static bool select_channel(uint32_t channel)
 
 static uint32_t ADC3_GetValue(void)
 {
-    if (HAL_ADC_PollForConversion(&AdcHandle, 10) == HAL_OK) {
-        return HAL_ADC_GetValue(&AdcHandle);
-    }else{
-        return 0xFFFFFFFF;
+    const TickType_t xBlockTime= pdMS_TO_TICKS(100);
+    uint32_t value;
+    size_t xReceivedBytes = xMessageBufferReceive(xMessageBuffer, (void *)&value, sizeof(value), xBlockTime);
+    if(xReceivedBytes > 0) {
+        return value;
     }
+
+    printf("ADC3: ERROR Timeout waiting for conversion\n");
+    return 0xFFFFFFFF;
+
+    // if (HAL_ADC_PollForConversion(&AdcHandle, 10) == HAL_OK) {
+    //     return HAL_ADC_GetValue(&AdcHandle);
+    // } else {
+    //     return 0xFFFFFFFF;
+    // }
 }
 
+// TODO should use interrupt and suspend task until we get the result
 #define VREFANALOG_VOLTAGE  3300
 static float ADC3_read_temp()
 {
     select_channel(ADC_CHANNEL_TEMPSENSOR);
-    HAL_ADC_Start(&AdcHandle);
-    uint32_t value= ADC3_GetValue();
-    HAL_ADC_Stop(&AdcHandle);
+    HAL_ADC_Start_IT(&AdcHandle);
+    uint32_t value = ADC3_GetValue();
+    HAL_ADC_Stop_IT(&AdcHandle);
     if(value == 0xFFFFFFFF) return std::numeric_limits<float>::infinity();
     return (float)__LL_ADC_CALC_TEMPERATURE(VREFANALOG_VOLTAGE, value, ADC_RESOLUTION_16B);
 }
 
 Adc3::Adc3()
 {
-    if(HAL_OK == ADC3_Init()) {
-        valid= true;
+    if(HAL_OK != ADC3_Init()) {
+        printf("Adc3: ERROR init failed\n");
+        return;
+    }
+
+    valid = true;
+    xMessageBuffer = xMessageBufferCreate(sizeof(uint32_t)+sizeof(size_t));
+    if( xMessageBuffer == NULL ) {
+        printf("Adc3: ERROR could not allocate message buffer");
+        valid = false;
     }
 }
 
 Adc3::~Adc3()
 {
-    valid= false;
+    valid = false;
     HAL_ADC_DeInit(&AdcHandle);
+    vMessageBufferDelete(xMessageBuffer);
 }
 
 bool Adc3::is_valid(int32_t ch) const
@@ -127,22 +170,22 @@ bool Adc3::is_valid(int32_t ch) const
 
 float Adc3::read_temp()
 {
-    float t= ADC3_read_temp();
+    float t = ADC3_read_temp();
     return t;
 }
 
 float Adc3::read_voltage(int32_t channel)
 {
     // lookup the channel
-    if(channel == -1) channel= ADC_CHANNEL_VREFINT;
-    else if(channel == -2) channel= ADC_CHANNEL_VBAT;
+    if(channel == -1) channel = ADC_CHANNEL_VREFINT;
+    else if(channel == -2) channel = ADC_CHANNEL_VBAT;
     else if(channel < 0 || channel > 5) return std::numeric_limits<float>::infinity();
-    else channel= adc_channel_lut[channel];
+    else channel = adc_channel_lut[channel];
 
     select_channel(channel);
-    HAL_ADC_Start(&AdcHandle);
-    uint32_t value= ADC3_GetValue();
-    HAL_ADC_Stop(&AdcHandle);
+    HAL_ADC_Start_IT(&AdcHandle);
+    uint32_t value = ADC3_GetValue();
+    HAL_ADC_Stop_IT(&AdcHandle);
     float v = 3.3F * ((float)value / get_max_value());
     return v;
 }

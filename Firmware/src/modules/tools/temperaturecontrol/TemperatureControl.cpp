@@ -541,7 +541,6 @@ void TemperatureControl::thermistor_read_tick()
             target_temperature = UNDEFINED;
             heater_pin->set((this->o = 0));
 
-            // we schedule a call back in command context to print the errors
             char error_msg[132];
             snprintf(error_msg, sizeof(error_msg), "ERROR: MINTEMP or MAXTEMP triggered on %s. Check your temperature sensors!\nHALT asserted - reset or M999 required\n", designator.c_str());
             print_to_all_consoles(error_msg);
