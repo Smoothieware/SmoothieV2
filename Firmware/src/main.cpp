@@ -722,6 +722,7 @@ void safe_sleep(uint32_t ms)
 #include "Extruder.h"
 #include "TemperatureControl.h"
 #include "Adc.h"
+#include "Adc3.h"
 #include "Pwm.h"
 #include "CurrentControl.h"
 #include "Laser.h"
@@ -740,14 +741,15 @@ extern "C" bool setup_sdmmc();
 static FATFS fatfs; /* File system object */
 #endif
 
-// voltage monitors
-static std::map<std::string, Adc*> voltage_monitors;
+// voltage monitors, name -> channel
+static std::map<std::string, int32_t> voltage_monitors;
 
 float get_voltage_monitor(const char* name)
 {
     auto p = voltage_monitors.find(name);
     if(p == voltage_monitors.end()) return 0;
-    return p->second->read_voltage();
+    Adc3 *adc= Adc3::getInstance();
+    return adc->read_voltage(p->second);
 }
 
 int get_voltage_monitor_names(const char *names[])
@@ -929,16 +931,28 @@ static void smoothie_startup(void *)
                 for(auto& s : m) {
                     std::string k = s.first;
                     std::string v = s.second;
-
-                    Adc *padc = new Adc(v.c_str());
-                    if(!padc->is_valid()) {
-                        printf("WARNING: Failed to create %s voltage monitor,illegal ADC channel: %s\n", k.c_str(), v.c_str());
-                        delete padc;
+                    int32_t ch= atol(v.c_str());
+                    Adc3 *adc= Adc3::getInstance();
+                    if(!adc->is_valid(ch)) {
+                        printf("WARNING: Failed to setup %s voltage monitor, illegal ADC3 channel: %lu\n", k.c_str(), ch);
                     } else {
-                        voltage_monitors[k] = padc;
-                        printf("DEBUG: added voltage monitor: %s, ADC channel: %s\n", k.c_str(), v.c_str());
+                        voltage_monitors[k] = ch;
+                        printf("DEBUG: added voltage monitor: %s, ADC3 channel: %lu\n", k.c_str(), ch);
                     }
                 }
+            }
+            // setup defaults if not defined
+            if(voltage_monitors.find("vmotor") == voltage_monitors.end()) {
+                voltage_monitors["vmotor"]= 0;
+            }
+            if(voltage_monitors.find("vfet") == voltage_monitors.end()) {
+                voltage_monitors["vfet"]= 1;
+            }
+            if(voltage_monitors.find("vref") == voltage_monitors.end()) {
+                voltage_monitors["vref"]= -1;
+            }
+            if(voltage_monitors.find("vbat") == voltage_monitors.end()) {
+                voltage_monitors["vbat"]= -2;
             }
         }
 

@@ -13,7 +13,7 @@ pins used on the headers when selecting a function in the Firmware
 | ADC1_6     | PC3     |                          |
 | ADC1_7     | PA3     |                          |
 |            |         |                          |
-| ADC3_0     | PC2_C   | ADC3 are for Muxxed      |
+| ADC3_0     | PC2_C   | ADC3 are for             |
 | ADC3_1     | PF10    | voltage inputs           |
 | ADC3_2     | PF8     |                          |
 | ADC3_3     | PF6     |                          |

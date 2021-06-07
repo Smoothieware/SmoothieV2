@@ -824,13 +824,13 @@ bool CommandShell::get_cmd(std::string& params, OutputStream& os)
                 const char *names[n];
                 get_voltage_monitor_names(names);
                 for (int i = 0; i < n; ++i) {
-                    os.printf("%s: %f v\n", names[i], get_voltage_monitor(names[i]) * 11);
+                    os.printf("%s: %f v\n", names[i], get_voltage_monitor(names[i]));
                 }
             } else {
                 os.printf("No voltage monitors configured\n");
             }
         } else {
-            os.printf("%s: %f v\n", type.c_str(), get_voltage_monitor(type.c_str()) * 11);
+            os.printf("%s: %f v\n", type.c_str(), get_voltage_monitor(type.c_str()));
         }
 
     } else {
@@ -1533,12 +1533,12 @@ bool CommandShell::date_cmd(std::string& params, OutputStream& os)
 
     } else {
         // set date/time
-        uint8_t yr= std::stoi(dt.substr(0, 2));
-        uint8_t mn= std::stoi(dt.substr(2, 2));
-        uint8_t dy= std::stoi(dt.substr(4, 2));
-        uint8_t hh= std::stoi(dt.substr(6, 2));
-        uint8_t mm= std::stoi(dt.substr(8, 2));
-        uint8_t ss= std::stoi(dt.substr(10, 2));
+        uint8_t yr= atoi(dt.substr(0, 2).c_str());
+        uint8_t mn= atoi(dt.substr(2, 2).c_str());
+        uint8_t dy= atoi(dt.substr(4, 2).c_str());
+        uint8_t hh= atoi(dt.substr(6, 2).c_str());
+        uint8_t mm= atoi(dt.substr(8, 2).c_str());
+        uint8_t ss= atoi(dt.substr(10, 2).c_str());
         rtc_setdatetime(yr, mn, dy, 1, hh, mm, ss);
     }
     return true;

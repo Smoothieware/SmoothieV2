@@ -128,9 +128,6 @@ static uint32_t adc_rank_lut[] = {
     ADC_REGULAR_RANK_8,
 };
 
-/* Definition for ADCx's Channel */
-#define ADCx_CHANNEL                    ADC_CHANNEL_3
-
 static ADC_HandleTypeDef AdcHandle;
 
 bool Adc::post_config_setup()
