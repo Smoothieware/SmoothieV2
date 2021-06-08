@@ -4,9 +4,11 @@
 #include <limits>
 #include <stdio.h>
 #include <set>
+#include <string>
 
 #include "stm32h7xx_hal.h"
 #include "Hal_pin.h"
+#include "StringUtils.h"
 
 #include "FreeRTOS.h"
 #include "message_buffer.h"
@@ -29,11 +31,11 @@ static ADC_HandleTypeDef AdcHandle;
 static std::set<uint32_t> allocated_channels;
 
 static uint32_t adc_channel_lut[] = {
-    #ifdef BOARD_DEVEBOX
+#ifdef BOARD_DEVEBOX
     ADC_CHANNEL_10,
-    #else
+#else
     ADC_CHANNEL_0,
-    #endif
+#endif
     ADC_CHANNEL_6,
     ADC_CHANNEL_7,
     ADC_CHANNEL_8,
@@ -42,11 +44,11 @@ static uint32_t adc_channel_lut[] = {
 };
 
 static struct {GPIO_TypeDef* port; uint32_t pin;} adcpinlut[] = {
-    #ifdef BOARD_DEVEBOX
+#ifdef BOARD_DEVEBOX
     {GPIOC, GPIO_PIN_0},
-    #else
+#else
     {GPIOC, GPIO_PIN_2},
-    #endif
+#endif
     {GPIOF, GPIO_PIN_10},
     {GPIOF, GPIO_PIN_8},
     {GPIOF, GPIO_PIN_6},
@@ -209,7 +211,7 @@ Adc3::~Adc3()
     valid = false;
     HAL_ADC_DeInit(&AdcHandle);
     vMessageBufferDelete(xMessageBuffer);
-    instance= nullptr;
+    instance = nullptr;
     allocated_channels.clear();
 }
 
@@ -251,4 +253,25 @@ float Adc3::read_voltage(int32_t channel)
     if(value == 0xFFFFFFFF) return std::numeric_limits<float>::infinity();
     float v = 3.3F * ((float)value / get_max_value());
     return v;
+}
+
+int32_t Adc3::from_string(const char *s, float& scale)
+{
+    std::string v(s);
+    auto pos = v.find(',');
+    if(pos != std::string::npos) {
+        scale = atof(v.substr(pos + 1).c_str());
+        v = v.substr(0, pos);
+    }
+    if(v.size() != 6 || stringutils::toUpper(v.substr(0, 3)) != "ADC" || v[4] != '_') {
+        printf("ERROR: illegal ADC3 name: %s\n", v.c_str());
+        return -1;
+    }
+
+    if(v[3] != '3') {
+        printf("ERROR: Illegal voltage ADC only ADC3 supported: %s\n", v.c_str());
+        return -1;;
+    }
+
+    return strtol(v.substr(5).c_str(), nullptr, 10);
 }

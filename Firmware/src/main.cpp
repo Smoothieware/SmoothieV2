@@ -941,22 +941,9 @@ static void smoothie_startup(void *)
                     std::string k = s.first;
                     std::string v = s.second;
                     float scale= 10.0F;
-                    auto pos= v.find(',');
-                    if(pos != std::string::npos) {
-                        scale= atof(v.substr(pos+1).c_str());
-                        v= v.substr(0, pos);
-                    }
-                    if(v.size() != 6 || stringutils::toUpper(v.substr(0, 3)) != "ADC" || v[4] != '_') {
-                        printf("ERROR: illegal ADC3 name: %s\n", v.c_str());
-                        continue;
-                    }
+                    int32_t ch= adc->from_string(v.c_str(), scale);
+                    if(ch < 0) continue;
 
-                    if(v[3] != '3') {
-                        printf("ERROR: Illegal voltage ADC only ADC3 supported: %s\n", v.c_str());
-                        continue;
-                    }
-
-                    int32_t ch = strtol(v.substr(5).c_str(), nullptr, 10);
                     if(!adc->allocate(ch)) {
                         printf("WARNING: Failed to allocate %s voltage monitor, illegal or inuse ADC3 channel: %lu\n", k.c_str(), ch);
                     } else {

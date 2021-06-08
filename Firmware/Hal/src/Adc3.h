@@ -10,6 +10,9 @@ public:
     // debug only
     static void deinit() { delete instance; }
 
+    // parse an ADC3_1,10 string where ,10 is optional scale, return -1 if any error otherwise returns the channel
+    int32_t from_string(const char *s, float& scale);
+
     float read_temp();
     float read_voltage(int32_t channel);
     uint32_t get_errors() const { return not_ready_error; }
