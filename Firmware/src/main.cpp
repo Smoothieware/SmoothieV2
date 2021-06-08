@@ -961,7 +961,7 @@ static void smoothie_startup(void *)
 #ifdef BOARD_NUCLEO
             std::map<std::string, int32_t> names { {"vmotor", 1},  {"vfet", 2} };
 #elif defined(BOARD_DEVEBOX)
-            std::map<std::string, int32_t> names { {"vmotor", 2},  {"vfet", 3} };
+            std::map<std::string, int32_t> names { {"vmotor", 0},  {"vfet", 3} };
 #elif defined(BOARD_PRIME)
             std::map<std::string, int32_t> names { {"vmotor", 0},  {"vfet", 1} };
 #endif
