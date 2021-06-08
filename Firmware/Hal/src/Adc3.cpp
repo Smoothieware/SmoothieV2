@@ -21,7 +21,7 @@
     ADC3    IN16 Single-ended       ADC3_INP16      PH5
 
     DEVEBOX
-    ADC3 IN10 PC0
+    ADC3    IN10 Single-ended       ADC3_INP10      PC0
 */
 
 Adc3 *Adc3::instance{nullptr};
@@ -209,6 +209,8 @@ Adc3::~Adc3()
     valid = false;
     HAL_ADC_DeInit(&AdcHandle);
     vMessageBufferDelete(xMessageBuffer);
+    instance= nullptr;
+    allocated_channels.clear();
 }
 
 bool Adc3::allocate(int32_t ch) const
@@ -239,9 +241,9 @@ float Adc3::read_voltage(int32_t channel)
     if(channel == -1) channel = ADC_CHANNEL_VREFINT;
     else if(channel == -2) channel = ADC_CHANNEL_VBAT;
     else if(channel < 0 || channel > 5) return std::numeric_limits<float>::infinity();
+    else if(allocated_channels.count(channel) == 0) return std::numeric_limits<float>::infinity();
     else channel = adc_channel_lut[channel];
 
-    if(!valid) return std::numeric_limits<float>::infinity();
     select_channel(channel);
     HAL_ADC_Start_IT(&AdcHandle);
     uint32_t value = ADC3_GetValue();

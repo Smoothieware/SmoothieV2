@@ -267,7 +267,7 @@ DEFINES= defines.join(' ')
 
 DEPFLAGS = '-MMD '
 CSTD = '-std=gnu11'
-FFLAGS = ' -fmessage-length=0 -fno-builtin-printf -fno-builtin-isnan -ffast-math -ffunction-sections -fdata-sections '
+FFLAGS = ' -fmessage-length=0 -fno-builtin-printf -ffunction-sections -fdata-sections '
 CFLAGS = FFLAGS + DEPFLAGS + " -Wall -Wshadow -Wundef  -mcpu=cortex-m7 -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16  " + (DEBUG ? "-O0 -g3 " : "-O2 -g")
 CPPFLAGS = CFLAGS + ' -Wno-psabi  -fno-rtti -fno-common -std=gnu++14 -fno-exceptions '
 

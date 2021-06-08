@@ -5,6 +5,7 @@
 #include "TestRegistry.h"
 
 #include "Adc.h"
+#include "Adc3.h"
 #include "SlowTicker.h"
 
 #include "FreeRTOS.h"
@@ -19,7 +20,7 @@ REGISTER_TEST(ADCTest, adc_names)
     // can't use 0,1,4 on nucleo
     Adc *adc = new Adc("ADC1_2");
     TEST_ASSERT_TRUE(adc->is_valid());
-    TEST_ASSERT_EQUAL_INT(1, adc->get_channel());
+    TEST_ASSERT_EQUAL_INT(2, adc->get_channel());
 
     // check it won't let us create a duplicate
     Adc *dummy = new Adc("ADC1_2");
@@ -53,10 +54,10 @@ REGISTER_TEST(ADCTest, two_adc_channels)
     TEST_ASSERT_TRUE(Adc::post_config_setup());
 
     TEST_ASSERT_TRUE(adc1->is_valid());
-    TEST_ASSERT_EQUAL_INT(0, adc1->get_channel());
+    TEST_ASSERT_EQUAL_INT(2, adc1->get_channel());
 
     TEST_ASSERT_TRUE(adc2->is_valid());
-    TEST_ASSERT_EQUAL_INT(2, adc2->get_channel());
+    TEST_ASSERT_EQUAL_INT(3, adc2->get_channel());
 
     TEST_ASSERT_TRUE(Adc::start());
 
@@ -88,98 +89,14 @@ REGISTER_TEST(ADCTest, two_adc_channels)
     delete adc2;
 }
 
-#include "stm32h7xx_hal.h"
-
-#define ADCx_CHANNEL ADC_CHANNEL_TEMPSENSOR // ADC_CHANNEL_VREFINT | ADC_CHANNEL_VBAT
-static ADC_HandleTypeDef    AdcHandle;
-
-static uint32_t TEMP_SENSOR_Init(void)
-{
-    uint32_t ret = HAL_OK;
-
-    ADC_ChannelConfTypeDef sConfig{0};
-
-    AdcHandle.Instance = ADC3;
-
-    if (HAL_ADC_DeInit(&AdcHandle) != HAL_OK) {
-        return HAL_ERROR;
-    }
-
-    AdcHandle.Init.ClockPrescaler           = ADC_CLOCK_ASYNC_DIV6;          /* Asynchronous clock mode, input ADC clock divided by 6*/
-    AdcHandle.Init.Resolution               = ADC_RESOLUTION_16B;            /* 16-bit resolution for converted data */
-    AdcHandle.Init.ScanConvMode             = DISABLE;                       /* Sequencer disabled (ADC conversion on only 1 channel: channel set on rank 1) */
-    AdcHandle.Init.EOCSelection             = ADC_EOC_SINGLE_CONV;           /* EOC flag picked-up to indicate conversion end */
-    AdcHandle.Init.LowPowerAutoWait         = DISABLE;                       /* Auto-delayed conversion feature disabled */
-    AdcHandle.Init.ContinuousConvMode       = ENABLE;                        /* Continuous mode enabled (automatic conversion restart after each conversion) */
-    AdcHandle.Init.NbrOfConversion          = 1;                             /* Parameter discarded because sequencer is disabled */
-    AdcHandle.Init.DiscontinuousConvMode    = DISABLE;                       /* Parameter discarded because sequencer is disabled */
-    AdcHandle.Init.NbrOfDiscConversion      = 1;                             /* Parameter discarded because sequencer is disabled */
-    AdcHandle.Init.ExternalTrigConv         = ADC_SOFTWARE_START;            /* Software start to trig the 1st conversion manually, without external event */
-    AdcHandle.Init.ExternalTrigConvEdge     = ADC_EXTERNALTRIGCONVEDGE_NONE; /* Parameter discarded because software trigger chosen */
-    AdcHandle.Init.ConversionDataManagement = ADC_CONVERSIONDATA_DR;         /* DR register used as output (DMA mode disabled) */
-    AdcHandle.Init.LeftBitShift             = ADC_LEFTBITSHIFT_NONE;         /* Left shift of final results */
-    AdcHandle.Init.Overrun                  = ADC_OVR_DATA_OVERWRITTEN;      /* DR register is overwritten with the last conversion result in case of overrun */
-    AdcHandle.Init.OversamplingMode         = DISABLE;                       /* Oversampling disable */
-
-    /* Initialize ADC peripheral according to the passed parameters */
-    if (HAL_ADC_Init(&AdcHandle) != HAL_OK) {
-        return HAL_ERROR;
-    }
-
-    /* ### - 2 - Start calibration ############################################ */
-    if (HAL_ADCEx_Calibration_Start(&AdcHandle, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED) != HAL_OK) {
-        return HAL_ERROR;
-    }
-
-    /* ### - 3 - Channel configuration ######################################## */
-    sConfig.Channel                = ADCx_CHANNEL;               /* Sampled channel number */
-    sConfig.Rank                   = ADC_REGULAR_RANK_1;         /* Rank of sampled channel number ADCx_CHANNEL */
-    sConfig.SamplingTime           = ADC_SAMPLETIME_810CYCLES_5; /* Sampling time (number of clock cycles unit) */
-    sConfig.SingleDiff             = ADC_SINGLE_ENDED;           /* Single input channel */
-    sConfig.OffsetNumber           = ADC_OFFSET_NONE;            /* No offset subtraction */
-    sConfig.Offset                 = 0;                          /* Parameter discarded because offset correction is disabled */
-    sConfig.OffsetRightShift       = DISABLE;                    /* No Right Offset Shift */
-    sConfig.OffsetSignedSaturation = DISABLE;                    /* No Signed Saturation */
-    if (HAL_ADC_ConfigChannel(&AdcHandle, &sConfig) != HAL_OK) {
-        return HAL_ERROR;
-    }
-
-    return ret;
-}
-
-static uint32_t TEMP_SENSOR_Start(void)
-{
-    return HAL_ADC_Start(&AdcHandle);
-}
-
-static uint32_t TEMP_SENSOR_Stop(void)
-{
-    return HAL_ADC_Stop(&AdcHandle);
-}
-
-/**
-  * @brief  Get JunctionTemp level in 12 bits.
-  * @retval JunctionTemp level(0..0xFFF) / 0xFFFFFFFF : Error
-  */
-static uint32_t TEMP_SENSOR_GetValue(void)
-{
-    if (HAL_ADC_PollForConversion(&AdcHandle, 10) == HAL_OK) {
-        return HAL_ADC_GetValue(&AdcHandle);
-    }else{
-        printf("HAL_ADC_PollForConversion failed\n");
-        return 0;
-    }
-}
 
 #ifdef USE_FULL_LL_DRIVER
 #include "stm32h7xx_ll_rcc.h"
 #endif
 
 #include "benchmark_timer.h"
-#define VREFANALOG_VOLTAGE  3300
-#define Calibration_ON
 
-REGISTER_TEST(ADCTest, read_onboard_temp_sensor)
+REGISTER_TEST(ADCTest, adc3_read_temp)
 {
 #ifdef USE_FULL_LL_DRIVER
     uint32_t hz = LL_RCC_GetADCClockFreq(LL_RCC_ADC_CLKSOURCE_CLKP);
@@ -189,30 +106,32 @@ REGISTER_TEST(ADCTest, read_onboard_temp_sensor)
     hz /= 6;
     printf("should take %f us per sample\n", (1e6f * (810.5F + 8.5F))/hz);
 #endif
+    Adc3 *adc= Adc3::getInstance();
+    TEST_ASSERT_TRUE(adc->is_valid());
     uint32_t values[10], elt[10];
-    TEST_ASSERT_EQUAL_INT(HAL_OK, TEMP_SENSOR_Init());
-    TEST_ASSERT_EQUAL_INT(HAL_OK, TEMP_SENSOR_Start());
     for (int i = 0; i < 10; ++i) {
         uint32_t s= benchmark_timer_start();
-        values[i] = TEMP_SENSOR_GetValue();
+        values[i] = adc->read_temp();
         elt[i]= benchmark_timer_elapsed(s);
     }
 
-    TEST_ASSERT_EQUAL_INT(HAL_OK, TEMP_SENSOR_Stop());
-    HAL_ADC_DeInit(&AdcHandle);
-
     for (int i = 0; i < 10; ++i) {
-        uint32_t JTemp;
-        if(ADCx_CHANNEL == ADC_CHANNEL_TEMPSENSOR) {
-            #ifdef Calibration_ON
-            JTemp = __LL_ADC_CALC_TEMPERATURE(VREFANALOG_VOLTAGE, values[i], ADC_RESOLUTION_16B);
-            #else
-            JTemp = ((80 * values[i]) / 4095) + 30;
-            #endif
-
-        }else if(ADCx_CHANNEL == ADC_CHANNEL_VREFINT) {
-            JTemp = (values[i] * 3300) / 0xFFFF;
-        }
-        printf("adc: %lu, temp: %lu, took: %lu us\n", values[i], JTemp, benchmark_timer_as_us(elt[i]));
+        printf("temp: %lu, took: %lu us\n", values[i], benchmark_timer_as_us(elt[i]));
     }
+    Adc3::deinit();
+}
+
+REGISTER_TEST(ADCTest, adc3_read_voltage)
+{
+    Adc3 *adc= Adc3::getInstance();
+    TEST_ASSERT_TRUE(adc->is_valid());
+
+    float a= adc->read_voltage(0);
+    TEST_ASSERT_FLOAT_IS_INF(a);
+
+    TEST_ASSERT_TRUE(adc->allocate(0));
+    a= adc->read_voltage(0);
+    TEST_ASSERT_FLOAT_IS_DETERMINATE(a);
+    printf("voltage= %f\n", a);
+    Adc3::deinit();
 }

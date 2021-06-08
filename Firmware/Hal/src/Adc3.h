@@ -8,12 +8,13 @@ public:
     static Adc3 *getInstance() { if(instance == nullptr){instance= new Adc3();} return instance; }
 
     // debug only
-    void deinit() { delete instance; }
+    static void deinit() { delete instance; }
 
     float read_temp();
     float read_voltage(int32_t channel);
     uint32_t get_errors() const { return not_ready_error; }
     bool allocate(int32_t ch) const;
+    bool is_valid() const { return valid; }
 
     static int get_max_value() { return 65535;} // 16bit samples
 

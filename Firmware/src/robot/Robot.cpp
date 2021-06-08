@@ -460,8 +460,8 @@ void Robot::periodic_checks()
 {
     // check vmot
     bool vmot;
-    float v= get_voltage_monitor("vmotor") * 11;
-    if(v < 6) {
+    float v= get_voltage_monitor("vmotor") * 10;
+    if(isinf(v) || v < 6) {
         // it is off
         vmot= false;
     }else{

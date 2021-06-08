@@ -837,13 +837,23 @@ bool CommandShell::get_cmd(std::string& params, OutputStream& os)
                 const char *names[n];
                 get_voltage_monitor_names(names);
                 for (int i = 0; i < n; ++i) {
-                    os.printf("%s: %f v\n", names[i], get_voltage_monitor(names[i]));
+                    float v= get_voltage_monitor(names[i]);
+                    if(!isinf(v)) {
+                        os.printf("%s: %f v\n", names[i], v);
+                    }else{
+                        os.printf("%s: INF\n", names[i]);
+                    }
                 }
             } else {
                 os.printf("No voltage monitors configured\n");
             }
         } else {
-            os.printf("%s: %f v\n", type.c_str(), get_voltage_monitor(type.c_str()));
+            float v= get_voltage_monitor(type.c_str());
+            if(isinf(v)) {
+                os.printf("%s: INF\n", type.c_str());
+            }else{
+                os.printf("%s: %f v\n", type.c_str(), v);
+            }
         }
 
     } else {
