@@ -742,7 +742,7 @@ extern "C" bool setup_sdmmc();
 static FATFS fatfs; /* File system object */
 #endif
 
-// voltage monitors, name -> channel,scale
+// voltage monitors, name -> <channel,scale>
 static std::map<std::string, std::tuple<int32_t,float>> voltage_monitors;
 
 float get_voltage_monitor(const char* name)
@@ -940,6 +940,12 @@ static void smoothie_startup(void *)
                 for(auto& s : m) {
                     std::string k = s.first;
                     std::string v = s.second;
+                    float scale= 10.0F;
+                    auto pos= v.find(',');
+                    if(pos != std::string::npos) {
+                        scale= atof(v.substr(pos+1).c_str());
+                        v= v.substr(0, pos);
+                    }
                     if(v.size() != 6 || stringutils::toUpper(v.substr(0, 3)) != "ADC" || v[4] != '_') {
                         printf("ERROR: illegal ADC3 name: %s\n", v.c_str());
                         continue;
@@ -954,8 +960,8 @@ static void smoothie_startup(void *)
                     if(!adc->allocate(ch)) {
                         printf("WARNING: Failed to allocate %s voltage monitor, illegal or inuse ADC3 channel: %lu\n", k.c_str(), ch);
                     } else {
-                        voltage_monitors[k] = std::make_tuple(ch, 10.0F);
-                        printf("DEBUG: added voltage monitor: %s, ADC3 channel: %lu, sclae: %f\n", k.c_str(), ch, 10.0F);
+                        voltage_monitors[k] = std::make_tuple(ch, scale);
+                        printf("DEBUG: added voltage monitor: %s, ADC3 channel: %lu, scale: %f\n", k.c_str(), ch, scale);
                     }
                 }
             }
