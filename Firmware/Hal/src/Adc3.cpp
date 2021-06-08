@@ -3,6 +3,7 @@
 #include <cctype>
 #include <limits>
 #include <stdio.h>
+#include <set>
 
 #include "stm32h7xx_hal.h"
 #include "Hal_pin.h"
@@ -21,8 +22,8 @@
 */
 
 Adc3 *Adc3::instance{nullptr};
-
-static ADC_HandleTypeDef    AdcHandle;
+static ADC_HandleTypeDef AdcHandle;
+static std::set<uint32_t> allocated_channels;
 
 static uint32_t adc_channel_lut[] = {
     ADC_CHANNEL_0,
@@ -31,6 +32,15 @@ static uint32_t adc_channel_lut[] = {
     ADC_CHANNEL_8,
     ADC_CHANNEL_9,
     ADC_CHANNEL_16,
+};
+
+static struct {GPIO_TypeDef* port; uint32_t pin;} adcpinlut[] = {
+    {GPIOC, GPIO_PIN_2},
+    {GPIOF, GPIO_PIN_10},
+    {GPIOF, GPIO_PIN_8},
+    {GPIOF, GPIO_PIN_6},
+    {GPIOF, GPIO_PIN_4},
+    {GPIOH, GPIO_PIN_5},
 };
 
 static MessageBufferHandle_t xMessageBuffer;
@@ -50,7 +60,7 @@ static uint32_t ADC3_Init(void)
     AdcHandle.Init.ScanConvMode             = ENABLE;                        /* Sequencer disabled (ADC conversion on only 1 channel: channel set on rank 1) */
     AdcHandle.Init.EOCSelection             = ADC_EOC_SINGLE_CONV;           /* EOC flag picked-up to indicate conversion end */
     AdcHandle.Init.LowPowerAutoWait         = DISABLE;                       /* Auto-delayed conversion feature disabled */
-    AdcHandle.Init.ContinuousConvMode       = ENABLE;                        /* Continuous mode enabled (automatic conversion restart after each conversion) */
+    AdcHandle.Init.ContinuousConvMode       = DISABLE;                        /* Continuous mode enabled (automatic conversion restart after each conversion) */
     AdcHandle.Init.NbrOfConversion          = 1;                             /* Parameter discarded because sequencer is disabled */
     AdcHandle.Init.DiscontinuousConvMode    = DISABLE;                       /* Parameter discarded because sequencer is disabled */
     AdcHandle.Init.NbrOfDiscConversion      = 1;                             /* Parameter discarded because sequencer is disabled */
@@ -80,31 +90,13 @@ static uint32_t ADC3_Init(void)
 // MSP init and deinit TODO needs to know which channels are being used
 extern "C" void HAL_ADC3_MspInit(ADC_HandleTypeDef *hadc)
 {
-  __HAL_RCC_ADC3_CLK_ENABLE();
-  __HAL_RCC_ADC_CONFIG(RCC_ADCCLKSOURCE_CLKP);
-
-#if 0
-  GPIO_InitTypeDef          GPIO_InitStruct;
-  /* Enable GPIO clock ****************************************/
-  ADCx_CHANNEL_GPIO_CLK_ENABLE();
-
-  /*##-2- Configure peripheral GPIO ##########################################*/
-  /* ADC Channel GPIO pin configuration */
-  GPIO_InitStruct.Pin = ADCx_CHANNEL_PIN;
-  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(ADCx_CHANNEL_GPIO_PORT, &GPIO_InitStruct);
-#endif
+    __HAL_RCC_ADC3_CLK_ENABLE();
+    __HAL_RCC_ADC_CONFIG(RCC_ADCCLKSOURCE_CLKP);
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOF_CLK_ENABLE();
+    __HAL_RCC_GPIOH_CLK_ENABLE();
 }
 
-/**
-  * @brief ADC MSP De-Initialization
-  *        This function frees the hardware resources used in this example:
-  *          - Disable the Peripheral's clock
-  *          - Revert GPIO to their default state
-  * @param hadc: ADC handle pointer
-  * @retval None
-  */
 extern "C" void HAL_ADC3_MspDeInit(ADC_HandleTypeDef *hadc)
 {
     __HAL_RCC_ADC3_FORCE_RESET();
@@ -112,11 +104,10 @@ extern "C" void HAL_ADC3_MspDeInit(ADC_HandleTypeDef *hadc)
     __HAL_RCC_ADC3_CLK_DISABLE();
     NVIC_DisableIRQ(ADC3_IRQn);
 
-#if 0
-  /*##-2- Disable peripherals and GPIO Clocks ################################*/
-  /* De-initialize the ADC Channel GPIO pin */
-  HAL_GPIO_DeInit(ADCx_CHANNEL_GPIO_PORT, ADCx_CHANNEL_PIN);
-#endif
+    // De-initialize the allocated ADC Channel GPIO pins
+    for(auto c : allocated_channels) {
+        HAL_GPIO_DeInit(adcpinlut[c].port, adcpinlut[c].pin);
+    }
 }
 
 extern "C" void ADC3_IRQHandler(void)
@@ -132,7 +123,19 @@ extern "C" void HAL_ADC3_ConvCpltCallback(ADC_HandleTypeDef *hadc)
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
-// one of ADC_CHANNEL_TEMPSENSOR ADC_CHANNEL_VREFINT ADC_CHANNEL_VBAT
+static bool init_channel(int32_t c)
+{
+    GPIO_InitTypeDef GPIO_InitStruct{0};
+    // lookup pin and port
+    GPIO_InitStruct.Pin = adcpinlut[c].pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(adcpinlut[c].port, &GPIO_InitStruct);
+    allocate_hal_pin(adcpinlut[c].port, adcpinlut[c].pin);
+    return true;
+}
+
+// select an allocated channel
 static bool select_channel(uint32_t channel)
 {
     ADC_ChannelConfTypeDef sConfig{0};
@@ -153,7 +156,7 @@ static bool select_channel(uint32_t channel)
 // suspend task until we get the result
 static uint32_t ADC3_GetValue(void)
 {
-    const TickType_t xBlockTime= pdMS_TO_TICKS(20);
+    const TickType_t xBlockTime = pdMS_TO_TICKS(20);
     uint32_t value;
     size_t xReceivedBytes = xMessageBufferReceive(xMessageBuffer, (void *)&value, sizeof(value), xBlockTime);
     if(xReceivedBytes > 0) {
@@ -162,12 +165,6 @@ static uint32_t ADC3_GetValue(void)
 
     printf("ERROR: ADC3 - Timeout waiting for conversion\n");
     return 0xFFFFFFFF;
-
-    // if (HAL_ADC_PollForConversion(&AdcHandle, 10) == HAL_OK) {
-    //     return HAL_ADC_GetValue(&AdcHandle);
-    // } else {
-    //     return 0xFFFFFFFF;
-    // }
 }
 
 #define VREFANALOG_VOLTAGE  3300
@@ -184,14 +181,14 @@ static float ADC3_read_temp()
 Adc3::Adc3()
 {
     if(HAL_OK != ADC3_Init()) {
-        printf("Adc3: ERROR init failed\n");
+        printf("ERROR: Adc3 init failed\n");
         return;
     }
 
     valid = true;
-    xMessageBuffer = xMessageBufferCreate(sizeof(uint32_t)+sizeof(size_t));
+    xMessageBuffer = xMessageBufferCreate(sizeof(uint32_t) + sizeof(size_t));
     if( xMessageBuffer == NULL ) {
-        printf("Adc3: ERROR could not allocate message buffer");
+        printf("ERROR: Adc3 could not allocate message buffer");
         valid = false;
     }
 }
@@ -203,15 +200,24 @@ Adc3::~Adc3()
     vMessageBufferDelete(xMessageBuffer);
 }
 
-bool Adc3::is_valid(int32_t ch) const
+bool Adc3::allocate(int32_t ch) const
 {
     if(!valid) return false;
-    if((ch < 0 && (ch == -1 || ch == -2)) || (ch >= 0 && ch <= 5)) return true;
+    if(ch >= 0 && ch <= 5) {
+        if(allocated_channels.count(ch) == 0) {
+            allocated_channels.insert(ch);
+            init_channel(ch);
+            return true;
+        } else {
+            printf("ERROR: ADC3 channel %ld is already in use\n", ch);
+        }
+    }
     return false;
 }
 
 float Adc3::read_temp()
 {
+    if(!valid) return std::numeric_limits<float>::infinity();
     float t = ADC3_read_temp();
     return t;
 }
@@ -224,10 +230,12 @@ float Adc3::read_voltage(int32_t channel)
     else if(channel < 0 || channel > 5) return std::numeric_limits<float>::infinity();
     else channel = adc_channel_lut[channel];
 
+    if(!valid) return std::numeric_limits<float>::infinity();
     select_channel(channel);
     HAL_ADC_Start_IT(&AdcHandle);
     uint32_t value = ADC3_GetValue();
     HAL_ADC_Stop_IT(&AdcHandle);
+    if(value == 0xFFFFFFFF) return std::numeric_limits<float>::infinity();
     float v = 3.3F * ((float)value / get_max_value());
     return v;
 }

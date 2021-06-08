@@ -13,7 +13,7 @@ public:
     float read_temp();
     float read_voltage(int32_t channel);
     uint32_t get_errors() const { return not_ready_error; }
-    bool is_valid(int32_t ch) const;
+    bool allocate(int32_t ch) const;
 
     static int get_max_value() { return 65535;} // 16bit samples
 

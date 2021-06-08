@@ -32,6 +32,7 @@
 #include "Conveyor.h"
 #include "Pin.h"
 #include "Network.h"
+#include "StringUtils.h"
 
 extern "C" {
     void Board_LED_Toggle(int);
@@ -81,15 +82,15 @@ bool check_flashme_file(OutputStream& os, bool errors)
         return false;
     }
     // check it has the correct magic number for this build
-    int fs= fseek(fp, -8-32, SEEK_END);
+    int fs = fseek(fp, -8 - 32, SEEK_END);
     if(fs != 0) {
         os.printf("ERROR: could not seek to end of file to check magic number: %d\n", errno);
         fclose(fp);
         return false;
     }
-    long ft= ftell(fp) + 8; // end of file but before md5
+    long ft = ftell(fp) + 8; // end of file but before md5
     uint64_t magicno;
-    size_t n= fread(&magicno, 1, sizeof(magicno), fp);
+    size_t n = fread(&magicno, 1, sizeof(magicno), fp);
     if(n != sizeof(magicno)) {
         os.printf("ERROR: could not read magic number: %d\n", errno);
         fclose(fp);
@@ -105,38 +106,38 @@ bool check_flashme_file(OutputStream& os, bool errors)
 
     // read the md5 at the end of the file
     char md5[33];
-    n= fread(md5, 1, sizeof(md5)-1, fp);
-    if(n != sizeof(md5)-1) {
+    n = fread(md5, 1, sizeof(md5) - 1, fp);
+    if(n != sizeof(md5) - 1) {
         os.printf("ERROR: could not read md5: %d\n", errno);
         fclose(fp);
         return false;
     }
-    md5[32]= '\0';
+    md5[32] = '\0';
 
     // read file except for last 32 bytes and calculate the md5sum
     rewind(fp);
     MD5 md5sum;
     uint8_t buf[1024];
-    size_t cnt= 0;
+    size_t cnt = 0;
     do {
         n = fread(buf, 1, sizeof buf, fp);
         if(n <= 0) break;
         cnt += n;
         if(cnt <= (size_t)ft) {
             md5sum.update(buf, n);
-        }else{
-            n = n - (cnt-ft);
+        } else {
+            n = n - (cnt - ft);
             if(n > 0) md5sum.update(buf, n);
             break;
         }
     } while(!feof(fp));
     fclose(fp);
 
-    std::string calc= md5sum.finalize().hexdigest();
+    std::string calc = md5sum.finalize().hexdigest();
     //printf("cnt: %d, ft: %ld - 1: %s, 2: %s\n", cnt, ft, calc.c_str(), md5);
 
     // check md5sum of the file
-    if(strcmp(calc.c_str(), md5) != 0){
+    if(strcmp(calc.c_str(), md5) != 0) {
         os.printf("ERROR: md5sum does not match\n");
         return false;
     }
@@ -507,7 +508,7 @@ static void usb_comms(void *)
         ulTaskNotifyTake(pdTRUE, waitms);
         if(abort_comms) break;
         if(vcom_connected() == 1) {
-            done= true;
+            done = true;
         }
     }
 
@@ -539,7 +540,7 @@ static void usb_comms(void *)
                 if(n > 0) {
                     if(fast_capture_fnc) {
                         if(!fast_capture_fnc(usb_rx_buf, n)) {
-                            fast_capture_fnc= nullptr;
+                            fast_capture_fnc = nullptr;
                         }
                         continue;
                     }
@@ -594,7 +595,7 @@ void set_abort_comms()
     abort_comms = true;
 
 #ifndef NONETWORK
-    Network *network= static_cast<Network *>(Module::lookup("network"));
+    Network *network = static_cast<Network *>(Module::lookup("network"));
     if(network != nullptr) network->set_abort();
 #endif
 }
@@ -749,7 +750,7 @@ float get_voltage_monitor(const char* name)
 {
     auto p = voltage_monitors.find(name);
     if(p == voltage_monitors.end()) return 0;
-    Adc3 *adc= Adc3::getInstance();
+    Adc3 *adc = Adc3::getInstance();
     return adc->read_voltage(p->second);
 }
 
@@ -795,7 +796,7 @@ static void smoothie_startup(void *)
 #endif
     step_ticker->set_unstep_time(1); // 1us step pulse by default
 
-    bool flash_on_boot= true;
+    bool flash_on_boot = true;
     bool ok = false;
 
     // open the config file
@@ -853,7 +854,7 @@ static void smoothie_startup(void *)
                 } else {
                     printf("INFO: auxilliary play led set to %s\n", aux_play_led->to_string().c_str());
                 }
-                flash_on_boot= cr.get_bool(m, "flash_on_boot", true);
+                flash_on_boot = cr.get_bool(m, "flash_on_boot", true);
             }
         }
 
@@ -927,37 +928,54 @@ static void smoothie_startup(void *)
 
         {
             // configure voltage monitors if any
+            // NOTE all voltage monitors must use ADC3_n where n is 0-5
+            Adc3 *adc = Adc3::getInstance();
             ConfigReader::section_map_t m;
             if(cr.get_section("voltage monitor", m)) {
                 for(auto& s : m) {
                     std::string k = s.first;
                     std::string v = s.second;
-                    int32_t ch= atol(v.c_str());
-                    Adc3 *adc= Adc3::getInstance();
-                    if(!adc->is_valid(ch)) {
-                        printf("WARNING: Failed to setup %s voltage monitor, illegal ADC3 channel: %lu\n", k.c_str(), ch);
+                    if(v.size() != 6 || stringutils::toUpper(v.substr(0, 3)) != "ADC" || v[4] != '_') {
+                        printf("ERROR: illegal ADC3 name: %s\n", v.c_str());
+                        continue;
+                    }
+
+                    if(v[3] != '3') {
+                        printf("ERROR: Illegal voltage ADC only ADC3 supported: %s\n", v.c_str());
+                        continue;
+                    }
+
+                    int32_t ch = strtol(v.substr(5).c_str(), nullptr, 10);
+                    if(!adc->allocate(ch)) {
+                        printf("WARNING: Failed to allocate %s voltage monitor, illegal or inuse ADC3 channel: %lu\n", k.c_str(), ch);
                     } else {
                         voltage_monitors[k] = ch;
                         printf("DEBUG: added voltage monitor: %s, ADC3 channel: %lu\n", k.c_str(), ch);
                     }
                 }
             }
-            // defaults for internal
-            if(voltage_monitors.find("vref") == voltage_monitors.end()) {
-                voltage_monitors["vref"]= -1;
+            // special internal ADC3 channels
+            voltage_monitors["vref"] = -1;
+            voltage_monitors["vbat"] = -2;
+            // setup board defaults if not defined
+#ifdef BOARD_NUCLEO
+            std::map<std::string, int32_t> names { {"vmotor", 1},  {"vfet", 2} };
+#elif defined(BOARD_DEVEBOX)
+            std::map<std::string, int32_t> names { {"vmotor", 2},  {"vfet", 3} };
+#elif defined(BOARD_PRIME)
+            std::map<std::string, int32_t> names { {"vmotor", 0},  {"vfet", 1} };
+#endif
+            for(auto n : names) {
+                if(voltage_monitors.find(n.first) == voltage_monitors.end()) {
+                    int32_t ch= n.second;
+                    if(adc->allocate(ch)) {
+                        voltage_monitors[n.first] = ch;
+                        printf("DEBUG: allocated %s voltage monitor to channel: ADC3_%lu\n", n.first.c_str(), ch);
+                    }else{
+                        printf("WARNING: Failed to allocate %s voltage monitor, channel: %lu\n", n.first.c_str(), ch);
+                    }
+                }
             }
-            if(voltage_monitors.find("vbat") == voltage_monitors.end()) {
-                voltage_monitors["vbat"]= -2;
-            }
-            #ifdef BOARD_PRIME
-            // setup defaults if not defined
-            if(voltage_monitors.find("vmotor") == voltage_monitors.end()) {
-                voltage_monitors["vmotor"]= 0;
-            }
-            if(voltage_monitors.find("vfet") == voltage_monitors.end()) {
-                voltage_monitors["vfet"]= 1;
-            }
-            #endif
         }
 
         // setup ADC
@@ -1019,7 +1037,7 @@ static void smoothie_startup(void *)
         config_error_msg = "There was a fatal error in the config.ini this must be fixed to continue\nOnly some shell commands are allowed and sdcard access\n";
         printf(config_error_msg.c_str());
         // Module::broadcast_halt(true);
-     }
+    }
 
     // create queue for incoming buffers from the I/O ports
     if(!create_message_queue()) {
@@ -1082,7 +1100,7 @@ static void smoothie_startup(void *)
             printf("ERROR: Problem with the flashme.bin file, no update done\n");
             config_error_msg = "ERROR: There was a problem flashing the flashme.bin file, it seems to be invalid\n";
 
-        }else{
+        } else {
             printf("INFO: No valid flashme.bin file found\n");
         }
     } else {
@@ -1254,10 +1272,10 @@ extern "C" void assert_failed(uint8_t* file, uint32_t line)
 #ifdef configASSERT
 void vAssertCalled( const char *pcFile, uint32_t ulLine )
 {
-volatile uint32_t ulBlockVariable = 0UL;
-volatile const char *pcAssertedFileName;
-volatile int iAssertedErrno;
-volatile uint32_t ulAssertedLine;
+    volatile uint32_t ulBlockVariable = 0UL;
+    volatile const char *pcAssertedFileName;
+    volatile int iAssertedErrno;
+    volatile uint32_t ulAssertedLine;
 
     ulAssertedLine = ulLine;
     iAssertedErrno = errno;
@@ -1269,16 +1287,12 @@ volatile uint32_t ulAssertedLine;
     ( void ) ulAssertedLine;
     ( void ) iAssertedErrno;
 
-    if( pcAssertedFileName == 0 )
-    {
+    if( pcAssertedFileName == 0 ) {
         pcAssertedFileName = strrchr( pcFile, '\\' );
     }
-    if( pcAssertedFileName != NULL )
-    {
+    if( pcAssertedFileName != NULL ) {
         pcAssertedFileName++;
-    }
-    else
-    {
+    } else {
         pcAssertedFileName = pcFile;
     }
     printf("ERROR: vAssertCalled( %s, %ld\n", pcFile, ulLine);
@@ -1290,8 +1304,7 @@ volatile uint32_t ulAssertedLine;
     taskDISABLE_INTERRUPTS();
     {
         __asm volatile ("bkpt #0");
-        while( ulBlockVariable == 0UL )
-        {
+        while( ulBlockVariable == 0UL ) {
             __asm volatile( "NOP" );
         }
     }
