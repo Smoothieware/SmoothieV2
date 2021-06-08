@@ -742,16 +742,21 @@ extern "C" bool setup_sdmmc();
 static FATFS fatfs; /* File system object */
 #endif
 
-// voltage monitors, name -> channel
-// TODO will need scale as well
-static std::map<std::string, int32_t> voltage_monitors;
+// voltage monitors, name -> channel,scale
+static std::map<std::string, std::tuple<int32_t,float>> voltage_monitors;
 
 float get_voltage_monitor(const char* name)
 {
     auto p = voltage_monitors.find(name);
     if(p == voltage_monitors.end()) return 0;
     Adc3 *adc = Adc3::getInstance();
-    return adc->read_voltage(p->second);
+    float v= adc->read_voltage(std::get<0>(p->second));
+    if(isinf(v)) {
+        return v;
+    }else{
+        // scale it appropriately
+        return v * std::get<1>(p->second);
+    }
 }
 
 int get_voltage_monitor_names(const char *names[])
@@ -949,28 +954,29 @@ static void smoothie_startup(void *)
                     if(!adc->allocate(ch)) {
                         printf("WARNING: Failed to allocate %s voltage monitor, illegal or inuse ADC3 channel: %lu\n", k.c_str(), ch);
                     } else {
-                        voltage_monitors[k] = ch;
-                        printf("DEBUG: added voltage monitor: %s, ADC3 channel: %lu\n", k.c_str(), ch);
+                        voltage_monitors[k] = std::make_tuple(ch, 10.0F);
+                        printf("DEBUG: added voltage monitor: %s, ADC3 channel: %lu, sclae: %f\n", k.c_str(), ch, 10.0F);
                     }
                 }
             }
             // special internal ADC3 channels
-            voltage_monitors["vref"] = -1;
-            voltage_monitors["vbat"] = -2;
+            voltage_monitors["vref"] = std::make_tuple(-1, 1.0F);
+            voltage_monitors["vbat"] = std::make_tuple(-2, 1.0F);
             // setup board defaults if not defined
 #ifdef BOARD_NUCLEO
-            std::map<std::string, int32_t> names { {"vmotor", 1},  {"vfet", 2} };
+            std::map<std::string, std::tuple<int32_t,float>> names { {"vmotor", {1, 10.0F}},  {"vfet", {2, 10.0F}} };
 #elif defined(BOARD_DEVEBOX)
-            std::map<std::string, int32_t> names { {"vmotor", 0},  {"vfet", 3} };
+            std::map<std::string, std::tuple<int32_t,float>> names { {"vmotor", {0, 10.0F}},  {"vfet", {3, 10.0F}} };
 #elif defined(BOARD_PRIME)
-            std::map<std::string, int32_t> names { {"vmotor", 0},  {"vfet", 1} };
+            std::map<std::string, std::tuple<int32_t,float>> names { {"vmotor", {0, 10.0F}},  {"vfet", {1, 10.0F}} };
 #endif
             for(auto n : names) {
                 if(voltage_monitors.find(n.first) == voltage_monitors.end()) {
-                    int32_t ch= n.second;
+                    int32_t ch= std::get<0>(n.second);
+                    float scale= std::get<1>(n.second);
                     if(adc->allocate(ch)) {
-                        voltage_monitors[n.first] = ch;
-                        printf("DEBUG: allocated %s voltage monitor to channel: ADC3_%lu\n", n.first.c_str(), ch);
+                        voltage_monitors[n.first] = std::make_tuple(ch, scale);
+                        printf("DEBUG: allocated %s voltage monitor to channel: ADC3_%lu, scale: %f\n", n.first.c_str(), ch, scale);
                     }else{
                         printf("WARNING: Failed to allocate %s voltage monitor, channel: %lu\n", n.first.c_str(), ch);
                     }
