@@ -127,6 +127,7 @@ REGISTER_TEST(ADCTest, adc3_read_voltage)
     TEST_ASSERT_TRUE(adc->is_valid());
 
     float a= adc->read_voltage(0);
+    printf("voltage= %f\n", a);
     TEST_ASSERT_FLOAT_IS_INF(a);
 
     TEST_ASSERT_TRUE(adc->allocate(0));

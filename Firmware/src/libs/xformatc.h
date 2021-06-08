@@ -2,9 +2,9 @@
  * @file        xformatc.h
  *
  * @brief       Printf C declaration.
- * 
+ *
  * @author      Mario Viara
- * 
+ *
  * @copyright   Copyright Mario Viara 2014  - License Open Source (LGPL)
  * This is a free software and is opened for education, research and commercial
  * developments under license policy of following terms:
@@ -104,7 +104,7 @@ extern "C" {
  *
 */
 #ifndef XCFG_FORMAT_FLOAT_SPECIAL
-#define XCFG_FORMAT_FLOAT_SPECIAL	0
+#define XCFG_FORMAT_FLOAT_SPECIAL	1
 #endif
 
 
