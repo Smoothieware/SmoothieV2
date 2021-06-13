@@ -95,6 +95,22 @@ void Pwm::set(float v)
     // _htim->Instance->CCR[1234] = pulse;
 }
 
+// this changes the frequency of an existing, running PWM timer
+// Take care in using this as it changes the frequency of all running channels for this timer
+void Pwm::set_frequency(float freq)
+{
+    if(!valid) return;
+
+    uint32_t clkhz = freq * 1000;
+    uint32_t uhPrescalerValue = (uint32_t)(SystemCoreClock / (2 * clkhz)) - 1;
+    uint32_t period_value = (uint32_t)((clkhz / freq) - 1); // Period Value
+
+    __HAL_TIM_SET_PRESCALER((TIM_HandleTypeDef*)instances[timr]._htim, uhPrescalerValue);
+    __HAL_TIM_SET_AUTORELOAD((TIM_HandleTypeDef*)instances[timr]._htim, period_value);
+    instances[timr].frequency= freq;
+    instances[timr].period= period_value;
+}
+
 // define TIM1 PWM channels
 #define PWM1                           TIM1
 #define PWM1_CLK_ENABLE()              __HAL_RCC_TIM1_CLK_ENABLE()

@@ -956,13 +956,13 @@ static void smoothie_startup(void *)
             voltage_monitors["vref"] = std::make_tuple(-1, 1.0F);
             voltage_monitors["vbat"] = std::make_tuple(-2, 1.0F);
             // setup board defaults if not defined
-#ifdef BOARD_NUCLEO
+            #ifdef BOARD_NUCLEO
             std::map<std::string, std::tuple<int32_t,float>> names { {"vmotor", {1, 10.0F}},  {"vfet", {2, 10.0F}} };
-#elif defined(BOARD_DEVEBOX)
+            #elif defined(BOARD_DEVEBOX)
             std::map<std::string, std::tuple<int32_t,float>> names { {"vmotor", {0, 10.0F}},  {"vfet", {3, 10.0F}} };
-#elif defined(BOARD_PRIME)
+            #elif defined(BOARD_PRIME)
             std::map<std::string, std::tuple<int32_t,float>> names { {"vmotor", {0, 10.0F}},  {"vfet", {1, 10.0F}} };
-#endif
+            #endif
             for(auto n : names) {
                 if(voltage_monitors.find(n.first) == voltage_monitors.end()) {
                     int32_t ch= std::get<0>(n.second);
