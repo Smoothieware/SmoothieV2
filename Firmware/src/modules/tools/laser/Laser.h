@@ -48,5 +48,6 @@ class Laser : public Module
             bool ttl_used:1;		// stores whether we have a TTL output
             bool ttl_inverting:1;   // stores whether the TTL output should be inverted
             bool manual_fire:1;     // set when manually firing
+            bool disable_auto_power:1; // true to disable auto power
         };
 };

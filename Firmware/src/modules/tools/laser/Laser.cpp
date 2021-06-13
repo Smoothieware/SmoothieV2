@@ -45,8 +45,9 @@ bool Laser::create(ConfigReader& cr)
 Laser::Laser() : Module("laser")
 {
     laser_on = false;
-    scale= 1;
-    manual_fire= false;
+    scale = 1;
+    manual_fire = false;
+    disable_auto_power = false;
 }
 
 bool Laser::configure(ConfigReader& cr)
@@ -59,24 +60,24 @@ bool Laser::configure(ConfigReader& cr)
         return false;
     }
 
-    pwm_pin= new Pwm(cr.get_string(m, pwm_pin_key, "nc"));
+    pwm_pin = new Pwm(cr.get_string(m, pwm_pin_key, "nc"));
 
     if(!pwm_pin->is_valid()) {
         printf("Error: laser-config: Specified pin is not a valid PWM pin.\n");
         delete pwm_pin;
-        pwm_pin= nullptr;
+        pwm_pin = nullptr;
         return false;
     }
 
     this->pwm_inverting = cr.get_bool(m, inverted_key, false);
 
     // TTL settings
-    this->ttl_pin = new Pin(cr.get_string(m, ttl_pin_key, "nc"), Pin::AS_OUTPUT);
+    ttl_pin = new Pin(cr.get_string(m, ttl_pin_key, "nc"), Pin::AS_OUTPUT);
     if(ttl_pin->connected()) {
-        this->ttl_inverting = ttl_pin->is_inverting();
+        ttl_inverting = ttl_pin->is_inverting();
         ttl_pin->set(0);
     } else {
-        this->ttl_used = false;
+        ttl_used = false;
         delete ttl_pin;
         ttl_pin = NULL;
     }
@@ -104,8 +105,8 @@ bool Laser::configure(ConfigReader& cr)
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 221, std::bind(&Laser::handle_M221, this, _1, _2));
 
     // no point in updating the power more than the PWM frequency, but no more than 100Hz
-    uint32_t pwm_freq= pwm_pin->get_frequency();
-    uint32_t f= std::min(100UL, pwm_freq);
+    uint32_t pwm_freq = pwm_pin->get_frequency();
+    uint32_t f = std::min(100UL, pwm_freq);
     if(f >= FastTicker::get_min_frequency()) {
         printf("configure-temperature: WARNING update frequency is fast enough that ramfunc needs to be used\n");
 
@@ -143,18 +144,18 @@ bool Laser::handle_fire_cmd( std::string& params, OutputStream& os )
 
     float p;
     if(power == "off" || power == "0") {
-        p= 0;
+        p = 0;
         os.printf("turning laser off and returning to auto mode\n");
 
-    }else{
-        p= strtof(power.c_str(), NULL);
-        if(p < 0) p= 0;
-        else if(p > 100) p= 100;
+    } else {
+        p = strtof(power.c_str(), NULL);
+        if(p < 0) p = 0;
+        else if(p > 100) p = 100;
         os.printf("WARNING: Firing laser at %1.2f%% power, entering manual mode use fire off to return to auto mode\n", p);
     }
 
-    p= p/100.0F;
-    manual_fire= set_laser_power(p);
+    p = p / 100.0F;
+    manual_fire = set_laser_power(p);
 
     return true;
 }
@@ -163,7 +164,7 @@ bool Laser::handle_fire_cmd( std::string& params, OutputStream& os )
 bool Laser::request(const char *key, void *value)
 {
     if(strcmp(key, "get_current_power") == 0) {
-        *((float*)value)= get_current_power();
+        *((float*)value) = get_current_power();
         return true;
     }
 
@@ -172,11 +173,23 @@ bool Laser::request(const char *key, void *value)
 
 bool Laser::handle_M221(GCode& gcode, OutputStream& os)
 {
-    if(gcode.has_arg('S')) {
-        this->scale= gcode.get_arg('S') / 100.0F;
+    if(gcode.has_no_args()) {
+        os.printf("Laser power: %6.2f %%, disable auto power: %d, PWM frequency: %f Hz\n", this->scale * 100.0F, disable_auto_power, pwm_pin->get_frequency());
 
     } else {
-        os.printf("Laser power scale at %6.2f %%\n", this->scale * 100.0F);
+        if(gcode.has_arg('S')) {
+            this->scale = gcode.get_arg('S') / 100.0F;
+        }
+
+        if(gcode.has_arg('P')) {
+            disable_auto_power = gcode.get_int_arg('P') > 0;
+        }
+
+        if(gcode.has_arg('R')) {
+            float frequency = gcode.get_arg('R');
+            pwm_pin->set_frequency(1.0F / frequency);
+        }
+
     }
 
     return true;
@@ -188,19 +201,19 @@ bool Laser::handle_M221(GCode& gcode, OutputStream& os)
 _ramfunc_ float Laser::current_speed_ratio(const Block *block) const
 {
     // find the primary moving actuator (the one with the most steps)
-    size_t pm= 0;
-    uint32_t max_steps= 0;
+    size_t pm = 0;
+    uint32_t max_steps = 0;
     for (size_t i = 0; i < Robot::getInstance()->get_number_registered_motors(); i++) {
         // find the motor with the most steps
         if(block->steps[i] > max_steps) {
-            max_steps= block->steps[i];
-            pm= i;
+            max_steps = block->steps[i];
+            pm = i;
         }
     }
 
     // figure out the ratio of its speed, from 0 to 1 based on where it is on the trapezoid,
     // this is based on the fraction it is of the requested rate (nominal rate)
-    float ratio= block->get_trapezoid_rate(pm) / block->nominal_rate;
+    float ratio = block->get_trapezoid_rate(pm) / block->nominal_rate;
 
     return ratio;
 }
@@ -213,8 +226,11 @@ _ramfunc_ bool Laser::get_laser_power(float& power) const
     // Note to avoid a race condition where the block is being cleared we check the is_ready flag which gets cleared first,
     // as this is an interrupt if that flag is not clear then it cannot be cleared while this is running and the block will still be valid (albeit it may have finished)
     if(block != nullptr && block->is_ready && block->is_g123) {
-        float requested_power = ((float)block->s_value/(1<<11)) / this->laser_maximum_s_value; // s_value is 1.11 Fixed point
-        float ratio = current_speed_ratio(block);
+        float requested_power = ((float)block->s_value / (1 << 11)) / this->laser_maximum_s_value; // s_value is 1.11 Fixed point
+        float ratio = 1.0F;
+        if(!disable_auto_power) { // true to disable auto power
+            ratio = current_speed_ratio(block);
+        }
         power = requested_power * ratio * scale;
 
         return true;
@@ -244,15 +260,15 @@ _ramfunc_ void Laser::set_proportional_power(void)
 _ramfunc_ bool Laser::set_laser_power(float power)
 {
     // Ensure power is >=0 and <= 1
-    if(power < 0) power= 0;
-    else if(power > 1) power= 1;
+    if(power < 0) power = 0;
+    else if(power > 1) power = 1;
 
     if(power > 0.00001F) {
         this->pwm_pin->set(this->pwm_inverting ? 1 - power : power);
         if(!laser_on && this->ttl_used) this->ttl_pin->set(true);
         laser_on = true;
 
-    }else{
+    } else {
         this->pwm_pin->set(this->pwm_inverting ? 1 : 0);
         if (this->ttl_used) this->ttl_pin->set(false);
         laser_on = false;
@@ -265,13 +281,13 @@ void Laser::on_halt(bool flg)
 {
     if(flg) {
         set_laser_power(0);
-        manual_fire= false;
+        manual_fire = false;
     }
 }
 
 float Laser::get_current_power() const
 {
     if(pwm_pin == nullptr) return 0;
-	float p= pwm_pin->get();
+    float p = pwm_pin->get();
     return (this->pwm_inverting ? 1 - p : p) * 100;
 }
