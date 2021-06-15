@@ -372,7 +372,12 @@ end
 task :version do
   v1= `git symbolic-ref HEAD`
   v2= `git log --pretty=format:%h -1`
-  $version = ' -D__GITVERSIONSTRING__=\"' + "#{v1[11..-1].chomp}-#{v2}".chomp + '\"'
+  if v1.nil? or v1.empty?
+    v= "???"
+  else
+    v= v1[11..-1].chomp
+  end
+  $version = ' -D__GITVERSIONSTRING__=\"' + "#{v}-#{v2}".chomp + '\"'
 end
 
 # make sure the flashloader has been built
