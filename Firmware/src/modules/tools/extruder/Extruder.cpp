@@ -113,13 +113,13 @@ bool Extruder::configure(ConfigReader& cr, ConfigReader::section_map_t& m)
     }
 
     // Stepper motor object for the extruder, get from robot it will be actuator index 3+tool_id
-    if(Robot::getInstance()->actuators.size() <= (size_t)(A_AXIS+tool_id)) {
+    if(Robot::getInstance()->actuators.size() <= (size_t)(A_AXIS + tool_id)) {
         printf("ERROR: Extruder motor has not been defined in Robot (delta and/or epsilon)\n");
         return false;
     }
 
     // we keep a copy for convenience
-    stepper_motor = Robot::getInstance()->actuators[A_AXIS+tool_id];
+    stepper_motor = Robot::getInstance()->actuators[A_AXIS + tool_id];
     motor_id = stepper_motor->get_motor_id();
     if(motor_id < A_AXIS || motor_id == 255) {
         // error registering, maybe too many
@@ -373,7 +373,9 @@ bool Extruder::handle_mcode(GCode& gcode, OutputStream& os)
         return true;
 
     } else if (gcode.get_code() == 221 && this->selected) { // M221 S100 change flow rate by percentage
-        if(gcode.has_arg('S')) {
+        if(gcode.has_no_args()) {
+            os.printf("Flow rate at %6.2f %%\n", this->extruder_multiplier * 100.0F);
+        } else if(gcode.has_arg('S')) {
             float last_scale = this->extruder_multiplier;
             this->extruder_multiplier = gcode.get_arg('S') / 100.0F;
             // the trouble here is that the last milestone will be for the previous multiplier so a change can cause a big blob
@@ -382,9 +384,6 @@ bool Extruder::handle_mcode(GCode& gcode, OutputStream& os)
             float delta = this->extruder_multiplier / last_scale;
             float nm = this->stepper_motor->get_last_milestone() * delta;
             this->stepper_motor->change_last_milestone(nm);
-
-        } else {
-            os.printf("Flow rate at %6.2f %%\n", this->extruder_multiplier * 100.0F);
         }
         return true;
 
@@ -409,11 +408,11 @@ bool Extruder::handle_gcode(GCode & gcode, OutputStream & os)
 {
     if(gcode.get_code() == 10 && gcode.has_arg('L') && gcode.get_int_arg('L') == 1 && gcode.has_arg('P')) {
         // Handle G10 L1 Pn Xnnn Ynnn Znnn (NOTE L is 1 based, tool_id is zero based)
-        if(gcode.get_int_arg('P')-1 == this->tool_id) {
+        if(gcode.get_int_arg('P') - 1 == this->tool_id) {
             // Set the tool offset for this tool
-            if(gcode.has_arg('X')) tool_offset[X_AXIS]= gcode.get_arg('X');
-            if(gcode.has_arg('Y')) tool_offset[Y_AXIS]= gcode.get_arg('Y');
-            if(gcode.has_arg('Z')) tool_offset[Z_AXIS]= gcode.get_arg('Z');
+            if(gcode.has_arg('X')) tool_offset[X_AXIS] = gcode.get_arg('X');
+            if(gcode.has_arg('Y')) tool_offset[Y_AXIS] = gcode.get_arg('Y');
+            if(gcode.has_arg('Z')) tool_offset[Z_AXIS] = gcode.get_arg('Z');
             if(this->selected) {
                 // send updated tool offset to robot as we are active
                 Robot::getInstance()->setToolOffset(this->tool_offset);

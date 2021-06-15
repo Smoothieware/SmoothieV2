@@ -97,7 +97,7 @@ void Pwm::set(float v)
 
 // this changes the frequency of an existing, running PWM timer
 // Take care in using this as it changes the frequency of all running channels for this timer
-void Pwm:: set_frequency(float freq)
+void Pwm:: set_frequency(uint32_t freq)
 {
     if(!valid) return;
 
@@ -159,7 +159,7 @@ bool Pwm::setup(int timr, uint32_t freq)
 {
     if(timr >= 2) return false;
     if(instances[timr]._htim != nullptr) {
-        printf("ERROR: PWM instance %d already setup\n", timr);
+        printf("ERROR: PWM%d instance already setup\n", timr+1);
         return false;
     }
 
@@ -173,7 +173,7 @@ bool Pwm::setup(int timr, uint32_t freq)
     uint32_t clkhz = freq * 1000;
     uint32_t uhPrescalerValue = (uint32_t)(SystemCoreClock / (2 * clkhz)) - 1;
     uint32_t period_value = (uint32_t)((clkhz / freq) - 1); // Period Value
-    printf("DEBUG: PWM%d setup frequency= %lu Hz, prsc= %lu, period= %lu\n", timr, freq, uhPrescalerValue, period_value);
+    printf("DEBUG: PWM%d setup frequency= %lu Hz, prsc= %lu, period= %lu\n", timr+1, freq, uhPrescalerValue, period_value);
 
     TIM_HandleTypeDef TimHandle{0};
 
@@ -215,15 +215,15 @@ bool Pwm::post_config_setup()
         if(instances[t]._htim == nullptr) continue;
         TIM_HandleTypeDef *htim= (TIM_HandleTypeDef*)instances[t]._htim;
 
-        printf("DEBUG: PWM setting up PWM%d\n", t);
+        printf("DEBUG: PWM setting up PWM%d\n", t+1);
         if (HAL_TIM_PWM_Init(htim) != HAL_OK) {
-            printf("ERROR: PWM%d Init failed\n", t);
+            printf("ERROR: PWM%d Init failed\n", t+1);
             return false;
         }
 
         for (int ch = 0; ch < 4; ++ch) {
             if(!allocated[t][ch]) continue;
-            printf("DEBUG: PWM setting up PWM%d, channel: %d\n", t, ch);
+            printf("DEBUG: PWM setting up PWM%d_%d\n", t+1, ch+1);
             uint32_t tc;
             switch(ch) {
                 case 0: tc= TIM_CHANNEL_1; break;
@@ -234,13 +234,13 @@ bool Pwm::post_config_setup()
 
             /* Set the pulse value for channel ch */
             if (HAL_TIM_PWM_ConfigChannel(htim, &sConfig, tc) != HAL_OK) {
-                printf("ERROR: PWM%d TIM_CHANNEL %d config failed\n", t, ch);
+                printf("ERROR: PWM%d_%d config failed\n", t+1, ch+1);
                 return false;
             }
 
             /*##-3- Start PWM signals generation #######################################*/
             if (HAL_TIM_PWM_Start(htim, tc) != HAL_OK) {
-                printf("ERROR: PWM%d TIM_CHANNEL %d start failed\n", t, ch);
+                printf("ERROR: PWM%d_%d start failed\n", t+1, ch+1);
                 return false;
             }
         }

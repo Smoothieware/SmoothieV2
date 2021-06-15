@@ -174,7 +174,7 @@ bool Laser::request(const char *key, void *value)
 bool Laser::handle_M221(GCode& gcode, OutputStream& os)
 {
     if(gcode.has_no_args()) {
-        os.printf("Laser power: %6.2f %%, disable auto power: %d, PWM frequency: %f Hz\n", this->scale * 100.0F, disable_auto_power, pwm_pin->get_frequency());
+        os.printf("Laser power: %6.2f %%, disable auto power: %d, PWM frequency: %lu Hz\n", this->scale * 100.0F, disable_auto_power, pwm_pin->get_frequency());
 
     } else {
         if(gcode.has_arg('S')) {
@@ -186,8 +186,8 @@ bool Laser::handle_M221(GCode& gcode, OutputStream& os)
         }
 
         if(gcode.has_arg('R')) {
-            float frequency = gcode.get_arg('R');
-            pwm_pin->set_frequency(1.0F / frequency);
+            uint32_t freq= gcode.get_int_arg('R');
+            pwm_pin->set_frequency(freq);
         }
 
     }

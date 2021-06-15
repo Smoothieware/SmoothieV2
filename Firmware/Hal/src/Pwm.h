@@ -14,7 +14,7 @@ public:
 	void set(float v);
 	float get() const { return value; }
 	uint32_t get_frequency() const { return instances[timr].frequency; }
-    void set_frequency(float freq);
+    void set_frequency(uint32_t freq);
 
 	static bool post_config_setup();
 	static bool setup(int timr, uint32_t frequency);
