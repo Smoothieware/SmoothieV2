@@ -41,7 +41,7 @@
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-static TIM_HandleTypeDef        TimHandle;
+static TIM_HandleTypeDef        Tim6Handle;
 /* Private function prototypes -----------------------------------------------*/
 void TIM6_DAC_IRQHandler(void);
 /* Private functions ---------------------------------------------------------*/
@@ -93,7 +93,7 @@ HAL_StatusTypeDef HAL_InitTick (uint32_t TickPriority)
     uwPrescalerValue = (uint32_t) ((uwTimclock / 1000000U) - 1U);
 
     /* Initialize TIM6 */
-    TimHandle.Instance = TIM6;
+    Tim6Handle.Instance = TIM6;
 
     /* Initialize TIMx peripheral as follow:
     + Period = [(TIM6CLK/1000) - 1]. to have a (1/1000) s time base.
@@ -101,13 +101,13 @@ HAL_StatusTypeDef HAL_InitTick (uint32_t TickPriority)
     + ClockDivision = 0
     + Counter direction = Up
     */
-    TimHandle.Init.Period = (1000000U / 1000U) - 1U;
-    TimHandle.Init.Prescaler = uwPrescalerValue;
-    TimHandle.Init.ClockDivision = 0;
-    TimHandle.Init.CounterMode = TIM_COUNTERMODE_UP;
-    if(HAL_TIM_Base_Init(&TimHandle) == HAL_OK) {
+    Tim6Handle.Init.Period = (1000000U / 1000U) - 1U;
+    Tim6Handle.Init.Prescaler = uwPrescalerValue;
+    Tim6Handle.Init.ClockDivision = 0;
+    Tim6Handle.Init.CounterMode = TIM_COUNTERMODE_UP;
+    if(HAL_TIM_Base_Init(&Tim6Handle) == HAL_OK) {
         /* Start the TIM time Base generation in interrupt mode */
-        return HAL_TIM_Base_Start_IT(&TimHandle);
+        return HAL_TIM_Base_Start_IT(&Tim6Handle);
     }
 
     /* Return function status */
@@ -123,7 +123,7 @@ HAL_StatusTypeDef HAL_InitTick (uint32_t TickPriority)
 void HAL_SuspendTick(void)
 {
     /* Disable TIM6 update Interrupt */
-    __HAL_TIM_DISABLE_IT(&TimHandle, TIM_IT_UPDATE);
+    __HAL_TIM_DISABLE_IT(&Tim6Handle, TIM_IT_UPDATE);
 }
 
 /**
@@ -135,7 +135,7 @@ void HAL_SuspendTick(void)
 void HAL_ResumeTick(void)
 {
     /* Enable TIM6 Update interrupt */
-    __HAL_TIM_ENABLE_IT(&TimHandle, TIM_IT_UPDATE);
+    __HAL_TIM_ENABLE_IT(&Tim6Handle, TIM_IT_UPDATE);
 }
 
 /**
@@ -159,16 +159,16 @@ void TIM6_PeriodElapsedCallback()
   */
 void TIM6_DAC_IRQHandler(void)
 {
-    HAL_TIM_IRQHandler(&TimHandle);
+    HAL_TIM_IRQHandler(&Tim6Handle);
 }
 
 void TIM6_Deinit()
 {
 	HAL_SuspendTick();
-	HAL_TIM_Base_Stop_IT(&TimHandle);
-    HAL_TIM_Base_DeInit(&TimHandle);
+	HAL_TIM_Base_Stop_IT(&Tim6Handle);
+    HAL_TIM_Base_DeInit(&Tim6Handle);
     __HAL_RCC_TIM6_CLK_DISABLE();
-    __HAL_TIM_CLEAR_IT(&TimHandle, TIM_IT_UPDATE);
+    __HAL_TIM_CLEAR_IT(&Tim6Handle, TIM_IT_UPDATE);
     NVIC_DisableIRQ(TIM6_DAC_IRQn);
 }
 

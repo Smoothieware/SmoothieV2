@@ -7,6 +7,7 @@ Currently runs on the NUCLEO-H745ZI-Q board and Devebox 743 board
 
 Currently uses the following toolchain..
     gcc version 9.2.1 20191025 (release) [ARM/arm-9-branch revision 277599]
+(NOTE gcc version 10 causes Hardfaults at the moment)
 
 To get the tool chain you should do the following on Ubuntu based Linuxes...
 
