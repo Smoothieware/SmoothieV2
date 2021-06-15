@@ -28,8 +28,8 @@
 #define USBD_PID                      0x6015
 #define USBD_LANGID_STRING            0x409
 #define USBD_MANUFACTURER_STRING      "Smoothieware"
-#define USBD_PRODUCT_HS_STRING        "Smoothie Virtual ComPort in HS Mode"
-#define USBD_PRODUCT_FS_STRING        "Smoothie Virtual ComPort in FS Mode"
+#define USBD_PRODUCT_HS_STRING        "Smoothie Com"
+#define USBD_PRODUCT_FS_STRING        "Smoothie Com"
 #define USBD_CONFIGURATION_HS_STRING  "VCP Config"
 #define USBD_INTERFACE_HS_STRING      "VCP Interface"
 #define USBD_CONFIGURATION_FS_STRING  "VCP Config"
