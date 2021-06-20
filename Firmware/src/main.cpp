@@ -940,7 +940,7 @@ static void smoothie_startup(void *)
                 for(auto& s : m) {
                     std::string k = s.first;
                     std::string v = s.second;
-                    float scale= 10.0F;
+                    float scale= 11.0F;
                     int32_t ch= adc->from_string(v.c_str(), scale);
                     if(ch < 0) continue;
 
@@ -957,11 +957,11 @@ static void smoothie_startup(void *)
             voltage_monitors["vbat"] = std::make_tuple(-2, 1.0F);
             // setup board defaults if not defined
             #ifdef BOARD_NUCLEO
-            std::map<std::string, std::tuple<int32_t,float>> names { {"vmotor", {1, 10.0F}},  {"vfet", {2, 10.0F}} };
+            std::map<std::string, std::tuple<int32_t,float>> names { {"vmotor", {1, 11.0F}},  {"vfet", {2, 11.0F}} };
             #elif defined(BOARD_DEVEBOX)
-            std::map<std::string, std::tuple<int32_t,float>> names { {"vmotor", {0, 10.0F}},  {"vfet", {3, 10.0F}} };
+            std::map<std::string, std::tuple<int32_t,float>> names { {"vmotor", {0, 11.0F}},  {"vfet", {3, 11.0F}} };
             #elif defined(BOARD_PRIME)
-            std::map<std::string, std::tuple<int32_t,float>> names { {"vmotor", {0, 10.0F}},  {"vfet", {1, 10.0F}} };
+            std::map<std::string, std::tuple<int32_t,float>> names { {"vmotor", {0, 11.0F}},  {"vfet", {1, 11.0F}} };
             #endif
             for(auto n : names) {
                 if(voltage_monitors.find(n.first) == voltage_monitors.end()) {

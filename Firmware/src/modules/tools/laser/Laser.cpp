@@ -108,16 +108,16 @@ bool Laser::configure(ConfigReader& cr)
     uint32_t pwm_freq = pwm_pin->get_frequency();
     uint32_t f = std::min(100UL, pwm_freq);
     if(f >= FastTicker::get_min_frequency()) {
-        printf("configure-temperature: WARNING update frequency is fast enough that ramfunc needs to be used\n");
+        printf("configure-laser: WARNING update frequency is fast enough that ramfunc needs to be used\n");
 
         if(FastTicker::getInstance()->attach(f, std::bind(&Laser::set_proportional_power, this)) < 0) {
-            printf("configure-temperature: ERROR Fast Ticker was not set (Too slow?)\n");
+            printf("configure-laser: ERROR Fast Ticker was not set (Too slow?)\n");
             return false;
         }
 
     } else {
         if(SlowTicker::getInstance()->attach(f, std::bind(&Laser::set_proportional_power, this)) < 0) {
-            printf("configure-temperature: ERROR Slow Ticker was not set (Too fast?)\n");
+            printf("configure-laser: ERROR Slow Ticker was not set (Too fast?)\n");
             return false;
         }
     }
