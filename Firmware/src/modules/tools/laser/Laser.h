@@ -42,6 +42,9 @@ class Laser : public Module
         float laser_minimum_power; // value used to tickle the laser on moves.  Also minimum value for auto-scaling
         float laser_maximum_s_value; // Value of S code that will represent max power
         float scale;
+        int32_t fire_duration; // manual fire command duration
+        int32_t ms_per_tick; // ms between calls to set_proportional_power
+
         struct {
             bool laser_on:1;      // set if the laser is on
             bool pwm_inverting:1; // stores whether the PWM period should be inverted

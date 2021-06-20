@@ -48,6 +48,7 @@ Laser::Laser() : Module("laser")
     scale = 1;
     manual_fire = false;
     disable_auto_power = false;
+    fire_duration = 0;
 }
 
 bool Laser::configure(ConfigReader& cr)
@@ -104,12 +105,10 @@ bool Laser::configure(ConfigReader& cr)
     THEDISPATCHER->add_handler( "fire", std::bind( &Laser::handle_fire_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 221, std::bind(&Laser::handle_M221, this, _1, _2));
 
-    // no point in updating the power more than the PWM frequency, but no more than 100Hz
+    // no point in updating the power more than the PWM frequency, but no more than 1KHz
     uint32_t pwm_freq = pwm_pin->get_frequency();
-    uint32_t f = std::min(100UL, pwm_freq);
+    uint32_t f = std::min(1000UL, pwm_freq);
     if(f >= FastTicker::get_min_frequency()) {
-        printf("configure-laser: WARNING update frequency is fast enough that ramfunc needs to be used\n");
-
         if(FastTicker::getInstance()->attach(f, std::bind(&Laser::set_proportional_power, this)) < 0) {
             printf("configure-laser: ERROR Fast Ticker was not set (Too slow?)\n");
             return false;
@@ -121,6 +120,8 @@ bool Laser::configure(ConfigReader& cr)
             return false;
         }
     }
+
+    ms_per_tick = 1000 / f;
 
     return true;
 }
@@ -136,22 +137,47 @@ bool Laser::handle_fire_cmd( std::string& params, OutputStream& os )
         return true; // if in halted state ignore any commands
     }
 
-    std::string power = stringutils::shift_parameter( params );
+    std::string power = stringutils::shift_parameter(params);
     if(power.empty()) {
-        os.printf("Usage: fire power%%|off\n");
+        os.printf("Usage: fire power%% [durationms]|off|status\n");
         return true;
     }
 
     float p;
+    fire_duration = 0; // By default unlimited
+    if(power == "status") {
+        os.printf("laser manual state: %s\n", manual_fire ? "on" : "off");
+        return true;
+    }
+
     if(power == "off" || power == "0") {
         p = 0;
         os.printf("turning laser off and returning to auto mode\n");
-
     } else {
         p = strtof(power.c_str(), NULL);
-        if(p < 0) p = 0;
-        else if(p > 100) p = 100;
-        os.printf("WARNING: Firing laser at %1.2f%% power, entering manual mode use fire off to return to auto mode\n", p);
+        if(p <= 0) {
+            os.printf("Usage: fire power%% [durationms]|off|status\n");
+            return true;
+        }
+
+        if(p > 100) p = 100;
+
+        std::string duration = stringutils::shift_parameter(params);
+        if(!duration.empty()) {
+            fire_duration = atoi(duration.c_str());
+            // Avoid negative values, its just incorrect
+            if(fire_duration < ms_per_tick) {
+                os.printf("WARNING: Minimal duration is %ld ms, not firing\n", ms_per_tick);
+                return true;
+            }
+            // rounding to minimal value
+            if (fire_duration % ms_per_tick != 0) {
+                fire_duration = (fire_duration / ms_per_tick) * ms_per_tick;
+            }
+            os.printf("WARNING: Firing laser at %1.2f%% power, for %ld ms, use fire off to stop test fire earlier\n", p, fire_duration);
+        } else {
+            os.printf("WARNING: Firing laser at %1.2f%% power, entering manual mode use fire off to return to auto mode\n", p);
+        }
     }
 
     p = p / 100.0F;
@@ -186,7 +212,7 @@ bool Laser::handle_M221(GCode& gcode, OutputStream& os)
         }
 
         if(gcode.has_arg('R')) {
-            uint32_t freq= gcode.get_int_arg('R');
+            uint32_t freq = gcode.get_int_arg('R');
             pwm_pin->set_frequency(freq);
         }
 
@@ -242,7 +268,20 @@ _ramfunc_ bool Laser::get_laser_power(float& power) const
 // called every millisecond from timer ISR
 _ramfunc_ void Laser::set_proportional_power(void)
 {
-    if(manual_fire) return;
+    if(manual_fire) {
+        // If we have fire duration set
+        if (fire_duration > 0) {
+            // Decrease it each ms
+            fire_duration -= ms_per_tick;
+            // And if it turned 0, disable laser and manual fire mode
+            if (fire_duration <= 0) {
+                set_laser_power(0);
+                manual_fire = false;
+                fire_duration = 0;
+            }
+        }
+        return;
+    }
 
     float power;
     if(get_laser_power(power)) {
