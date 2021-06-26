@@ -1,34 +1,5 @@
-/*
- Highly modifed from....
-
- TMC26X.cpp - - TMC26X Stepper library for Wiring/Arduino
-
- based on the stepper library by Tom Igoe, et. al.
-
- Copyright (c) 2011, Interactive Matter, Marcus Nowotny
-
- Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights
- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- copies of the Software, and to permit persons to whom the Software is
- furnished to do so, subject to the following conditions:
-
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
-
- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- THE SOFTWARE.
-
- */
-
-#ifdef BOARD_PRIMEALPHA
-#include "TMC26X.h"
+#if defined(DRIVER_TMC2590)
+#include "TMC2590.h"
 #include "main.h"
 #include "OutputStream.h"
 #include "Robot.h"
@@ -43,38 +14,42 @@
 #include <cmath>
 #include <iostream>
 
-//! return value for TMC26X.getOverTemperature() if there is a overtemperature situation in the TMC chip
+//! return value for TMC2590.getOverTemperature() if there is a overtemperature situation in the TMC chip
 /*!
  * This warning indicates that the TCM chip is too warm.
  * It is still working but some parameters may be inferior.
  * You should do something against it.
  */
-#define TMC26X_OVERTEMPERATURE_PREWARING 1
-//! return value for TMC26X.getOverTemperature() if there is a overtemperature shutdown in the TMC chip
+#define TMC2590_OVERTEMPERATURE_PREWARING 1
+//! return value for TMC2590.getOverTemperature() if there is a overtemperature shutdown in the TMC chip
 /*!
  * This warning indicates that the TCM chip is too warm to operate and has shut down to prevent damage.
  * It will stop working until it cools down again.
  * If you encouter this situation you must do something against it. Like reducing the current or improving the PCB layout
  * and/or heat management.
  */
-#define TMC26X_OVERTEMPERATURE_SHUTDOWN 2
+#define TMC2590_OVERTEMPERATURE_SHUTDOWN 2
 
 //which values can be read out
 /*!
  * Selects to readout the microstep position from the motor.
  *\sa readStatus()
  */
-#define TMC26X_READOUT_POSITION 0
+#define TMC2590_READOUT_POSITION 0
 /*!
  * Selects to read out the StallGuard value of the motor.
  *\sa readStatus()
  */
-#define TMC26X_READOUT_STALLGUARD 1
+#define TMC2590_READOUT_STALLGUARD 1
 /*!
  * Selects to read out the current current setting (acc. to CoolStep) and the upper bits of the StallGuard value from the motor.
  *\sa readStatus(), setCurrent()
  */
-#define TMC26X_READOUT_CURRENT 3
+#define TMC2590_READOUT_CURRENT 3
+/*!
+ * Selects to read out all the flags.
+ */
+#define TMC2590_READOUT_ALL_FLAGS 4
 
 /*!
  * Define to set the minimum current for CoolStep operation to 1/2 of the selected CS minium.
@@ -91,7 +66,7 @@
 //some default values used in initialization
 #define DEFAULT_MICROSTEPPING_VALUE 32
 
-//TMC26X register definitions
+//TMC2590 register definitions
 #define DRIVER_CONTROL_REGISTER            0x00000ul
 #define CHOPPER_CONFIG_REGISTER            0x80000ul
 #define COOL_STEP_REGISTER                 0xA0000ul
@@ -106,11 +81,21 @@
 #define DOUBLE_EDGE_STEP               0x0100ul
 
 //definitions for the driver config register DRVCONF
+#define SLPH                           0xC000ul
+#define SLPL                           0x3000ul
+#define SLPHL2                         0x0800ul
+#define DIS_S2G                        0x0400ul
+#define TS2G                           0x0300ul
+#define VSENSE                         0x0040ul
 #define READ_MICROSTEP_POSITION        0x0000ul
 #define READ_STALL_GUARD_READING       0x0010ul
 #define READ_STALL_GUARD_AND_COOL_STEP 0x0020ul
+#define READ_ALL_FLAGS                 0x0030ul
 #define READ_SELECTION_PATTERN         0x0030ul
-#define VSENSE                         0x0040ul
+#define OTSENS                         0x0008ul
+#define SHRTSENS                       0x0004ul
+#define EN_PFD                         0x0002ul
+#define EN_S2VS                        0x0001ul
 
 //definitions for the chopper config register
 #define CHOPPER_MODE_STANDARD          0x00000ul
@@ -123,7 +108,7 @@
 #define HYSTERESIS_DECREMENT_SHIFT     11
 #define HYSTERESIS_LOW_VALUE_PATTERN   0x00780ul
 #define HYSTERESIS_LOW_SHIFT           7
-#define HYSTERESIS_START_VALUE_PATTERN 0x00078ul
+#define HYSTERESIS_START_VALUE_PATTERN 0x00070ul
 #define HYSTERESIS_START_VALUE_SHIFT   4
 #define T_OFF_TIMING_PATERN            0x0000Ful
 
@@ -136,12 +121,12 @@
 
 //definitions for stall guard2 current register
 #define STALL_GUARD_FILTER_ENABLED          0x10000ul
-#define STALL_GUARD_TRESHHOLD_VALUE_PATTERN 0x17F00ul
+#define STALL_GUARD_THRESHHOLD_VALUE_PATTERN 0x07F00ul
 #define CURRENT_SCALING_PATTERN             0x0001Ful
-#define STALL_GUARD_CONFIG_PATTERN          0x17F00ul
+#define STALL_GUARD_CONFIG_PATTERN          0x07F00ul
 #define STALL_GUARD_VALUE_PATTERN           0x07F00ul
 
-//definitions for the input from the TCM260
+//definitions for the input from the TCM2590
 #define STATUS_STALL_GUARD_STATUS        0x00001ul
 #define STATUS_OVER_TEMPERATURE_SHUTDOWN 0x00002ul
 #define STATUS_OVER_TEMPERATURE_WARNING  0x00004ul
@@ -160,13 +145,13 @@
 #define step_interpolation_key          "step_interpolation"
 
 //statics common to all instances
-SPI *TMC26X::spi= nullptr;
-bool TMC26X::common_setup= false;
-uint32_t TMC26X::max_current= 2800; // 2.8 amps
+SPI *TMC2590::spi= nullptr;
+bool TMC2590::common_setup= false;
+uint32_t TMC2590::max_current= 4000; // 4 amps
 /*
  * Constructor
  */
-TMC26X::TMC26X(char d) : designator(d)
+TMC2590::TMC2590(char d) : designator(d)
 {
     //we are not started yet
     started = false;
@@ -185,7 +170,7 @@ TMC26X::TMC26X(char d) : designator(d)
             }
         }
         if(!ok) {
-            printf("ERROR: TMC26X failed to get SPI\n");
+            printf("ERROR: TMC2590 failed to get SPI\n");
             return;
         }
     }
@@ -200,7 +185,7 @@ TMC26X::TMC26X(char d) : designator(d)
         //set to a conservative start value
         setConstantOffTimeChopper(7, 54, 13, 12, 1);
     #else
-        //void TMC26X::setSpreadCycleChopper( constant_off_time,  blank_time,  hysteresis_start,  hysteresis_end,  hysteresis_decrement);
+        //void TMC2590::setSpreadCycleChopper( constant_off_time,  blank_time,  hysteresis_start,  hysteresis_end,  hysteresis_decrement);
 
         // openbuilds high torque nema23 3amps (2.8)
         //setSpreadCycleChopper(5, 36, 6, 0, 0);
@@ -220,34 +205,34 @@ TMC26X::TMC26X(char d) : designator(d)
     setStallGuardThreshold(10, 1);
 }
 
-bool TMC26X::config(ConfigReader& cr, const char *actuator_name)
+bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
 {
     name= actuator_name;
     ConfigReader::sub_section_map_t ssm;
-    if(!cr.get_sub_sections("tmc2660", ssm)) {
-        printf("ERROR:config_tmc2660: no tmc2660 section found\n");
+    if(!cr.get_sub_sections("tmc2590", ssm)) {
+        printf("ERROR:config_tmc2590: no tmc2590 section found\n");
         return false;
     }
 
     auto s = ssm.find(actuator_name);
     if(s == ssm.end()) {
-        printf("ERROR:config_tmc2660: no tmc2660 %s entry found\n", actuator_name);
+        printf("ERROR:config_tmc2590: no tmc2590 %s entry found\n", actuator_name);
         return false;
     }
 
-    auto& mm = s->second; // map of tmc2660 config values for this actuator
+    auto& mm = s->second; // map of tmc2590 config values for this actuator
 
     std::string cs_pin = cr.get_string(mm, spi_cs_pin_key, "nc");
     spi_cs = new Pin(cs_pin.c_str(), Pin::AS_OUTPUT);
     if(!spi_cs->connected()) {
         delete spi_cs;
-        printf("ERROR:config_tmc2660: spi cs pin is invalid for: %s\n", actuator_name);
+        printf("ERROR:config_tmc2590: spi cs pin is invalid for: %s\n", actuator_name);
         return false;
     }
     spi_cs->set(true);
-    printf("DEBUG:configure-tmc2660: for actuator %s spi cs pin: %s\n", actuator_name, spi_cs->to_string().c_str());
+    printf("DEBUG:configure-tmc2590: for actuator %s spi cs pin: %s\n", actuator_name, spi_cs->to_string().c_str());
 
-    this->resistor = cr.get_int(mm, resistor_key, 75); // in milliohms
+    this->resistor = cr.get_int(mm, resistor_key, 50); // in milliohms
 
     // if raw registers are defined set them 1,2,3 etc in hex
     std::string str= cr.get_string(mm, raw_register_key, "");
@@ -267,15 +252,15 @@ bool TMC26X::config(ConfigReader& cr, const char *actuator_name)
     bool interpolation= cr.get_bool(mm, step_interpolation_key, false);
     if(interpolation) {
         setStepInterpolation(1);
-        printf("DEBUG:configure-tmc2660: step interpolation for %s is on\n", actuator_name);
+        printf("DEBUG:configure-tmc2590: step interpolation for %s is on\n", actuator_name);
     }
 
     // if this is the first instance then get any common settings
     if(!common_setup) {
         auto c = ssm.find("common");
         if(c != ssm.end()) {
-            auto& cm = c->second; // map of common tmc2660 config values
-            max_current= cr.get_int(cm, max_current_key, 2800);
+            auto& cm = c->second; // map of common tmc2590 config values
+            max_current= cr.get_int(cm, max_current_key, 4000);
         }
         common_setup= true;
     }
@@ -286,19 +271,20 @@ bool TMC26X::config(ConfigReader& cr, const char *actuator_name)
  * configure the stepper driver
  * must be called after Vbb is applied
  */
-void TMC26X::init()
+void TMC2590::init()
 {
     // set the saved values
-    send262(driver_control_register_value);
-    send262(chopper_config_register_value);
-    send262(cool_step_register_value);
-    send262(stall_guard2_current_register_value);
-    send262(driver_configuration_register_value);
+    send20bits(driver_control_register_value);
+    send20bits(chopper_config_register_value);
+    send20bits(cool_step_register_value);
+    send20bits(stall_guard2_current_register_value);
+    send20bits(driver_configuration_register_value);
 
     started = true;
 }
 
-void TMC26X::setCurrent(unsigned int current)
+// Current is passed in as milliamps
+void TMC2590::setCurrent(unsigned int current)
 {
     if(current > max_current) current= max_current;
 
@@ -308,19 +294,19 @@ void TMC26X::setCurrent(unsigned int current)
     double resistor_value = (double) this->resistor;
     // remove vesense flag
     this->driver_configuration_register_value &= ~(VSENSE);
-    //this is derrived from I=(cs+1)/32*(Vsense/Rsense)
-    //leading to cs = CS = 32*R*I/V (with V = 0,31V oder 0,165V  and I = 1000*current)
-    //with Rsense=0,15
-    //for vsense = 0,310V (VSENSE not set)
-    //or vsense = 0,165V (VSENSE set)
-    current_scaling = (uint8_t)((resistor_value * mASetting * 32.0F / (0.31F * 1000.0F * 1000.0F)) - 0.5F); //theoretically - 1.0 for better rounding it is 0.5
+    //this is derived from I=(cs+1)/32*(Vsense/Rsense)
+    //leading to cs = 32*R*I/V (with V = 0,325V or 0,173V and I = 1000*current)
+    //with Rsense=resistor_value
+    //for vsense = 0,3250V (VSENSE not set)
+    //or vsense = 0,173V (VSENSE set)
+    current_scaling = (uint8_t)((resistor_value * mASetting * 32.0 / (0.325 * 1000.0 * 1000.0)) - 0.5); //theoretically - 1.0 for better rounding it is 0.5
 
     //check if the current scaling is too low
     if (current_scaling < 16) {
         //set the vsense bit to get a use half the sense voltage (to support lower motor currents)
         this->driver_configuration_register_value |= VSENSE;
         //and recalculate the current setting
-        current_scaling = (uint8_t)((resistor_value * mASetting * 32.0F / (0.165F * 1000.0F * 1000.0F)) - 0.5F); //theoretically - 1.0 for better rounding it is 0.5
+        current_scaling = (uint8_t)((resistor_value * mASetting * 32.0 / (0.173 * 1000.0 * 1000.0)) - 0.5); //theoretically - 1.0 for better rounding it is 0.5
     }
 
     //do some sanity checks
@@ -333,23 +319,24 @@ void TMC26X::setCurrent(unsigned int current)
     stall_guard2_current_register_value |= current_scaling;
     //if started we directly send it to the motor
     if (started) {
-        send262(driver_configuration_register_value);
-        send262(stall_guard2_current_register_value);
+        send20bits(driver_configuration_register_value);
+        send20bits(stall_guard2_current_register_value);
     }
 }
 
-unsigned int TMC26X::getCurrent(void)
+unsigned int TMC2590::getCurrent(void)
 {
     //we calculate the current according to the datasheet to be on the safe side
     //this is not the fastest but the most accurate and illustrative way
     double result = (double)(stall_guard2_current_register_value & CURRENT_SCALING_PATTERN);
     double resistor_value = (double)this->resistor;
-    double voltage = (driver_configuration_register_value & VSENSE) ? 0.165F : 0.31F;
-    result = (result + 1.0F) / 32.0F * voltage / resistor_value * 1000.0F * 1000.0F;
+    double voltage = (driver_configuration_register_value & VSENSE) ? 0.173 : 0.325;
+    // resistor_value is in milliohms so convert to ohms, result is mA
+    result = ((result + 1.0F) / 32.0F) * (voltage / (resistor_value / 1000.0)) * 1000.0; // mA
     return (unsigned int)round(result);
 }
 
-void TMC26X::setStallGuardThreshold(int8_t stall_guard_threshold, int8_t stall_guard_filter_enabled)
+void TMC2590::setStallGuardThreshold(int8_t stall_guard_threshold, int8_t stall_guard_filter_enabled)
 {
     if (stall_guard_threshold < -64) {
         stall_guard_threshold = -64;
@@ -368,11 +355,11 @@ void TMC26X::setStallGuardThreshold(int8_t stall_guard_threshold, int8_t stall_g
     stall_guard2_current_register_value |= (((unsigned long)stall_guard_threshold << 8) & STALL_GUARD_CONFIG_PATTERN);
     //if started we directly send it to the motor
     if (started) {
-        send262(stall_guard2_current_register_value);
+        send20bits(stall_guard2_current_register_value);
     }
 }
 
-int8_t TMC26X::getStallGuardThreshold(void)
+int8_t TMC2590::getStallGuardThreshold(void)
 {
     unsigned long stall_guard_threshold = stall_guard2_current_register_value & STALL_GUARD_VALUE_PATTERN;
     //shift it down to bit 0
@@ -386,7 +373,7 @@ int8_t TMC26X::getStallGuardThreshold(void)
     return result;
 }
 
-int8_t TMC26X::getStallGuardFilter(void)
+int8_t TMC2590::getStallGuardFilter(void)
 {
     if (stall_guard2_current_register_value & STALL_GUARD_FILTER_ENABLED) {
         return -1;
@@ -400,9 +387,9 @@ int8_t TMC26X::getStallGuardFilter(void)
  * any value in between will be mapped to the next smaller value
  * 0 and 1 set the motor in full step mode
  */
-void TMC26X::setMicrosteps(int number_of_steps)
+void TMC2590::setMicrosteps(int number_of_steps)
 {
-    long setting_pattern;
+    long setting_pattern= 8;
     //poor mans log
     if (number_of_steps >= 256) {
         setting_pattern = 0;
@@ -435,25 +422,25 @@ void TMC26X::setMicrosteps(int number_of_steps)
     }
 
     //delete the old value
-    this->driver_control_register_value &= 0xFFFF0ul;
+    this->driver_control_register_value &= MICROSTEPPING_PATTERN;
     //set the new value
     this->driver_control_register_value |= setting_pattern;
 
     //if started we directly send it to the motor
     if (started) {
-        send262(driver_control_register_value);
+        send20bits(driver_control_register_value);
     }
 }
 
 /*
  * returns the effective number of microsteps at the moment
  */
-int TMC26X::getMicrosteps(void)
+int TMC2590::getMicrosteps(void)
 {
     return microsteps;
 }
 
-void TMC26X::setStepInterpolation(int8_t value)
+void TMC2590::setStepInterpolation(int8_t value)
 {
     if (value) {
         driver_control_register_value |= STEP_INTERPOLATION;
@@ -462,16 +449,16 @@ void TMC26X::setStepInterpolation(int8_t value)
     }
     //if started we directly send it to the motor
     if (started) {
-        send262(driver_control_register_value);
+        send20bits(driver_control_register_value);
     }
 }
 
-bool TMC26X::getStepInterpolation()
+bool TMC2590::getStepInterpolation()
 {
     return (driver_control_register_value & STEP_INTERPOLATION) != 0;
 }
 
-void TMC26X::setDoubleEdge(int8_t value)
+void TMC2590::setDoubleEdge(int8_t value)
 {
     if (value) {
         driver_control_register_value |= DOUBLE_EDGE_STEP;
@@ -480,7 +467,7 @@ void TMC26X::setDoubleEdge(int8_t value)
     }
     //if started we directly send it to the motor
     if (started) {
-        send262(driver_control_register_value);
+        send20bits(driver_control_register_value);
     }
 }
 
@@ -507,7 +494,7 @@ void TMC26X::setDoubleEdge(int8_t value)
  *      1: enable comparator termination of fast decay cycle
  *      0: end by time only
  */
-void TMC26X::setConstantOffTimeChopper(int8_t constant_off_time, int8_t blank_time, int8_t fast_decay_time_setting, int8_t sine_wave_offset, uint8_t use_current_comparator)
+void TMC2590::setConstantOffTimeChopper(int8_t constant_off_time, int8_t blank_time, int8_t fast_decay_time_setting, int8_t sine_wave_offset, uint8_t use_current_comparator)
 {
     //perform some sanity checks
     if (constant_off_time < 2) {
@@ -565,7 +552,7 @@ void TMC26X::setConstantOffTimeChopper(int8_t constant_off_time, int8_t blank_ti
     }
     //if started we directly send it to the motor
     if (started) {
-        send262(chopper_config_register_value);
+        send20bits(chopper_config_register_value);
     }
 }
 
@@ -589,7 +576,7 @@ void TMC26X::setConstantOffTimeChopper(int8_t constant_off_time, int8_t blank_ti
  *      0: fast decrement 3: very slow decrement
  */
 
-void TMC26X::setSpreadCycleChopper(int8_t constant_off_time, int8_t blank_time, int8_t hysteresis_start, int8_t hysteresis_end, int8_t hysteresis_decrement)
+void TMC2590::setSpreadCycleChopper(int8_t constant_off_time, int8_t blank_time, int8_t hysteresis_start, int8_t hysteresis_end, int8_t hysteresis_decrement)
 {
     h_start = hysteresis_start;
     h_end = hysteresis_end;
@@ -653,7 +640,7 @@ void TMC26X::setSpreadCycleChopper(int8_t constant_off_time, int8_t blank_time, 
 
     //if started we directly send it to the motor
     if (started) {
-        send262(chopper_config_register_value);
+        send20bits(chopper_config_register_value);
     }
 }
 
@@ -669,7 +656,7 @@ void TMC26X::setSpreadCycleChopper(int8_t constant_off_time, int8_t blank_time, 
  * It modulates the slow decay time setting when switched on by the RNDTF bit. The RNDTF feature further spreads the chopper spectrum,
  * reducing electromagnetic emission on single frequencies.
  */
-void TMC26X::setRandomOffTime(int8_t value)
+void TMC2590::setRandomOffTime(int8_t value)
 {
     if (value) {
         chopper_config_register_value |= RANDOM_TOFF_TIME;
@@ -678,11 +665,11 @@ void TMC26X::setRandomOffTime(int8_t value)
     }
     //if started we directly send it to the motor
     if (started) {
-        send262(chopper_config_register_value);
+        send20bits(chopper_config_register_value);
     }
 }
 
-void TMC26X::setCoolStepConfiguration(unsigned int lower_SG_threshold, unsigned int SG_hysteresis, uint8_t current_decrement_step_size,
+void TMC2590::setCoolStepConfiguration(unsigned int lower_SG_threshold, unsigned int SG_hysteresis, uint8_t current_decrement_step_size,
                                       uint8_t current_increment_step_size, uint8_t lower_current_limit)
 {
     //sanitize the input values
@@ -719,11 +706,11 @@ void TMC26X::setCoolStepConfiguration(unsigned int lower_SG_threshold, unsigned 
                                | COOL_STEP_REGISTER;
 
     if (started) {
-        send262(cool_step_register_value);
+        send20bits(cool_step_register_value);
     }
 }
 
-void TMC26X::setCoolStepEnabled(bool enabled)
+void TMC2590::setCoolStepEnabled(bool enabled)
 {
     //simply delete the lower limit to disable the cool step
     cool_step_register_value &= ~SE_MIN_PATTERN;
@@ -735,42 +722,42 @@ void TMC26X::setCoolStepEnabled(bool enabled)
     this->cool_step_enabled = enabled;
     //save the register value
     if (started) {
-        send262(cool_step_register_value);
+        send20bits(cool_step_register_value);
     }
 }
 
-bool TMC26X::isCoolStepEnabled(void)
+bool TMC2590::isCoolStepEnabled(void)
 {
     return this->cool_step_enabled;
 }
 
-unsigned int TMC26X::getCoolStepLowerSgThreshold()
+unsigned int TMC2590::getCoolStepLowerSgThreshold()
 {
     //we return our internally stored value - in order to provide the correct setting even if cool step is not enabled
     return this->cool_step_lower_threshold << 5;
 }
 
-unsigned int TMC26X::getCoolStepUpperSgThreshold()
+unsigned int TMC2590::getCoolStepUpperSgThreshold()
 {
     return (uint8_t)((cool_step_register_value & SE_MAX_PATTERN) >> 8) << 5;
 }
 
-uint8_t TMC26X::getCoolStepCurrentIncrementSize()
+uint8_t TMC2590::getCoolStepCurrentIncrementSize()
 {
     return (uint8_t)((cool_step_register_value & CURRENT_DOWN_STEP_SPEED_PATTERN) >> 13);
 }
 
-uint8_t TMC26X::getCoolStepNumberOfSGReadings()
+uint8_t TMC2590::getCoolStepNumberOfSGReadings()
 {
     return (uint8_t)((cool_step_register_value & SE_CURRENT_STEP_WIDTH_PATTERN) >> 5);
 }
 
-uint8_t TMC26X::getCoolStepLowerCurrentLimit()
+uint8_t TMC2590::getCoolStepLowerCurrentLimit()
 {
     return (uint8_t)((cool_step_register_value & MINIMUM_CURRENT_FOURTH) >> 15);
 }
 
-void TMC26X::setEnabled(bool enabled)
+void TMC2590::setEnabled(bool enabled)
 {
     //delete the t_off in the chopper config to get sure
     chopper_config_register_value &= ~(T_OFF_PATTERN);
@@ -781,11 +768,11 @@ void TMC26X::setEnabled(bool enabled)
     // if not enabled we don't have to do anything since we already delete t_off from the register
 
     if (started) {
-        send262(chopper_config_register_value);
+        send20bits(chopper_config_register_value);
     }
 }
 
-bool TMC26X::isEnabled()
+bool TMC2590::isEnabled()
 {
     if (chopper_config_register_value & T_OFF_PATTERN) {
         return true;
@@ -795,34 +782,37 @@ bool TMC26X::isEnabled()
 }
 
 /*
- * reads a value from the TMC26X status register. The value is not obtained directly but can then
+ * reads a value from the TMC2590 status register. The value is not obtained directly but can then
  * be read by the various status routines.
  *
  */
-void TMC26X::readStatus(int8_t read_value)
+void TMC2590::readStatus(int8_t read_value)
 {
     unsigned long old_driver_configuration_register_value = driver_configuration_register_value;
     //reset the readout configuration
     driver_configuration_register_value &= ~(READ_SELECTION_PATTERN);
-    //this now equals TMC26X_READOUT_POSITION - so we just have to check the other two options
-    if (read_value == TMC26X_READOUT_STALLGUARD) {
+    //this now equals TMC2590_READOUT_POSITION - so we just have to check the other two options
+    if (read_value == TMC2590_READOUT_STALLGUARD) {
         driver_configuration_register_value |= READ_STALL_GUARD_READING;
-    } else if (read_value == TMC26X_READOUT_CURRENT) {
+    } else if (read_value == TMC2590_READOUT_CURRENT) {
         driver_configuration_register_value |= READ_STALL_GUARD_AND_COOL_STEP;
+    } else if (read_value == TMC2590_READOUT_ALL_FLAGS) {
+        driver_configuration_register_value |= READ_ALL_FLAGS;
     }
+
     //all other cases are ignored to prevent funny values
     //check if the readout is configured for the value we are interested in
     if (driver_configuration_register_value != old_driver_configuration_register_value) {
         //because then we need to write the value twice - one time for configuring, second time to get the value, see below
-        send262(driver_configuration_register_value);
+        send20bits(driver_configuration_register_value);
     }
     //write the configuration to get the last status
-    send262(driver_configuration_register_value);
+    send20bits(driver_configuration_register_value);
 }
 
 //reads the stall guard setting from last status
 //returns -1 if stallguard information is not present
-int TMC26X::getCurrentStallGuardReading(void)
+int TMC2590::getCurrentStallGuardReading(void)
 {
     //if we don't yet started there cannot be a stall guard value
     if (!started) {
@@ -830,11 +820,11 @@ int TMC26X::getCurrentStallGuardReading(void)
     }
     //not time optimal, but solution optiomal:
     //first read out the stall guard value
-    readStatus(TMC26X_READOUT_STALLGUARD);
+    readStatus(TMC2590_READOUT_STALLGUARD);
     return getReadoutValue();
 }
 
-uint8_t TMC26X::getCurrentCSReading(void)
+uint8_t TMC2590::getCurrentCSReading(void)
 {
     //if we don't yet started there cannot be a stall guard value
     if (!started) {
@@ -842,15 +832,15 @@ uint8_t TMC26X::getCurrentCSReading(void)
     }
 
     //first read out the stall guard value
-    readStatus(TMC26X_READOUT_CURRENT);
+    readStatus(TMC2590_READOUT_CURRENT);
     return (getReadoutValue() & 0x1f);
 }
 
-unsigned int TMC26X::getCoolstepCurrent(void)
+unsigned int TMC2590::getCoolstepCurrent(void)
 {
     float result = (float)getCurrentCSReading();
     float resistor_value = (float)this->resistor;
-    float voltage = (driver_configuration_register_value & VSENSE) ? 0.165F : 0.31F;
+    float voltage = (driver_configuration_register_value & VSENSE) ? 0.173F : 0.325F;
     result = (result + 1.0F) / 32.0F * voltage / resistor_value * 1000.0F * 1000.0F;
     return (unsigned int)roundf(result);
 }
@@ -858,7 +848,7 @@ unsigned int TMC26X::getCoolstepCurrent(void)
 /*
  return true if the stallguard threshold has been reached
 */
-bool TMC26X::isStallGuardOverThreshold(void)
+bool TMC2590::isStallGuardOverThreshold(void)
 {
     if (!this->started) {
         return false;
@@ -872,22 +862,22 @@ bool TMC26X::isStallGuardOverThreshold(void)
  OVER_TEMPERATURE_SHUTDOWN if the temperature is so hot that the driver is shut down
  Any of those levels are not too good.
 */
-int8_t TMC26X::getOverTemperature(void)
+int8_t TMC2590::getOverTemperature(void)
 {
     if (!this->started) {
         return 0;
     }
     if (driver_status_result & STATUS_OVER_TEMPERATURE_SHUTDOWN) {
-        return TMC26X_OVERTEMPERATURE_SHUTDOWN;
+        return TMC2590_OVERTEMPERATURE_SHUTDOWN;
     }
     if (driver_status_result & STATUS_OVER_TEMPERATURE_WARNING) {
-        return TMC26X_OVERTEMPERATURE_PREWARING;
+        return TMC2590_OVERTEMPERATURE_PREWARING;
     }
     return 0;
 }
 
 //is motor channel A shorted to ground
-bool TMC26X::isShortToGroundA(void)
+bool TMC2590::isShortToGroundA(void)
 {
     if (!this->started) {
         return false;
@@ -896,7 +886,7 @@ bool TMC26X::isShortToGroundA(void)
 }
 
 //is motor channel B shorted to ground
-bool TMC26X::isShortToGroundB(void)
+bool TMC2590::isShortToGroundB(void)
 {
     if (!this->started) {
         return false;
@@ -905,7 +895,7 @@ bool TMC26X::isShortToGroundB(void)
 }
 
 //is motor channel A connected
-bool TMC26X::isOpenLoadA(void)
+bool TMC2590::isOpenLoadA(void)
 {
     if (!this->started) {
         return false;
@@ -914,7 +904,7 @@ bool TMC26X::isOpenLoadA(void)
 }
 
 //is motor channel B connected
-bool TMC26X::isOpenLoadB(void)
+bool TMC2590::isOpenLoadB(void)
 {
     if (!this->started) {
         return false;
@@ -923,7 +913,7 @@ bool TMC26X::isOpenLoadB(void)
 }
 
 //is chopper inactive since 2^20 clock cycles - defaults to ~0,08s
-bool TMC26X::isStandStill(void)
+bool TMC2590::isStandStill(void)
 {
     if (!this->started) {
         return false;
@@ -932,7 +922,7 @@ bool TMC26X::isStandStill(void)
 }
 
 //is chopper inactive since 2^20 clock cycles - defaults to ~0,08s
-bool TMC26X::isStallGuardReached(void)
+bool TMC2590::isStallGuardReached(void)
 {
     if (!this->started) {
         return false;
@@ -942,12 +932,12 @@ bool TMC26X::isStallGuardReached(void)
 
 //reads the stall guard setting from last status
 //returns -1 if stallguard inforamtion is not present
-int TMC26X::getReadoutValue(void)
+int TMC2590::getReadoutValue(void)
 {
     return (int)(driver_status_result >> 10);
 }
 
-bool TMC26X::isCurrentScalingHalfed()
+bool TMC2590::isCurrentScalingHalfed()
 {
     if (this->driver_configuration_register_value & VSENSE) {
         return true;
@@ -956,14 +946,14 @@ bool TMC26X::isCurrentScalingHalfed()
     }
 }
 
-void TMC26X::dump_status(OutputStream& stream, bool readable)
+void TMC2590::dump_status(OutputStream& stream, bool readable)
 {
     // always report errors
     error_reported.reset();
     error_detected.set();
 
     if (readable) {
-        stream.printf("designator %c, actuator %s, Chip type TMC2660\n", designator, name.c_str());
+        stream.printf("designator %c, actuator %s, Chip type TMC2590\n", designator, name.c_str());
 
         check_error_status_bits(stream);
 
@@ -1003,13 +993,13 @@ void TMC26X::dump_status(OutputStream& stream, bool readable)
         if (moving) {
             stream.printf("#sg%d,p%lu,k%u,r,", getCurrentStallGuardReading(), Robot::getInstance()->actuators[n]->get_current_step(), getCoolstepCurrent());
         } else {
-            readStatus(TMC26X_READOUT_POSITION); // get the status bits
+            readStatus(TMC2590_READOUT_POSITION); // get the status bits
             stream.printf("#s,");
         }
         stream.printf("d%d,", Robot::getInstance()->actuators[n]->which_direction() ? -1 : 1);
         stream.printf("c%u,m%d,", getCurrent(), getMicrosteps());
         // stream.printf('S');
-        // stream.printf(tmc26XStepper.getSpeed(), DEC);
+        // stream.printf(TMC2590Stepper.getSpeed(), DEC);
         stream.printf("t%d,f%d,", getStallGuardThreshold(), getStallGuardFilter());
 
         //print out the general cool step config
@@ -1039,7 +1029,7 @@ void TMC26X::dump_status(OutputStream& stream, bool readable)
         char temperature = getOverTemperature();
         if (temperature == 0) {
             stream.printf("x-,");
-        } else if (temperature == TMC26X_OVERTEMPERATURE_PREWARING) {
+        } else if (temperature == TMC2590_OVERTEMPERATURE_PREWARING) {
             stream.printf("xw,");
         } else {
             stream.printf("xe,");
@@ -1066,13 +1056,13 @@ void TMC26X::dump_status(OutputStream& stream, bool readable)
 
 
 // check error bits and report, only report once, and debounce the test
-bool TMC26X::check_error_status_bits(OutputStream& stream)
+bool TMC2590::check_error_status_bits(OutputStream& stream)
 {
     // define tests here
     using e_t = std::tuple<int, std::function<bool(void)>, const char*>;
     std::vector<e_t> tests {
-        {0, [this](void){return this->getOverTemperature()&TMC26X_OVERTEMPERATURE_PREWARING;}, "Overtemperature Prewarning!"},
-        {1, [this](void){return this->getOverTemperature()&TMC26X_OVERTEMPERATURE_SHUTDOWN;}, "Overtemperature Shutdown!"},
+        {0, [this](void){return this->getOverTemperature()&TMC2590_OVERTEMPERATURE_PREWARING;}, "Overtemperature Prewarning!"},
+        {1, [this](void){return this->getOverTemperature()&TMC2590_OVERTEMPERATURE_SHUTDOWN;}, "Overtemperature Shutdown!"},
         {2, [this](void){return this->isShortToGroundA();}, "SHORT to ground on channel A!"},
         {3, [this](void){return this->isShortToGroundB();}, "SHORT to ground on channel B!"},
         {4, [this](void){return this->isStandStill() && this->isOpenLoadA();}, "Channel A seems to be unconnected!"},
@@ -1080,7 +1070,7 @@ bool TMC26X::check_error_status_bits(OutputStream& stream)
     };
 
     bool error = false;
-    readStatus(TMC26X_READOUT_POSITION); // get the status bits
+    readStatus(TMC2590_READOUT_POSITION); // get the status bits
 
     for(auto& i : tests) {
         int n= std::get<0>(i);
@@ -1107,7 +1097,7 @@ bool TMC26X::check_error_status_bits(OutputStream& stream)
     return error;
 }
 
-bool TMC26X::check_errors()
+bool TMC2590::check_errors()
 {
     std::ostringstream oss;
     OutputStream os(&oss);
@@ -1121,15 +1111,15 @@ bool TMC26X::check_errors()
 // sets a raw register to the value specified, for advanced settings
 // register 255 writes them, 0 displays what registers are mapped to what
 // FIXME status registers not reading back correctly, check docs
-bool TMC26X::set_raw_register(OutputStream& stream, uint32_t reg, uint32_t val)
+bool TMC2590::set_raw_register(OutputStream& stream, uint32_t reg, uint32_t val)
 {
     switch(reg) {
         case 255:
-            send262(driver_control_register_value);
-            send262(chopper_config_register_value);
-            send262(cool_step_register_value);
-            send262(stall_guard2_current_register_value);
-            send262(driver_configuration_register_value);
+            send20bits(driver_control_register_value);
+            send20bits(chopper_config_register_value);
+            send20bits(cool_step_register_value);
+            send20bits(stall_guard2_current_register_value);
+            send20bits(driver_configuration_register_value);
             stream.printf("Registers written\n");
             break;
 
@@ -1157,7 +1147,7 @@ bool TMC26X::set_raw_register(OutputStream& stream, uint32_t reg, uint32_t val)
  * returns the current status
  * sends 20bits, the last 20 bits of the 24bits is taken as the command
  */
-void TMC26X::send262(unsigned long datagram)
+void TMC2590::send20bits(unsigned long datagram)
 {
     uint8_t buf[] {(uint8_t)(datagram >> 16), (uint8_t)(datagram >>  8), (uint8_t)(datagram & 0xff)};
     uint8_t rbuf[3];
@@ -1175,7 +1165,7 @@ void TMC26X::send262(unsigned long datagram)
 }
 
 // Called by the drivers codes to send and receive SPI data to/from the chip
-int TMC26X::sendSPI(uint8_t *b, int cnt, uint8_t *r)
+int TMC2590::sendSPI(uint8_t *b, int cnt, uint8_t *r)
 {
     spi_cs->set(false);
     for (int i = 0; i < cnt; ++i) {
@@ -1187,11 +1177,11 @@ int TMC26X::sendSPI(uint8_t *b, int cnt, uint8_t *r)
 
 #define HAS(X) (gcode.has_arg(X))
 #define GET(X) (gcode.get_int_arg(X))
-bool TMC26X::set_options(const GCode& gcode)
+bool TMC2590::set_options(const GCode& gcode)
 {
     bool set = false;
     if(HAS('O') || HAS('Q')) {
-        // void TMC26X::setStallGuardThreshold(int8_t stall_guard_threshold, int8_t stall_guard_filter_enabled)
+        // void TMC2590::setStallGuardThreshold(int8_t stall_guard_threshold, int8_t stall_guard_filter_enabled)
         int8_t o = HAS('O') ? GET('O') : getStallGuardThreshold();
         int8_t q = HAS('Q') ? GET('Q') : getStallGuardFilter();
         setStallGuardThreshold(o, q);
@@ -1199,7 +1189,7 @@ bool TMC26X::set_options(const GCode& gcode)
     }
 
     if(HAS('H') && HAS('I') && HAS('J') && HAS('K') && HAS('L')) {
-        //void TMC26X::setCoolStepConfiguration(unsigned int lower_SG_threshold, unsigned int SG_hysteresis, uint8_t current_decrement_step_size, uint8_t current_increment_step_size, uint8_t lower_current_limit)
+        //void TMC2590::setCoolStepConfiguration(unsigned int lower_SG_threshold, unsigned int SG_hysteresis, uint8_t current_decrement_step_size, uint8_t current_increment_step_size, uint8_t lower_current_limit)
         setCoolStepConfiguration(GET('H'), GET('I'), GET('J'), GET('K'), GET('L'));
         set = true;
     }
@@ -1207,12 +1197,12 @@ bool TMC26X::set_options(const GCode& gcode)
     if(HAS('S')) {
         uint32_t s = GET('S');
         if(s == 0 && HAS('U') && HAS('V') && HAS('W') && HAS('X') && HAS('Y')) {
-            //void TMC26X::setConstantOffTimeChopper(int8_t constant_off_time, int8_t blank_time, int8_t fast_decay_time_setting, int8_t sine_wave_offset, uint8_t use_current_comparator)
+            //void TMC2590::setConstantOffTimeChopper(int8_t constant_off_time, int8_t blank_time, int8_t fast_decay_time_setting, int8_t sine_wave_offset, uint8_t use_current_comparator)
             setConstantOffTimeChopper(GET('U'), GET('V'), GET('W'), GET('X'), GET('Y'));
             set = true;
 
         } else if(s == 1 && HAS('U') && HAS('V') && HAS('W') && HAS('X') && HAS('Y')) {
-            //void TMC26X::setSpreadCycleChopper(int8_t constant_off_time, int8_t blank_time, int8_t hysteresis_start, int8_t hysteresis_end, int8_t hysteresis_decrement);
+            //void TMC2590::setSpreadCycleChopper(int8_t constant_off_time, int8_t blank_time, int8_t hysteresis_start, int8_t hysteresis_end, int8_t hysteresis_decrement);
             setSpreadCycleChopper(GET('U'), GET('V'), GET('W'), GET('X'), GET('Y'));
             set = true;
 

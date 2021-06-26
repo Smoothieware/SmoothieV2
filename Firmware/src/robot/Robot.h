@@ -14,6 +14,7 @@ class BaseSolution;
 class StepperMotor;
 class ConfigReader;
 class OutputStream;
+class Pin;
 
 // 9 WCS offsets
 #define MAX_WCS 9UL
@@ -121,7 +122,7 @@ private:
     bool handle_G92(GCode&, OutputStream&);
     bool handle_M500(GCode&, OutputStream&);
     bool handle_M665(GCode&, OutputStream&);
-    #ifdef BOARD_PRIMEALPHA
+    #ifdef DRIVER_TMC2590
     bool handle_M909(GCode&, OutputStream&);
     bool handle_M911(GCode&, OutputStream&);
     bool handle_setregs_cmd( std::string& params, OutputStream& os );
@@ -172,6 +173,7 @@ private:
     float max_speed;                                     // Setting : max allowable speed in mm/s for any move
     float park_position[2];
 
+    Pin *motors_enable_pin;                              // global enable pin
     uint8_t n_motors;                                    //count of the motors/axis registered
 
     volatile bool halted{false};

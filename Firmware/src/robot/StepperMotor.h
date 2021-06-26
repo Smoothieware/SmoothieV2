@@ -2,7 +2,7 @@
 
 #include "Pin.h"
 
-class TMC26X;
+class TMC2590;
 class ConfigReader;
 class OutputStream;
 class GCode;
@@ -77,13 +77,13 @@ class StepperMotor
             bool extruder:1;
         };
 
-#ifdef BOARD_PRIMEALPHA
+#ifdef DRIVER_TMC2590
     public:
         bool set_current(float c);
         bool set_microsteps(uint16_t ms);
         int get_microsteps();
-        bool setup_tmc2660(ConfigReader& cr, const char *actuator_name);
-        bool init_tmc2660();
+        bool setup_tmc2590(ConfigReader& cr, const char *actuator_name);
+        bool init_tmc2590();
         void dump_status(OutputStream& os, bool flag=true);
         void set_raw_register(OutputStream& os, uint32_t reg, uint32_t val);
         bool set_options(GCode& gcode);
@@ -92,8 +92,8 @@ class StepperMotor
         void set_vmot_lost() { vmot_lost= true; }
 
     private:
-        // TMC2660 driver
-        TMC26X *tmc2660{nullptr};
+        // TMC2590 driver
+        TMC2590 *tmc2590{nullptr};
         static bool vmot;
         bool vmot_lost{true};
 #endif

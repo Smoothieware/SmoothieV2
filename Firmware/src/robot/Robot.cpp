@@ -62,11 +62,12 @@
 #define ms3_pin_key                     "ms3_pin"
 #define ms_key                          "microstepping"
 #define microsteps_key                  "microsteps"
-#define external_driver_key             "external_driver"
+#define driver_type_key                 "driver"
 
 // only one of these for all the drivers
 #define common_key                      "common"
 #define motor_reset_pin_key             "motor_reset_pin"
+#define motors_enable_pin_key           "motors_enable_pin"
 #define check_driver_errors_key         "check_driver_errors"
 #define halt_on_driver_alarm_key        "halt_on_driver_alarm"
 
@@ -313,13 +314,13 @@ bool Robot::configure(ConfigReader& cr)
             printf("DEBUG:configure-robot: microstepping for %s set to %d,%d,%d\n",
                    s->first.c_str(), ms1_pin.get(), ms2_pin.get(), ms3_pin.get());
         }
-#elif defined(BOARD_PRIMEALPHA)
-        // drivers by default for XYZA are internal TMC2660, BC are by default external
-        bool external= cr.get_bool(m, external_driver_key, a >= 4 ? true : false);
-        if(!external) {
-            // setup the TMC2660 driver for this motor
-            if(!actuators[a]->setup_tmc2660(cr, s->first.c_str())) {
-                printf("FATAL:configure-robot: setup_tmc2660 failed for %s\n", s->first.c_str());
+#elif defined(DRIVER_TMC2590)
+        // drivers by default for XYZA are internal TMC2590, BC are by default external
+        std::string type= cr.get_string(m, driver_type_key, a >= 4 ? "external" : "tmc2590");
+        if(type == "tmc2590") {
+            // setup the TMC2590 driver for this motor
+            if(!actuators[a]->setup_tmc2590(cr, s->first.c_str())) {
+                printf("FATAL:configure-robot: setup_tmc2590 failed for %s\n", s->first.c_str());
                 return false;
             }
 
@@ -327,8 +328,14 @@ bool Robot::configure(ConfigReader& cr)
             uint16_t microstep= cr.get_int(mm, microsteps_key, 32);
             actuators[a]->set_microsteps(microstep);
             printf("DEBUG:configure-robot: microsteps for %s set to %d\n", s->first.c_str(), microstep);
-        } else {
+
+        } else if(type == "external") {
             printf("DEBUG:configure-robot: %s is set as an external driver\n", s->first.c_str());
+
+        } else {
+            printf("FATAL:configure-robot: unknown driver type %s\n", type.c_str());
+            n_motors = a;
+            return false;
         }
 #endif
 
@@ -342,8 +349,8 @@ bool Robot::configure(ConfigReader& cr)
     // common settings for all drivers/actuators
     auto s = ssm.find(common_key);
     if(s != ssm.end()) {
-#ifdef BOARD_MINIALPHA
         auto& mm = s->second; // map of general actuator config settings
+#ifdef BOARD_MINIALPHA
         // driver reset pin, mini alpha is GPIO3_5
         Pin motor_reset_pin(cr.get_string(mm, motor_reset_pin_key, "nc"), Pin::AS_OUTPUT);
         if(motor_reset_pin.connected()) {
@@ -351,11 +358,17 @@ bool Robot::configure(ConfigReader& cr)
             motor_reset_pin.set(true);
         }
 
-#elif defined(BOARD_PRIMEALPHA)
-        auto& mm = s->second; // map of general actuator config settings
+#elif defined(DRIVER_TMC2590)
         check_driver_errors= cr.get_bool(mm, check_driver_errors_key, false);
         halt_on_driver_alarm= cr.get_bool(mm, halt_on_driver_alarm_key, false);
 #endif
+        // global enable pin for all motors
+        motors_enable_pin= new Pin(cr.get_string(mm, motors_enable_pin_key, "nc"), Pin::AS_OUTPUT);
+        if(!motors_enable_pin->connected()) {
+            delete motors_enable_pin;
+            motors_enable_pin= nullptr;
+        }
+
     }
 
     // initialise actuator positions to current cartesian position (X0 Y0 Z0)
@@ -374,7 +387,7 @@ bool Robot::configure(ConfigReader& cr)
     #endif
 
     //this->clearToolOffset();
-#ifdef BOARD_PRIMEALPHA
+#ifdef DRIVER_TMC2590
     // setup a timer to periodically check Vbb and if it is off we need to tell all motors to reset when it comes on again
     // also will check driver errors if enabled
     SlowTicker::getInstance()->attach(1, std::bind(&Robot::periodic_checks, this));
@@ -447,7 +460,7 @@ bool Robot::configure(ConfigReader& cr)
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 500, std::bind(&Robot::handle_M500, this, _1, _2));
 
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 665, std::bind(&Robot::handle_M665, this, _1, _2));
-#ifdef BOARD_PRIMEALPHA
+#ifdef DRIVER_TMC2590
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 909, std::bind(&Robot::handle_M909, this, _1, _2));
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 911, std::bind(&Robot::handle_M911, this, _1, _2));
     THEDISPATCHER->add_handler( "setregs", std::bind( &Robot::handle_setregs_cmd, this, _1, _2) );
@@ -455,7 +468,7 @@ bool Robot::configure(ConfigReader& cr)
     return true;
 }
 
-#ifdef BOARD_PRIMEALPHA
+#ifdef DRIVER_TMC2590
 void Robot::periodic_checks()
 {
     // check vmot
@@ -500,6 +513,12 @@ void Robot::periodic_checks()
 void Robot::on_halt(bool flg)
 {
     halted = flg;
+
+    if(motors_enable_pin != nullptr) {
+        // global enable pin
+        motors_enable_pin->set(!flg);
+    }
+
     if(flg) {
         for(auto a : actuators) {
             a->enable(false);
@@ -510,6 +529,10 @@ void Robot::on_halt(bool flg)
 
 void Robot::enable_all_motors(bool flg)
 {
+    if(motors_enable_pin != nullptr) {
+        // global enable pin
+        motors_enable_pin->set(true);
+    }
     for(auto a : actuators) {
         a->enable(flg);
     }
@@ -1140,7 +1163,7 @@ bool Robot::handle_mcodes(GCode& gcode, OutputStream& os)
     return handled;
 }
 
-#ifdef BOARD_PRIMEALPHA
+#ifdef DRIVER_TMC2590
 bool Robot::handle_M909(GCode& gcode, OutputStream& os)
 {
     for (int i = 0; i < get_number_registered_motors(); i++) {
@@ -1258,7 +1281,7 @@ bool Robot::handle_setregs_cmd( std::string& params, OutputStream& os )
     return true;
 }
 
-#endif // ifdef BOARD_PRIMEALPHA
+#endif // ifdef DRIVER_TMC2590
 
 bool Robot::handle_M500(GCode& gcode, OutputStream& os)
 {

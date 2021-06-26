@@ -74,7 +74,7 @@ bool CurrentControl::configure(ConfigReader& cr)
         std::string name = i.first;
         auto& m = i.second;
 
-        // Get current settings
+        // Get current settings in Amps
         float c= cr.get_float(m, current_key, -1);
         if(c <= 0) {
             printf("INFO: configure-current-control: %s - invalid current\n", name.c_str());
@@ -96,7 +96,7 @@ bool CurrentControl::configure(ConfigReader& cr)
         pins[name]= pwm;
         bool ok= set_current(name, c);
 
-#elif defined(BOARD_PRIMEALPHA)
+#elif defined(DRIVER_TMC2590)
         // SPI defined current control, we ask actuator to deal with it
         bool ok= set_current(name, c);
 #else
@@ -123,6 +123,7 @@ bool CurrentControl::configure(ConfigReader& cr)
     return false;
 }
 
+// current is passed in Amps
 bool CurrentControl::set_current(const std::string& name, float current)
 {
 #ifdef BOARD_MINIALPHA
@@ -135,7 +136,7 @@ bool CurrentControl::set_current(const std::string& name, float current)
     x->second->set(current_to_pwm(current));
     bool ok= true;
 
-#elif defined(BOARD_PRIMEALPHA)
+#elif defined(DRIVER_TMC2590)
     // ask Actuator to set its current
     char axis= lookup_name(name.c_str());
     if(axis == 0) return false;
@@ -158,49 +159,26 @@ bool CurrentControl::set_current(const std::string& name, float current)
 
 bool CurrentControl::handle_gcode(GCode& gcode, OutputStream& os)
 {
-    if(gcode.get_code() == 906) {
-        // set current in mA
+    if(gcode.get_code() == 906 || gcode.get_code() == 907) {
+        // set current in mA or Amps
         for (int i = 0; i < Robot::getInstance()->get_number_registered_motors(); i++) {
             char axis= i < 3 ? 'X'+i : 'A'+i-3;
             if (gcode.has_arg(axis)) {
                 float current= gcode.get_arg(axis);
+                if(gcode.get_code() == 906) {
+                    // convert to Amps
+                    current /= 1000.0F;
+                }
                 const char *name= lookup_axis(axis);
                 if(name == 0) {
                     os.printf("WARNING: could not find axis %c\n", axis);
                 }else{
-                    if(!set_current(name, current/1000.0F)) {
+                    if(!set_current(name, current)) {
                         os.printf("axis %c is not configured for current control\n", axis);
                     }
                 }
             }
         }
-        return true;
-
-    }else if(gcode.get_code() == 907) {
-        if(gcode.has_no_args()) {
-            for (auto i : currents) {
-                os.printf("%s: %1.5f Amps\n", i.first.c_str(), i.second);
-            }
-            return true;
-        }
-
-        // sets current in Amps
-        // XYZ are the first 3 channels and ABC are the next channels
-        for (int i = 0; i < 7; i++) {
-            char axis= i < 3 ? 'X'+i : 'A'+i-3;
-            if (gcode.has_arg(axis)) {
-                float c = gcode.get_arg(axis);
-                const char *name = lookup_axis(axis);
-                if(name == 0) {
-                    os.printf("Unknown axis %c\n", axis);
-                    break;
-                }
-                if(!set_current(name, c)){
-                    os.printf("axis %c is not configured for current control\n", axis);
-                }
-            }
-        }
-
         return true;
 
     } else if(gcode.get_code() == 500) {
