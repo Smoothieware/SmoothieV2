@@ -5,15 +5,14 @@ pins used on the headers when selecting a function in the Firmware
 | Name       | pin     | comment                  |
 | ---------- | ------- | ------------------------ |
 | ADC1_0     | PA0_C   | ADC1 are for thermistors |
-| ADC1_1     | PA1_C   | Using DMA                |
-| ADC1_2     | PF11    |                          |
-| ADC1_3     | PF12    |                          |
-| ADC1_4     | PB0     |                          |
-| ADC1_5     | PC2     |                          |
-| ADC1_6     | PC3     |                          |
-| ADC1_7     | PA3     |                          |
+| ADC1_1     | PF11    |                          |
+| ADC1_2     | PF12    |                          |
+| ADC1_3     | PB0     |                          |
+| ADC1_4     | PC2     |                          |
+| ADC1_5     | PC3     |                          |
+| ADC1_6     | PA3     |                          |
 |            |         |                          |
-| ADC3_0     | PC2_C   | PC0 on DEVEBOX           |
+| ADC3_0     | PC0     | for voltage inputs       |
 | ADC3_1     | PF10    | for voltage inputs       |
 | ADC3_2     | PF8     |                          |
 | ADC3_3     | PF6     |                          |

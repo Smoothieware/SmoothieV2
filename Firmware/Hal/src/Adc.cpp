@@ -83,7 +83,6 @@ Adc::~Adc()
 
 /*
 ADC1_INP0       PA0_C
-ADC1_INP1       PA1_C
 ADC1_INP2       PF11
 ADC1_INP6       PF12
 ADC1_INP9       PB0
@@ -97,7 +96,6 @@ ADC2_INP6       PF14
 
 static struct {GPIO_TypeDef* port; uint32_t pin;} adcpinlut[] = {
     {GPIOA, GPIO_PIN_0},
-    {GPIOA, GPIO_PIN_1},
     {GPIOF, GPIO_PIN_11},
     {GPIOF, GPIO_PIN_12},
     {GPIOB, GPIO_PIN_0},
@@ -108,7 +106,6 @@ static struct {GPIO_TypeDef* port; uint32_t pin;} adcpinlut[] = {
 
 static uint32_t adc_channel_lut[] = {
     ADC_CHANNEL_0,
-    ADC_CHANNEL_1,
     ADC_CHANNEL_2,
     ADC_CHANNEL_6,
     ADC_CHANNEL_9,
@@ -125,7 +122,6 @@ static uint32_t adc_rank_lut[] = {
     ADC_REGULAR_RANK_5,
     ADC_REGULAR_RANK_6,
     ADC_REGULAR_RANK_7,
-    ADC_REGULAR_RANK_8,
 };
 
 static ADC_HandleTypeDef AdcHandle;

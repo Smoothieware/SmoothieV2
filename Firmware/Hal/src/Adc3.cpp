@@ -15,15 +15,13 @@
 #include "task.h"
 
 /*
-    ADC3    IN0 Single-ended        ADC3_INP0       PC2_C
     ADC3    IN6 Single-ended        ADC3_INP6       PF10
     ADC3    IN7 Single-ended        ADC3_INP7       PF8
     ADC3    IN8 Single-ended        ADC3_INP8       PF6
     ADC3    IN9 Single-ended        ADC3_INP9       PF4
+    ADC3    IN10 Single-ended       ADC3_INP10      PC0
     ADC3    IN16 Single-ended       ADC3_INP16      PH5
 
-    DEVEBOX
-    ADC3    IN10 Single-ended       ADC3_INP10      PC0
 */
 
 Adc3 *Adc3::instance{nullptr};
@@ -31,11 +29,7 @@ static ADC_HandleTypeDef AdcHandle;
 static std::set<uint32_t> allocated_channels;
 
 static uint32_t adc_channel_lut[] = {
-#ifdef BOARD_DEVEBOX
     ADC_CHANNEL_10,
-#else
-    ADC_CHANNEL_0,
-#endif
     ADC_CHANNEL_6,
     ADC_CHANNEL_7,
     ADC_CHANNEL_8,
@@ -44,11 +38,7 @@ static uint32_t adc_channel_lut[] = {
 };
 
 static struct {GPIO_TypeDef* port; uint32_t pin;} adcpinlut[] = {
-#ifdef BOARD_DEVEBOX
     {GPIOC, GPIO_PIN_0},
-#else
-    {GPIOC, GPIO_PIN_2},
-#endif
     {GPIOF, GPIO_PIN_10},
     {GPIOF, GPIO_PIN_8},
     {GPIOF, GPIO_PIN_6},
