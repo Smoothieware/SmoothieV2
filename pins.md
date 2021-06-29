@@ -34,6 +34,8 @@ pins used on the headers when selecting a function in the Firmware
 | UART3_TX   | PD8     | Debug port               |
 | UART2_RX   | PD6     | comms port               |
 | UART2_TX   | PD5     | comms port               |
+| UART4_RX   | PH14    | control port             |
+| UART4_TX   | PB9     | control port             |
 |            |         |                          |
 | SPI0CK     | PA5     |                          |
 | SPI0MOSI   | PB5     |                          |

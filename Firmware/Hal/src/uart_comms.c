@@ -67,51 +67,51 @@ static RingBuffer_t *rxrb;
   */
 void USART_CharReception_Callback(void)
 {
-	__IO uint32_t received_char;
+    __IO uint32_t received_char;
 
-	/* Read Received character. RXNE flag is cleared by reading of RDR register */
-	received_char = LL_USART_ReceiveData8(USARTx_INSTANCE);
-	// stick in circular buffer
-	RingBufferPut(rxrb, received_char);
+    /* Read Received character. RXNE flag is cleared by reading of RDR register */
+    received_char = LL_USART_ReceiveData8(USARTx_INSTANCE);
+    // stick in circular buffer
+    RingBufferPut(rxrb, received_char);
 
-	if(xTaskToNotify != NULL) {
-		// we only do this if there is new incoming data
-		// notify task there is data to read
-		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-		vTaskNotifyGiveFromISR( xTaskToNotify, &xHigherPriorityTaskWoken );
-		portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
-	}
+    if(xTaskToNotify != NULL) {
+        // we only do this if there is new incoming data
+        // notify task there is data to read
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        vTaskNotifyGiveFromISR( xTaskToNotify, &xHigherPriorityTaskWoken );
+        portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+    }
 }
 
 void USARTx_IRQHandler(void)
 {
-	/* Check RXNE flag value in ISR register */
-	if(LL_USART_IsActiveFlag_RXNE(USARTx_INSTANCE) && LL_USART_IsEnabledIT_RXNE(USARTx_INSTANCE)) {
-		/* RXNE flag will be cleared by reading of RDR register (done in call) */
-		/* Call function in charge of handling Character reception */
-		USART_CharReception_Callback();
-	} else {
-		/* Disable USARTx_IRQn */
-		NVIC_DisableIRQ(USARTx_IRQn);
-		/* Error handling example :
-		  - Read USART ISR register to identify flag that leads to IT raising
-		  - Perform corresponding error handling treatment according to flag
-		*/
-		__IO uint32_t isr_reg = LL_USART_ReadReg(USARTx_INSTANCE, ISR);
-		(void)isr_reg;
-		LL_USART_ClearFlag_NE(USARTx_INSTANCE);
-		LL_USART_ClearFlag_ORE(USARTx_INSTANCE);
-		LL_USART_ClearFlag_PE(USARTx_INSTANCE);
-		LL_USART_ClearFlag_FE(USARTx_INSTANCE);
-		LL_USART_ReceiveData8(USARTx_INSTANCE);
-		// maybe re enable interrupt?
-	}
+    /* Check RXNE flag value in ISR register */
+    if(LL_USART_IsActiveFlag_RXNE(USARTx_INSTANCE) && LL_USART_IsEnabledIT_RXNE(USARTx_INSTANCE)) {
+        /* RXNE flag will be cleared by reading of RDR register (done in call) */
+        /* Call function in charge of handling Character reception */
+        USART_CharReception_Callback();
+    } else {
+        /* Disable USARTx_IRQn */
+        NVIC_DisableIRQ(USARTx_IRQn);
+        /* Error handling example :
+          - Read USART ISR register to identify flag that leads to IT raising
+          - Perform corresponding error handling treatment according to flag
+        */
+        __IO uint32_t isr_reg = LL_USART_ReadReg(USARTx_INSTANCE, ISR);
+        (void)isr_reg;
+        LL_USART_ClearFlag_NE(USARTx_INSTANCE);
+        LL_USART_ClearFlag_ORE(USARTx_INSTANCE);
+        LL_USART_ClearFlag_PE(USARTx_INSTANCE);
+        LL_USART_ClearFlag_FE(USARTx_INSTANCE);
+        LL_USART_ReceiveData8(USARTx_INSTANCE);
+        // maybe re enable interrupt?
+    }
 }
 
 void set_notification_uart(xTaskHandle h)
 {
-	/* Store the handle of the calling task. */
-	xTaskToNotify = h;
+    /* Store the handle of the calling task. */
+    xTaskToNotify = h;
 }
 
 /**
@@ -130,160 +130,148 @@ void set_notification_uart(xTaskHandle h)
   */
 void Configure_USART(void)
 {
-	rxrb = CreateRingBuffer(32);
+    rxrb = CreateRingBuffer(32);
 
-	/* (1) Enable GPIO clock and configures the USART pins *********************/
+    /* (1) Enable GPIO clock and configures the USART pins *********************/
 
-	/* Enable the peripheral clock of GPIO Port */
-	USARTx_GPIO_CLK_ENABLE();
+    /* Enable the peripheral clock of GPIO Port */
+    USARTx_GPIO_CLK_ENABLE();
 
-	/* Configure Tx Pin as : Alternate function, High Speed, Push pull, Pull up */
-	LL_GPIO_SetPinMode(USARTx_TX_GPIO_PORT, USARTx_TX_PIN, LL_GPIO_MODE_ALTERNATE);
-	USARTx_SET_TX_GPIO_AF();
-	LL_GPIO_SetPinSpeed(USARTx_TX_GPIO_PORT, USARTx_TX_PIN, LL_GPIO_SPEED_FREQ_HIGH);
-	LL_GPIO_SetPinOutputType(USARTx_TX_GPIO_PORT, USARTx_TX_PIN, LL_GPIO_OUTPUT_PUSHPULL);
-	LL_GPIO_SetPinPull(USARTx_TX_GPIO_PORT, USARTx_TX_PIN, LL_GPIO_PULL_UP);
+    /* Configure Tx Pin as : Alternate function, High Speed, Push pull, Pull up */
+    LL_GPIO_SetPinMode(USARTx_TX_GPIO_PORT, USARTx_TX_PIN, LL_GPIO_MODE_ALTERNATE);
+    USARTx_SET_TX_GPIO_AF();
+    LL_GPIO_SetPinSpeed(USARTx_TX_GPIO_PORT, USARTx_TX_PIN, LL_GPIO_SPEED_FREQ_HIGH);
+    LL_GPIO_SetPinOutputType(USARTx_TX_GPIO_PORT, USARTx_TX_PIN, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetPinPull(USARTx_TX_GPIO_PORT, USARTx_TX_PIN, LL_GPIO_PULL_UP);
 
-	/* Configure Rx Pin as : Alternate function, High Speed, Push pull, Pull up */
-	LL_GPIO_SetPinMode(USARTx_RX_GPIO_PORT, USARTx_RX_PIN, LL_GPIO_MODE_ALTERNATE);
-	USARTx_SET_RX_GPIO_AF();
-	LL_GPIO_SetPinSpeed(USARTx_RX_GPIO_PORT, USARTx_RX_PIN, LL_GPIO_SPEED_FREQ_HIGH);
-	LL_GPIO_SetPinOutputType(USARTx_RX_GPIO_PORT, USARTx_RX_PIN, LL_GPIO_OUTPUT_PUSHPULL);
-	LL_GPIO_SetPinPull(USARTx_RX_GPIO_PORT, USARTx_RX_PIN, LL_GPIO_PULL_UP);
+    /* Configure Rx Pin as : Alternate function, High Speed, Push pull, Pull up */
+    LL_GPIO_SetPinMode(USARTx_RX_GPIO_PORT, USARTx_RX_PIN, LL_GPIO_MODE_ALTERNATE);
+    USARTx_SET_RX_GPIO_AF();
+    LL_GPIO_SetPinSpeed(USARTx_RX_GPIO_PORT, USARTx_RX_PIN, LL_GPIO_SPEED_FREQ_HIGH);
+    LL_GPIO_SetPinOutputType(USARTx_RX_GPIO_PORT, USARTx_RX_PIN, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetPinPull(USARTx_RX_GPIO_PORT, USARTx_RX_PIN, LL_GPIO_PULL_UP);
 
-	/* (2) NVIC Configuration for USART interrupts */
-	/*  - Set priority for USARTx_IRQn */
-	/*  - Enable USARTx_IRQn */
-	NVIC_SetPriority(USARTx_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
-	NVIC_EnableIRQ(USARTx_IRQn);
+    /* (2) NVIC Configuration for USART interrupts */
+    /*  - Set priority for USARTx_IRQn */
+    /*  - Enable USARTx_IRQn */
+    NVIC_SetPriority(USARTx_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
+    NVIC_EnableIRQ(USARTx_IRQn);
 
-	/* (3) Enable USART peripheral clock and clock source ***********************/
-	USARTx_CLK_ENABLE();
+    /* (3) Enable USART peripheral clock and clock source ***********************/
+    USARTx_CLK_ENABLE();
 
-	/* Set clock source */
-	USARTx_CLK_SOURCE();
+    /* Set clock source */
+    USARTx_CLK_SOURCE();
 
 #if 0
-	/* (4) Configure USART functional parameters ********************************/
+    /* (4) Configure USART functional parameters ********************************/
 
-	/* Disable USART prior modifying configuration registers */
-	/* Note: Commented as corresponding to Reset value */
-	// LL_USART_Disable(USARTx_INSTANCE);
+    /* Disable USART prior modifying configuration registers */
+    /* Note: Commented as corresponding to Reset value */
+    // LL_USART_Disable(USARTx_INSTANCE);
 
-	/* TX/RX direction */
-	LL_USART_SetTransferDirection(USARTx_INSTANCE, LL_USART_DIRECTION_TX_RX);
+    /* TX/RX direction */
+    LL_USART_SetTransferDirection(USARTx_INSTANCE, LL_USART_DIRECTION_TX_RX);
 
-	/* 8 data bit, 1 start bit, 1 stop bit, no parity */
-	LL_USART_ConfigCharacter(USARTx_INSTANCE, LL_USART_DATAWIDTH_8B, LL_USART_PARITY_NONE, LL_USART_STOPBITS_1);
+    /* 8 data bit, 1 start bit, 1 stop bit, no parity */
+    LL_USART_ConfigCharacter(USARTx_INSTANCE, LL_USART_DATAWIDTH_8B, LL_USART_PARITY_NONE, LL_USART_STOPBITS_1);
 
-	/* No Hardware Flow control */
-	/* Reset value is LL_USART_HWCONTROL_NONE */
-	// LL_USART_SetHWFlowCtrl(USARTx_INSTANCE, LL_USART_HWCONTROL_NONE);
+    /* No Hardware Flow control */
+    /* Reset value is LL_USART_HWCONTROL_NONE */
+    // LL_USART_SetHWFlowCtrl(USARTx_INSTANCE, LL_USART_HWCONTROL_NONE);
 
-	/* Oversampling by 16 */
-	/* Reset value is LL_USART_OVERSAMPLING_16 */
-	//LL_USART_SetOverSampling(USARTx_INSTANCE, LL_USART_OVERSAMPLING_16);
+    /* Oversampling by 16 */
+    /* Reset value is LL_USART_OVERSAMPLING_16 */
+    //LL_USART_SetOverSampling(USARTx_INSTANCE, LL_USART_OVERSAMPLING_16);
 
-	/* Set Baudrate to 115200 using APB frequency set to 125000000 Hz */
-	/* Frequency available for USART peripheral can also be calculated through LL RCC macro */
-	/* Ex :
+    /* Set Baudrate to 115200 using APB frequency set to 125000000 Hz */
+    /* Frequency available for USART peripheral can also be calculated through LL RCC macro */
+    /* Ex :
 
-	    In this example, Peripheral Clock is expected to be equal to 125000000 Hz => equal to SystemCoreClock/(AHB_Div * APB_Div)
-	*/
-	uint32_t Periphclk = HAL_RCC_GetPCLK1Freq(); // PCLK1
-	LL_USART_SetBaudRate(USARTx_INSTANCE, Periphclk, LL_USART_PRESCALER_DIV1, LL_USART_OVERSAMPLING_16, 115200);
+        In this example, Peripheral Clock is expected to be equal to 125000000 Hz => equal to SystemCoreClock/(AHB_Div * APB_Div)
+    */
+    uint32_t Periphclk = HAL_RCC_GetPCLK1Freq(); // PCLK1
+    LL_USART_SetBaudRate(USARTx_INSTANCE, Periphclk, LL_USART_PRESCALER_DIV1, LL_USART_OVERSAMPLING_16, 115200);
 
 #else
-	/* (4) Configure USART functional parameters ********************************/
+    /* (4) Configure USART functional parameters ********************************/
 
-	/* Disable USART prior modifying configuration registers */
-	/* Note: Commented as corresponding to Reset value */
-	LL_USART_Disable(USARTx_INSTANCE);
+    /* Disable USART prior modifying configuration registers */
+    /* Note: Commented as corresponding to Reset value */
+    LL_USART_Disable(USARTx_INSTANCE);
 
-	/* Set fields of initialization structure                   */
-	/*  - Prescaler           : LL_USART_PRESCALER_DIV1         */
-	/*  - BaudRate            : 115200                          */
-	/*  - DataWidth           : LL_USART_DATAWIDTH_8B           */
-	/*  - StopBits            : LL_USART_STOPBITS_1             */
-	/*  - Parity              : LL_USART_PARITY_NONE            */
-	/*  - TransferDirection   : LL_USART_DIRECTION_TX_RX        */
-	/*  - HardwareFlowControl : LL_USART_HWCONTROL_NONE         */
-	/*  - OverSampling        : LL_USART_OVERSAMPLING_16        */
-	LL_USART_InitTypeDef usart_initstruct;
-	usart_initstruct.PrescalerValue      = LL_USART_PRESCALER_DIV1;
-	usart_initstruct.BaudRate            = 115200;
-	usart_initstruct.DataWidth           = LL_USART_DATAWIDTH_8B;
-	usart_initstruct.StopBits            = LL_USART_STOPBITS_1;
-	usart_initstruct.Parity              = LL_USART_PARITY_NONE;
-	usart_initstruct.TransferDirection   = LL_USART_DIRECTION_TX_RX;
-	usart_initstruct.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
-	usart_initstruct.OverSampling        = LL_USART_OVERSAMPLING_16;
+    /* Set fields of initialization structure                   */
+    /*  - Prescaler           : LL_USART_PRESCALER_DIV1         */
+    /*  - BaudRate            : 115200                          */
+    /*  - DataWidth           : LL_USART_DATAWIDTH_8B           */
+    /*  - StopBits            : LL_USART_STOPBITS_1             */
+    /*  - Parity              : LL_USART_PARITY_NONE            */
+    /*  - TransferDirection   : LL_USART_DIRECTION_TX_RX        */
+    /*  - HardwareFlowControl : LL_USART_HWCONTROL_NONE         */
+    /*  - OverSampling        : LL_USART_OVERSAMPLING_16        */
+    LL_USART_InitTypeDef usart_initstruct;
+    usart_initstruct.PrescalerValue      = LL_USART_PRESCALER_DIV1;
+    usart_initstruct.BaudRate            = 115200;
+    usart_initstruct.DataWidth           = LL_USART_DATAWIDTH_8B;
+    usart_initstruct.StopBits            = LL_USART_STOPBITS_1;
+    usart_initstruct.Parity              = LL_USART_PARITY_NONE;
+    usart_initstruct.TransferDirection   = LL_USART_DIRECTION_TX_RX;
+    usart_initstruct.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
+    usart_initstruct.OverSampling        = LL_USART_OVERSAMPLING_16;
 
-	/* Initialize USART instance according to parameters defined in initialization structure */
-	LL_USART_Init(USARTx_INSTANCE, &usart_initstruct);
+    /* Initialize USART instance according to parameters defined in initialization structure */
+    LL_USART_Init(USARTx_INSTANCE, &usart_initstruct);
 #endif
 
-	/* (5) Enable USART *********************************************************/
-	LL_USART_Enable(USARTx_INSTANCE);
+    /* (5) Enable USART *********************************************************/
+    LL_USART_Enable(USARTx_INSTANCE);
 
-	/* Polling USART initialisation */
-	while((!(LL_USART_IsActiveFlag_TEACK(USARTx_INSTANCE))) || (!(LL_USART_IsActiveFlag_REACK(USARTx_INSTANCE)))) {
-	}
+    /* Polling USART initialisation */
+    while((!(LL_USART_IsActiveFlag_TEACK(USARTx_INSTANCE))) || (!(LL_USART_IsActiveFlag_REACK(USARTx_INSTANCE)))) {
+    }
 
-	/* Enable RXNE and Error interrupts */
-	LL_USART_EnableIT_RXNE(USARTx_INSTANCE);
-	//LL_USART_EnableIT_ERROR(USARTx_INSTANCE);
-	LL_USART_DisableIT_ERROR(USARTx_INSTANCE);
+    /* Enable RXNE and Error interrupts */
+    LL_USART_EnableIT_RXNE(USARTx_INSTANCE);
+    //LL_USART_EnableIT_ERROR(USARTx_INSTANCE);
+    LL_USART_DisableIT_ERROR(USARTx_INSTANCE);
 
-	allocate_hal_pin(USARTx_TX_GPIO_PORT, USARTx_TX_PIN);
-	allocate_hal_pin(USARTx_RX_GPIO_PORT, USARTx_RX_PIN);
+    allocate_hal_pin(USARTx_TX_GPIO_PORT, USARTx_TX_PIN);
+    allocate_hal_pin(USARTx_RX_GPIO_PORT, USARTx_RX_PIN);
 }
 
 int setup_uart()
 {
-	Configure_USART();
-	return 1;
+    Configure_USART();
+    return 1;
 }
 
 void stop_uart()
 {
-	NVIC_DisableIRQ(USARTx_IRQn);
-	// LL_USART_Disable(USARTx_INSTANCE);
-	CLEAR_BIT(USARTx_INSTANCE->CR1, (USART_CR1_PEIE | USART_CR1_TCIE | USART_CR1_RXNEIE_RXFNEIE | USART_CR1_TXEIE_TXFNFIE));
+    NVIC_DisableIRQ(USARTx_IRQn);
+    // LL_USART_Disable(USARTx_INSTANCE);
+    CLEAR_BIT(USARTx_INSTANCE->CR1, (USART_CR1_PEIE | USART_CR1_TCIE | USART_CR1_RXNEIE_RXFNEIE | USART_CR1_TXEIE_TXFNFIE));
 }
 
 size_t read_uart(char * buf, size_t length)
 {
-	size_t cnt = 0;
-	for (int i = 0; i < length; ++i) {
-		if(RingBufferEmpty(rxrb)) break;
-		uint8_t ch;
-		RingBufferGet(rxrb, &ch);
-		buf[i] = ch;
-		++cnt;
-	}
+    size_t cnt = 0;
+    for (int i = 0; i < length; ++i) {
+        if(RingBufferEmpty(rxrb)) break;
+        uint8_t ch;
+        RingBufferGet(rxrb, &ch);
+        buf[i] = ch;
+        ++cnt;
+    }
 
-	return cnt;
+    return cnt;
 }
 
 size_t write_uart(const char *buf, size_t length)
 {
-#if 0
-	// Note we do a blocking write here until all is written
-	size_t sent_cnt = 0;
-	while(sent_cnt < length) {
-		int n = Chip_UART_SendRB(LPC_UARTX, &txring, buf + sent_cnt, length - sent_cnt);
-		if(n > 0) {
-			sent_cnt += n;
-		}
-	}
-	return length;
-#else
-	for (int i = 0; i < length; ++i) {
-		LL_USART_TransmitData8(USARTx_INSTANCE, buf[i]);
-		while (!LL_USART_IsActiveFlag_TXE(USARTx_INSTANCE)) { }
-		LL_USART_ClearFlag_TC(USARTx_INSTANCE);
-	}
-	return length;
-#endif
+    for (int i = 0; i < length; ++i) {
+        LL_USART_TransmitData8(USARTx_INSTANCE, buf[i]);
+        while (!LL_USART_IsActiveFlag_TXE(USARTx_INSTANCE)) { }
+        LL_USART_ClearFlag_TC(USARTx_INSTANCE);
+    }
+    return length;
 }

@@ -18,8 +18,8 @@
 // this puts the lookup table in FLASH
 // and allows one lut to handle both mappings axis <=> name
 static const struct name_lut_t {
-   const char *name;
-   char axis;
+    const char *name;
+    char axis;
 } name_lut[] = {
     {"alpha", 'X'},
     {"beta", 'Y'},
@@ -75,7 +75,7 @@ bool CurrentControl::configure(ConfigReader& cr)
         auto& m = i.second;
 
         // Get current settings in Amps
-        float c= cr.get_float(m, current_key, -1);
+        float c = cr.get_float(m, current_key, -1);
         if(c <= 0) {
             printf("INFO: configure-current-control: %s - invalid current\n", name.c_str());
             continue;
@@ -83,28 +83,28 @@ bool CurrentControl::configure(ConfigReader& cr)
 
 #ifdef BOARD_MINIALPHA
         // we have a PWM current control
-        std::string pin= cr.get_string(m, pin_key, "nc");
+        std::string pin = cr.get_string(m, pin_key, "nc");
         if(pin == "nc") continue;
 
-        Pwm *pwm= new Pwm(pin.c_str());
+        Pwm *pwm = new Pwm(pin.c_str());
         if(!pwm->is_valid()) {
             delete pwm;
             printf("INFO: configure-current-control: %s - pin %s in not a valid PWM pin\n", name.c_str(), pin.c_str());
             continue;
         }
 
-        pins[name]= pwm;
-        bool ok= set_current(name, c);
+        pins[name] = pwm;
+        bool ok = set_current(name, c);
 
 #elif defined(DRIVER_TMC2590)
         // SPI defined current control, we ask actuator to deal with it
-        bool ok= set_current(name, c);
+        bool ok = set_current(name, c);
 #else
-        bool ok= false;
+        bool ok = false;
 #endif
         if(ok) {
             printf("INFO: configure-current-control: %s set to %1.5f amps\n", name.c_str(), c);
-        }else{
+        } else {
             printf("INFO: configure-current-control: Failed to set current for %s\n", name.c_str());
         }
     }
@@ -127,27 +127,27 @@ bool CurrentControl::configure(ConfigReader& cr)
 bool CurrentControl::set_current(const std::string& name, float current)
 {
 #ifdef BOARD_MINIALPHA
-    char axis= lookup_name(name.c_str());
+    char axis = lookup_name(name.c_str());
     if(axis == 0) return false;
-    auto x= pins.find(name);
-    if(x == pins.end()){
+    auto x = pins.find(name);
+    if(x == pins.end()) {
         return false;
     }
     x->second->set(current_to_pwm(current));
-    bool ok= true;
+    bool ok = true;
 
 #elif defined(DRIVER_TMC2590)
     // ask Actuator to set its current
-    char axis= lookup_name(name.c_str());
+    char axis = lookup_name(name.c_str());
     if(axis == 0) return false;
 
-    int n= axis < 'X' ? axis-'A'+3 : axis-'X';
+    int n = axis < 'X' ? axis - 'A' + 3 : axis - 'X';
     if(n >= Robot::getInstance()->get_number_registered_motors()) return false;
-    bool ok= Robot::getInstance()->actuators[n]->set_current(current);
+    bool ok = Robot::getInstance()->actuators[n]->set_current(current);
 #else
-    char axis= lookup_name(name.c_str());
+    char axis = lookup_name(name.c_str());
     if(axis == 0) return false;
-    bool ok= false;
+    bool ok = false;
 #endif
 
     if(ok) {
@@ -160,19 +160,26 @@ bool CurrentControl::set_current(const std::string& name, float current)
 bool CurrentControl::handle_gcode(GCode& gcode, OutputStream& os)
 {
     if(gcode.get_code() == 906 || gcode.get_code() == 907) {
+        if(gcode.has_no_args()) {
+            for (auto i : currents) {
+                os.printf("%s: %1.5f Amps\n", i.first.c_str(), i.second);
+            }
+            return true;
+        }
+
         // set current in mA or Amps
         for (int i = 0; i < Robot::getInstance()->get_number_registered_motors(); i++) {
-            char axis= i < 3 ? 'X'+i : 'A'+i-3;
+            char axis = i < 3 ? 'X' + i : 'A' + i - 3;
             if (gcode.has_arg(axis)) {
-                float current= gcode.get_arg(axis);
+                float current = gcode.get_arg(axis);
                 if(gcode.get_code() == 906) {
                     // convert to Amps
                     current /= 1000.0F;
                 }
-                const char *name= lookup_axis(axis);
+                const char *name = lookup_axis(axis);
                 if(name == 0) {
                     os.printf("WARNING: could not find axis %c\n", axis);
-                }else{
+                } else {
                     if(!set_current(name, current)) {
                         os.printf("axis %c is not configured for current control\n", axis);
                     }
@@ -184,10 +191,10 @@ bool CurrentControl::handle_gcode(GCode& gcode, OutputStream& os)
     } else if(gcode.get_code() == 500) {
         std::string res;
         for (int i = 0; i < Robot::getInstance()->get_number_registered_motors(); i++) {
-            char axis= i < 3 ? 'X'+i : 'A'+i-3;
-            const char *name= lookup_axis(axis);
+            char axis = i < 3 ? 'X' + i : 'A' + i - 3;
+            const char *name = lookup_axis(axis);
             if(name != 0) {
-                auto c= currents.find(name);
+                auto c = currents.find(name);
                 if (c != currents.end()) {
                     char buf[32];
                     snprintf(buf, sizeof(buf), "%c%1.5f ", axis, c->second);

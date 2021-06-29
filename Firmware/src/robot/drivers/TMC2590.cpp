@@ -376,7 +376,7 @@ int8_t TMC2590::getStallGuardThreshold(void)
 int8_t TMC2590::getStallGuardFilter(void)
 {
     if (stall_guard2_current_register_value & STALL_GUARD_FILTER_ENABLED) {
-        return -1;
+        return 1;
     } else {
         return 0;
     }
