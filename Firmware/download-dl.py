@@ -18,7 +18,7 @@ def signal_term_handler(signal, frame):
 signal.signal(signal.SIGTERM, signal_term_handler)
 
 # Define command line argument interface
-parser = argparse.ArgumentParser(description='str5eam downlod file to smoothieV2 over USB serial')
+parser = argparse.ArgumentParser(description='stream download file to smoothieV2 over USB serial')
 parser.add_argument('file', help='filename to be downloaded')
 parser.add_argument('device', help='Smoothie Serial Device')
 parser.add_argument('-v', '--verbose', action='store_true', default=False, help='verbose output')

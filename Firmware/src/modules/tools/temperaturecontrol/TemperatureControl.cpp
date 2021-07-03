@@ -609,6 +609,7 @@ void TemperatureControl::pid_process(float temperature)
 void TemperatureControl::check_runaway()
 {
     if(is_halted()) return;
+    // printf("DEBUG: check_runaway: %s\n", designator.c_str());
 
     // see if runaway detection is enabled
     if(this->runaway_heating_timeout == 0 && this->runaway_range == 0) return;

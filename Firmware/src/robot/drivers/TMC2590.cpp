@@ -165,7 +165,7 @@ TMC2590::TMC2590(char d) : designator(d)
         bool ok= false;
         spi = SPI::getInstance(0);
         if(spi != nullptr) {
-            if(spi->init(8, 3, 100000)) { // 8bit, mode3, 100KHz
+            if(spi->init(8, 3, 1000000)) { // 8bit, mode3, 1MHz
                 ok= true;
             }
         }
@@ -422,7 +422,7 @@ void TMC2590::setMicrosteps(int number_of_steps)
     }
 
     //delete the old value
-    this->driver_control_register_value &= MICROSTEPPING_PATTERN;
+    this->driver_control_register_value &= ~(MICROSTEPPING_PATTERN);
     //set the new value
     this->driver_control_register_value |= setting_pattern;
 
@@ -810,6 +810,12 @@ void TMC2590::readStatus(int8_t read_value)
     send20bits(driver_configuration_register_value);
 }
 
+int TMC2590::getAllFlags(void)
+{
+    readStatus(TMC2590_READOUT_ALL_FLAGS);
+    return getReadoutValue();
+}
+
 //reads the stall guard setting from last status
 //returns -1 if stallguard information is not present
 int TMC2590::getCurrentStallGuardReading(void)
@@ -958,11 +964,11 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
         check_error_status_bits(stream);
 
         if (this->isStallGuardReached()) {
-            stream.printf("INFO: Stall Guard level reached!\n");
+            stream.printf("Stall Guard level reached\n");
         }
 
         if (this->isStandStill()) {
-            stream.printf("INFO: Motor is standing still.\n");
+            stream.printf("Motor is standing still\n");
         }
 
         int value = getReadoutValue();
@@ -971,11 +977,38 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
         value = getCurrentStallGuardReading();
         stream.printf("Stall Guard value: %d\n", value);
 
-        stream.printf("Current setting: %dmA\n", getCurrent());
+        stream.printf("Current setting: %dmA Peak - %f Amps RMS\n", getCurrent(), (getCurrent()*0.707F)/1000);
         stream.printf("Coolstep current: %dmA\n", getCoolstepCurrent());
 
         stream.printf("Microsteps: 1/%d\n", microsteps);
         stream.printf("Step interpolation is %s\n", getStepInterpolation() ? "on":"off");
+        stream.printf("Overtemperature sensitivity: %dC\n", (driver_configuration_register_value&OTSENS) ? 136:150);
+        stream.printf("Short to ground sensitivity: %s\n", (driver_configuration_register_value&SHRTSENS) ? "high":"low");
+        stream.printf("Passive fast decay is %s\n", (driver_configuration_register_value&EN_PFD) ? "on":"off");
+        stream.printf("Short to VS protection is %s\n", (driver_configuration_register_value&EN_S2VS) ? "enabled":"disabled");
+        stream.printf("Short to GND protection is %s\n", (driver_configuration_register_value&DIS_S2G) ? "disabled":"enabled");
+        stream.printf("Short detection delay is ");
+        switch((driver_configuration_register_value&TS2G)>>8) {
+            case 0: stream.printf("3.2us\n"); break;
+            case 1: stream.printf("1.6us\n"); break;
+            case 2: stream.printf("1.2us\n"); break;
+            case 3: stream.printf("0.8us\n"); break;
+        }
+
+        value= getAllFlags();
+        if(value&0xFFC00) {
+            stream.printf("Detailed Flags...\n");
+            if(value&0x80000) stream.printf("  Low voltage detected\n");
+            if(value&0x40000) stream.printf("  ENN enabled\n");
+            if(value&0x20000) stream.printf("  Short to high B\n");
+            if(value&0x10000) stream.printf("  Short to low B\n");
+            if(value&0x08000) stream.printf("  Short to high A\n");
+            if(value&0x04000) stream.printf("  Short to low A\n");
+            if(value&0x02000) stream.printf("  Overtemp 150\n");
+            if(value&0x01000) stream.printf("  Overtemp 136\n");
+            if(value&0x00800) stream.printf("  Overtemp 120\n");
+            if(value&0x00400) stream.printf("  Overtemp 100\n");
+        }
 
         stream.printf("Register dump:\n");
         stream.printf(" driver control register: %05lX(%ld)\n", driver_control_register_value, driver_control_register_value);
@@ -986,7 +1019,7 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
         stream.printf(" %s.reg = %05lX,%05lX,%05lX,%05lX,%05lX\n", name.c_str(), driver_control_register_value, chopper_config_register_value, cool_step_register_value, stall_guard2_current_register_value, driver_configuration_register_value);
 
     } else {
-        // This is the format the [rocessing app uses for tuning TMX26X chips
+        // This is the format the processing app uses for tuning TMX26X chips
         int n= designator < 'X' ? designator-'A'+3 : designator-'X';
         bool moving = Robot::getInstance()->actuators[n]->is_moving();
         // dump out in the format that the processing script needs

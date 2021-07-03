@@ -414,6 +414,7 @@ private:
     //helper routione to get the top 10 bit of the readout
     inline int getReadoutValue();
     bool check_error_status_bits(OutputStream& stream);
+    int getAllFlags(void);
 
     // SPI sender
     inline void send20bits(unsigned long datagram);

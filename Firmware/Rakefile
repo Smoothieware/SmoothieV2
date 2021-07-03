@@ -12,7 +12,8 @@ PROG = 'smoothiev2'
 load 'rakefile.defaults' if File.exists?('rakefile.defaults')
 
 if ENV['target'].nil?
-  TARGET = 'Nucleo'
+  #TARGET = 'Nucleo'
+  TARGET = 'Devebox'
 elsif (ENV['target'] != 'Nucleo' && ENV['target'] != 'Prime'&& ENV['target'] != 'Devebox')
   puts "ERROR: Must specify target=[Nucleo|Prime|Devebox]"
   exit 0

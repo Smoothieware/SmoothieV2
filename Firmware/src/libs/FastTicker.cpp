@@ -140,7 +140,7 @@ _ramfunc_ void FastTicker::tick()
     for(auto& i : callbacks) {
         int& countdown= std::get<0>(i);
         countdown -= this->interval;
-        if (countdown < 0) {
+        if (countdown <= 0) {
             countdown += std::get<1>(i);
             auto& fnc= std::get<2>(i); // get the callback
             if(fnc) {

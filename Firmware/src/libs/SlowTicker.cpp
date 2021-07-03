@@ -6,17 +6,13 @@
 #include "timers.h"
 
 
-// timers are specified in milliseconds
-#define BASE_FREQUENCY 1000
+// maximum frequency we can set
+#define MAX_FREQUENCY configTICK_RATE_HZ
 
 SlowTicker *SlowTicker::instance= nullptr;
 
 // This module uses a Timer to periodically call registered callbacks
 // Modules register with a function ( callback ) and a frequency, and we then call that function at the given frequency.
-
-// This module uses a Timer to periodically call registered callbacks
-// Modules register with a function ( callback ) and a frequency, and we then call that function at the given frequency.
-// We use TMR1 for this
 
 SlowTicker *SlowTicker::getInstance()
 {
@@ -43,8 +39,8 @@ static void timer_handler(TimerHandle_t xTimer)
 
 SlowTicker::SlowTicker()
 {
-    max_frequency= 1; // 1 Hz
-    interval = BASE_FREQUENCY/max_frequency; // default to 1HZ, 1000ms period
+    max_frequency= 10; // 10 Hz
+    interval = 1000/max_frequency; // interval in ms default to 10HZ, 100ms period
     timer_handle= xTimerCreate("SlowTickerTimer", pdMS_TO_TICKS(interval), pdTRUE, nullptr, timer_handler);
 }
 
@@ -84,18 +80,19 @@ bool SlowTicker::stop()
 
 int SlowTicker::attach(uint32_t frequency, std::function<void(void)> cb)
 {
-    uint32_t period = BASE_FREQUENCY / frequency;
+    uint32_t period = 1000 / frequency; // period in ms
     int countdown = period;
 
     if( frequency > max_frequency ) {
         // reset frequency to a higher value
         if(!set_frequency(frequency)) {
-            printf("WARNING: SlowTicker cannot be set to > %dHz\n", BASE_FREQUENCY);
+            printf("WARNING: SlowTicker cannot be set to > %luHz\n", MAX_FREQUENCY);
             return -1;
         }
         max_frequency = frequency;
     }
 
+    printf("DEBUG: SlowTicker added freq: %luHz, period: %lums\n", frequency, period);
     bool was_started= started;
     if(was_started) stop();
     callbacks.push_back(std::make_tuple(countdown, period, cb));
@@ -116,8 +113,8 @@ void SlowTicker::detach(int n)
 // NOTE this is a slow ticker so ticks faster than 1000Hz are not allowed
 bool SlowTicker::set_frequency( int frequency )
 {
-    if(frequency > BASE_FREQUENCY) return false;
-    this->interval = BASE_FREQUENCY / frequency; // millisecond period
+    if(frequency > (int)MAX_FREQUENCY) return false;
+    this->interval = 1000 / frequency; // millisecond interval
     if(started) {
         stop(); // must stop timer first
         // change frequency of timer callback
@@ -125,19 +122,19 @@ bool SlowTicker::set_frequency( int frequency )
             printf("ERROR: Failed to change timer period\n");
             return false;
         }
-        start(); // the restart it
+        start(); // restart it
     }
     return true;
 }
 
-// This is an ISR (or not actually, but must not block)
+// This is a timer calback and must not block
 void SlowTicker::tick()
 {
     // Call all callbacks that need to be called
     for(auto& i : callbacks) {
         int& countdown= std::get<0>(i);
         countdown -= this->interval;
-        if (countdown < 0) {
+        if (countdown <= 0) {
             countdown += std::get<1>(i);
             auto& fnc= std::get<2>(i); // get the callback
             if(fnc) {

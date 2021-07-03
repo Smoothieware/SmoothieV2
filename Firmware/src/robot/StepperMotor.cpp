@@ -108,13 +108,6 @@ bool StepperMotor::setup_tmc2590(ConfigReader& cr, const char *actuator_name)
     return true;
 }
 
-bool StepperMotor::init_tmc2590()
-{
-    if(tmc2590 == nullptr) return false;
-    tmc2590->init();
-    return true;
-}
-
 bool StepperMotor::set_current(float c)
 {
     if(tmc2590 == nullptr) return false;

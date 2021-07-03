@@ -98,3 +98,45 @@ pins used on the headers when selecting a function in the Firmware
 | NCS        | PB6     |                          |
 | CLK        | PB2     |                          |
 +------------+---------+--------------------------+
+
+not 5v tolerant 
++-----+--------+
+| PE8 |        |
+| PE7 |        |
+| PA4 |        |
+| PB1 |        |
+| PG1 |        |
+| PA5 | SPI0CK |
+| PE9 | PWM1_1 |
++-----+--------+
+
+# Gadgeteer headers
+## GA
+| hdr | pin  | func         |
++-----+------+--------------+
+| 1   |      | 3v3          |
+| 2   |      | 5v           |
+| 3   | PJ6  |              |
+| 4   | PJ9  |              |
+| 5   | PJ10 |              |
+| 6   | PJ11 |              |
+| 7   | PB5  | mot spi MOSI |
+| 8   | PE6  | mot spi MISO |
+| 9   | PE12 | mot spi CLK  |
+| 10  |      | gnd          |
++-----+------+--------------+
+
+## GB
+| hdr | pin | func |
++-----+-----+------+
+| 1   |     | 3v3  |
+| 2   |     | 5v   |
+| 3   |     |      |
+| 4   |     |      |
+| 5   |     |      |
+| 6   |     |      |
+| 7   |     |      |
+| 8   |     |      |
+| 9   |     |      |
+| 10  |     | gnd  |
++-----+-----+------+

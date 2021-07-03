@@ -83,12 +83,12 @@ class StepperMotor
         bool set_microsteps(uint16_t ms);
         int get_microsteps();
         bool setup_tmc2590(ConfigReader& cr, const char *actuator_name);
-        bool init_tmc2590();
         void dump_status(OutputStream& os, bool flag=true);
         void set_raw_register(OutputStream& os, uint32_t reg, uint32_t val);
         bool set_options(GCode& gcode);
         bool check_driver_error();
         static bool set_vmot(bool state) { bool last= vmot; vmot= state; return last; }
+        static bool get_vmot() { return vmot; }
         void set_vmot_lost() { vmot_lost= true; }
 
     private:

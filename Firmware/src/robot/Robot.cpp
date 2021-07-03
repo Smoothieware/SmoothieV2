@@ -388,9 +388,10 @@ bool Robot::configure(ConfigReader& cr)
 
     //this->clearToolOffset();
 #ifdef DRIVER_TMC2590
-    // setup a timer to periodically check Vbb and if it is off we need to tell all motors to reset when it comes on again
+    // setup a timer to periodically check VMOT and if it is off we need to tell all motors to reset when it comes on again
     // also will check driver errors if enabled
-    SlowTicker::getInstance()->attach(1, std::bind(&Robot::periodic_checks, this));
+    periodic_checks();
+    SlowTicker::getInstance()->attach(10, std::bind(&Robot::periodic_checks, this));
 #endif
 
     // register gcodes and mcodes
@@ -485,6 +486,8 @@ void Robot::periodic_checks()
     // get last vmot state
     bool last= StepperMotor::set_vmot(vmot);
 
+    // printf("DEBUG: periodic_checks - vmot: %d, last: %d\n", vmot, last);
+
     if(last && !vmot) {
         // we had a state change to off so set vmot lost
         for(auto a : actuators) {
@@ -496,13 +499,9 @@ void Robot::periodic_checks()
     // don't check if we do not have vmot
     if(vmot && check_driver_errors) {
         for(auto a : actuators) {
-            if(a->check_driver_error()) {
-                if(halt_on_driver_alarm) {
-                    if(!is_halted()) {
-                        broadcast_halt(true);
-                        return;
-                    }
-                }
+            if(a->check_driver_error() && halt_on_driver_alarm && !is_halted()) {
+                broadcast_halt(true);
+                return;
             }
         }
     }
@@ -1187,7 +1186,7 @@ bool Robot::handle_M909(GCode& gcode, OutputStream& os)
 
 /* set or get raw registers
     M911 will dump all the registers and status of all the motors
-    M911.1 Pn will dump the registers and status of the selected motor.
+    M911[.1] Pn will dump the registers and status of the selected motor.
               R0 will request format in processing machine readable format
     M911.2 Pn Rxxx Vyyy sets Register xxx to value yyy for motor n,
                xxx == 255 writes the registers
@@ -1214,25 +1213,31 @@ bool Robot::handle_M909(GCode& gcode, OutputStream& os)
 */
 bool Robot::handle_M911(GCode& gcode, OutputStream& os)
 {
-    if(gcode.get_subcode() == 0 && gcode.has_no_args()) {
-        // M911 no args dump status for all drivers
-        for (int i = 0; i < get_number_registered_motors(); i++) {
-            char axis= i < 3 ? 'X'+i : 'A'+i-3;
-            os.printf("Motor %d (%c)...\n", i, axis);
-            actuators[i]->dump_status(os);
-            os.printf("\n");
+    if(gcode.get_subcode() <= 1) {
+        if(!StepperMotor::get_vmot()) os.printf("WARNING: VMOT is off\n");
+        if(gcode.has_no_args()) {
+            // M911 no args dump status for all drivers
+            for (int i = 0; i < get_number_registered_motors(); i++) {
+                char axis= i < 3 ? 'X'+i : 'A'+i-3;
+                os.printf("Motor %d (%c)...\n", i, axis);
+                actuators[i]->dump_status(os);
+                os.printf("\n");
+            }
+            return true;
+
+        } else if(gcode.has_arg('P')) {
+            // M911[.1] Pn dump for specific driver
+            int p= gcode.get_int_arg('P');
+            if(p >= get_number_registered_motors()) return true;
+            actuators[p]->dump_status(os, !gcode.has_arg('R'));
+            return true;
         }
-        return true;
 
     }else if(gcode.has_arg('P')) {
         int p= gcode.get_int_arg('P');
         if(p >= get_number_registered_motors()) return true;
 
-        if(gcode.get_subcode() == 1) {
-            // M911.1 Pn dump for specific driver
-            actuators[p]->dump_status(os, !gcode.has_arg('R'));
-
-        }else if(gcode.get_subcode() == 2 && gcode.has_arg('R') && gcode.has_arg('V')) {
+        if(gcode.get_subcode() == 2 && gcode.has_arg('R') && gcode.has_arg('V')) {
             actuators[p]->set_raw_register(os, gcode.get_int_arg('R'), gcode.get_int_arg('V'));
 
         }else if(gcode.get_subcode() == 3 ) {
