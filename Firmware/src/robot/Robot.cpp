@@ -391,7 +391,7 @@ bool Robot::configure(ConfigReader& cr)
     // setup a timer to periodically check VMOT and if it is off we need to tell all motors to reset when it comes on again
     // also will check driver errors if enabled
     periodic_checks();
-    SlowTicker::getInstance()->attach(10, std::bind(&Robot::periodic_checks, this));
+    SlowTicker::getInstance()->attach(1, std::bind(&Robot::periodic_checks, this));
 #endif
 
     // register gcodes and mcodes

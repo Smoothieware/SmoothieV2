@@ -784,9 +784,6 @@ static void smoothie_startup(void *)
     // led 4 indicates boot phase 2 starts
     Board_LED_Set(3, true);
 
-    // create the SlowTicker here as it is used by some modules
-    SlowTicker *slow_ticker = SlowTicker::getInstance();
-
     // create the FastTicker here as it is used by some modules
     FastTicker *fast_ticker = FastTicker::getInstance();
 
@@ -1014,11 +1011,6 @@ static void smoothie_startup(void *)
     shell->initialize();
 
     if(ok) {
-        // start the timers
-        if(!slow_ticker->start()) {
-            printf("Error: failed to start SlowTicker\n");
-        }
-
         if(!fast_ticker->start()) {
             printf("WARNING: failed to start FastTicker (maybe nothing is using it?)\n");
         }

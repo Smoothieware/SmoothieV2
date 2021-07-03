@@ -536,12 +536,6 @@ int main()   //int argc, char *argv[])
     printf("MCU clock rate= %lu Hz\n", SystemCoreClock);
     print_clocks();
 
-    // we need to setup and start the slow ticker for some of the tests
-    static SlowTicker *slowticker = SlowTicker::getInstance();
-    if(!slowticker->start()) {
-        printf("WARNING: SlowTicker did not start\n");
-    }
-
     xTaskCreate(vRunTestsTask, "vTestsTask", 1024, /* *4 as 32bit words */
                 NULL, (tskIDLE_PRIORITY + 2UL), (TaskHandle_t *) NULL);
 

@@ -30,11 +30,7 @@ REGISTER_TEST(SlowTicker, test_1_20_100_hz)
 {
     SlowTicker *slt= SlowTicker::getInstance();
     TEST_ASSERT_NOT_NULL(slt);
-    // TEST_ASSERT_TRUE(slt->start()); // already started in main
 
-    // 1 Hz
-    int n3= slt->attach(1, timer_callback1);
-    TEST_ASSERT_TRUE(n3 >= 0);
 
     // 20 Hz
     int n1= slt->attach(20, timer_callback20);
@@ -44,6 +40,9 @@ REGISTER_TEST(SlowTicker, test_1_20_100_hz)
     int n2= slt->attach(100, timer_callback100);
     TEST_ASSERT_TRUE(n2 >= 0 && n2 > n1);
 
+    // 1 Hz
+    int n3= slt->attach(1, timer_callback1);
+    TEST_ASSERT_TRUE(n3 > n2);
 
 
     timer_cnt1= 0;
@@ -51,18 +50,13 @@ REGISTER_TEST(SlowTicker, test_1_20_100_hz)
     timer_cnt100= 0;
     // test for 5 seconds which should be around 100 callbacks for 20 and 500 for 100
     for (int i = 0; i < 5; ++i) {
-        //vTaskDelay(pdMS_TO_TICKS(1000));;
-        for (int d = 0; d < 100; ++d) {
-            HAL_Delay(9);
-            vTaskDelay(pdMS_TO_TICKS(1));;
-        }
+        vTaskDelay(pdMS_TO_TICKS(1000));;
         printf("time %d seconds, timer1 %d, timer20 %d, timer100 %d\n", i+1, timer_cnt1, timer_cnt20, timer_cnt100);
     }
 
     slt->detach(n1);
     slt->detach(n2);
     slt->detach(n3);
-    //TEST_ASSERT_TRUE(slt->stop());
 
     TEST_ASSERT_INT_WITHIN(2, 100, timer_cnt20);
     TEST_ASSERT_INT_WITHIN(2, 500, timer_cnt100);
