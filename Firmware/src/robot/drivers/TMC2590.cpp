@@ -87,7 +87,7 @@
 #define DIS_S2G                        0x0400ul
 #define TS2G                           0x0300ul
 #define VSENSE                         0x0040ul
-#define READ_MICROSTEP_POSITgION        0x0000ul
+#define READ_MICROSTEP_POSITION        0x0000ul
 #define READ_STALL_GUARD_READING       0x0010ul
 #define READ_STALL_GUARD_AND_COOL_STEP 0x0020ul
 #define READ_ALL_FLAGS                 0x0030ul
@@ -196,6 +196,10 @@ TMC2590::TMC2590(char d) : designator(d)
 
         // for 4amp Nema24 @ 12v
         //setSpreadCycleChopper(5, 54, 4, 0, 0);
+
+        // set medium gate driver strength high= 3, low= 3 (0x0F000)
+        driver_configuration_register_value |= (SLPH|SLPL);
+        driver_configuration_register_value &= ~(SLPHL2);
     #endif
     setEnabled(false);
 
@@ -217,7 +221,7 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
 
     auto s = ssm.find(actuator_name);
     if(s == ssm.end()) {
-        printf("ERROR:config_tmc2590: no tmc2590 %s entry found\n", actuator_name);
+        printf("ERROR:config_tmc2590: %s - no tmc2590 entry found\n", actuator_name);
         return false;
     }
 
@@ -227,14 +231,14 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
     spi_cs = new Pin(cs_pin.c_str(), Pin::AS_OUTPUT);
     if(!spi_cs->connected()) {
         delete spi_cs;
-        printf("ERROR:config_tmc2590: spi cs pin is invalid for: %s\n", actuator_name);
+        printf("ERROR:config_tmc2590: %s - spi cs pin is invalid\n", actuator_name);
         return false;
     }
     spi_cs->set(true);
-    printf("DEBUG:configure-tmc2590: for actuator %s spi cs pin: %s\n", actuator_name, spi_cs->to_string().c_str());
+    printf("DEBUG:configure-tmc2590: %s - spi cs pin: %s\n", actuator_name, spi_cs->to_string().c_str());
 
     this->resistor = cr.get_int(mm, resistor_key, 75); // in milliohms
-    printf("DEBUG:configure-tmc2590: for actuator %s sense resistor: %d milliohms\n", actuator_name, resistor);
+    printf("DEBUG:configure-tmc2590: %s - sense resistor: %d milliohms\n", actuator_name, resistor);
 
     // if raw registers are defined set them 1,2,3 etc in hex
     std::string str= cr.get_string(mm, raw_register_key, "");
@@ -255,13 +259,13 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
     bool interpolation= cr.get_bool(mm, step_interpolation_key, false);
     if(interpolation) {
         setStepInterpolation(1);
-        printf("DEBUG:configure-tmc2590: step interpolation for %s is on\n", actuator_name);
+        printf("DEBUG:configure-tmc2590: %s - step interpolation is on\n", actuator_name);
     }
 
     bool pfd= cr.get_bool(mm, passive_fast_decay_key, true);
     if(pfd) {
         setPassiveFastDecay(1);
-        printf("DEBUG:configure-tmc2590: passive fast decay for %s is on\n", actuator_name);
+        printf("DEBUG:configure-tmc2590: %s - passive fast decay is on\n", actuator_name);
     }
 
     // if this is the first instance then get any common settings
@@ -323,7 +327,7 @@ void TMC2590::setCurrent(unsigned int current)
         current_scaling = 31;
 
     } else if(current_scaling < 16) {
-        printf("WARNING: suboptimal current setting %d for %c at %umA with sense resistor value %umilliOhms\n", current_scaling, designator, current, resistor);
+        printf("WARNING: tmc2590: %c - suboptimal current setting %d at %umA with sense resistor value %umilliOhms\n", designator, current_scaling, current, resistor);
     }
 
     //delete the old value
@@ -1022,6 +1026,9 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
             case 2: stream.printf("1.2us\n"); break;
             case 3: stream.printf("0.8us\n"); break;
         }
+        uint8_t slope_high= ((driver_configuration_register_value&SLPH) >> 14) | ((driver_configuration_register_value&SLPHL2) >> 9);
+        uint8_t slope_low= ((driver_configuration_register_value&SLPL) >> 12) | ((driver_configuration_register_value&SLPHL2) >> 9);
+        stream.printf("Slope control - high: %d, low: %d\n", slope_high, slope_low);
 
         readStatus(TMC2590_READOUT_ALL_FLAGS);
         if((driver_status_result&0x00300) != 0x00300) stream.printf("WARNING: Read all flags appears incorrect: %05lX\n", driver_status_result);
