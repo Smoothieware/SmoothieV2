@@ -87,7 +87,7 @@
 #define DIS_S2G                        0x0400ul
 #define TS2G                           0x0300ul
 #define VSENSE                         0x0040ul
-#define READ_MICROSTEP_POSITION        0x0000ul
+#define READ_MICROSTEP_POSITgION        0x0000ul
 #define READ_STALL_GUARD_READING       0x0010ul
 #define READ_STALL_GUARD_AND_COOL_STEP 0x0020ul
 #define READ_ALL_FLAGS                 0x0030ul
@@ -254,6 +254,9 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
         setStepInterpolation(1);
         printf("DEBUG:configure-tmc2590: step interpolation for %s is on\n", actuator_name);
     }
+
+    // TODO need configuration
+    setPassiveFastDecay(1);
 
     // if this is the first instance then get any common settings
     if(!common_setup) {
@@ -468,6 +471,19 @@ void TMC2590::setDoubleEdge(int8_t value)
     //if started we directly send it to the motor
     if (started) {
         send20bits(driver_control_register_value);
+    }
+}
+
+void TMC2590::setPassiveFastDecay(int8_t value)
+{
+    if (value) {
+        driver_configuration_register_value |= EN_PFD;
+    } else {
+        driver_configuration_register_value &= ~(EN_PFD);
+    }
+    //if started we directly send it to the motor
+    if (started) {
+        send20bits(driver_configuration_register_value);
     }
 }
 
@@ -971,6 +987,8 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
             stream.printf("Motor is standing still\n");
         }
 
+        readStatus(TMC2590_READOUT_POSITION); // get the status bits
+        if((driver_status_result&0x00300) != 0) stream.printf("WARNING: Response read appears incorrect: %05lX\n", driver_status_result);
         int value = getReadoutValue();
         stream.printf("Microstep position phase A: %d\n", value);
 
@@ -995,7 +1013,9 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
             case 3: stream.printf("0.8us\n"); break;
         }
 
-        value= getAllFlags();
+        readStatus(TMC2590_READOUT_ALL_FLAGS);
+        if((driver_status_result&0x00300) != 0x00300) stream.printf("WARNING: Read all flags appears incorrect: %05lX\n", driver_status_result);
+        value= driver_status_result;
         if(value&0xFFC00) {
             stream.printf("Detailed Flags...\n");
             if(value&0x80000) stream.printf("  Low voltage detected\n");
@@ -1194,7 +1214,7 @@ void TMC2590::send20bits(unsigned long datagram)
     //store the datagram as status result
     driver_status_result = i_datagram;
 
-    //printf("%c: sent: %05lX received: %05lX\n", designator, datagram, i_datagram);
+    // printf("DEBUG: SPI - %c: sent: %05lX received: %05lX\n", designator, datagram, i_datagram);
 }
 
 // Called by the drivers codes to send and receive SPI data to/from the chip

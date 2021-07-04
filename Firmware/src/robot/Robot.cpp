@@ -367,6 +367,8 @@ bool Robot::configure(ConfigReader& cr)
         if(!motors_enable_pin->connected()) {
             delete motors_enable_pin;
             motors_enable_pin= nullptr;
+        }else{
+            motors_enable_pin->set(false); // it is a not enable
         }
 
     }
@@ -515,7 +517,7 @@ void Robot::on_halt(bool flg)
 
     if(motors_enable_pin != nullptr) {
         // global enable pin
-        motors_enable_pin->set(!flg);
+        motors_enable_pin->set(flg);
     }
 
     if(flg) {
@@ -530,7 +532,7 @@ void Robot::enable_all_motors(bool flg)
 {
     if(motors_enable_pin != nullptr) {
         // global enable pin
-        motors_enable_pin->set(true);
+        motors_enable_pin->set(false);
     }
     for(auto a : actuators) {
         a->enable(flg);

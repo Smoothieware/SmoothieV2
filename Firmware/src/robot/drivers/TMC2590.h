@@ -139,6 +139,7 @@ private:
     void setStepInterpolation(int8_t value);
     bool getStepInterpolation();
     void setDoubleEdge(int8_t value);
+    void setPassiveFastDecay(int8_t value);
 
     /*!
      * \brief Sets and configure the classical Constant Off Timer Chopper
