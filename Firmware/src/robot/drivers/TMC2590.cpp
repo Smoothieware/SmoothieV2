@@ -143,6 +143,7 @@
 #define max_current_key                 "max_current"
 #define raw_register_key                "reg"
 #define step_interpolation_key          "step_interpolation"
+#define passive_fast_decay_key          "passive_fast_decay"
 
 //statics common to all instances
 SPI *TMC2590::spi= nullptr;
@@ -232,7 +233,8 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
     spi_cs->set(true);
     printf("DEBUG:configure-tmc2590: for actuator %s spi cs pin: %s\n", actuator_name, spi_cs->to_string().c_str());
 
-    this->resistor = cr.get_int(mm, resistor_key, 50); // in milliohms
+    this->resistor = cr.get_int(mm, resistor_key, 75); // in milliohms
+    printf("DEBUG:configure-tmc2590: for actuator %s sense resistor: %d milliohms\n", actuator_name, resistor);
 
     // if raw registers are defined set them 1,2,3 etc in hex
     std::string str= cr.get_string(mm, raw_register_key, "");
@@ -248,15 +250,19 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
         }
     }
 
-    // see if we want step interpolation (overrides the raw register setting if set)
+    // the following override the raw register settings if set
+    // see if we want step interpolation
     bool interpolation= cr.get_bool(mm, step_interpolation_key, false);
     if(interpolation) {
         setStepInterpolation(1);
         printf("DEBUG:configure-tmc2590: step interpolation for %s is on\n", actuator_name);
     }
 
-    // TODO need configuration
-    setPassiveFastDecay(1);
+    bool pfd= cr.get_bool(mm, passive_fast_decay_key, true);
+    if(pfd) {
+        setPassiveFastDecay(1);
+        printf("DEBUG:configure-tmc2590: passive fast decay for %s is on\n", actuator_name);
+    }
 
     // if this is the first instance then get any common settings
     if(!common_setup) {
@@ -315,7 +321,11 @@ void TMC2590::setCurrent(unsigned int current)
     //do some sanity checks
     if (current_scaling > 31) {
         current_scaling = 31;
+
+    } else if(current_scaling < 16) {
+        printf("WARNING: suboptimal current setting %d for %c at %umA with sense resistor value %umilliOhms\n", current_scaling, designator, current, resistor);
     }
+
     //delete the old value
     stall_guard2_current_register_value &= ~(CURRENT_SCALING_PATTERN);
     //set the new current scaling
@@ -1114,12 +1124,12 @@ bool TMC2590::check_error_status_bits(OutputStream& stream)
     // define tests here
     using e_t = std::tuple<int, std::function<bool(void)>, const char*>;
     std::vector<e_t> tests {
-        {0, [this](void){return this->getOverTemperature()&TMC2590_OVERTEMPERATURE_PREWARING;}, "Overtemperature Prewarning!"},
-        {1, [this](void){return this->getOverTemperature()&TMC2590_OVERTEMPERATURE_SHUTDOWN;}, "Overtemperature Shutdown!"},
-        {2, [this](void){return this->isShortToGroundA();}, "SHORT to ground on channel A!"},
-        {3, [this](void){return this->isShortToGroundB();}, "SHORT to ground on channel B!"},
-        {4, [this](void){return this->isStandStill() && this->isOpenLoadA();}, "Channel A seems to be unconnected!"},
-        {5, [this](void){return this->isStandStill() && this->isOpenLoadB();}, "Channel B seems to be unconnected!"}
+        {0, [this](void){return this->getOverTemperature()&TMC2590_OVERTEMPERATURE_PREWARING;}, "Overtemperature Prewarning"},
+        {1, [this](void){return this->getOverTemperature()&TMC2590_OVERTEMPERATURE_SHUTDOWN;}, "Overtemperature Shutdown"},
+        {2, [this](void){return this->isShortToGroundA();}, "SHORT to ground on channel A"},
+        {3, [this](void){return this->isShortToGroundB();}, "SHORT to ground on channel B"},
+        {4, [this](void){return this->isStandStill() && this->isOpenLoadA();}, "Channel A seems to be unconnected"},
+        {5, [this](void){return this->isStandStill() && this->isOpenLoadB();}, "Channel B seems to be unconnected"}
     };
 
     bool error = false;
@@ -1273,6 +1283,10 @@ bool TMC2590::set_options(const GCode& gcode)
 
         } else if(s == 5 && HAS('Z')) {
             setCoolStepEnabled(GET('Z') == 1);
+            set = true;
+
+        } else if(s == 6 && HAS('Z')) {
+            setPassiveFastDecay(GET('Z') == 1);
             set = true;
         }
     }

@@ -369,8 +369,8 @@ bool Robot::configure(ConfigReader& cr)
             motors_enable_pin= nullptr;
         }else{
             motors_enable_pin->set(false); // it is a not enable
+            printf("DEBUG:configure-robot: ENN is enabled on pin %s\n", motors_enable_pin->to_string().c_str());
         }
-
     }
 
     // initialise actuator positions to current cartesian position (X0 Y0 Z0)
@@ -1211,6 +1211,8 @@ bool Robot::handle_M909(GCode& gcode, OutputStream& os)
     M911.3 S4 Zn setStepInterpolation
               Z=on|off Z1 is on Z0 is off
     M911.3 S5 Zn setCoolStepEnabled
+              Z=on|off Z1 is on Z0 is off
+    M911.3 S6 Zn setPassiveFastDecay
               Z=on|off Z1 is on Z0 is off
 */
 bool Robot::handle_M911(GCode& gcode, OutputStream& os)
