@@ -966,8 +966,6 @@ bool TMC2590::isStallGuardReached(void)
     return (driver_status_result & STATUS_STALL_GUARD_STATUS);
 }
 
-//reads the stall guard setting from last status
-//returns -1 if stallguard inforamtion is not present
 int TMC2590::getReadoutValue(void)
 {
     return (int)(driver_status_result >> 10);
@@ -1128,15 +1126,15 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
 // check error bits and report, only report once, and debounce the test
 bool TMC2590::check_error_status_bits(OutputStream& stream)
 {
-    // define tests here
-    using e_t = std::tuple<int, std::function<bool(void)>, const char*>;
+    // define tests here, id, test, fatal, message
+    using e_t = std::tuple<int, std::function<bool(void)>, bool, const char*>;
     std::vector<e_t> tests {
-        {0, [this](void){return this->getOverTemperature()&TMC2590_OVERTEMPERATURE_PREWARING;}, "Overtemperature Prewarning"},
-        {1, [this](void){return this->getOverTemperature()&TMC2590_OVERTEMPERATURE_SHUTDOWN;}, "Overtemperature Shutdown"},
-        {2, [this](void){return this->isShortToGroundA();}, "SHORT to ground on channel A"},
-        {3, [this](void){return this->isShortToGroundB();}, "SHORT to ground on channel B"},
-        {4, [this](void){return this->isStandStill() && this->isOpenLoadA();}, "Channel A seems to be unconnected"},
-        {5, [this](void){return this->isStandStill() && this->isOpenLoadB();}, "Channel B seems to be unconnected"}
+        {0, [this](void){return this->getOverTemperature()&TMC2590_OVERTEMPERATURE_PREWARING;}, false, "Overtemperature Prewarning"},
+        {1, [this](void){return this->getOverTemperature()&TMC2590_OVERTEMPERATURE_SHUTDOWN;}, true, "Overtemperature Shutdown"},
+        {2, [this](void){return this->isShortToGroundA();}, true, "SHORT to ground on channel A"},
+        {3, [this](void){return this->isShortToGroundB();}, true, "SHORT to ground on channel B"},
+        {4, [this](void){return this->isStandStill() && this->isOpenLoadA();}, false, "Channel A seems to be unconnected"},
+        {5, [this](void){return this->isStandStill() && this->isOpenLoadB();}, false, "Channel B seems to be unconnected"}
     };
 
     bool error = false;
@@ -1151,8 +1149,12 @@ bool TMC2590::check_error_status_bits(OutputStream& stream)
             }else{
                 if(!error_reported.test(n)){
                     // only reports error once until it has been cleared
-                    stream.printf("WARNING: %c: %s\n", designator, std::get<2>(i));
+                    stream.printf("WARNING: %c: %s\n", designator, std::get<3>(i));
                     error_reported.set(n);
+                }
+                if(!error && std::get<2>(i)) {
+                    // fatal error and error not yet set
+                    error= true;
                 }
             }
         } else {
