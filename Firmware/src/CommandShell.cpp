@@ -1379,7 +1379,7 @@ bool CommandShell::config_set_cmd(std::string& params, OutputStream& os)
 
 bool CommandShell::download_cmd(std::string& params, OutputStream& os)
 {
-    HELP("dl filename size - fast streaming binary download");
+    HELP("dl filename size - fast streaming binary download over USB serial");
 
     std::string fn = stringutils::shift_parameter( params );
     std::string sizestr = stringutils::shift_parameter( params );
@@ -1408,6 +1408,8 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
         os.printf("FAIL - could not open file: %d\n", errno);
         return true;
     }
+
+    printf("DEBUG: fast download over USB serial started\n");
 
     volatile ssize_t state= 0;
     set_fast_capture([&fp, &state](char *buf, size_t len) {
@@ -1447,6 +1449,7 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
 
     set_fast_capture(nullptr);
 
+    printf("DEBUG: fast download over USB serial ended\n");
     return true;
 }
 

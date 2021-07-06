@@ -98,8 +98,8 @@ static const char* const default_stepper_pins[][3] = {
     {"PJ3", "PJ4",  "nc"}, // Y step, dir, enb
     {"PJ5", "PJ6",  "nc"}, // Z step, dir, enb
     {"PJ7", "PJ8",  "nc"}, // A step, dir, enb
-    {"PJ9", "PJ10", "nc"}, // B step, dir, enb
-    {"PJ11", "PJ12","nc"}, // C step, dir, enb
+    {"nc", "nc", "nc"}, // B step, dir, enb
+    {"nc", "nc","nc"}, // C step, dir, enb
 };
 
 Robot *Robot::instance = nullptr;
@@ -245,6 +245,7 @@ bool Robot::configure(ConfigReader& cr)
                 n_motors = a; // we only have this number of motors
                 return false;
             }
+            printf("WARNING:configure-robot: motor %c has no step or dir pin defined\n", 'X' + a);
             break; // if any pin is not defined then the axis is not defined (and axis need to be defined in contiguous order)
         }
 
