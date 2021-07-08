@@ -1,6 +1,6 @@
 #include "Vector3.h"
 
-#include <fastmath.h>
+#include <math.h>
 #include <cstddef>
 
 float Vector3::operator[](int i) const

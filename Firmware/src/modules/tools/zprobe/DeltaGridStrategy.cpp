@@ -79,7 +79,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cmath>
-#include <fastmath.h>
+#include <math.h>
 
 #define grid_radius_key "radius"
 #define grid_size_key "size"

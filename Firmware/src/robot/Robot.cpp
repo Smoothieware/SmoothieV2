@@ -1606,7 +1606,6 @@ void Robot::reset_axis_position(float position, int axis)
 void Robot::reset_actuator_position(const ActuatorCoordinates &ac)
 {
     for (size_t i = X_AXIS; i <= Z_AXIS; i++) {
-        // FIXME we cannot use isnan anymore
         if(!isnan(ac[i])) actuators[i]->change_last_milestone(ac[i]);
     }
 

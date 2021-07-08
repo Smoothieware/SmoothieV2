@@ -918,7 +918,6 @@ bool Endstops::handle_G28(GCode& gcode, OutputStream& os)
 
         case 4: { // G28.4 is a smoothie special it sets manual homing based on the actuator position (used for rotary delta)
                 // do a manual homing based on given coordinates, no endstops required
-                // FIXME we cannot use NAN
                 ActuatorCoordinates ac{NAN, NAN, NAN};
                 if(gcode.has_arg('X')){ ac[0] =  gcode.get_arg('X'); homing_axis[X_AXIS].homed= true; }
                 if(gcode.has_arg('Y')){ ac[1] =  gcode.get_arg('Y'); homing_axis[Y_AXIS].homed= true; }

@@ -93,7 +93,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cmath>
-#include <fastmath.h>
+#include <math.h>
 
 #define grid_x_size_key "grid_x_size"
 #define grid_y_size_key "grid_y_size"
