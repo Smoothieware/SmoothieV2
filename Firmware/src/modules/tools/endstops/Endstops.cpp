@@ -1077,7 +1077,6 @@ bool Endstops::request(const char *key, void *value)
 
     if(strcmp(key, "set_home_offset") == 0) {
         float *t = static_cast<float*>(value);
-        // FIXME can't use NAN
         if(!isnan(t[0])) homing_axis[0].home_offset= t[0];
         if(!isnan(t[1])) homing_axis[1].home_offset= t[1];
         if(!isnan(t[2])) homing_axis[2].home_offset= t[2];

@@ -45,7 +45,7 @@ private:
     float previous_unit_vec[N_PRIMARY_AXIS];
 
     float xy_junction_deviation{0.05F};    // Setting
-    float z_junction_deviation{NAN};  // Setting
+    float z_junction_deviation{-1};  // Setting
     float minimum_planner_speed{0.0F}; // Setting
     int planner_queue_size{32}; // setting
 

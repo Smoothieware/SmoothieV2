@@ -16,7 +16,7 @@ StepperMotor::StepperMotor(Pin &step, Pin &dir, Pin &en) : step_pin(step), dir_p
     last_milestone_mm    = 0.0F;
     current_position_steps= 0;
     moving= false;
-    acceleration= NAN;
+    acceleration= -1;
     selected= true;
     extruder= false;
 
