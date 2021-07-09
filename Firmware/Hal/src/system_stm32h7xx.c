@@ -978,7 +978,7 @@ void print_clocks()
 extern void TIM6_Deinit();
 void jump_to_program(uint32_t prog_addr)
 {
-	// transfer control to the flashloader in RAM
+	// transfer control to the flashloader at prog_addr
 	void (*SysMemBootJump)(void);
 	/* Set the address of the entry point to flashloader */
 	volatile uint32_t BootAddr = prog_addr;
@@ -1011,7 +1011,7 @@ void jump_to_program(uint32_t prog_addr)
 	/* Re-enable all interrupts */
 	__enable_irq();
 
-	SCB->VTOR = prog_addr;       /* Vector Table Relocation in DTCMRAM */
+	SCB->VTOR = prog_addr;       // Vector Table Relocation
 	/* Set up the jump to booloader address + 4 */
 	SysMemBootJump = (void (*)(void)) (*((uint32_t *) ((BootAddr + 4))));
 	/* Set the main stack pointer to the flashloader stack */

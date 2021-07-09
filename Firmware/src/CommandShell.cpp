@@ -86,6 +86,7 @@ bool CommandShell::initialize()
 #ifdef USE_DFU
     THEDISPATCHER->add_handler( "dfu", std::bind( &CommandShell::dfu_cmd, this, _1, _2) );
 #endif
+    THEDISPATCHER->add_handler( "qspi", std::bind( &CommandShell::qspi_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "flash", std::bind( &CommandShell::flash_cmd, this, _1, _2) );
 
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 20, std::bind(&CommandShell::m20_cmd, this, _1, _2));
@@ -1682,6 +1683,55 @@ bool CommandShell::dfu_cmd(std::string& params, OutputStream& os)
     return true;
 }
 #endif
+
+extern "C" bool qspi_flash(const char *fn);
+extern "C" bool qspi_init();
+extern "C" bool qspi_mount();
+bool CommandShell::qspi_cmd(std::string& params, OutputStream& os)
+{
+    HELP("issue a qspi command - [flash fn] | [mount] | [run]");
+
+    std::string cmd= stringutils::shift_parameter(params);
+    if(cmd.empty()) {
+        os.printf("need one of flash, mount, run\n");
+        return true;
+    }
+
+    if(cmd == "flash") {
+        std::string fn= stringutils::shift_parameter(params);
+        if(fn.empty()) {
+            os.printf("need filename to flash\n");
+            return true;
+        }
+
+        if(qspi_flash(fn.c_str())) {
+            os.printf("flashing file %s to qspi succeeded\n", fn.c_str());
+        }else{
+            os.printf("qspi flash failed see logs for details\n");
+        }
+
+    }else if(cmd == "mount" || cmd == "run") {
+        if(qspi_mount()) {
+            os.printf("mounting qspi to 0x9000000 succeeded\n");
+        }else{
+            os.printf("mounting qspi failed see logs for details\n");
+            return true;
+        }
+
+        if(cmd == "run") {
+            stop_everything();
+            __disable_irq();
+            jump_to_program((uint32_t)0x90000000);
+            // should never get here
+            __asm("bkpt #0");
+        }
+
+    }else{
+        os.printf("Unknown qspi command\n");
+    }
+
+    return true;
+}
 
 namespace ecce
 {
