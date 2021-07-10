@@ -7,6 +7,7 @@ import traceback
 import os
 import argparse
 import serial
+import time
 
 
 def signal_term_handler(signal, frame):
@@ -45,12 +46,19 @@ filesize = os.path.getsize(filename)
 print("Downloading file: {}, size: {} to {}".format(filename, filesize, dev))
 
 ser = serial.Serial(dev, 115200, timeout=5)
+time.sleep(1)
 ser.flushInput()  # Flush startup text in serial input
 
 gotok = False
 while not gotok:
     ser.write(b'\n')
     rep = ser.read_until()
+    if not rep:
+        print("Timed out waiting for initial response")
+        f.close()
+        ser.close()
+        exit(1)
+
     s = rep.decode(encoding='latin1', errors='ignore')
     gotok = s.startswith('ok')
 
@@ -78,7 +86,7 @@ if ll.startswith('READY'):
             break
 
 else:
-    print("Got error {}".format(ll))
+    print("Got unexpected waiting for ready {}".format(ll))
     ok = False
 
 if ok:
