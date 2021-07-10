@@ -1393,7 +1393,7 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
     }
 
     if(!Conveyor::getInstance()->is_idle()) {
-        os.printf("download not allowed while printing or busy\n");
+        os.printf("FAIL - download not allowed while printing or busy\n");
         return true;
     }
 
@@ -1413,13 +1413,16 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
     printf("DEBUG: fast download over USB serial started\n");
 
     volatile ssize_t state= 0;
-    set_fast_capture([&fp, &state](char *buf, size_t len) {
+    volatile int timeout= 0;
+    set_fast_capture([&fp, &state, &timeout](char *buf, size_t len) {
         // note this is being run in the Comms thread
         if(state >= 0) {
             if(fwrite(buf, 1, len, fp) != len) {
                 state= -1;
+                printf("DEBUG: fast download fwrite failed\n");
             }else{
                 state += len;
+                timeout= 0;
             }
         }
         return true;
@@ -1428,7 +1431,6 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
     // tell host we are ready for the file
     os.printf("READY - %d\n", file_size);
 
-    int timeout= 0;
     while(state >= 0 && state < file_size) {
         // wait for download to complete
         vTaskDelay(pdMS_TO_TICKS(100));
@@ -1443,6 +1445,8 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
 
     os.printf(state <= 0 ? "FAIL - %d\n" : "SUCCESS\n", errno);
 
+    printf("DEBUG: fast download over USB serial ended: %d\n", state);
+
     if(state < 0) {
         // allow incoming buffers to drain
         vTaskDelay(pdMS_TO_TICKS(1000));
@@ -1450,7 +1454,6 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
 
     set_fast_capture(nullptr);
 
-    printf("DEBUG: fast download over USB serial ended\n");
     return true;
 }
 
@@ -1719,11 +1722,17 @@ bool CommandShell::qspi_cmd(std::string& params, OutputStream& os)
         }
 
         if(cmd == "run") {
-            stop_everything();
-            __disable_irq();
-            jump_to_program((uint32_t)0x90000000);
-            // should never get here
-            __asm("bkpt #0");
+            // check the first entry is a valid stack pointer and jump into qspi
+            if(((*(__IO uint32_t *) 0x90000000) & 0xFFFF0000) == 0x20020000 &&
+               ((*(__IO uint32_t *) 0x90000004) & 0xFFFF0000) == 0x90000000) {
+                 stop_everything();
+                __disable_irq();
+                jump_to_program((uint32_t)0x90000000);
+                // should never get here
+                __asm("bkpt #0");
+            }else{
+                os.printf("There does not appear to be a valid program in qspi\n");
+            }
         }
 
     }else{

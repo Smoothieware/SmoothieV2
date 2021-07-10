@@ -975,13 +975,21 @@ void print_clocks()
 	printf("PCLK2 = %lu\n", HAL_RCC_GetPCLK2Freq());
 }
 
+__attribute__( ( naked, noreturn ) ) void BootJumpASM( uint32_t SP, uint32_t RH )
+{
+  __asm("MSR      MSP,r0");
+  __asm("BX       r1");
+}
+
 extern void TIM6_Deinit();
 void jump_to_program(uint32_t prog_addr)
 {
 	// transfer control to the flashloader at prog_addr
-	void (*SysMemBootJump)(void);
-	/* Set the address of the entry point to flashloader */
-	volatile uint32_t BootAddr = prog_addr;
+	volatile uint32_t *BootAddr= (uint32_t *)prog_addr;
+
+	if(CONTROL_nPRIV_Msk & __get_CONTROL( )) {
+		printf("WARNING: Not in priv mode\n");
+	}
 
 	/* Set the clock to the default state */
 	// HAL_RCC_DeInit();
@@ -1008,17 +1016,23 @@ void jump_to_program(uint32_t prog_addr)
 		__ISB();
 	}
 
+	// disable fault handling
+	SCB->SHCSR &= ~( SCB_SHCSR_USGFAULTENA_Msk | \
+	                 SCB_SHCSR_BUSFAULTENA_Msk | \
+	                 SCB_SHCSR_MEMFAULTENA_Msk ) ;
+
+	if( CONTROL_SPSEL_Msk & __get_CONTROL( ) ) {
+		/* MSP is not active */
+		__set_MSP( __get_PSP( ) ) ;
+		__set_CONTROL( __get_CONTROL( ) & ~CONTROL_SPSEL_Msk ) ;
+	}
+
 	/* Re-enable all interrupts */
 	__enable_irq();
 
 	SCB->VTOR = prog_addr;       // Vector Table Relocation
-	/* Set up the jump to booloader address + 4 */
-	SysMemBootJump = (void (*)(void)) (*((uint32_t *) ((BootAddr + 4))));
-	/* Set the main stack pointer to the flashloader stack */
-	__set_MSP(*(uint32_t *)BootAddr);
 
-	/* Call the function to jump to flashloader location */
-	SysMemBootJump();
+	BootJumpASM(BootAddr[0], BootAddr[1]) ;
 }
 
 #if defined(DUAL_CORE)

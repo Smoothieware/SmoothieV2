@@ -228,16 +228,16 @@ void HAL_QSPI_MspInit(QSPI_HandleTypeDef *hqspi)
     HAL_GPIO_Init(QSPI_D3_GPIO_PORT, &GPIO_InitStruct);
 
     // mark pins as allocated
-    allocate_hal_pin(QSPI_CS_GPIO_PORT, QSPI_CS_PIN);
-    allocate_hal_pin(QSPI_CLK_GPIO_PORT, QSPI_CLK_PIN);
-    allocate_hal_pin(QSPI_D0_GPIO_PORT, QSPI_D0_PIN);
-    allocate_hal_pin(QSPI_D1_GPIO_PORT, QSPI_D1_PIN);
-    allocate_hal_pin(QSPI_D2_GPIO_PORT, QSPI_D2_PIN);
-    allocate_hal_pin(QSPI_D3_GPIO_PORT, QSPI_D3_PIN);
+    // allocate_hal_pin(QSPI_CS_GPIO_PORT, QSPI_CS_PIN);
+    // allocate_hal_pin(QSPI_CLK_GPIO_PORT, QSPI_CLK_PIN);
+    // allocate_hal_pin(QSPI_D0_GPIO_PORT, QSPI_D0_PIN);
+    // allocate_hal_pin(QSPI_D1_GPIO_PORT, QSPI_D1_PIN);
+    // allocate_hal_pin(QSPI_D2_GPIO_PORT, QSPI_D2_PIN);
+    // allocate_hal_pin(QSPI_D3_GPIO_PORT, QSPI_D3_PIN);
 
     /*##-3- Configure the NVIC for QSPI #########################################*/
     /* NVIC configuration for QSPI interrupt */
-    NVIC_SetPriority(QUADSPI_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY+1);
+    NVIC_SetPriority(QUADSPI_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 1);
     NVIC_EnableIRQ(QUADSPI_IRQn);
 
     /*##-4- Configure the DMA channel ###########################################*/
@@ -462,10 +462,10 @@ static bool QSPI_DummyCyclesCfg(QSPI_HandleTypeDef *hqspi)
 
 bool qspi_init()
 {
-    #ifdef BOARD_NUCLEO
+#ifdef BOARD_NUCLEO
     printf("WARNING: qspi_init: NUCLEO does not support qspi");
     return false;
-    #endif
+#endif
 
     /* Initialize QuadSPI ------------------------------------------------------ */
     QSPIHandle.Instance = QUADSPI;
@@ -484,12 +484,18 @@ bool qspi_init()
         printf("ERROR: qspi_init: Init failed\n");
         return false;
     }
+
     return true;
 }
 
 // map the qspi to memory at 0x90000000
 bool qspi_mount()
 {
+    if(!qspi_init()) {
+        printf("ERROR: qspi_init failed\n");
+        return false;
+    }
+
     QSPI_CommandTypeDef      sCommand;
     QSPI_MemoryMappedTypeDef sMemMappedCfg;
 
@@ -522,6 +528,11 @@ bool qspi_mount()
 static uint8_t flash_buffer[QSPI_PAGE_SIZE] __attribute__((aligned(4))) ;
 bool qspi_flash(const char* fn)
 {
+    if(!qspi_init()) {
+        printf("ERROR: qspi_init failed\n");
+        return false;
+    }
+
     FIL fp;     /* File object */
 
     printf("DEBUG: qspi_flash: Opening %s from SD Card...\n", fn);
@@ -541,7 +552,7 @@ bool qspi_flash(const char* fn)
     __IO uint32_t size = 0;
     __IO int erase_size = max_size;
     __IO bool eraseing = true;
-    __IO uint32_t cnt= 0;
+    __IO uint32_t cnt = 0;
 
     sCommand.InstructionMode   = QSPI_INSTRUCTION_1_LINE;
     sCommand.AddressSize       = QSPI_ADDRESS_24_BITS;
@@ -622,9 +633,10 @@ bool qspi_flash(const char* fn)
                     }
 
                     // make sure cache is flushed to RAM so the DMA can read the correct data
-                    SCB_CleanDCache_by_Addr((uint32_t *)((uint32_t)flash_buffer & ~0x1f),
-                                            ((uint32_t)((uint8_t *)flash_buffer + sizeof(flash_buffer) + 0x1f) & ~0x1f) -
-                                            ((uint32_t)flash_buffer & ~0x1f));
+                    uint32_t cache_addr = (uint32_t)&flash_buffer[0];
+                    SCB_CleanDCache_by_Addr((uint32_t *)((uint32_t)cache_addr & ~0x1f),
+                                            ((uint32_t)((uint8_t *)cache_addr + sizeof(flash_buffer) + 0x1f) & ~0x1f) -
+                                            ((uint32_t)cache_addr & ~0x1f));
 
                     /* Enable write operations ----------------------------------------- */
                     QSPI_WriteEnable(&QSPIHandle);

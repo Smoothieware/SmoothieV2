@@ -542,6 +542,7 @@ static void usb_comms(void *)
                         if(!fast_capture_fnc(usb_rx_buf, n)) {
                             fast_capture_fnc = nullptr;
                         }
+                        n= 0;
                         continue;
                     }
                     process_command_buffer(n, usb_rx_buf, &os, line, cnt, discard);

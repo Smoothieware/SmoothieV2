@@ -11,7 +11,6 @@
 
 extern "C" bool setup_sdmmc();
 
-extern "C" bool qspi_init();
 extern "C" bool qspi_flash(const char *);
 
 static FATFS fatfs; /* File system object */
@@ -48,8 +47,6 @@ static bool write_test_file()
 
 REGISTER_TEST(QSPITest, basic_test)
 {
-    TEST_ASSERT_TRUE(qspi_init());
-
     // create a test file
     TEST_ASSERT_TRUE(write_test_file());
     // flash it and leave it mapped to 0x90000000

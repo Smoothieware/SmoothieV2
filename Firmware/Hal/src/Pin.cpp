@@ -15,7 +15,11 @@ static std::function<void(void)> interrupt_fncs[16] = {nullptr};
 
 // Blacklisted pins which Pin() is not allowed to allocate
 static std::set<std::string> black_listed {
-    "PF8", "PF9", "PE2", "PF6", "PB6", "PF10",           // QSPI
+#ifdef BOARD_DEVEBOX
+    "PD11", "PD12", "PE2", "PD13", "PB6", "PB2",           // QSPI
+#else
+    "PD11", "PF9", "PE2", "PD13", "PB6", "PB2",           // QSPI
+#endif
     "PG10", "PC8", "PC9", "PC10", "PC11", "PC12", "PD2", // SDCard
     #if defined(BOARD_NUCLEO)
     "PA1", "PA2", "PA7", "PB13", "PC1", "PC4", "PC5", "PG11", "PG13", // Ethernet
