@@ -540,12 +540,11 @@ static void usb_comms(void *)
                 if(n > 0) {
                     if(fast_capture_fnc) {
                         if(!fast_capture_fnc(usb_rx_buf, n)) {
-                            fast_capture_fnc = nullptr;
+                            fast_capture_fnc= nullptr; // we are done ok
                         }
-                        n= 0;
-                        continue;
+                    }else{
+                        process_command_buffer(n, usb_rx_buf, &os, line, cnt, discard);
                     }
-                    process_command_buffer(n, usb_rx_buf, &os, line, cnt, discard);
                 }
             } while(n > 0);
         }

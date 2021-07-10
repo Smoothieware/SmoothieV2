@@ -23,6 +23,7 @@
 #include "task.h"
 #include "ff.h"
 #include "benchmark_timer.h"
+#include "semphr.h"
 
 #include <functional>
 #include <set>
@@ -728,14 +729,14 @@ bool CommandShell::get_cmd(std::string& params, OutputStream& os)
                 }
             }
             // get chip temperature
-            Adc3 *adc= Adc3::getInstance();
-            float t= adc->read_temp();
+            Adc3 *adc = Adc3::getInstance();
+            float t = adc->read_temp();
             os.printf("chip temp: %f\n", t);
 
         } else if(type == "chip") {
             // get chip temperature
-            Adc3 *adc= Adc3::getInstance();
-            float t= adc->read_temp();
+            Adc3 *adc = Adc3::getInstance();
+            float t = adc->read_temp();
             os.printf("chip temp: %f\n", t);
 
         } else {
@@ -838,10 +839,10 @@ bool CommandShell::get_cmd(std::string& params, OutputStream& os)
                 const char *names[n];
                 get_voltage_monitor_names(names);
                 for (int i = 0; i < n; ++i) {
-                    float v= get_voltage_monitor(names[i]);
+                    float v = get_voltage_monitor(names[i]);
                     if(!isinf(v)) {
                         os.printf("%s: %f v\n", names[i], v);
-                    }else{
+                    } else {
                         os.printf("%s: INF\n", names[i]);
                     }
                 }
@@ -849,10 +850,10 @@ bool CommandShell::get_cmd(std::string& params, OutputStream& os)
                 os.printf("No voltage monitors configured\n");
             }
         } else {
-            float v= get_voltage_monitor(type.c_str());
+            float v = get_voltage_monitor(type.c_str());
             if(isinf(v)) {
                 os.printf("%s: INF\n", type.c_str());
-            }else{
+            } else {
                 os.printf("%s: %f v\n", type.c_str(), v);
             }
         }
@@ -1412,17 +1413,23 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
 
     printf("DEBUG: fast download over USB serial started\n");
 
-    volatile ssize_t state= 0;
-    volatile int timeout= 0;
-    set_fast_capture([&fp, &state, &timeout](char *buf, size_t len) {
+    volatile ssize_t state = 0;
+    SemaphoreHandle_t xSemaphore = xSemaphoreCreateBinary();
+
+    set_fast_capture([&fp, &state, xSemaphore, file_size](char *buf, size_t len) {
         // note this is being run in the Comms thread
-        if(state >= 0) {
-            if(fwrite(buf, 1, len, fp) != len) {
-                state= -1;
-                printf("DEBUG: fast download fwrite failed\n");
-            }else{
-                state += len;
-                timeout= 0;
+        if(state < 0 || state >= file_size) return true; // we are in an error state or done
+
+        if(fwrite(buf, 1, len, fp) != len) {
+            state = -1;
+            printf("DEBUG: fast download fwrite failed\n");
+            xSemaphoreGive(xSemaphore);
+        } else {
+            state += len;
+            if(state >= file_size) {
+                printf("DEBUG: fast download all bytes received\n");
+                xSemaphoreGive(xSemaphore);
+                return false; // indicates we are done successfully
             }
         }
         return true;
@@ -1431,23 +1438,21 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
     // tell host we are ready for the file
     os.printf("READY - %d\n", file_size);
 
-    while(state >= 0 && state < file_size) {
-        // wait for download to complete
-        vTaskDelay(pdMS_TO_TICKS(100));
-        if(++timeout > 200) {
-            state= -2;
-            errno= ETIMEDOUT;
-            break;
-        }
+    // wait for completion or timeout
+    if(xSemaphoreTake(xSemaphore, pdMS_TO_TICKS(20000)) != pdTRUE) {
+        printf("DEBUG: fast download timed out\n");
+        state = -2;
+        errno = ETIMEDOUT;
     }
-
-    fclose(fp);
 
     os.printf(state <= 0 ? "FAIL - %d\n" : "SUCCESS\n", errno);
 
+    fclose(fp);
+    vSemaphoreDelete(xSemaphore);
+
     printf("DEBUG: fast download over USB serial ended: %d\n", state);
 
-    if(state < 0) {
+    if(state <= 0) {
         // allow incoming buffers to drain
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
@@ -1554,7 +1559,7 @@ extern "C" int rtc_setdatetime(uint8_t year, uint8_t month, uint8_t day, uint8_t
 bool CommandShell::date_cmd(std::string& params, OutputStream& os)
 {
     HELP("date [YYMMDDhhmmss] - set or get current date/time");
-    std::string dt= stringutils::shift_parameter(params);
+    std::string dt = stringutils::shift_parameter(params);
 
     if(dt.empty()) {
         char buf[20];
@@ -1563,12 +1568,12 @@ bool CommandShell::date_cmd(std::string& params, OutputStream& os)
 
     } else {
         // set date/time
-        uint8_t yr= atoi(dt.substr(0, 2).c_str());
-        uint8_t mn= atoi(dt.substr(2, 2).c_str());
-        uint8_t dy= atoi(dt.substr(4, 2).c_str());
-        uint8_t hh= atoi(dt.substr(6, 2).c_str());
-        uint8_t mm= atoi(dt.substr(8, 2).c_str());
-        uint8_t ss= atoi(dt.substr(10, 2).c_str());
+        uint8_t yr = atoi(dt.substr(0, 2).c_str());
+        uint8_t mn = atoi(dt.substr(2, 2).c_str());
+        uint8_t dy = atoi(dt.substr(4, 2).c_str());
+        uint8_t hh = atoi(dt.substr(6, 2).c_str());
+        uint8_t mm = atoi(dt.substr(8, 2).c_str());
+        uint8_t ss = atoi(dt.substr(10, 2).c_str());
         rtc_setdatetime(yr, mn, dy, 1, hh, mm, ss);
     }
     return true;
@@ -1645,10 +1650,6 @@ bool CommandShell::flash_cmd(std::string& params, OutputStream& os)
     // copy to execution area at addr
     memcpy(addr, data_start, data_size);
     jump_to_program((uint32_t)addr);
-
-    // try a soft reset
-    //NVIC_SystemReset();
-
     // should never get here
     __asm("bkpt #0");
     return true;
@@ -1688,20 +1689,19 @@ bool CommandShell::dfu_cmd(std::string& params, OutputStream& os)
 #endif
 
 extern "C" bool qspi_flash(const char *fn);
-extern "C" bool qspi_init();
 extern "C" bool qspi_mount();
 bool CommandShell::qspi_cmd(std::string& params, OutputStream& os)
 {
     HELP("issue a qspi command - [flash fn] | [mount] | [run]");
 
-    std::string cmd= stringutils::shift_parameter(params);
+    std::string cmd = stringutils::shift_parameter(params);
     if(cmd.empty()) {
         os.printf("need one of flash, mount, run\n");
         return true;
     }
 
     if(cmd == "flash") {
-        std::string fn= stringutils::shift_parameter(params);
+        std::string fn = stringutils::shift_parameter(params);
         if(fn.empty()) {
             os.printf("need filename to flash\n");
             return true;
@@ -1709,14 +1709,14 @@ bool CommandShell::qspi_cmd(std::string& params, OutputStream& os)
 
         if(qspi_flash(fn.c_str())) {
             os.printf("flashing file %s to qspi succeeded\n", fn.c_str());
-        }else{
+        } else {
             os.printf("qspi flash failed see logs for details\n");
         }
 
-    }else if(cmd == "mount" || cmd == "run") {
+    } else if(cmd == "mount" || cmd == "run") {
         if(qspi_mount()) {
             os.printf("mounting qspi to 0x9000000 succeeded\n");
-        }else{
+        } else {
             os.printf("mounting qspi failed see logs for details\n");
             return true;
         }
@@ -1725,17 +1725,17 @@ bool CommandShell::qspi_cmd(std::string& params, OutputStream& os)
             // check the first entry is a valid stack pointer and jump into qspi
             if(((*(__IO uint32_t *) 0x90000000) & 0xFFFF0000) == 0x20020000 &&
                ((*(__IO uint32_t *) 0x90000004) & 0xFFFF0000) == 0x90000000) {
-                 stop_everything();
+                stop_everything();
                 __disable_irq();
                 jump_to_program((uint32_t)0x90000000);
                 // should never get here
                 __asm("bkpt #0");
-            }else{
+            } else {
                 os.printf("There does not appear to be a valid program in qspi\n");
             }
         }
 
-    }else{
+    } else {
         os.printf("Unknown qspi command\n");
     }
 
