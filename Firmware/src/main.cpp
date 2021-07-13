@@ -633,7 +633,6 @@ static void handle_query(bool need_done)
     }
 }
 
-extern "C" bool DFU_requested_detach();
 /*
  * All commands must be executed in the context of this thread. It is equivalent to the main_loop in v1.
  * Commands are sent to this thread via the message queue from things that can block (like I/O)
@@ -665,6 +664,7 @@ static void command_handler()
             handle_query(true);
 
 #ifdef USE_DFU
+            extern "C" bool DFU_requested_detach();
             // special case if we see we got a DFU detach we call the dfu command
             if(DFU_requested_detach()) {
                 print_to_all_consoles("DFU firmware download has been requested, going down for update\n");

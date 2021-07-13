@@ -84,9 +84,7 @@ bool CommandShell::initialize()
     THEDISPATCHER->add_handler( "break", std::bind( &CommandShell::break_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "reset", std::bind( &CommandShell::reset_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "ed", std::bind( &CommandShell::edit_cmd, this, _1, _2) );
-#ifdef USE_DFU
     THEDISPATCHER->add_handler( "dfu", std::bind( &CommandShell::dfu_cmd, this, _1, _2) );
-#endif
     THEDISPATCHER->add_handler( "qspi", std::bind( &CommandShell::qspi_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "flash", std::bind( &CommandShell::flash_cmd, this, _1, _2) );
 
@@ -1655,38 +1653,13 @@ bool CommandShell::flash_cmd(std::string& params, OutputStream& os)
     return true;
 }
 
-#ifdef USE_DFU
-extern "C" bool DFU_Tasks(void (*)(void));
 bool CommandShell::dfu_cmd(std::string& params, OutputStream& os)
 {
-    HELP("enable dfu download, or just run dfu-util");
-
+    HELP("start dfu");
     os.printf("NOTE: A reset will be required to resume if dfu-util is not run\n");
-
-    // we stop all comms
-    set_abort_comms();
-
-    // and stop most of the interrupts
-    FastTicker::getInstance()->stop();
-    StepTicker::getInstance()->stop();
-    Adc::stop();
-
-    // TODO if param is empty we start DFU off in dfuIdle() so it is quicker
-    // no need for detach()  We can't do this as the dfu has been enabled in appIdle.
-
-    // call the DFU tasks, returns true if the file was written
-    // if it returns false it ran out of memory or some other error
-    if(DFU_Tasks(stop_everything)) {
-        // we run the flash program
-        OutputStream nullos;
-        flash_cmd(params, nullos);
-    }
-
-    printf("dfu_cmd should never get here: reboot needed\n");
-
-    return true;
+    std::string cmd("run");
+    return qspi_cmd(cmd, os);
 }
-#endif
 
 extern "C" bool qspi_flash(const char *fn);
 extern "C" bool qspi_mount();

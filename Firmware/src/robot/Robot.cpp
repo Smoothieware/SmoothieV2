@@ -338,6 +338,8 @@ bool Robot::configure(ConfigReader& cr)
             n_motors = a;
             return false;
         }
+#else
+        printf("DEBUG:configure-robot: %s is set as an external driver\n", s->first.c_str());
 #endif
 
         actuators[a]->change_steps_per_mm(cr.get_float(mm, steps_per_mm_key, a == Z_AXIS ? 2560.0F : 80.0F));
