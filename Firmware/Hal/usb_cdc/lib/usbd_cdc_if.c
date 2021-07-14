@@ -1,6 +1,7 @@
 #include "usbd_cdc_if.h"
 
-#include "ringbuffer_c.h"
+#include "FreeRTOS.h"
+#include "stream_buffer.h"
 
 static int8_t CDC_IF_Init(void);
 static int8_t CDC_IF_DeInit(void);
@@ -27,20 +28,32 @@ USBD_CDC_LineCodingTypeDef linecoding = {
 extern USBD_HandleTypeDef USBD_Device;
 extern void vcom_notify_recvd();
 
-static RingBuffer_t *rx_rb;
+static StreamBufferHandle_t xStreamBuffer;
 static uint8_t rx_buffer[CDC_DATA_FS_OUT_PACKET_SIZE] __attribute__((section(".usb_data")));
 static uint8_t tx_buffer[CDC_DATA_FS_OUT_PACKET_SIZE] __attribute__((section(".usb_data")));
 static volatile int tx_complete;
+static volatile int rx_full;
 static volatile int connected;
+static uint32_t dropped_bytes;
 
 void setup_vcom()
 {
-    rx_rb = CreateRingBuffer(1024);
+    dropped_bytes= 0;
+    xStreamBuffer = xStreamBufferCreate(1024*2, 1);
 }
 
 void teardown_vcom()
 {
-    DeleteRingBuffer(rx_rb);
+    char buf[1]= {0};
+    xStreamBufferSend(xStreamBuffer, (void *)buf, 1, 1000);
+    vStreamBufferDelete(xStreamBuffer);
+}
+
+uint32_t get_dropped_bytes()
+{
+    uint32_t db= dropped_bytes;
+    dropped_bytes= 0;
+    return db;
 }
 
 /**
@@ -53,6 +66,7 @@ static int8_t CDC_IF_Init(void)
 {
     USBD_CDC_SetRxBuffer(&USBD_Device, rx_buffer);
     tx_complete = 1;
+    rx_full= 0;
     connected = 0;
     return (USBD_OK);
 }
@@ -123,8 +137,14 @@ static int8_t CDC_IF_Control(uint8_t cmd, uint8_t *pbuf, uint16_t length)
             break;
 
         case CDC_SET_CONTROL_LINE_STATE:
-            connected= 1;
-            vcom_notify_recvd();
+            if(connected == 0) {
+                // send one byte to indicate we are connected
+                connected = 1;
+                BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+                char buf[1]= {1};
+                xStreamBufferSendFromISR(xStreamBuffer, (void *)buf, 1, &xHigherPriorityTaskWoken);
+                portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+            }
             break;
 
         case CDC_SEND_BREAK:
@@ -147,28 +167,44 @@ static int8_t CDC_IF_Control(uint8_t cmd, uint8_t *pbuf, uint16_t length)
   * @param  Len: Number of data received (in bytes)
   * @retval Result of the operation: USBD_OK if all operations are OK else USBD_FAIL
   */
-static int8_t CDC_IF_Receive(uint8_t *Buf, uint32_t *Len)
+static int8_t CDC_IF_Receive(uint8_t *buf, uint32_t *len)
 {
-    // we have a buffer from Host, stick it in the rx buffer and inform thread to read
-    for (uint32_t i = 0; i < *Len; ++i) {
-        // FIXME: avoid copying 1 byte at a time, use a better ringbuffer or just double buffer
-        RingBufferPut(rx_rb, Buf[i]);
+    // we have a buffer from Host, stick it in the stream buffer
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE; // Initialised to pdFALSE.
+    size_t xBytesSent = xStreamBufferSendFromISR(xStreamBuffer, (void *)buf, *len, &xHigherPriorityTaskWoken);
+
+    if(xBytesSent != *len) {
+        // There was not enough free space in the stream buffer for the entire buffer
+        dropped_bytes += (*len - xBytesSent);
     }
-    // FIXME: this is really innefficient if getting 1 byte at a time, need to double buffer so we can interleave
-    vcom_notify_recvd();
+
+    // if we have enough room schedule another read
+    if(xStreamBufferSpacesAvailable(xStreamBuffer) >= CDC_DATA_FS_OUT_PACKET_SIZE) {
+        // allow more data to be sent
+        USBD_CDC_ReceivePacket(&USBD_Device);
+    }else{
+        rx_full= 1;
+    }
+
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     return (USBD_OK);
 }
 
+// blocks until data available or timeout
 size_t vcom_read(uint8_t *buf, size_t len)
 {
-    size_t cnt = 0;
-    while(!RingBufferEmpty(rx_rb) && cnt < len) {
-        RingBufferGet(rx_rb, &buf[cnt++]);
-    }
+    const TickType_t xBlockTime = portMAX_DELAY;
 
-    if(cnt > 0 && RingBufferEmpty(rx_rb)) {
+    // Receive up to another len bytes from the stream buffer.
+    // Wait in the Blocked state (so not using any CPU processing time) for at least 1 byte to be available.
+    size_t cnt= xStreamBufferReceive(xStreamBuffer,(void *)buf, len, xBlockTime);
+
+    // if we got some data but buffer was full and we have enough for another packet then schedule another read
+    if(cnt > 0 && rx_full && xStreamBufferSpacesAvailable(xStreamBuffer) >= CDC_DATA_FS_OUT_PACKET_SIZE) {
         // allow more data to be sent
+        rx_full= 0;
         USBD_CDC_ReceivePacket(&USBD_Device);
+        // printf("WARNING: buffer was full\n");
     }
     return cnt;
 }
@@ -195,7 +231,7 @@ static int8_t CDC_IF_TransmitCplt(uint8_t *Buf, uint32_t *Len, uint8_t epnum)
 int vcom_write(uint8_t *buf, size_t len)
 {
     if(tx_complete == 0) {
-    	// still busy from last write
+        // still busy from last write
         return 0;
     }
 
@@ -205,7 +241,7 @@ int vcom_write(uint8_t *buf, size_t len)
 
     // we transfer it to the tx_buffer as the USB can access SRAM1 faster than AXI_SRAM
     // However it does not appear to be using DMA so not sure if this is valid.
-	USBD_CDC_SetTxBuffer(&USBD_Device, tx_buffer, n);
+    USBD_CDC_SetTxBuffer(&USBD_Device, tx_buffer, n);
     if (USBD_CDC_TransmitPacket(&USBD_Device) == USBD_FAIL) {
         return -1;
     }
@@ -215,5 +251,5 @@ int vcom_write(uint8_t *buf, size_t len)
 
 int vcom_connected()
 {
-	return connected;
+    return connected;
 }

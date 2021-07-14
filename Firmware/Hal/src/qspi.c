@@ -463,7 +463,7 @@ static bool QSPI_DummyCyclesCfg(QSPI_HandleTypeDef *hqspi)
 bool qspi_init()
 {
 #ifdef BOARD_NUCLEO
-    printf("WARNING: qspi_init: NUCLEO does not support qspi");
+    printf("WARNING: qspi_init: NUCLEO does not support qspi\n");
     return false;
 #endif
 

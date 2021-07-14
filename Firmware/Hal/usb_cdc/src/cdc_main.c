@@ -15,19 +15,6 @@ USBD_HandleTypeDef USBD_Device;
 extern PCD_HandleTypeDef g_hpcd;
 extern USBD_CDC_ItfTypeDef USBD_CDC_fops;
 
-static xTaskHandle xTaskToNotify = NULL;
-
-
-void vcom_notify_recvd()
-{
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    if(xTaskToNotify != NULL) {
-        // Notify the task that data is available
-        vTaskNotifyGiveFromISR( xTaskToNotify, &xHigherPriorityTaskWoken );
-        portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
-    }
-}
-
 // called externally to read/write to the USB CDC channel
 // Expects entire buffer to be fully written
 // vcom_write will copy the buffer or as much of it as it can
@@ -52,16 +39,14 @@ size_t write_cdc(const char *buf, size_t len)
     return len;
 }
 
+// will block until data is available or timeout
 size_t read_cdc(char *buf, size_t len)
 {
     return vcom_read((uint8_t *)buf, len);
 }
 
-int setup_cdc(xTaskHandle h)
+int setup_cdc()
 {
-    /* Store the handle of the calling task. */
-    xTaskToNotify = h;
-
     HAL_PWREx_EnableUSBVoltageDetector();
 
     setup_vcom();

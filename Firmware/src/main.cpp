@@ -474,14 +474,14 @@ void set_fast_capture(std::function<bool(char*, size_t)> cf)
 
 extern "C" size_t write_cdc(const char *buf, size_t len);
 extern "C" size_t read_cdc(char *buf, size_t len);
-extern "C" int setup_cdc(void *taskhandle);
+extern "C" int setup_cdc();
 extern "C" int vcom_connected();
 
 static void usb_comms(void *)
 {
     printf("DEBUG: USB Comms thread running\n");
 
-    if(!setup_cdc(xTaskGetCurrentTaskHandle())) {
+    if(!setup_cdc()) {
         printf("FATAL: CDC setup failed\n");
         return;
     }
@@ -494,62 +494,43 @@ static void usb_comms(void *)
         return;
     }
 
-    // on first connect we send a welcome message after getting a '\n'
+    // on first connect we send a welcome message
     static const char *welcome_message = "Welcome to Smoothie\nok\n";
-    const TickType_t waitms = pdMS_TO_TICKS( 300 );
-
-    size_t n;
-    bool done = vcom_connected() == 1;
-
-    printf("DEBUG: Waiting for USB\n");
-    // first we wait for connetion
-    while (!done && !abort_comms) {
-        // Wait to be notified that there has been a USB irq.
-        ulTaskNotifyTake(pdTRUE, waitms);
-        if(abort_comms) break;
-        if(vcom_connected() == 1) {
-            done = true;
+    while(!abort_comms) {
+        // when we get the first connection it sends a one byte message to wake us up
+        // it will block here until a connection is available
+        size_t n = read_cdc(usb_rx_buf, 1);
+        if(n > 0 && usb_rx_buf[0] == 1 && vcom_connected()) {
+            break;
         }
     }
+    printf("CDC connected\n");
 
-    printf("DEBUG: USB connected\n");
+    // create an output stream that writes to the cdc
+    static OutputStream os([](const char *buf, size_t len) { return write_cdc(buf, len); });
+    output_streams.insert(&os);
+
+    os.puts(welcome_message);
+
+    // now read lines and dispatch them
+    char line[MAX_LINE_LENGTH];
+    size_t cnt = 0;
+    bool discard = false;
 
     while(!abort_comms) {
-        // create an output stream that writes to the cdc
-        static OutputStream os([](const char *buf, size_t len) { return write_cdc(buf, len); });
-        output_streams.insert(&os);
-
-        os.puts(welcome_message);
-
-        // now read lines and dispatch them
-        char line[MAX_LINE_LENGTH];
-        size_t cnt = 0;
-        bool discard = false;
-
-        while(!abort_comms) {
-            // Wait to be notified that there has been a received vcom packet.
-            // treat as a counting semaphore, so will only block if count is zero.
-            uint32_t ulNotificationValue = ulTaskNotifyTake( pdFALSE, waitms );
-
-            if( ulNotificationValue == 0 ) {
-                /* The call to ulTaskNotifyTake() timed out. check anyway */
-            }
-            do {
-                // may have more data than our buffer size so read until it is drained
-                n = read_cdc(usb_rx_buf, usb_rx_buf_sz);
-                if(n > 0) {
-                    if(fast_capture_fnc) {
-                        if(!fast_capture_fnc(usb_rx_buf, n)) {
-                            fast_capture_fnc= nullptr; // we are done ok
-                        }
-                    }else{
-                        process_command_buffer(n, usb_rx_buf, &os, line, cnt, discard);
-                    }
+        // this read will block if no data is available
+        size_t n = read_cdc(usb_rx_buf, usb_rx_buf_sz);
+        if(n > 0) {
+            if(fast_capture_fnc) {
+                if(!fast_capture_fnc(usb_rx_buf, n)) {
+                    fast_capture_fnc = nullptr; // we are done ok
                 }
-            } while(n > 0);
+            } else {
+                process_command_buffer(n, usb_rx_buf, &os, line, cnt, discard);
+            }
         }
-        output_streams.erase(&os);
     }
+    output_streams.erase(&os);
 
     free(usb_rx_buf);
     printf("DEBUG: USB Comms thread exiting\n");
@@ -743,17 +724,17 @@ static FATFS fatfs; /* File system object */
 #endif
 
 // voltage monitors, name -> <channel,scale>
-static std::map<std::string, std::tuple<int32_t,float>> voltage_monitors;
+static std::map<std::string, std::tuple<int32_t, float>> voltage_monitors;
 
 float get_voltage_monitor(const char* name)
 {
     auto p = voltage_monitors.find(name);
     if(p == voltage_monitors.end()) return 0;
     Adc3 *adc = Adc3::getInstance();
-    float v= adc->read_voltage(std::get<0>(p->second));
+    float v = adc->read_voltage(std::get<0>(p->second));
     if(isinf(v)) {
         return v;
-    }else{
+    } else {
         // scale it appropriately
         return v * std::get<1>(p->second);
     }
@@ -937,8 +918,8 @@ static void smoothie_startup(void *)
                 for(auto& s : m) {
                     std::string k = s.first;
                     std::string v = s.second;
-                    float scale= 11.0F;
-                    int32_t ch= adc->from_string(v.c_str(), scale);
+                    float scale = 11.0F;
+                    int32_t ch = adc->from_string(v.c_str(), scale);
                     if(ch < 0) continue;
 
                     if(!adc->allocate(ch)) {
@@ -953,21 +934,21 @@ static void smoothie_startup(void *)
             voltage_monitors["vref"] = std::make_tuple(-1, 1.0F);
             voltage_monitors["vbat"] = std::make_tuple(-2, 1.0F);
             // setup board defaults if not defined
-            #ifdef BOARD_NUCLEO
-            std::map<std::string, std::tuple<int32_t,float>> names { {"vmotor", {1, 11.0F}},  {"vfet", {2, 11.0F}} };
-            #elif defined(BOARD_DEVEBOX)
-            std::map<std::string, std::tuple<int32_t,float>> names { {"vmotor", {0, 11.0F}},  {"vfet", {3, 11.0F}} };
-            #elif defined(BOARD_PRIME)
-            std::map<std::string, std::tuple<int32_t,float>> names { {"vmotor", {0, 11.0F}},  {"vfet", {1, 11.0F}} };
-            #endif
+#ifdef BOARD_NUCLEO
+            std::map<std::string, std::tuple<int32_t, float>> names { {"vmotor", {1, 11.0F}},  {"vfet", {2, 11.0F}} };
+#elif defined(BOARD_DEVEBOX)
+            std::map<std::string, std::tuple<int32_t, float>> names { {"vmotor", {0, 11.0F}},  {"vfet", {3, 11.0F}} };
+#elif defined(BOARD_PRIME)
+            std::map<std::string, std::tuple<int32_t, float>> names { {"vmotor", {0, 11.0F}},  {"vfet", {1, 11.0F}} };
+#endif
             for(auto n : names) {
                 if(voltage_monitors.find(n.first) == voltage_monitors.end()) {
-                    int32_t ch= std::get<0>(n.second);
-                    float scale= std::get<1>(n.second);
+                    int32_t ch = std::get<0>(n.second);
+                    float scale = std::get<1>(n.second);
                     if(adc->allocate(ch)) {
                         voltage_monitors[n.first] = std::make_tuple(ch, scale);
                         printf("DEBUG: allocated %s voltage monitor to channel: ADC3_%lu, scale: %f\n", n.first.c_str(), ch, scale);
-                    }else{
+                    } else {
                         printf("WARNING: Failed to allocate %s voltage monitor, channel: %lu\n", n.first.c_str(), ch);
                     }
                 }

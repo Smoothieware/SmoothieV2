@@ -22,7 +22,7 @@
 
 #include "benchmark_timer.h"
 
-//#define TESTCOMMS
+#define TESTCOMMS
 
 // // place holder
 bool dispatch_line(OutputStream& os, const char *line)
@@ -134,7 +134,9 @@ extern "C" void vRunTestsTask(void *pvParameters)
 #ifdef TESTCOMMS
 extern "C" size_t write_cdc(const char *buf, size_t len);
 extern "C" size_t read_cdc(char *buf, size_t len);
-extern "C" int setup_cdc(void *taskhandle);
+extern "C" int setup_cdc();
+extern "C" int vcom_connected();
+extern "C" uint32_t get_dropped_bytes();
 
 static std::function<size_t(char *, size_t)> capture_fnc = nullptr;
 
@@ -142,133 +144,107 @@ int maxmq = 20;
 uint32_t timeouts = 0;
 extern "C" void usbComTask(void *pvParameters)
 {
-    static OutputStream theos([](const char *buf, size_t len) { return write_cdc(buf, len); });
     char linebuf[MAX_LINE_LENGTH];
     size_t linecnt = 0;
-    char rxBuff[256];
-    bool first = true;
+    char rxBuff[1024];
     bool discard = false;
-    const TickType_t waitms = pdMS_TO_TICKS( 300 );
 
-    // setup the USB CDC and give it the handle of our task to wake up when we get an interrupt
-    if(setup_cdc(xTaskGetCurrentTaskHandle()) == 0) {
+    // setup the USB CDC
+    if(setup_cdc() == 0) {
         printf("ERROR: setup_cdc failed\n");
         return;
     }
 
+    // when we get the first connection it sends a one byte message to wake us up
+    // it will block here until a connection is available
+    size_t n = read_cdc(rxBuff, 1);
+    if(rxBuff[0] != 1 || !vcom_connected()) {
+        printf("Unexpected CDC startup frame: %d\n", n);
+    }
+    printf("CDC connected\n");
 
-    do {
-        // Wait to be notified that there has been a USB irq.
-        uint32_t ulNotificationValue = ulTaskNotifyTake( pdTRUE, waitms );
-
-        if( ulNotificationValue != 1 ) {
-            /* The call to ulTaskNotifyTake() timed out. */
-            timeouts++;
-        }
-
-        if(first) {
-            // wait for first character
-            int rdCnt = read_cdc(rxBuff, sizeof(rxBuff));
-            if(rdCnt > 0) {
-                for (int i = 0; i < rdCnt; ++i) {
-                    if(rxBuff[i] == '\n') {
-                        first = false;
-                    }
-                }
-                if(!first) {
-                    write_cdc("Welcome to Smoothev2\nok\n", 24);
-                }
-            }
-        }
-
-    } while(first);
+    static OutputStream theos([](const char *buf, size_t len) { return write_cdc(buf, len); });
+    theos.puts("Welcome to TestUnits\nok\n");
 
     while(1) {
-        // Wait to be notified that there has been a USB irq.
-        uint32_t ulNotificationValue = ulTaskNotifyTake( pdFALSE, waitms );
-
-        if( ulNotificationValue == 0 ) {
-            /* The call to ulTaskNotifyTake() timed out. */
-            timeouts++;
+        // we read as much as we can, process it into lines and send it to the dispatch thread
+        // certain characters are sent immediately the rest wait for end of line
+        size_t rdCnt = read_cdc(rxBuff, sizeof(rxBuff));
+        uint32_t db;
+        if((db=get_dropped_bytes()) > 0) {
+            printf("WARNING got dropped bytes: %lu\n", db);
         }
 
-        while(1) {
-            // we read as much as we can, process it into lines and send it to the dispatch thread
-            // certain characters are sent immediately the rest wait for end of line
-            size_t rdCnt = read_cdc(rxBuff, sizeof(rxBuff));
-            if(rdCnt == 0) break; // wait for more
-
-            if(capture_fnc) {
-                // returns used characters, if used < rdCnt then it is done
-                // so we reset it and give the rest to the normal processing
-                // if used > rdCnt then it is done but we used all the characters
-                size_t used = capture_fnc(rxBuff, rdCnt);
-                if(used < rdCnt) {
-                    capture_fnc = nullptr;
-                    if(used > 0) {
-                        memmove(rxBuff, &rxBuff[used], rdCnt - used);
-                        rdCnt = rdCnt - used;
-                    }
-                    // drop through to process the rest
-
-                } else if(used > rdCnt) {
-                    // we used all the data but we are done now
-                    capture_fnc = nullptr;
-                    continue;
-                } else {
-                    continue;
+        if(capture_fnc) {
+            // returns used characters, if used < rdCnt then it is done
+            // so we reset it and give the rest to the normal processing
+            // if used > rdCnt then it is done but we used all the characters
+            size_t used = capture_fnc(rxBuff, rdCnt);
+            if(used < rdCnt) {
+                capture_fnc = nullptr;
+                if(used > 0) {
+                    memmove(rxBuff, &rxBuff[used], rdCnt - used);
+                    rdCnt = rdCnt - used;
                 }
+                // drop through to process the rest
+
+            } else if(used > rdCnt) {
+                // we used all the data but we are done now
+                capture_fnc = nullptr;
+                continue;
+            } else {
+                continue;
             }
+        }
 
-            // process line character by character (pretty slow)
-            for (size_t i = 0; i < rdCnt; ++i) {
-                linebuf[linecnt] = rxBuff[i];
+        // process line character by character (pretty slow)
+        for (size_t i = 0; i < rdCnt; ++i) {
+            linebuf[linecnt] = rxBuff[i];
 
-                // the following are single character commands that are dispatched immediately
-                if(linebuf[linecnt] == 24) { // ^X
-                    // discard all recieved data
-                    linebuf[linecnt + 1] = '\0'; // null terminate
-                    send_message_queue(&linebuf[linecnt], &theos);
-                    linecnt = 0;
-                    discard = false;
-                    break;
-                } else if(linebuf[linecnt] == '?') {
-                    linebuf[linecnt + 1] = '\0'; // null terminate
-                    send_message_queue(&linebuf[linecnt], &theos);
-                } else if(linebuf[linecnt] == '!') {
-                    linebuf[linecnt + 1] = '\0'; // null terminate
-                    send_message_queue(&linebuf[linecnt], &theos);
-                } else if(linebuf[linecnt] == '~') {
-                    linebuf[linecnt + 1] = '\0'; // null terminate
-                    send_message_queue(&linebuf[linecnt], &theos);
-                    // end of immediate commands
+            // the following are single character commands that are dispatched immediately
+            if(linebuf[linecnt] == 24) { // ^X
+                // discard all recieved data
+                linebuf[linecnt + 1] = '\0'; // null terminate
+                send_message_queue(&linebuf[linecnt], &theos);
+                linecnt = 0;
+                discard = false;
+                break;
+            } else if(linebuf[linecnt] == '?') {
+                linebuf[linecnt + 1] = '\0'; // null terminate
+                send_message_queue(&linebuf[linecnt], &theos);
+            } else if(linebuf[linecnt] == '!') {
+                linebuf[linecnt + 1] = '\0'; // null terminate
+                send_message_queue(&linebuf[linecnt], &theos);
+            } else if(linebuf[linecnt] == '~') {
+                linebuf[linecnt + 1] = '\0'; // null terminate
+                send_message_queue(&linebuf[linecnt], &theos);
+                // end of immediate commands
 
-                } else if(discard) {
-                    // we discard long lines until we get the newline
-                    if(linebuf[linecnt] == '\n') discard = false;
+            } else if(discard) {
+                // we discard long lines until we get the newline
+                if(linebuf[linecnt] == '\n') discard = false;
 
-                } else if(linecnt >= sizeof(linebuf) - 1) {
-                    // discard long lines
-                    discard = true;
-                    linecnt = 0;
-                    printf("Discarding long line\n");
+            } else if(linecnt >= sizeof(linebuf) - 1) {
+                // discard long lines
+                discard = true;
+                linecnt = 0;
+                printf("Discarding long line\n");
 
-                } else if(linebuf[linecnt] == '\n') {
-                    linebuf[linecnt] = '\0'; // remove the \n and nul terminate
-                    send_message_queue(linebuf, &theos);
-                    linecnt = 0;
-                    maxmq = std::min(get_message_queue_space(), maxmq);
+            } else if(linebuf[linecnt] == '\n') {
+                linebuf[linecnt] = '\0'; // remove the \n and nul terminate
+                send_message_queue(linebuf, &theos);
+                linecnt = 0;
+                maxmq = std::min(get_message_queue_space(), maxmq);
 
-                } else if(linebuf[linecnt] == '\r') {
-                    // ignore CR
-                    continue;
+            } else if(linebuf[linecnt] == '\r') {
+                // ignore CR
+                continue;
 
-                } else if(linebuf[linecnt] == 8 || linebuf[linecnt] == 127) { // BS or DEL
-                    if(linecnt > 0) --linecnt;
+            } else if(linebuf[linecnt] == 8 || linebuf[linecnt] == 127) { // BS or DEL
+                if(linecnt > 0) --linecnt;
 
-                } else {
-                    ++linecnt;
-                }
+            } else {
+                ++linecnt;
             }
         }
     }
@@ -310,6 +286,7 @@ void fast_download_test(OutputStream *os)
         }
 
         if(s > 0) {
+            //printf("Got %d bytes\n", s);
             md5.update(b, s);
             cnt += s;
         }

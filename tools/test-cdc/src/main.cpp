@@ -48,7 +48,7 @@ char seq_char()
 size_t stream_data(MySerial& serial, size_t& lines)
 {
     const size_t buflen=27;
-	size_t cnt_sent= 0, lcnt= 0;
+    size_t cnt_sent= 0, lcnt= 0;
     MD5 md5;
 
     while(cnt_sent < 10000*buflen) {
