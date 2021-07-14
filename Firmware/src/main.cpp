@@ -477,6 +477,7 @@ extern "C" size_t write_cdc(const char *buf, size_t len);
 extern "C" size_t read_cdc(char *buf, size_t len);
 extern "C" int setup_cdc();
 extern "C" int vcom_is_connected();
+extern "C" uint32_t get_dropped_bytes();
 
 static void usb_comms(void *)
 {
@@ -530,6 +531,12 @@ static void usb_comms(void *)
                 process_command_buffer(n, usb_rx_buf, &os, line, cnt, discard);
             }
         }
+        #if 1
+        uint32_t db;
+        if((db= get_dropped_bytes()) > 0) {
+            printf("WARNING: dropped bytes detcted on USB serial: %lu\n", db);
+        }
+        #endif
     }
     output_streams.erase(&os);
 
