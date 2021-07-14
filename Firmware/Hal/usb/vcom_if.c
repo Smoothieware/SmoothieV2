@@ -25,9 +25,10 @@
 #include "FreeRTOS.h"
 #include "stream_buffer.h"
 
-static void vcom_if_open         (void* itf, USBD_CDC_LineCodingType * lc);
-static void vcom_if_in_cmplt     (void* itf, uint8_t * pbuf, uint16_t length);
-static void vcom_if_out_cmplt    (void* itf, uint8_t * pbuf, uint16_t length);
+static void vcom_if_open      (void* itf, USBD_CDC_LineCodingType * lc);
+static void vcom_if_in_cmplt  (void* itf, uint8_t * pbuf, uint16_t length);
+static void vcom_if_out_cmplt (void* itf, uint8_t * pbuf, uint16_t length);
+static void vcom_set_connected(void* itf, uint8_t dtr, uint8_t rts);
 
 static StreamBufferHandle_t xStreamBuffer;
 static uint8_t rx_buffer[USB_EP0_FS_MAX_PACKET_SIZE] __attribute__((section(".usb_data")));
@@ -42,12 +43,22 @@ static const USBD_CDC_AppType console_app = {
 	.Open           = vcom_if_open,
 	.Received       = vcom_if_out_cmplt,
 	.Transmitted    = vcom_if_in_cmplt,
+	.SetCtrlLine    = vcom_set_connected
 };
 
 USBD_CDC_IfHandleType _vcom_if = {
 	.App = &console_app,
 	.Base.AltCount = 1,
 }, *const vcom_if = &_vcom_if;
+
+void setup_vcom()
+{
+	xStreamBuffer = xStreamBufferCreate(1024 * 2, 1);
+	dropped_bytes = 0;
+	connected = 0;
+	tx_complete = 1;
+	rx_full = 0;
+}
 
 void teardown_vcom()
 {
@@ -63,8 +74,9 @@ uint32_t get_dropped_bytes()
 	return db;
 }
 
-static void vcom_set_connected()
+static void vcom_set_connected(void* itf, uint8_t dtr, uint8_t rts)
 {
+	printf("DEBUG: vcom_set_connected - dtr:%d, rts:%d\n", dtr, rts);
 	if(connected == 0) {
 		// send one byte to indicate we are connected
 		connected = 1;
@@ -83,12 +95,6 @@ int vcom_is_connected()
 // gets called when the LineCoding gets set
 static void vcom_if_open(void* itf, USBD_CDC_LineCodingType * lc)
 {
-	dropped_bytes = 0;
-	xStreamBuffer = xStreamBufferCreate(1024 * 2, 1);
-	connected = 0;
-	tx_complete = 1;
-	rx_full = 0;
-	vcom_set_connected();
 	USBD_CDC_Receive(vcom_if, rx_buffer, sizeof(rx_buffer));
 }
 
@@ -146,10 +152,6 @@ static void vcom_if_out_cmplt(void *itf, uint8_t *pbuf, uint16_t length)
 
 int vcom_read(uint8_t *buf, size_t len)
 {
-	if (vcom_if->LineCoding.DataBits == 0) {
-		return -1;
-	}
-
     const TickType_t xBlockTime = portMAX_DELAY;
 
     // Receive up to another len bytes from the stream buffer.

@@ -118,6 +118,7 @@ int setup_cdc()
 	HAL_USBD_Setup();
 	STM32_ROM_DFU_Init();
 	UsbDevice_Init();
+	setup_vcom();
 
 	return 1;
 }

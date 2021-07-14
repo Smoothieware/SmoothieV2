@@ -15,7 +15,7 @@
  * @arg the length of the longest class-specific control request */
 #define USBD_EP0_BUFFER_SIZE        512
 /** @brief Set to 1 if SET_CONTROL_LINE_STATE request is used by a CDC-ACM interface. */
-#define USBD_CDC_CONTROL_LINE_USED  0
+#define USBD_CDC_CONTROL_LINE_USED  1
 /** @brief Set to 1 if notifications are sent by a CDC-ACM interface.
  * In this case notification EP will be allocated and opened if its address is valid. */
 #define USBD_CDC_NOTEP_USED         1
