@@ -44,6 +44,7 @@ static bool system_running = false;
 static bool rpi_port_enabled = false;
 static uint32_t rpi_baudrate = 115200;
 static Pin *aux_play_led = nullptr;
+extern "C" int config_dfu_required;
 
 // for ?, $I or $S queries
 // for ? then query_line will be nullptr
@@ -475,7 +476,7 @@ void set_fast_capture(std::function<bool(char*, size_t)> cf)
 extern "C" size_t write_cdc(const char *buf, size_t len);
 extern "C" size_t read_cdc(char *buf, size_t len);
 extern "C" int setup_cdc();
-extern "C" int vcom_connected();
+extern "C" int vcom_is_connected();
 
 static void usb_comms(void *)
 {
@@ -500,7 +501,7 @@ static void usb_comms(void *)
         // when we get the first connection it sends a one byte message to wake us up
         // it will block here until a connection is available
         size_t n = read_cdc(usb_rx_buf, 1);
-        if(n > 0 && usb_rx_buf[0] == 1 && vcom_connected()) {
+        if(n > 0 && usb_rx_buf[0] == 1 && vcom_is_connected()) {
             break;
         }
     }
@@ -619,6 +620,7 @@ static void handle_query(bool need_done)
  * Commands are sent to this thread via the message queue from things that can block (like I/O)
  * Other things can call dispatch_line direct from the in_command_ctx call.
  */
+extern "C" bool DFU_requested_detach();
 static void command_handler()
 {
     printf("DEBUG: Command thread running\n");
@@ -644,20 +646,14 @@ static void command_handler()
             }
             handle_query(true);
 
-#ifdef USE_DFU
-            extern "C" bool DFU_requested_detach();
             // special case if we see we got a DFU detach we call the dfu command
-            if(DFU_requested_detach()) {
+            if(config_dfu_required == 1 && DFU_requested_detach()) {
                 print_to_all_consoles("DFU firmware download has been requested, going down for update\n");
-
+                vTaskDelay(pdMS_TO_TICKS(100));
                 OutputStream nullos;
-                dispatch_line(nullos, "dfu 1");
-                // we should not return from this, if we do it is a severe error
-                Board_LED_Set(0, true); Board_LED_Set(1, true); Board_LED_Set(2, false); Board_LED_Set(3, true);
-                // and stop
-                __asm("bkpt #0");
+                dispatch_line(nullos, "dfu");
+                // we should not return from this, if we do it means the dfu loader is not in qspi
             }
-#endif
         }
 
         // call in_command_ctx for all modules that want it
@@ -838,6 +834,10 @@ static void smoothie_startup(void *)
                     printf("INFO: auxilliary play led set to %s\n", aux_play_led->to_string().c_str());
                 }
                 flash_on_boot = cr.get_bool(m, "flash_on_boot", true);
+                printf("INFO: flash on boot is %s\n", flash_on_boot?"enabled":"disabled");
+                bool enable_dfu= cr.get_bool(m, "dfu_enable", false);
+                config_dfu_required= enable_dfu ? 1 : 0; // set it in the USB stack
+                printf("INFO: dfu is %s\n", enable_dfu?"enabled":"disabled");
             }
         }
 

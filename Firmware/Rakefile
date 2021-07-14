@@ -137,7 +137,13 @@ end
 sdmmc_src = FileList['Hal/sdmmc/**/*.c']
 
 # USB support
-usb_src = FileList['Hal/usb_cdc/src/*.c', 'Hal/usb_cdc/lib/*.c', 'Hal/usb_cdc/Core/Src/*.c']
+usb_src = FileList[
+                'Hal/usb/*.c',
+                'Hal/usb/USBDevice/Device/*.c',
+                'Hal/usb/USBDevice/Class/DFU/*.c',
+                'Hal/usb/USBDevice/Class/CDC/usbd_cdc.c',
+                'Hal/usb/XPD_USB/*.c'
+          ]
 
 # RTOS
 rtos_src = FileList['RTOS/**/*.{c,cpp,s}']
@@ -217,7 +223,8 @@ include_dirs = ['Hal/network/portable/NetworkInterface', # Must be first ahead o
     [Dir.glob(["**/Inc", "**/Include", "**/include", "**/inc"])].flatten +
     [Dir.glob(['./src/**/'])].flatten +
     ['Hal/STM32H7xx_HAL_Driver', 'Hal/STM32H7xx_HAL_Driver/cmsis', 'Hal/src',
-     'Hal/sdmmc/fatfs', 'Hal/sdmmc/src', 'Hal/usb_cdc/src', 'Hal/usb_cdc/lib'
+     'Hal/sdmmc/fatfs', 'Hal/sdmmc/src',
+     'Hal/usb', 'Hal/usb/XPD_USB', 'Hal/usb/USBDevice/PDs/STM32_XPD'
     ]
 
 INCLUDE = (include_dirs).collect { |d| "-I#{d}" }.join(" ")
@@ -242,7 +249,7 @@ if TARGET == 'Nucleo'
 elsif TARGET == 'Prime'
   defines << '-DBOARD_PRIME'
   defines << '-DSTM32H745xx'
-  defines << '-DSTRING_CONFIG_H=\"string-config-prime.h\"'
+  defines << '-DHSE_VALUE=25000000'
   defines << '-DDRIVER_TMC2590'
 elsif TARGET == 'Devebox'
   defines << '-DBOARD_DEVEBOX'
