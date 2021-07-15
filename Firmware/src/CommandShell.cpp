@@ -1403,7 +1403,7 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
         return true;
     }
 
-    FILE *fp= fopen(fn.c_str(), "w");
+    FILE *fp = fopen(fn.c_str(), "w");
     if(fp == nullptr) {
         os.printf("FAIL - could not open file: %d\n", errno);
         return true;
@@ -1657,8 +1657,25 @@ bool CommandShell::dfu_cmd(std::string& params, OutputStream& os)
 {
     HELP("start dfu");
     os.printf("NOTE: A reset will be required to resume if dfu-util is not run\n");
+#ifdef BOARD_NUCLEO
+    // no qspi so dfu flash loader is in high flash 0x081E0000
+    // check the first entry is a valid stack pointer and jump into qspi
+    if(((*(__IO uint32_t *) 0x081E0000) & 0xFFFF0000) == 0x20020000 &&
+       ((*(__IO uint32_t *) 0x081E0004) & 0xFFFF0000) == 0x081E0000) {
+        stop_everything();
+        __disable_irq();
+        jump_to_program((uint32_t)0x081E0000);
+        // should never get here
+        __asm("bkpt #0");
+    } else {
+        os.printf("There does not appear to be a valid executable at top of flash\n");
+    }
+    return true;
+
+#else
     std::string cmd("run");
     return qspi_cmd(cmd, os);
+#endif
 }
 
 extern "C" bool qspi_flash(const char *fn);

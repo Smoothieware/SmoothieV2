@@ -496,49 +496,55 @@ static void usb_comms(void *)
         return;
     }
 
-    // on first connect we send a welcome message
-    static const char *welcome_message = "Welcome to Smoothie\nok\n";
-    while(!abort_comms) {
-        // when we get the first connection it sends a one byte message to wake us up
-        // it will block here until a connection is available
-        size_t n = read_cdc(usb_rx_buf, 1);
-        if(n > 0 && usb_rx_buf[0] == 1 && vcom_is_connected()) {
-            break;
-        }
-    }
-    printf("CDC connected\n");
-
-    // create an output stream that writes to the cdc
-    static OutputStream os([](const char *buf, size_t len) { return write_cdc(buf, len); });
-    output_streams.insert(&os);
-
-    os.puts(welcome_message);
-
-    // now read lines and dispatch them
-    char line[MAX_LINE_LENGTH];
-    size_t cnt = 0;
-    bool discard = false;
-
-    while(!abort_comms) {
-        // this read will block if no data is available
-        size_t n = read_cdc(usb_rx_buf, usb_rx_buf_sz);
-        if(n > 0) {
-            if(fast_capture_fnc) {
-                if(!fast_capture_fnc(usb_rx_buf, n)) {
-                    fast_capture_fnc = nullptr; // we are done ok
-                }
-            } else {
-                process_command_buffer(n, usb_rx_buf, &os, line, cnt, discard);
+    do {
+        // on first connect we send a welcome message
+        static const char *welcome_message = "Welcome to Smoothie\nok\n";
+        while(!abort_comms) {
+            // when we get the first connection it sends a one byte message to wake us up
+            // it will block here until a connection is available
+            size_t n = read_cdc(usb_rx_buf, 1);
+            if(n > 0 && usb_rx_buf[0] == 1 && vcom_is_connected()) {
+                break;
             }
         }
-        #if 1
-        uint32_t db;
-        if((db= get_dropped_bytes()) > 0) {
-            printf("WARNING: dropped bytes detcted on USB serial: %lu\n", db);
+
+        if(abort_comms) break;
+
+        printf("CDC connected\n");
+
+        // create an output stream that writes to the cdc
+        static OutputStream os([](const char *buf, size_t len) { return write_cdc(buf, len); });
+        output_streams.insert(&os);
+
+        os.puts(welcome_message);
+
+        // now read lines and dispatch them
+        char line[MAX_LINE_LENGTH];
+        size_t cnt = 0;
+        bool discard = false;
+
+        while(!abort_comms) {
+            // this read will block if no data is available
+            size_t n = read_cdc(usb_rx_buf, usb_rx_buf_sz);
+            if(n > 0) {
+                if(fast_capture_fnc) {
+                    if(!fast_capture_fnc(usb_rx_buf, n)) {
+                        fast_capture_fnc = nullptr; // we are done ok
+                    }
+                } else {
+                    process_command_buffer(n, usb_rx_buf, &os, line, cnt, discard);
+                }
+            }
+            #if 1
+            uint32_t db;
+            if((db= get_dropped_bytes()) > 0) {
+                printf("WARNING: dropped bytes detected on USB serial: %lu\n", db);
+            }
+            #endif
         }
-        #endif
-    }
-    output_streams.erase(&os);
+
+        output_streams.erase(&os);
+    }while(false);
 
     free(usb_rx_buf);
     printf("DEBUG: USB Comms thread exiting\n");
@@ -660,6 +666,7 @@ static void command_handler()
                 OutputStream nullos;
                 dispatch_line(nullos, "dfu");
                 // we should not return from this, if we do it means the dfu loader is not in qspi
+                config_dfu_required  = 0; // disable it for now
             }
         }
 
