@@ -23,7 +23,7 @@
 #include "stm32_rom_dfu.h"
 #include "usb_device.h"
 
-static const char* stm32_dfu_if_name = "Smoothie Flasher";
+static const char* stm32_dfu_if_name = "Smoothie DFU";
 static volatile bool dfuRequested = false;
 
 static USBD_DFU_IfHandleType _dfu_if;
