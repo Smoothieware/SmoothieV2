@@ -511,10 +511,10 @@ static void usb_comms(void *param)
         printf("CDC%d connected\n", inst+1);
 
         // create an output stream that writes to the cdc
-        static OutputStream os([inst](const char *buf, size_t len) { return write_cdc(inst, buf, len); });
-        output_streams.insert(&os);
+        OutputStream *os= new OutputStream([inst](const char *buf, size_t len) { return write_cdc(inst, buf, len); });
+        output_streams.insert(os);
 
-        os.puts(welcome_message);
+        os->puts(welcome_message);
 
         // now read lines and dispatch them
         char line[MAX_LINE_LENGTH];
@@ -530,7 +530,7 @@ static void usb_comms(void *param)
                         fast_capture_fnc = nullptr; // we are done ok
                     }
                 } else {
-                    process_command_buffer(n, usb_rx_buf, &os, line, cnt, discard);
+                    process_command_buffer(n, usb_rx_buf, os, line, cnt, discard);
                 }
             }
             #if 1
@@ -541,7 +541,8 @@ static void usb_comms(void *param)
             #endif
         }
 
-        output_streams.erase(&os);
+        output_streams.erase(os);
+        delete os;
     }while(false);
 
     free(usb_rx_buf);
