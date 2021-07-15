@@ -179,7 +179,6 @@ static void vcom_if_out_cmplt(void *itf, uint8_t *pbuf, uint16_t length)
     // we have a buffer from Host, stick it in the stream buffer
     BaseType_t xHigherPriorityTaskWoken = pdFALSE; // Initialised to pdFALSE.
     size_t xBytesSent = xStreamBufferSendFromISR(vcom_states[i]->xStreamBuffer, (void *)pbuf, length, &xHigherPriorityTaskWoken);
-    printf("vcom_if_out_cmplt: %d\n", length);
 
     if(xBytesSent != length) {
         // There was not enough free space in the stream buffer for the entire buffer

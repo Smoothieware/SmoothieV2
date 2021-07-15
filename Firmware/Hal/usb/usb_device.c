@@ -70,10 +70,10 @@ void UsbDevice_Init(void)
 
     /* Mount the interfaces to the device */
     if(USBD_CDC_MountInterface(vcom_if, UsbDevice) != USBD_E_OK) {
-        printf("ERROR: USBD_CDC_MountInterface failed\n");
+        printf("ERROR: USBD_CDC_MountInterface vcom1 failed\n");
     }
 
-#ifdef SECOND_VCOM
+#if 1
     vcom_if= (USBD_CDC_IfHandleType*)setup_vcom(1);
     if(vcom_if == NULL) {
     	printf("ERROR: Could not create vcom2\n");
@@ -87,7 +87,7 @@ void UsbDevice_Init(void)
 
     /* Mount the interfaces to the device */
     if(USBD_CDC_MountInterface(vcom_if, UsbDevice) != USBD_E_OK) {
-        printf("ERROR: USBD_CDC_MountInterface failed\n");
+        printf("ERROR: USBD_CDC_MountInterface vcom2 failed\n");
     }
 #endif
 
