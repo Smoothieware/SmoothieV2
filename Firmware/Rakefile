@@ -12,8 +12,8 @@ PROG = 'smoothiev2'
 load 'rakefile.defaults' if File.exists?('rakefile.defaults')
 
 if ENV['target'].nil?
-  TARGET = 'Nucleo'
-  #TARGET = 'Devebox'
+  #TARGET = 'Nucleo'
+  TARGET = 'Devebox'
 elsif (ENV['target'] != 'Nucleo' && ENV['target'] != 'Prime'&& ENV['target'] != 'Devebox')
   puts "ERROR: Must specify target=[Nucleo|Prime|Devebox]"
   exit 0
@@ -325,7 +325,8 @@ task :uploadbig do
     sh "~/bin/flash-stm32 #{OBJDIR}/#{PROG}.bin"
   elsif TARGET == 'Devebox'
     # sh "upload-ym.py -f #{OBJDIR}/#{PROG}.bin USB0"
-    sh "download-dl.py -f #{OBJDIR}/#{PROG}.bin ACM0"
+    #sh "download-dl.py -f #{OBJDIR}/#{PROG}.bin ACM0"
+    sh "dfu-util -D #{OBJDIR}/#{PROG}.bin"
   else
     die "Unknown upload protocol for target #{TARGET}"
   end

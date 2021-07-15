@@ -508,13 +508,13 @@ static void usb_comms(void *param)
 
         if(abort_comms) break;
 
-        printf("CDC%d connected\n", inst+1);
+        //printf("DEBUG: CDC%d connected\n", inst+1);
 
         // create an output stream that writes to the cdc
         OutputStream *os= new OutputStream([inst](const char *buf, size_t len) { return write_cdc(inst, buf, len); });
         output_streams.insert(os);
-
-        os->puts(welcome_message);
+        vTaskDelay(pdMS_TO_TICKS(100));
+        os->printf("%s", welcome_message);
 
         // now read lines and dispatch them
         char line[MAX_LINE_LENGTH];
