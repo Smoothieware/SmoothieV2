@@ -108,7 +108,7 @@ puts "Current GCC version is #{current_version}"
 #ARMVERSION = ENV['ARMVERSION'].nil? ? current_version :  ENV['ARMVERSION']
 
 # HAL files
-hal_src = FileList["Drivers/STM32H7xx_HAL_Driver/Src/*.{c,cpp,s}"]
+hal_src = FileList["Drivers/Src/*.{c,cpp,s}"]
 hal_src.exclude(/_template\.c/)
 
 # the startup file
@@ -150,10 +150,9 @@ include_dirs << 'Src'
 include_dirs << 'XPD_USB'
 include_dirs << 'USBDevice/PDs/STM32_XPD'
 include_dirs << 'USBDevice/Include'
-include_dirs << 'Drivers/Include'
-include_dirs << 'Drivers/CMSIS/Device/ST/STM32H7xx/Include'
-include_dirs << 'Drivers/CMSIS/Include'
-include_dirs << 'Drivers/STM32H7xx_HAL_Driver/Inc'
+include_dirs << 'Drivers'
+include_dirs << 'Drivers/cmsis'
+include_dirs << 'Drivers/Inc'
 
 sys_include_dirs = []
 
