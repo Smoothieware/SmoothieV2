@@ -496,7 +496,6 @@ static void usb_comms(void *param)
 
     do {
         // on first connect we send a welcome message
-        static const char *welcome_message = "Welcome to Smoothie\nok\n";
         while(!abort_comms) {
             // when we get the first connection it sends a one byte message to wake us up
             // it will block here until a connection is available
@@ -514,7 +513,7 @@ static void usb_comms(void *param)
         OutputStream *os= new OutputStream([inst](const char *buf, size_t len) { return write_cdc(inst, buf, len); });
         output_streams.insert(os);
         vTaskDelay(pdMS_TO_TICKS(100));
-        os->printf("%s", welcome_message);
+        os->printf("Welcome to Smoothie\nok\n");
 
         // now read lines and dispatch them
         char line[MAX_LINE_LENGTH];
