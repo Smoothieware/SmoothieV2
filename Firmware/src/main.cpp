@@ -476,8 +476,8 @@ void set_fast_capture(std::function<bool(char*, size_t)> cf)
 extern "C" size_t write_cdc(const char *buf, size_t len);
 extern "C" size_t read_cdc(char *buf, size_t len);
 extern "C" int setup_cdc();
-extern "C" int vcom_is_connected();
-extern "C" uint32_t get_dropped_bytes();
+extern "C" int vcom_is_connected(uint8_t);
+extern "C" uint32_t get_dropped_bytes(uint8_t);
 
 static void usb_comms(void *)
 {
@@ -503,7 +503,7 @@ static void usb_comms(void *)
             // when we get the first connection it sends a one byte message to wake us up
             // it will block here until a connection is available
             size_t n = read_cdc(usb_rx_buf, 1);
-            if(n > 0 && usb_rx_buf[0] == 1 && vcom_is_connected()) {
+            if(n > 0 && vcom_is_connected(0)) {
                 break;
             }
         }
@@ -537,7 +537,7 @@ static void usb_comms(void *)
             }
             #if 1
             uint32_t db;
-            if((db= get_dropped_bytes()) > 0) {
+            if((db= get_dropped_bytes(0)) > 0) {
                 printf("WARNING: dropped bytes detected on USB serial: %lu\n", db);
             }
             #endif

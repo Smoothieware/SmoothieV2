@@ -210,7 +210,7 @@ typedef struct
     USBD_CDC_LineCodingType LineCoding; /*!< CDC line coding */
     USBD_PADDING_1();
     uint16_t TransmitLength;            /*!< Backup transmitted length for splitting transfers */
-    void *instance;                     /*!< vcom Instance user data */
+    uint8_t instance;                   /*!< vcom Instance user data */
 }USBD_CDC_IfHandleType;
 
 /** @} */

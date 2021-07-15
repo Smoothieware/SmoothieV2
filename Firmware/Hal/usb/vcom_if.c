@@ -31,13 +31,13 @@ static void vcom_if_out_cmplt (void* itf, uint8_t * pbuf, uint16_t length);
 static void vcom_set_connected(void* itf, uint8_t dtr, uint8_t rts);
 
 typedef struct {
-	StreamBufferHandle_t xStreamBuffer;
 	uint8_t rx_buffer[USB_EP0_FS_MAX_PACKET_SIZE];
 	uint8_t tx_buffer[USB_EP0_FS_MAX_PACKET_SIZE];
-	volatile int tx_complete;
-	volatile int rx_full;
-	volatile int connected;
+	StreamBufferHandle_t xStreamBuffer;
 	uint32_t dropped_bytes;
+	uint8_t tx_complete;
+	uint8_t rx_full;
+	uint8_t connected;
 } VCOM_STATE_T;
 
 static VCOM_STATE_T *vcom_states[2];
@@ -55,17 +55,24 @@ void *setup_vcom(uint8_t i)
 {
 	if(i >= 2 || vcom_states[i] != NULL) return NULL;
 	VCOM_STATE_T *state= malloc(sizeof(VCOM_STATE_T));
+	if(state == NULL) {
+		printf("ERROR: VCOM no mem\n");
+		return NULL;
+	}
+	memset(state, 0, sizeof(VCOM_STATE_T));
 	vcom_states[i]= state;
 	state->xStreamBuffer = xStreamBufferCreate(1024 * 2, 1);
-	state->dropped_bytes = 0;
-	state->connected = 0;
 	state->tx_complete = 1;
-	state->rx_full = 0;
 
 	USBD_CDC_IfHandleType *vcom_if= malloc(sizeof(USBD_CDC_IfHandleType));
+	if(vcom_if == NULL) {
+		printf("ERROR: VCOM no mem\n");
+		return NULL;
+	}
+	memset(vcom_if, 0, sizeof(USBD_CDC_IfHandleType));
 	vcom_if->App = &vcom_app;
 	vcom_if->Base.AltCount = 1;
-	vcom_if->instance = state;
+	vcom_if->instance = i;
 	vcom_ifs[i]= vcom_if;
 	printf("DEBUG: VCOM %d setup\n", i+1);
 	return vcom_if;
@@ -94,14 +101,18 @@ uint32_t get_dropped_bytes(uint8_t i)
 
 static void vcom_set_connected(void* itf, uint8_t dtr, uint8_t rts)
 {
-	VCOM_STATE_T *state= (VCOM_STATE_T *)((USBD_CDC_IfHandleType*)itf)->instance;
-	printf("DEBUG: vcom_set_connected - dtr:%d, rts:%d\n", dtr, rts);
-	if(state->connected == 0) {
+	uint8_t i= ((USBD_CDC_IfHandleType*)itf)->instance;
+	if(i >= 2 || vcom_states[i] == NULL) {
+		printf("ERROR: vcom_set_connected illegal instance: %d\n", i);
+		return;
+	}
+	//printf("DEBUG: vcom_set_connected: %d - dtr:%d, rts:%d\n", i, dtr, rts);
+	if(vcom_states[i]->connected == 0) {
 		// send one byte to indicate we are connected
-		state->connected = 1;
+		vcom_states[i]->connected = 1;
 		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 		char buf[1] = {1};
-		xStreamBufferSendFromISR(state->xStreamBuffer, (void *)buf, 1, &xHigherPriorityTaskWoken);
+		xStreamBufferSendFromISR(vcom_states[i]->xStreamBuffer, (void *)buf, 1, &xHigherPriorityTaskWoken);
 		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 	}
 }
@@ -115,15 +126,22 @@ int vcom_is_connected(uint8_t i)
 // gets called when the LineCoding gets set
 static void vcom_if_open(void* itf, USBD_CDC_LineCodingType * lc)
 {
-	VCOM_STATE_T *state= (VCOM_STATE_T *)((USBD_CDC_IfHandleType*)itf)->instance;
-	USBD_CDC_Receive((USBD_CDC_IfHandleType *)itf, state->rx_buffer, sizeof(state->rx_buffer));
+	uint8_t i= ((USBD_CDC_IfHandleType*)itf)->instance;
+	if(i >= 2 || vcom_states[i] == NULL) {
+		printf("ERROR: vcom_if_open illegal instance: %d\n", i);
+		return;
+	}
+	USBD_CDC_Receive(vcom_ifs[i], vcom_states[i]->rx_buffer, sizeof(vcom_states[i]->rx_buffer));
 }
 
 // called when previous transmit completes
 static void vcom_if_in_cmplt(void* itf, uint8_t * pbuf, uint16_t length)
 {
-	VCOM_STATE_T *state= (VCOM_STATE_T *)((USBD_CDC_IfHandleType*)itf)->instance;
-	state->tx_complete= 1;
+	uint8_t i= ((USBD_CDC_IfHandleType*)itf)->instance;
+	if(i >= 2 || vcom_states[i] == NULL) {
+		return;
+	}
+	vcom_states[i]->tx_complete= 1;
 }
 
 // return bytes written, or -1 on error
@@ -153,22 +171,27 @@ int vcom_write(uint8_t i, uint8_t *buf, size_t len)
 // called when incoming data is recieved
 static void vcom_if_out_cmplt(void *itf, uint8_t *pbuf, uint16_t length)
 {
-	VCOM_STATE_T *state= (VCOM_STATE_T *)((USBD_CDC_IfHandleType*)itf)->instance;
+	uint8_t i= ((USBD_CDC_IfHandleType*)itf)->instance;
+	if(i >= 2 || vcom_states[i] == NULL) {
+		printf("ERROR: vcom_if_out_cmplt illegal instance: %d\n", i);
+		return;
+	}
     // we have a buffer from Host, stick it in the stream buffer
     BaseType_t xHigherPriorityTaskWoken = pdFALSE; // Initialised to pdFALSE.
-    size_t xBytesSent = xStreamBufferSendFromISR(state->xStreamBuffer, (void *)pbuf, length, &xHigherPriorityTaskWoken);
+    size_t xBytesSent = xStreamBufferSendFromISR(vcom_states[i]->xStreamBuffer, (void *)pbuf, length, &xHigherPriorityTaskWoken);
+    printf("vcom_if_out_cmplt: %d\n", length);
 
     if(xBytesSent != length) {
         // There was not enough free space in the stream buffer for the entire buffer
-        state->dropped_bytes += (length - xBytesSent);
+        vcom_states[i]->dropped_bytes += (length - xBytesSent);
     }
 
     // if we have enough room schedule another read
-    if(xStreamBufferSpacesAvailable(state->xStreamBuffer) >= sizeof(state->rx_buffer)) {
+    if(xStreamBufferSpacesAvailable(vcom_states[i]->xStreamBuffer) >= sizeof(vcom_states[i]->rx_buffer)) {
         // allow more data to be sent
-        USBD_CDC_Receive((USBD_CDC_IfHandleType *)itf, state->rx_buffer, sizeof(state->rx_buffer));
+        USBD_CDC_Receive(vcom_ifs[i], vcom_states[i]->rx_buffer, sizeof(vcom_states[i]->rx_buffer));
     }else{
-        state->rx_full= 1;
+        vcom_states[i]->rx_full= 1;
     }
 
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
@@ -182,7 +205,6 @@ int vcom_read(uint8_t i, uint8_t *buf, size_t len)
     // Receive up to another len bytes from the stream buffer.
     // Wait in the Blocked state (so not using any CPU processing time) for at least 1 byte to be available.
     size_t cnt= xStreamBufferReceive(vcom_states[i]->xStreamBuffer,(void *)buf, len, xBlockTime);
-
     // if we got some data but buffer was full and we have enough for another packet then schedule another read
     if(cnt > 0 && vcom_states[i]->rx_full && xStreamBufferSpacesAvailable(vcom_states[i]->xStreamBuffer) >= sizeof(vcom_states[i]->rx_buffer)) {
         // allow more data to be sent

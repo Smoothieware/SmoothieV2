@@ -24,6 +24,7 @@ size_t write_cdc(const char *buf, size_t len)
 		int n = vcom_write(0, (uint8_t *)buf + sent, len - sent);
 		if(n < 0) {
 			// we got an error
+			printf("ERROR: write_cdc got an error\n");
 			return 0;
 		}
 		sent += n;

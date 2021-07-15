@@ -47,8 +47,6 @@ void STM32_ROM_DFU_Init(void)
     stm32_rom_dfu_if->Config.DetachTimeout_ms = 100;
 }
 
-void jump_to_program(uint32_t prog_addr);
-
 bool DFU_requested_detach() {
 	return dfuRequested;
 }
