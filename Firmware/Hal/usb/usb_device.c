@@ -26,6 +26,7 @@
 #include "vcom_if.h"
 
 int config_dfu_required = 1;
+int config_second_usb_serial = 0;
 
 /** @brief USB device configuration */
 const USBD_DescriptionType hdev_cfg = {
@@ -73,23 +74,23 @@ void UsbDevice_Init(void)
         printf("ERROR: USBD_CDC_MountInterface vcom1 failed\n");
     }
 
-#if 1
-    vcom_if= (USBD_CDC_IfHandleType*)setup_vcom(1);
-    if(vcom_if == NULL) {
-    	printf("ERROR: Could not create vcom2\n");
-    	return;
-    }
+	if(config_second_usb_serial) {
+	    vcom_if= (USBD_CDC_IfHandleType*)setup_vcom(1);
+	    if(vcom_if == NULL) {
+	    	printf("ERROR: Could not create vcom2\n");
+	    	return;
+	    }
 
-    /* All fields of Config have to be properly set up */
-    vcom_if->Config.InEpNum  = 0x83;
-    vcom_if->Config.OutEpNum = 0x02;
-    vcom_if->Config.NotEpNum = 0x84;
+	    /* All fields of Config have to be properly set up */
+	    vcom_if->Config.InEpNum  = 0x83;
+	    vcom_if->Config.OutEpNum = 0x02;
+	    vcom_if->Config.NotEpNum = 0x84;
 
-    /* Mount the interfaces to the device */
-    if(USBD_CDC_MountInterface(vcom_if, UsbDevice) != USBD_E_OK) {
-        printf("ERROR: USBD_CDC_MountInterface vcom2 failed\n");
-    }
-#endif
+	    /* Mount the interfaces to the device */
+	    if(USBD_CDC_MountInterface(vcom_if, UsbDevice) != USBD_E_OK) {
+	        printf("ERROR: USBD_CDC_MountInterface vcom2 failed\n");
+	    }
+	}
 
     /* Initialize the device */
     USBD_Init(UsbDevice, dev_cfg);
@@ -103,4 +104,5 @@ void UsbDevice_DeInit(void)
 {
     USBD_Deinit(UsbDevice);
     teardown_vcom(0);
+    teardown_vcom(1);
 }

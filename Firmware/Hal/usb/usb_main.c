@@ -17,14 +17,14 @@
 // Expects entire buffer to be fully written
 // vcom_write will copy the buffer or as much of it as it can
 // so we need to stay here until all requested data has been transfered to the buffer
-size_t write_cdc(const char *buf, size_t len)
+size_t write_cdc(uint8_t i, const char *buf, size_t len)
 {
 	size_t sent = 0;
 	while(sent < len) {
-		int n = vcom_write(0, (uint8_t *)buf + sent, len - sent);
+		int n = vcom_write(i, (uint8_t *)buf + sent, len - sent);
 		if(n < 0) {
 			// we got an error
-			printf("ERROR: write_cdc got an error\n");
+			printf("ERROR: write_cdc %d got an error\n", i);
 			return 0;
 		}
 		sent += n;
@@ -39,11 +39,11 @@ size_t write_cdc(const char *buf, size_t len)
 }
 
 // will block until data is available
-size_t read_cdc(char *buf, size_t len)
+size_t read_cdc(uint8_t i, char *buf, size_t len)
 {
-	int n= vcom_read(0, (uint8_t *)buf, len);
+	int n= vcom_read(i, (uint8_t *)buf, len);
 	if(n < 0) {
-		printf("ERROR: read_cdc got an error\n");
+		printf("ERROR: read_cdc %d got an error\n", i);
 		return 0;
 	}
 	return (size_t)n;

@@ -45,6 +45,7 @@ static bool system_running = false;
 // static uint32_t rpi_baudrate = 115200;
 static Pin *aux_play_led = nullptr;
 extern "C" int config_dfu_required;
+extern "C" int config_second_usb_serial;
 
 // for ?, $I or $S queries
 // for ? then query_line will be nullptr
@@ -473,20 +474,15 @@ void set_fast_capture(std::function<bool(char*, size_t)> cf)
     fast_capture_fnc = cf;
 }
 
-extern "C" size_t write_cdc(const char *buf, size_t len);
-extern "C" size_t read_cdc(char *buf, size_t len);
+extern "C" size_t write_cdc(uint8_t, const char *buf, size_t len);
+extern "C" size_t read_cdc(uint8_t, char *buf, size_t len);
 extern "C" int setup_cdc();
 extern "C" int vcom_is_connected(uint8_t);
 extern "C" uint32_t get_dropped_bytes(uint8_t);
 
-static void usb_comms(void *)
+static void usb_comms1(void *)
 {
-    printf("DEBUG: USB Comms thread running\n");
-
-    if(!setup_cdc()) {
-        printf("FATAL: CDC setup failed\n");
-        return;
-    }
+    printf("DEBUG: USB Comms1 thread running\n");
 
     // we set this to 1024 so ymodem will run faster (but if not needed then it can be as low as 256)
     const size_t usb_rx_buf_sz = 1024;
@@ -502,7 +498,7 @@ static void usb_comms(void *)
         while(!abort_comms) {
             // when we get the first connection it sends a one byte message to wake us up
             // it will block here until a connection is available
-            size_t n = read_cdc(usb_rx_buf, 1);
+            size_t n = read_cdc(0, usb_rx_buf, 1);
             if(n > 0 && vcom_is_connected(0)) {
                 break;
             }
@@ -510,10 +506,10 @@ static void usb_comms(void *)
 
         if(abort_comms) break;
 
-        printf("CDC connected\n");
+        printf("CDC1 connected\n");
 
         // create an output stream that writes to the cdc
-        static OutputStream os([](const char *buf, size_t len) { return write_cdc(buf, len); });
+        static OutputStream os([](const char *buf, size_t len) { return write_cdc(0, buf, len); });
         output_streams.insert(&os);
 
         os.puts(welcome_message);
@@ -525,7 +521,7 @@ static void usb_comms(void *)
 
         while(!abort_comms) {
             // this read will block if no data is available
-            size_t n = read_cdc(usb_rx_buf, usb_rx_buf_sz);
+            size_t n = read_cdc(0, usb_rx_buf, usb_rx_buf_sz);
             if(n > 0) {
                 if(fast_capture_fnc) {
                     if(!fast_capture_fnc(usb_rx_buf, n)) {
@@ -538,7 +534,7 @@ static void usb_comms(void *)
             #if 1
             uint32_t db;
             if((db= get_dropped_bytes(0)) > 0) {
-                printf("WARNING: dropped bytes detected on USB serial: %lu\n", db);
+                printf("WARNING: dropped bytes detected on USB serial1: %lu\n", db);
             }
             #endif
         }
@@ -547,7 +543,74 @@ static void usb_comms(void *)
     }while(false);
 
     free(usb_rx_buf);
-    printf("DEBUG: USB Comms thread exiting\n");
+    printf("DEBUG: USB Comms1 thread exiting\n");
+    vTaskDelete(NULL);
+}
+
+static void usb_comms2(void *)
+{
+    printf("DEBUG: USB Comms2 thread running\n");
+
+    // we set this to 1024 so ymodem will run faster (but if not needed then it can be as low as 256)
+    const size_t usb_rx_buf_sz = 1024;
+    char *usb_rx_buf = (char *)malloc(usb_rx_buf_sz);
+    if(usb_rx_buf == nullptr) {
+        printf("FATAL: no memory for usb_rx_buf\n");
+        return;
+    }
+
+    do {
+        // on first connect we send a welcome message
+        static const char *welcome_message = "Welcome to Smoothie\nok\n";
+        while(!abort_comms) {
+            // when we get the first connection it sends a one byte message to wake us up
+            // it will block here until a connection is available
+            size_t n = read_cdc(1, usb_rx_buf, 1);
+            if(n > 0 && vcom_is_connected(1)) {
+                break;
+            }
+        }
+
+        if(abort_comms) break;
+
+        printf("CDC2 connected\n");
+
+        // create an output stream that writes to the cdc
+        static OutputStream os([](const char *buf, size_t len) { return write_cdc(1, buf, len); });
+        output_streams.insert(&os);
+
+        os.puts(welcome_message);
+
+        // now read lines and dispatch them
+        char line[MAX_LINE_LENGTH];
+        size_t cnt = 0;
+        bool discard = false;
+
+        while(!abort_comms) {
+            // this read will block if no data is available
+            size_t n = read_cdc(1, usb_rx_buf, usb_rx_buf_sz);
+            if(n > 0) {
+                if(fast_capture_fnc) {
+                    if(!fast_capture_fnc(usb_rx_buf, n)) {
+                        fast_capture_fnc = nullptr; // we are done ok
+                    }
+                } else {
+                    process_command_buffer(n, usb_rx_buf, &os, line, cnt, discard);
+                }
+            }
+            #if 1
+            uint32_t db;
+            if((db= get_dropped_bytes(1)) > 0) {
+                printf("WARNING: dropped bytes detected on USB serial2: %lu\n", db);
+            }
+            #endif
+        }
+
+        output_streams.erase(&os);
+    }while(false);
+
+    free(usb_rx_buf);
+    printf("DEBUG: USB Comms2 thread exiting\n");
     vTaskDelete(NULL);
 }
 
@@ -852,6 +915,8 @@ static void smoothie_startup(void *)
                 bool enable_dfu= cr.get_bool(m, "dfu_enable", false);
                 config_dfu_required= enable_dfu ? 1 : 0; // set it in the USB stack
                 printf("INFO: dfu is %s\n", enable_dfu?"enabled":"disabled");
+                config_second_usb_serial= cr.get_bool(m, "second_usb_serial_enable", false) ? 1 : 0;
+                printf("INFO: second usb serial is %s\n", config_second_usb_serial?"enabled":"disabled");
             }
         }
 
@@ -1033,8 +1098,18 @@ static void smoothie_startup(void *)
 
     // Start comms threads higher priority than the command thread
     // fixed stack size of 4k Bytes each
-    xTaskCreate(usb_comms, "USBCommsThread", 1500 / 4, NULL, (tskIDLE_PRIORITY + COMMS_PRI), (TaskHandle_t *) NULL);
     xTaskCreate(uart_comms, "UARTCommsThread", 1500 / 4, NULL, (tskIDLE_PRIORITY + COMMS_PRI), (TaskHandle_t *) NULL);
+
+    // setup usb and cdc first
+    if(setup_cdc()) {
+        xTaskCreate(usb_comms1, "USBCommsThread1", 1500 / 4, NULL, (tskIDLE_PRIORITY + COMMS_PRI), (TaskHandle_t *) NULL);
+        if(config_second_usb_serial == 1) {
+            xTaskCreate(usb_comms2, "USBCommsThread2", 1500 / 4, NULL, (tskIDLE_PRIORITY + COMMS_PRI), (TaskHandle_t *) NULL);
+        }
+
+    }else{
+        printf("FATAL: USB and/or CDC setup failed\n");
+    }
 
     // run any startup functions that have been registered
     for(auto f : startup_fncs) {
@@ -1042,17 +1117,6 @@ static void smoothie_startup(void *)
     }
     startup_fncs.clear();
     startup_fncs.shrink_to_fit();
-
-#ifdef BOARD_PRIMEALPHA
-    if(rpi_port_enabled) {
-        if(setup_uart3(rpi_baudrate) < 0) {
-            printf("ERROR: UART3/RPI setup failed\n");
-        } else {
-            xTaskCreate(uart3_comms, "UART3CommsThread", 1500 / 4, NULL, (tskIDLE_PRIORITY + COMMS_PRI), (TaskHandle_t *) NULL
-                       );
-        }
-    }
-#endif
 
     struct mallinfo mi = mallinfo();
     printf("DEBUG: Initial: free malloc memory= %d, free sbrk memory= %d, Total free= %d\n", mi.fordblks, xPortGetFreeHeapSize() - mi.fordblks, xPortGetFreeHeapSize());
