@@ -30,15 +30,20 @@ static void vcom_if_in_cmplt  (void* itf, uint8_t * pbuf, uint16_t length);
 static void vcom_if_out_cmplt (void* itf, uint8_t * pbuf, uint16_t length);
 static void vcom_set_connected(void* itf, uint8_t dtr, uint8_t rts);
 
-static StreamBufferHandle_t xStreamBuffer;
-static uint8_t rx_buffer[USB_EP0_FS_MAX_PACKET_SIZE] __attribute__((section(".usb_data")));
-static uint8_t tx_buffer[USB_EP0_FS_MAX_PACKET_SIZE] __attribute__((section(".usb_data")));
-static volatile int tx_complete;
-static volatile int rx_full;
-static volatile int connected;
-static uint32_t dropped_bytes;
+typedef struct {
+	StreamBufferHandle_t xStreamBuffer;
+	uint8_t rx_buffer[USB_EP0_FS_MAX_PACKET_SIZE];
+	uint8_t tx_buffer[USB_EP0_FS_MAX_PACKET_SIZE];
+	volatile int tx_complete;
+	volatile int rx_full;
+	volatile int connected;
+	uint32_t dropped_bytes;
+} VCOM_STATE_T;
 
-static const USBD_CDC_AppType console_app = {
+static VCOM_STATE_T *vcom_states[2];
+static void *vcom_ifs[2];
+
+static const USBD_CDC_AppType vcom_app = {
 	.Name           = "VCOM port",
 	.Open           = vcom_if_open,
 	.Received       = vcom_if_out_cmplt,
@@ -46,81 +51,99 @@ static const USBD_CDC_AppType console_app = {
 	.SetCtrlLine    = vcom_set_connected
 };
 
-USBD_CDC_IfHandleType _vcom_if = {
-	.App = &console_app,
-	.Base.AltCount = 1,
-}, *const vcom_if = &_vcom_if;
-
-void setup_vcom()
+void *setup_vcom(uint8_t i)
 {
-	xStreamBuffer = xStreamBufferCreate(1024 * 2, 1);
-	dropped_bytes = 0;
-	connected = 0;
-	tx_complete = 1;
-	rx_full = 0;
+	if(i >= 2 || vcom_states[i] != NULL) return NULL;
+	VCOM_STATE_T *state= malloc(sizeof(VCOM_STATE_T));
+	vcom_states[i]= state;
+	state->xStreamBuffer = xStreamBufferCreate(1024 * 2, 1);
+	state->dropped_bytes = 0;
+	state->connected = 0;
+	state->tx_complete = 1;
+	state->rx_full = 0;
+
+	USBD_CDC_IfHandleType *vcom_if= malloc(sizeof(USBD_CDC_IfHandleType));
+	vcom_if->App = &vcom_app;
+	vcom_if->Base.AltCount = 1;
+	vcom_if->instance = state;
+	vcom_ifs[i]= vcom_if;
+	printf("DEBUG: VCOM %d setup\n", i+1);
+	return vcom_if;
 }
 
-void teardown_vcom()
+void teardown_vcom(uint8_t i)
 {
+	if(i >= 2 || vcom_states[i] == NULL) return;
 	char buf[1] = {0};
-	xStreamBufferSend(xStreamBuffer, (void *)buf, 1, 1000);
-	vStreamBufferDelete(xStreamBuffer);
+	xStreamBufferSend(vcom_states[i]->xStreamBuffer, (void *)buf, 1, 1000);
+	vStreamBufferDelete(vcom_states[i]->xStreamBuffer);
+	free(vcom_states[i]);
+	vcom_states[i]= NULL;
+	free(vcom_ifs[i]);
+	vcom_ifs[i]= NULL;
+	printf("DEBUG: VCOM %d teardown\n", i+1);
 }
 
-uint32_t get_dropped_bytes()
+uint32_t get_dropped_bytes(uint8_t i)
 {
-	uint32_t db = dropped_bytes;
-	dropped_bytes = 0;
+	if(i >= 2 || vcom_states[i] == NULL) return 0;
+	uint32_t db = vcom_states[i]->dropped_bytes;
+	vcom_states[i]->dropped_bytes = 0;
 	return db;
 }
 
 static void vcom_set_connected(void* itf, uint8_t dtr, uint8_t rts)
 {
+	VCOM_STATE_T *state= (VCOM_STATE_T *)((USBD_CDC_IfHandleType*)itf)->instance;
 	printf("DEBUG: vcom_set_connected - dtr:%d, rts:%d\n", dtr, rts);
-	if(connected == 0) {
+	if(state->connected == 0) {
 		// send one byte to indicate we are connected
-		connected = 1;
+		state->connected = 1;
 		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 		char buf[1] = {1};
-		xStreamBufferSendFromISR(xStreamBuffer, (void *)buf, 1, &xHigherPriorityTaskWoken);
+		xStreamBufferSendFromISR(state->xStreamBuffer, (void *)buf, 1, &xHigherPriorityTaskWoken);
 		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 	}
 }
 
-int vcom_is_connected()
+int vcom_is_connected(uint8_t i)
 {
-    return connected;
+	if(i >= 2 || vcom_states[i] == NULL) return 0;
+    return vcom_states[i]->connected;
 }
 
 // gets called when the LineCoding gets set
 static void vcom_if_open(void* itf, USBD_CDC_LineCodingType * lc)
 {
-	USBD_CDC_Receive(vcom_if, rx_buffer, sizeof(rx_buffer));
+	VCOM_STATE_T *state= (VCOM_STATE_T *)((USBD_CDC_IfHandleType*)itf)->instance;
+	USBD_CDC_Receive((USBD_CDC_IfHandleType *)itf, state->rx_buffer, sizeof(state->rx_buffer));
 }
 
 // called when previous transmit completes
 static void vcom_if_in_cmplt(void* itf, uint8_t * pbuf, uint16_t length)
 {
-	tx_complete= 1;
+	VCOM_STATE_T *state= (VCOM_STATE_T *)((USBD_CDC_IfHandleType*)itf)->instance;
+	state->tx_complete= 1;
 }
 
 // return bytes written, or -1 on error
-int vcom_write(uint8_t *buf, size_t len)
+int vcom_write(uint8_t i, uint8_t *buf, size_t len)
 {
-	if(connected == 0) return -1;
+	if(i >= 2 || vcom_states[i] == NULL) return -1;
+	if(vcom_states[i]->connected == 0) return -1;
 
-    if(tx_complete == 0) {
+    if(vcom_states[i]->tx_complete == 0) {
         // still busy from last write
         return 0;
     }
 
-    tx_complete = 0;
-    size_t n = (len > sizeof(tx_buffer)) ? sizeof(tx_buffer) : len;
-    memcpy(tx_buffer, buf, n);
+    vcom_states[i]->tx_complete = 0;
+    size_t n = (len > sizeof(vcom_states[i]->tx_buffer)) ? sizeof(vcom_states[i]->tx_buffer) : len;
+    memcpy(vcom_states[i]->tx_buffer, buf, n);
 
     // we transfer it to the tx_buffer as the USB can access SRAM1 faster than AXI_SRAM
     // However it does not appear to be using DMA so not sure if this is valid.
-	if(USBD_CDC_Transmit(vcom_if, tx_buffer, n) != USBD_E_OK){
+	if(USBD_CDC_Transmit(vcom_ifs[i], vcom_states[i]->tx_buffer, n) != USBD_E_OK){
 		return -1;
 	}
 
@@ -130,39 +153,41 @@ int vcom_write(uint8_t *buf, size_t len)
 // called when incoming data is recieved
 static void vcom_if_out_cmplt(void *itf, uint8_t *pbuf, uint16_t length)
 {
+	VCOM_STATE_T *state= (VCOM_STATE_T *)((USBD_CDC_IfHandleType*)itf)->instance;
     // we have a buffer from Host, stick it in the stream buffer
     BaseType_t xHigherPriorityTaskWoken = pdFALSE; // Initialised to pdFALSE.
-    size_t xBytesSent = xStreamBufferSendFromISR(xStreamBuffer, (void *)pbuf, length, &xHigherPriorityTaskWoken);
+    size_t xBytesSent = xStreamBufferSendFromISR(state->xStreamBuffer, (void *)pbuf, length, &xHigherPriorityTaskWoken);
 
     if(xBytesSent != length) {
         // There was not enough free space in the stream buffer for the entire buffer
-        dropped_bytes += (length - xBytesSent);
+        state->dropped_bytes += (length - xBytesSent);
     }
 
     // if we have enough room schedule another read
-    if(xStreamBufferSpacesAvailable(xStreamBuffer) >= sizeof(rx_buffer)) {
+    if(xStreamBufferSpacesAvailable(state->xStreamBuffer) >= sizeof(state->rx_buffer)) {
         // allow more data to be sent
-        USBD_CDC_Receive(vcom_if, rx_buffer, sizeof(rx_buffer));
+        USBD_CDC_Receive((USBD_CDC_IfHandleType *)itf, state->rx_buffer, sizeof(state->rx_buffer));
     }else{
-        rx_full= 1;
+        state->rx_full= 1;
     }
 
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
-int vcom_read(uint8_t *buf, size_t len)
+int vcom_read(uint8_t i, uint8_t *buf, size_t len)
 {
+	if(i >= 2 || vcom_states[i] == NULL) return -1;
     const TickType_t xBlockTime = portMAX_DELAY;
 
     // Receive up to another len bytes from the stream buffer.
     // Wait in the Blocked state (so not using any CPU processing time) for at least 1 byte to be available.
-    size_t cnt= xStreamBufferReceive(xStreamBuffer,(void *)buf, len, xBlockTime);
+    size_t cnt= xStreamBufferReceive(vcom_states[i]->xStreamBuffer,(void *)buf, len, xBlockTime);
 
     // if we got some data but buffer was full and we have enough for another packet then schedule another read
-    if(cnt > 0 && rx_full && xStreamBufferSpacesAvailable(xStreamBuffer) >= sizeof(rx_buffer)) {
+    if(cnt > 0 && vcom_states[i]->rx_full && xStreamBufferSpacesAvailable(vcom_states[i]->xStreamBuffer) >= sizeof(vcom_states[i]->rx_buffer)) {
         // allow more data to be sent
-        rx_full= 0;
-        USBD_CDC_Receive(vcom_if, rx_buffer, sizeof(rx_buffer));
+        vcom_states[i]->rx_full= 0;
+        USBD_CDC_Receive(vcom_ifs[i], vcom_states[i]->rx_buffer, sizeof(vcom_states[i]->rx_buffer));
         // printf("WARNING: buffer was full\n");
     }
     return cnt;

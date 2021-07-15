@@ -23,6 +23,7 @@
 #include "usb_device.h"
 #include "usbd_cdc.h"
 #include "stm32_rom_dfu.h"
+#include "vcom_if.h"
 
 int config_dfu_required = 1;
 
@@ -47,14 +48,19 @@ const USBD_DescriptionType hdev_cfg = {
 
 USBD_HandleType hUsbDevice, *const UsbDevice = &hUsbDevice;
 
-extern USBD_CDC_IfHandleType *const vcom_if;
-
 void UsbDevice_Init(void)
 {
     if(config_dfu_required) {
         if(USBD_DFU_MountRebootOnly(stm32_rom_dfu_if, UsbDevice) != USBD_E_OK) {
             printf("ERROR: USBD_DFU_MountRebootOnly failed\n");
         }
+    }
+
+    // setup vcoms
+    USBD_CDC_IfHandleType *vcom_if= (USBD_CDC_IfHandleType*)setup_vcom(0);
+    if(vcom_if == NULL) {
+    	printf("ERROR: Could not create vcom1\n");
+    	return;
     }
 
     /* All fields of Config have to be properly set up */
@@ -67,14 +73,34 @@ void UsbDevice_Init(void)
         printf("ERROR: USBD_CDC_MountInterface failed\n");
     }
 
+#ifdef SECOND_VCOM
+    vcom_if= (USBD_CDC_IfHandleType*)setup_vcom(1);
+    if(vcom_if == NULL) {
+    	printf("ERROR: Could not create vcom2\n");
+    	return;
+    }
+
+    /* All fields of Config have to be properly set up */
+    vcom_if->Config.InEpNum  = 0x83;
+    vcom_if->Config.OutEpNum = 0x02;
+    vcom_if->Config.NotEpNum = 0x84;
+
+    /* Mount the interfaces to the device */
+    if(USBD_CDC_MountInterface(vcom_if, UsbDevice) != USBD_E_OK) {
+        printf("ERROR: USBD_CDC_MountInterface failed\n");
+    }
+#endif
+
     /* Initialize the device */
     USBD_Init(UsbDevice, dev_cfg);
 
     /* The device connection can be made */
     USBD_Connect(UsbDevice);
+
 }
 
 void UsbDevice_DeInit(void)
 {
     USBD_Deinit(UsbDevice);
+    teardown_vcom(0);
 }

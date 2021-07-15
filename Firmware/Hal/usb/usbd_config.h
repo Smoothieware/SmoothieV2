@@ -20,7 +20,7 @@
  * In this case notification EP will be allocated and opened if its address is valid. */
 #define USBD_CDC_NOTEP_USED         1
 /** @brief Must be set according to the highest number of interfaces for a given USB Device. */
-#define USBD_MAX_IF_COUNT           5
+#define USBD_MAX_IF_COUNT           8
 /** @brief Set to 1 if peripheral support and application demand
  * for High-Speed operation both exist. */
 #define USBD_HS_SUPPORT             0
@@ -46,6 +46,7 @@
 /** @brief Set to 1 if DFU STMicroelectronics Extension
  *  protocol (v1.1A) shall be used instead of the standard DFU (v1.1). */
 #define USBD_DFU_ST_EXTENSION       0
+#define USBD_DFU_MANIFEST_TOLERANT 0
 
 
 /** @brief Set to 1 if a HID interface holds more than one applications as alternate settings. */
@@ -57,4 +58,3 @@
 /** @brief Set to 1 if a HID interface defines strings in its report descriptor. */
 #define USBD_HID_REPORT_STRINGS     0
 
-#define USBD_DFU_MANIFEST_TOLERANT 0

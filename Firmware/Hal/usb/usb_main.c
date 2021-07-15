@@ -21,7 +21,7 @@ size_t write_cdc(const char *buf, size_t len)
 {
 	size_t sent = 0;
 	while(sent < len) {
-		int n = vcom_write((uint8_t *)buf + sent, len - sent);
+		int n = vcom_write(0, (uint8_t *)buf + sent, len - sent);
 		if(n < 0) {
 			// we got an error
 			return 0;
@@ -40,7 +40,7 @@ size_t write_cdc(const char *buf, size_t len)
 // will block until data is available
 size_t read_cdc(char *buf, size_t len)
 {
-	int n= vcom_read((uint8_t *)buf, len);
+	int n= vcom_read(0, (uint8_t *)buf, len);
 	if(n < 0) {
 		printf("ERROR: read_cdc got an error\n");
 		return 0;
@@ -118,7 +118,6 @@ int setup_cdc()
 	HAL_USBD_Setup();
 	STM32_ROM_DFU_Init();
 	UsbDevice_Init();
-	setup_vcom();
 
 	return 1;
 }
@@ -127,7 +126,6 @@ void shutdown_cdc()
 {
 	UsbDevice_DeInit();
 	HAL_Delay(250);
-	teardown_vcom();
 }
 
 

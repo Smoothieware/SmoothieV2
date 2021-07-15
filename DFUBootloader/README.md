@@ -2,6 +2,8 @@ This is an optional DFU bootloader for SmoothieV2.
 
 If can be built to load into QSPI or at the end of normal flash memory.
 
+To build: cd DFUBootloader then type rake target=Nucleo -m or rake target=Devebox -m.
+
 When flashed and dfu_enable is selected in config.ini you can run dfu-util to flash new firmware.
 
 This is mainly for developers.
