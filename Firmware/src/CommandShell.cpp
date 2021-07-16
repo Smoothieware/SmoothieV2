@@ -1414,7 +1414,7 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
     volatile ssize_t state = 0;
     SemaphoreHandle_t xSemaphore = xSemaphoreCreateBinary();
 
-    set_fast_capture([&fp, &state, xSemaphore, file_size](char *buf, size_t len) {
+    os.fast_capture_fnc= [&fp, &state, xSemaphore, file_size](char *buf, size_t len) {
         // note this is being run in the Comms thread
         if(state < 0 || state >= file_size) return true; // we are in an error state or done
 
@@ -1431,7 +1431,7 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
             }
         }
         return true;
-    });
+    };
 
     // tell host we are ready for the file
     os.printf("READY - %d\n", file_size);
@@ -1455,7 +1455,7 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
-    set_fast_capture(nullptr);
+    os.fast_capture_fnc= nullptr;
 
     return true;
 }
@@ -1482,9 +1482,9 @@ bool CommandShell::ry_cmd(std::string& params, OutputStream& os)
         return true;
     }
 
-    set_capture([&ymodem](char c) { ymodem.add(c); });
+    os.capture_fnc= [&ymodem](char c) { ymodem.add(c); };
     int ret = ymodem.receive();
-    set_capture(nullptr);
+    os.capture_fnc= nullptr;
 
     if(params.empty()) {
         if(ret > 0) {
@@ -1762,9 +1762,9 @@ bool CommandShell::edit_cmd(std::string& params, OutputStream& os)
 
     os.printf("type %%h for help\n");
 
-    set_capture([](char c) { ecce::add_input(c); });
+    os.capture_fnc= [](char c) { ecce::add_input(c); };
     int ret = ecce::main(infile.c_str(), outfile.c_str(), [&os](char c) {os.write(&c, 1);});
-    set_capture(nullptr);
+    os.capture_fnc= nullptr;
     if(ret == 0) {
         os.printf("edit was successful\n");
     } else {

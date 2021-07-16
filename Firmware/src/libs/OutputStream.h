@@ -15,9 +15,9 @@ class OutputStream
 public:
 	using wrfnc = std::function<size_t(const char *buffer, size_t size)>;
 	// create a null output stream
-	OutputStream() : xWriteMutex(nullptr), os(nullptr), fdbuf(nullptr), deleteos(false) { clear_flags(); };
+	OutputStream() : xWriteMutex(nullptr), os(nullptr), fdbuf(nullptr), deleteos(false) { closed= uploading= false; clear_flags(); };
 	// create from an existing ostream
-	OutputStream(std::ostream *o) : xWriteMutex(nullptr), os(o), fdbuf(nullptr), deleteos(false) { clear_flags(); };
+	OutputStream(std::ostream *o) : xWriteMutex(nullptr), os(o), fdbuf(nullptr), deleteos(false) { closed= uploading= false; clear_flags(); };
 	// create using a supplied write fnc
 	OutputStream(wrfnc f);
 
@@ -44,6 +44,9 @@ public:
     void set_stop_request(bool flg) { stop_request= flg; }
     bool get_stop_request() const { return stop_request; }
 
+    std::function<void(char)> capture_fnc;
+    std::function<bool(char*, size_t)> fast_capture_fnc;
+
 private:
     static void outchar(void *, char c);
 
@@ -61,9 +64,10 @@ private:
 	std::ostream *os;
 	FdBuf *fdbuf;
 	std::string prepending;
-	bool closed{false};
-	bool uploading{false};
+
 	struct {
+    	bool closed:1;
+    	bool uploading:1;
 		bool append_nl: 1;
 		bool prepend_ok: 1;
 		bool deleteos: 1;

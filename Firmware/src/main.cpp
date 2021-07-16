@@ -357,12 +357,6 @@ bool dispatch_line(OutputStream& os, const char *ln)
     return true;
 }
 
-// FIXME this should not be global, needs to be per os or one os at a time.
-static std::function<void(char)> capture_fnc;
-void set_capture(std::function<void(char)> cf)
-{
-    capture_fnc = cf;
-}
 
 static std::set<OutputStream*> output_streams;
 
@@ -373,8 +367,8 @@ bool process_command_buffer(size_t n, char *rx_buf, OutputStream *os, char *line
 {
     for (size_t i = 0; i < n; ++i) {
         line[cnt] = rx_buf[i];
-        if(capture_fnc) {
-            capture_fnc(line[cnt]);
+        if(os->capture_fnc) {
+            os->capture_fnc(line[cnt]);
             continue;
         }
 
@@ -466,15 +460,6 @@ bool process_command_buffer(size_t n, char *rx_buf, OutputStream *os, char *line
 
 static volatile bool abort_comms = false;
 
-// this allows a capture of a buffer rather than byte by byte
-// mainly used for fast downloads over USB (so no serial at the moment)
-// FIXME needs to be per comms not global
-static std::function<bool(char*, size_t)> fast_capture_fnc;
-void set_fast_capture(std::function<bool(char*, size_t)> cf)
-{
-    fast_capture_fnc = cf;
-}
-
 extern "C" size_t write_cdc(uint8_t, const char *buf, size_t len);
 extern "C" size_t read_cdc(uint8_t, char *buf, size_t len);
 extern "C" int setup_cdc();
@@ -524,9 +509,9 @@ static void usb_comms(void *param)
             // this read will block if no data is available
             size_t n = read_cdc(inst, usb_rx_buf, usb_rx_buf_sz);
             if(n > 0) {
-                if(fast_capture_fnc) {
-                    if(!fast_capture_fnc(usb_rx_buf, n)) {
-                        fast_capture_fnc = nullptr; // we are done ok
+                if(os->fast_capture_fnc) {
+                    if(!os->fast_capture_fnc(usb_rx_buf, n)) {
+                        os->fast_capture_fnc = nullptr; // we are done ok
                     }
                 } else {
                     process_command_buffer(n, usb_rx_buf, os, line, cnt, discard);

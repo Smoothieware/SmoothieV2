@@ -5,10 +5,6 @@
 
 class OutputStream;
 
-// sets a callback for all incoming data
-void set_capture(std::function<void(char)> cf);
-void set_fast_capture(std::function<bool(char*, size_t)> cf);
-
 using StartupFunc_t = std::function<void()>;
 void register_startup(StartupFunc_t sf);
 

@@ -52,3 +52,5 @@ The rake build system will run on Windows, however some utilities need to be ins
 
 make sure they are all added to the PATH, then in powershell navigate to the Firmware folder and type ```rake -m```
 
+See Firmware/README.md for flashing details.
+
