@@ -146,9 +146,9 @@
 #define passive_fast_decay_key          "passive_fast_decay"
 
 //statics common to all instances
-SPI *TMC2590::spi= nullptr;
-bool TMC2590::common_setup= false;
-uint32_t TMC2590::max_current= 4000; // 4 amps
+SPI *TMC2590::spi = nullptr;
+bool TMC2590::common_setup = false;
+uint32_t TMC2590::max_current = 4000; // 4 amps
 /*
  * Constructor
  */
@@ -163,11 +163,11 @@ TMC2590::TMC2590(char d) : designator(d)
 
     // setup singleton spi instance
     if(spi == nullptr) {
-        bool ok= false;
+        bool ok = false;
         spi = SPI::getInstance(0);
         if(spi != nullptr) {
             if(spi->init(8, 3, 1000000)) { // 8bit, mode3, 1MHz
-                ok= true;
+                ok = true;
             }
         }
         if(!ok) {
@@ -182,25 +182,25 @@ TMC2590::TMC2590(char d) : designator(d)
     cool_step_register_value = COOL_STEP_REGISTER;
     stall_guard2_current_register_value = STALL_GUARD2_LOAD_MEASURE_REGISTER;
     driver_configuration_register_value = DRIVER_CONFIG_REGISTER | READ_STALL_GUARD_READING;
-    #if 0
-        //set to a conservative start value
-        setConstantOffTimeChopper(7, 54, 13, 12, 1);
-    #else
-        //void TMC2590::setSpreadCycleChopper( constant_off_time,  blank_time,  hysteresis_start,  hysteresis_end,  hysteresis_decrement);
+#if 0
+    //set to a conservative start value
+    setConstantOffTimeChopper(7, 54, 13, 12, 1);
+#else
+    //void TMC2590::setSpreadCycleChopper( constant_off_time,  blank_time,  hysteresis_start,  hysteresis_end,  hysteresis_decrement);
 
-        // openbuilds high torque nema23 3amps (2.8)
-        //setSpreadCycleChopper(5, 36, 6, 0, 0);
+    // openbuilds high torque nema23 3amps (2.8)
+    //setSpreadCycleChopper(5, 36, 6, 0, 0);
 
-        // for 1.5amp kysan @ 12v
-        setSpreadCycleChopper(5, 54, 5, 0, 0);
+    // for 1.5amp kysan @ 12v
+    setSpreadCycleChopper(5, 54, 5, 0, 0);
 
-        // for 4amp Nema24 @ 12v
-        //setSpreadCycleChopper(5, 54, 4, 0, 0);
+    // for 4amp Nema24 @ 12v
+    //setSpreadCycleChopper(5, 54, 4, 0, 0);
 
-        // set medium gate driver strength high= 3, low= 3 (0x0F000)
-        driver_configuration_register_value |= (SLPH|SLPL);
-        driver_configuration_register_value &= ~(SLPHL2);
-    #endif
+    // set medium gate driver strength high= 3, low= 3 (0x0F000)
+    driver_configuration_register_value |= (SLPH | SLPL);
+    driver_configuration_register_value &= ~(SLPHL2);
+#endif
     setEnabled(false);
 
     // set a nice microstepping value
@@ -212,7 +212,7 @@ TMC2590::TMC2590(char d) : designator(d)
 
 bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
 {
-    name= actuator_name;
+    name = actuator_name;
     ConfigReader::sub_section_map_t ssm;
     if(!cr.get_sub_sections("tmc2590", ssm)) {
         printf("ERROR:config_tmc2590: no tmc2590 section found\n");
@@ -241,11 +241,11 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
     printf("DEBUG:configure-tmc2590: %s - sense resistor: %d milliohms\n", actuator_name, resistor);
 
     // if raw registers are defined set them 1,2,3 etc in hex
-    std::string str= cr.get_string(mm, raw_register_key, "");
+    std::string str = cr.get_string(mm, raw_register_key, "");
     if(!str.empty()) {
-        std::vector<uint32_t> regs= stringutils::parse_number_list(str.c_str(), 16);
+        std::vector<uint32_t> regs = stringutils::parse_number_list(str.c_str(), 16);
         if(regs.size() == 5) {
-            uint32_t reg= 0;
+            uint32_t reg = 0;
             OutputStream os(&std::cout);
             for(auto i : regs) {
                 // this just sets the local storage, it does not write to the chip
@@ -256,13 +256,13 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
 
     // the following override the raw register settings if set
     // see if we want step interpolation
-    bool interpolation= cr.get_bool(mm, step_interpolation_key, false);
+    bool interpolation = cr.get_bool(mm, step_interpolation_key, false);
     if(interpolation) {
         setStepInterpolation(1);
         printf("DEBUG:configure-tmc2590: %s - step interpolation is on\n", actuator_name);
     }
 
-    bool pfd= cr.get_bool(mm, passive_fast_decay_key, true);
+    bool pfd = cr.get_bool(mm, passive_fast_decay_key, true);
     if(pfd) {
         setPassiveFastDecay(1);
         printf("DEBUG:configure-tmc2590: %s - passive fast decay is on\n", actuator_name);
@@ -273,9 +273,9 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
         auto c = ssm.find("common");
         if(c != ssm.end()) {
             auto& cm = c->second; // map of common tmc2590 config values
-            max_current= cr.get_int(cm, max_current_key, 4000);
+            max_current = cr.get_int(cm, max_current_key, 4000);
         }
-        common_setup= true;
+        common_setup = true;
     }
     return true;
 }
@@ -299,7 +299,7 @@ void TMC2590::init()
 // Current is passed in as milliamps
 void TMC2590::setCurrent(unsigned int current)
 {
-    if(current > max_current) current= max_current;
+    if(current > max_current) current = max_current;
 
     uint8_t current_scaling = 0;
     //calculate the current scaling from the max current setting (in mA)
@@ -406,7 +406,7 @@ int8_t TMC2590::getStallGuardFilter(void)
  */
 void TMC2590::setMicrosteps(int number_of_steps)
 {
-    long setting_pattern= 8;
+    long setting_pattern = 8;
     //poor mans log
     if (number_of_steps >= 256) {
         setting_pattern = 0;
@@ -700,7 +700,7 @@ void TMC2590::setRandomOffTime(int8_t value)
 }
 
 void TMC2590::setCoolStepConfiguration(unsigned int lower_SG_threshold, unsigned int SG_hysteresis, uint8_t current_decrement_step_size,
-                                      uint8_t current_increment_step_size, uint8_t lower_current_limit)
+                                       uint8_t current_increment_step_size, uint8_t lower_current_limit)
 {
     //sanitize the input values
     if (lower_SG_threshold > 480) {
@@ -912,6 +912,16 @@ int8_t TMC2590::getOverTemperature(void)
     return 0;
 }
 
+bool TMC2590::getOverTemperature_SHUTDOWN(void)
+{
+    return getOverTemperature() == TMC2590_OVERTEMPERATURE_SHUTDOWN;
+}
+
+bool TMC2590::getOverTemperature_WARNING(void)
+{
+    return getOverTemperature() == TMC2590_OVERTEMPERATURE_PREWARING;
+}
+
 //is motor channel A shorted to ground
 bool TMC2590::isShortToGroundA(void)
 {
@@ -1000,49 +1010,49 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
         }
 
         readStatus(TMC2590_READOUT_POSITION); // get the status bits
-        if((driver_status_result&0x00300) != 0) stream.printf("WARNING: Response read appears incorrect: %05lX\n", driver_status_result);
+        if((driver_status_result & 0x00300) != 0) stream.printf("WARNING: Response read appears incorrect: %05lX\n", driver_status_result);
         int value = getReadoutValue();
         stream.printf("Microstep position phase A: %d\n", value);
 
         value = getCurrentStallGuardReading();
         stream.printf("Stall Guard value: %d\n", value);
 
-        stream.printf("Current setting: %dmA Peak - %f Amps RMS\n", getCurrent(), (getCurrent()*0.707F)/1000);
+        stream.printf("Current setting: %dmA Peak - %f Amps RMS\n", getCurrent(), (getCurrent() * 0.707F) / 1000);
         stream.printf("Coolstep current: %dmA\n", getCoolstepCurrent());
 
         stream.printf("Microsteps: 1/%d\n", microsteps);
-        stream.printf("Step interpolation is %s\n", getStepInterpolation() ? "on":"off");
-        stream.printf("Overtemperature sensitivity: %dC\n", (driver_configuration_register_value&OTSENS) ? 136:150);
-        stream.printf("Short to ground sensitivity: %s\n", (driver_configuration_register_value&SHRTSENS) ? "high":"low");
-        stream.printf("Passive fast decay is %s\n", (driver_configuration_register_value&EN_PFD) ? "on":"off");
-        stream.printf("Short to VS protection is %s\n", (driver_configuration_register_value&EN_S2VS) ? "enabled":"disabled");
-        stream.printf("Short to GND protection is %s\n", (driver_configuration_register_value&DIS_S2G) ? "disabled":"enabled");
+        stream.printf("Step interpolation is %s\n", getStepInterpolation() ? "on" : "off");
+        stream.printf("Overtemperature sensitivity: %dC\n", (driver_configuration_register_value & OTSENS) ? 136 : 150);
+        stream.printf("Short to ground sensitivity: %s\n", (driver_configuration_register_value & SHRTSENS) ? "high" : "low");
+        stream.printf("Passive fast decay is %s\n", (driver_configuration_register_value & EN_PFD) ? "on" : "off");
+        stream.printf("Short to VS protection is %s\n", (driver_configuration_register_value & EN_S2VS) ? "enabled" : "disabled");
+        stream.printf("Short to GND protection is %s\n", (driver_configuration_register_value & DIS_S2G) ? "disabled" : "enabled");
         stream.printf("Short detection delay is ");
-        switch((driver_configuration_register_value&TS2G)>>8) {
+        switch((driver_configuration_register_value & TS2G) >> 8) {
             case 0: stream.printf("3.2us\n"); break;
             case 1: stream.printf("1.6us\n"); break;
             case 2: stream.printf("1.2us\n"); break;
             case 3: stream.printf("0.8us\n"); break;
         }
-        uint8_t slope_high= ((driver_configuration_register_value&SLPH) >> 14) | ((driver_configuration_register_value&SLPHL2) >> 9);
-        uint8_t slope_low= ((driver_configuration_register_value&SLPL) >> 12) | ((driver_configuration_register_value&SLPHL2) >> 9);
+        uint8_t slope_high = ((driver_configuration_register_value & SLPH) >> 14) | ((driver_configuration_register_value & SLPHL2) >> 9);
+        uint8_t slope_low = ((driver_configuration_register_value & SLPL) >> 12) | ((driver_configuration_register_value & SLPHL2) >> 9);
         stream.printf("Slope control - high: %d, low: %d\n", slope_high, slope_low);
 
         readStatus(TMC2590_READOUT_ALL_FLAGS);
-        if((driver_status_result&0x00300) != 0x00300) stream.printf("WARNING: Read all flags appears incorrect: %05lX\n", driver_status_result);
-        value= driver_status_result;
-        if(value&0xFFC00) {
+        if((driver_status_result & 0x00300) != 0x00300) stream.printf("WARNING: Read all flags appears incorrect: %05lX\n", driver_status_result);
+        value = driver_status_result;
+        if(value & 0xFFC00) {
             stream.printf("Detailed Flags...\n");
-            if(value&0x80000) stream.printf("  Low voltage detected\n");
-            if(value&0x40000) stream.printf("  ENN enabled\n");
-            if(value&0x20000) stream.printf("  Short to high B\n");
-            if(value&0x10000) stream.printf("  Short to low B\n");
-            if(value&0x08000) stream.printf("  Short to high A\n");
-            if(value&0x04000) stream.printf("  Short to low A\n");
-            if(value&0x02000) stream.printf("  Overtemp 150\n");
-            if(value&0x01000) stream.printf("  Overtemp 136\n");
-            if(value&0x00800) stream.printf("  Overtemp 120\n");
-            if(value&0x00400) stream.printf("  Overtemp 100\n");
+            if(value & 0x80000) stream.printf("  Low voltage detected\n");
+            if(value & 0x40000) stream.printf("  ENN enabled\n");
+            if(value & 0x20000) stream.printf("  Short to high B\n");
+            if(value & 0x10000) stream.printf("  Short to low B\n");
+            if(value & 0x08000) stream.printf("  Short to high A\n");
+            if(value & 0x04000) stream.printf("  Short to low A\n");
+            if(value & 0x02000) stream.printf("  Overtemp 150\n");
+            if(value & 0x01000) stream.printf("  Overtemp 136\n");
+            if(value & 0x00800) stream.printf("  Overtemp 120\n");
+            if(value & 0x00400) stream.printf("  Overtemp 100\n");
         }
 
         stream.printf("Register dump:\n");
@@ -1055,7 +1065,7 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
 
     } else {
         // This is the format the processing app uses for tuning TMX26X chips
-        int n= designator < 'X' ? designator-'A'+3 : designator-'X';
+        int n = designator < 'X' ? designator - 'A' + 3 : designator - 'X';
         bool moving = Robot::getInstance()->actuators[n]->is_moving();
         // dump out in the format that the processing script needs
         if (moving) {
@@ -1122,39 +1132,60 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
     error_detected.reset();
 }
 
+// static test functions
+const std::array<TMC2590::TestFun, 6> TMC2590::test_fncs {{
+    std::mem_fn(&TMC2590::getOverTemperature_WARNING),
+    std::mem_fn(&TMC2590::getOverTemperature_SHUTDOWN),
+    std::mem_fn(&TMC2590::isShortToGroundA),
+    std::mem_fn(&TMC2590::isShortToGroundB),
+    std::mem_fn(&TMC2590::isOpenLoadA),
+    std::mem_fn(&TMC2590::isOpenLoadB)
+}};
+
+// define tests here, id, fatal, message
+const std::array<TMC2590::e_t, 6> TMC2590::tests {{
+    {0, false, "Overtemperature Prewarning"},
+    {1, true, "Overtemperature Shutdown"},
+    {2, true, "SHORT to ground on channel A"},
+    {3, true, "SHORT to ground on channel B"},
+    {4, false, "Channel A seems to be unconnected"},
+    {5, false, "Channel B seems to be unconnected"}
+}};
 
 // check error bits and report, only report once, and debounce the test
 bool TMC2590::check_error_status_bits(OutputStream& stream)
 {
-    // define tests here, id, test, fatal, message
-    using e_t = std::tuple<int, std::function<bool(void)>, bool, const char*>;
-    std::vector<e_t> tests {
-        {0, [this](void){return this->getOverTemperature()&TMC2590_OVERTEMPERATURE_PREWARING;}, false, "Overtemperature Prewarning"},
-        {1, [this](void){return this->getOverTemperature()&TMC2590_OVERTEMPERATURE_SHUTDOWN;}, true, "Overtemperature Shutdown"},
-        {2, [this](void){return this->isShortToGroundA();}, true, "SHORT to ground on channel A"},
-        {3, [this](void){return this->isShortToGroundB();}, true, "SHORT to ground on channel B"},
-        {4, [this](void){return this->isStandStill() && this->isOpenLoadA();}, false, "Channel A seems to be unconnected"},
-        {5, [this](void){return this->isStandStill() && this->isOpenLoadB();}, false, "Channel B seems to be unconnected"}
-    };
+    // test the flags are ok
+    readStatus(TMC2590_READOUT_ALL_FLAGS);
+    readStatus(TMC2590_READOUT_ALL_FLAGS);
+    if((driver_status_result & 0x00300) != 0x00300){
+        stream.printf("WARNING: Read all flags appears incorrect: %05lX\n", driver_status_result);
+        return false;
+    }
+
+    readStatus(TMC2590_READOUT_POSITION); // get the status bits
+    readStatus(TMC2590_READOUT_POSITION); // get the status bits
+    if((driver_status_result & 0x00300) != 0){
+        stream.printf("WARNING: Response read appears incorrect: %05lX\n", driver_status_result);
+        return false;
+    }
 
     bool error = false;
-    readStatus(TMC2590_READOUT_POSITION); // get the status bits
-
-    for(auto& i : tests) {
-        int n= std::get<0>(i);
-        if(std::get<1>(i)()) {
+    for(auto& i : TMC2590::tests) {
+        int n = std::get<0>(i);
+        if(TMC2590::test_fncs[n](this)) {
             if(!error_detected.test(n)) {
                 // debounce, needs to be set when checked two times in a row
                 error_detected.set(n);
-            }else{
-                if(!error_reported.test(n)){
+            } else {
+                if(!error_reported.test(n)) {
                     // only reports error once until it has been cleared
-                    stream.printf("WARNING: %c: %s\n", designator, std::get<3>(i));
+                    stream.printf("WARNING: %c: %s\n", designator, std::get<2>(i));
                     error_reported.set(n);
                 }
-                if(!error && std::get<2>(i)) {
+                if(!error && std::get<1>(i)) {
                     // fatal error and error not yet set
-                    error= true;
+                    error = true;
                 }
             }
         } else {
@@ -1173,7 +1204,7 @@ bool TMC2590::check_errors()
 {
     std::ostringstream oss;
     OutputStream os(&oss);
-    bool b= check_error_status_bits(os);
+    bool b = check_error_status_bits(os);
     if(!oss.str().empty()) {
         print_to_all_consoles(oss.str().c_str());
     }
