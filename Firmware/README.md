@@ -45,11 +45,25 @@ baud rate 115200.
 Initial Bootstrap
 -----------------
 V2 does not have a bootloader, the firmware itself can flash itself and do updates etc.
-To bootstrap the inital firmware (or to recover from bad firmware or bricking) you can use a jlink to flash the firmware or use the STLINKV3 drag and drop, or use the builtin USB flashing and dfu-util.
+To bootstrap the inital firmware (or to recover from bad firmware or bricking) you can use a jlink to flash the firmware or use the STLINKV3 drag and drop, or use the BOOT0 USB flashing and dfu-util.
+
+If using the STM32H745 you must first set the option bytes to only boot the M7 core... (not needed for STM32H743)
+    
+    STM32_Programmer_CLI -c port=swd -ob BCM4=0
+    (use port=usb1 if using BOOT0 mode)
+
+To unbrick if bad option bytes have been set...
+    STM32_Programmer_CLI -c port=swd -rdu –ob rdp=0x0 
+
+or to see all option bytes...
+    STM32_Programmer_CLI -c port=swd -ob displ
+
+JLink has a better tool which fixes everything...
+    JLinkSTM32 -device STM32H745ZI_M7 -if SWD
 
 Subsequent Updates
 ------------------
-If the firmware is running then just copy the firmware bin to the sdcard as flashme.bin and reboot. You can use the ```update``` command if you have a network connected. There are also various ways to get the firnware onto the sdcard over the serial ports, and then use the ```flash``` command.
+If the firmware is running then just copy the firmware bin to the sdcard as flashme.bin and reboot. You can use the ```update``` command if you have a network connected. There are also various ways to get the firmware onto the sdcard over the serial ports, name it flashme.bin and then use the ```flash``` command.
 
 Debugging and Flashing
 ----------------------
@@ -61,7 +75,7 @@ Then run gdb:
 
     arm-none-eabi-gdb-64bit -ex "target remote localhost:2331" smoothiev2_Nucleo/smoothiev2.elf
 
-The ```arm-none-eabi-gdb-64bit``` binary is in the tools directory, it is a fixed version that handles Hard Faults correctly. 9You canalso use the arm-none tools if you have it installed.
+The ```arm-none-eabi-gdb-64bit``` binary is in the tools directory, it is a fixed version that handles Hard Faults correctly. You can also use the arm-none tools if you have it installed.
 
 To flash use the load command in gdb, it is recommended you do a ```mon reset``` before and after the load.
 
