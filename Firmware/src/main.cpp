@@ -940,7 +940,7 @@ static void smoothie_startup(void *)
 #elif defined(BOARD_PRIME)
             std::map<std::string, std::tuple<int32_t, float>> names { {"vmotor", {0, 11.0F}},  {"vfet", {1, 11.0F}} };
 #endif
-            for(auto n : names) {
+            for(auto& n : names) {
                 if(voltage_monitors.find(n.first) == voltage_monitors.end()) {
                     int32_t ch = std::get<0>(n.second);
                     float scale = std::get<1>(n.second);
@@ -1032,7 +1032,7 @@ static void smoothie_startup(void *)
     }
 
     // run any startup functions that have been registered
-    for(auto f : startup_fncs) {
+    for(auto& f : startup_fncs) {
         f();
     }
     startup_fncs.clear();

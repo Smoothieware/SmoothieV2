@@ -399,7 +399,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
     uint16_t pi= gpiopin2pin(GPIO_Pin);
     if(pi < 16) {
-        std::function<void(void)> fnc = interrupt_fncs[pi];
+        std::function<void(void)>& fnc = interrupt_fncs[pi];
         if(fnc) {
             fnc();
         }
