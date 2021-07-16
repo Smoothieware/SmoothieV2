@@ -356,8 +356,8 @@ private:
      * You may want to use getMotorPosition() or getCurrentStallGuardReading() to enforce an updated status readout.
      */
     int8_t getOverTemperature(void);
-    bool getOverTemperature_SHUTDOWN(void);
-    bool getOverTemperature_WARNING(void);
+    bool isOverTemperature_SHUTDOWN(void);
+    bool isOverTemperature_WARNING(void);
 
     /*!
      * \brief Is motor channel A shorted to ground detected in the last status readout.
@@ -417,7 +417,6 @@ private:
     //helper routione to get the top 10 bit of the readout
     inline int getReadoutValue();
     bool check_error_status_bits(OutputStream& stream);
-    int getAllFlags(void);
 
     // SPI sender
     inline void send20bits(unsigned long datagram);
@@ -467,7 +466,7 @@ private:
 
     private:
 
-    using TestFun = decltype(std::mem_fn(&TMC2590::getOverTemperature_WARNING));
+    using TestFun = decltype(std::mem_fn(&TMC2590::isOverTemperature_WARNING));
     static const std::array<TestFun, 6> test_fncs;
     using e_t = std::tuple<int, bool, const char*>;
     static const std::array<e_t, 6> tests;

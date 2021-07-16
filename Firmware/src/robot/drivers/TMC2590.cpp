@@ -818,7 +818,6 @@ bool TMC2590::isEnabled()
  */
 void TMC2590::readStatus(int8_t read_value)
 {
-    unsigned long old_driver_configuration_register_value = driver_configuration_register_value;
     //reset the readout configuration
     driver_configuration_register_value &= ~(READ_SELECTION_PATTERN);
     //this now equals TMC2590_READOUT_POSITION - so we just have to check the other two options
@@ -830,20 +829,10 @@ void TMC2590::readStatus(int8_t read_value)
         driver_configuration_register_value |= READ_ALL_FLAGS;
     }
 
-    //all other cases are ignored to prevent funny values
-    //check if the readout is configured for the value we are interested in
-    if (driver_configuration_register_value != old_driver_configuration_register_value) {
-        //because then we need to write the value twice - one time for configuring, second time to get the value, see below
-        send20bits(driver_configuration_register_value);
-    }
+    // we need to write the value twice - one time for configuring, second time to get the value
+    send20bits(driver_configuration_register_value);
     //write the configuration to get the last status
     send20bits(driver_configuration_register_value);
-}
-
-int TMC2590::getAllFlags(void)
-{
-    readStatus(TMC2590_READOUT_ALL_FLAGS);
-    return getReadoutValue();
 }
 
 //reads the stall guard setting from last status
@@ -912,12 +901,12 @@ int8_t TMC2590::getOverTemperature(void)
     return 0;
 }
 
-bool TMC2590::getOverTemperature_SHUTDOWN(void)
+bool TMC2590::isOverTemperature_SHUTDOWN(void)
 {
     return getOverTemperature() == TMC2590_OVERTEMPERATURE_SHUTDOWN;
 }
 
-bool TMC2590::getOverTemperature_WARNING(void)
+bool TMC2590::isOverTemperature_WARNING(void)
 {
     return getOverTemperature() == TMC2590_OVERTEMPERATURE_PREWARING;
 }
@@ -1134,15 +1123,15 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
 
 // static test functions
 const std::array<TMC2590::TestFun, 6> TMC2590::test_fncs {{
-    std::mem_fn(&TMC2590::getOverTemperature_WARNING),
-    std::mem_fn(&TMC2590::getOverTemperature_SHUTDOWN),
+    std::mem_fn(&TMC2590::isOverTemperature_WARNING),
+    std::mem_fn(&TMC2590::isOverTemperature_SHUTDOWN),
     std::mem_fn(&TMC2590::isShortToGroundA),
     std::mem_fn(&TMC2590::isShortToGroundB),
     std::mem_fn(&TMC2590::isOpenLoadA),
     std::mem_fn(&TMC2590::isOpenLoadB)
 }};
 
-// define tests here, id, fatal, message
+// define tests here: id, fatal, message
 const std::array<TMC2590::e_t, 6> TMC2590::tests {{
     {0, false, "Overtemperature Prewarning"},
     {1, true, "Overtemperature Shutdown"},
@@ -1155,16 +1144,8 @@ const std::array<TMC2590::e_t, 6> TMC2590::tests {{
 // check error bits and report, only report once, and debounce the test
 bool TMC2590::check_error_status_bits(OutputStream& stream)
 {
+    readStatus(TMC2590_READOUT_POSITION); // get the status bits
     // test the flags are ok
-    readStatus(TMC2590_READOUT_ALL_FLAGS);
-    readStatus(TMC2590_READOUT_ALL_FLAGS);
-    if((driver_status_result & 0x00300) != 0x00300){
-        stream.printf("WARNING: Read all flags appears incorrect: %05lX\n", driver_status_result);
-        return false;
-    }
-
-    readStatus(TMC2590_READOUT_POSITION); // get the status bits
-    readStatus(TMC2590_READOUT_POSITION); // get the status bits
     if((driver_status_result & 0x00300) != 0){
         stream.printf("WARNING: Response read appears incorrect: %05lX\n", driver_status_result);
         return false;
