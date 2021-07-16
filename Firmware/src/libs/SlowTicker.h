@@ -28,4 +28,5 @@ class SlowTicker
         static void timer_handler(void *xTimer);
         std::vector<void *> timers;
         std::vector<std::function<void(void)>> callbacks;
+        static void *lock;
 };

@@ -94,6 +94,7 @@
 #include <csetjmp>
 
 #include "RingBuffer.h"
+#include "main.h"
 
 #pragma GCC diagnostic ignored "-Wshadow"
 
@@ -1669,7 +1670,7 @@ int main(const char *infile, const char *outfile, std::function<void(char)> outf
 void add_input(char c)
 {
 	while(inbuf.full()) {
-		vTaskDelay(pdMS_TO_TICKS(10));
+		safe_sleep(10);
 	}
 	inbuf.push_back(c);
 }
@@ -1677,7 +1678,7 @@ void add_input(char c)
 int _inbyte()
 {
 	while (inbuf.empty()) {
-		vTaskDelay(pdMS_TO_TICKS(1));
+		safe_sleep(1);
 	}
 	int c= inbuf.pop_front();
 	if(c == 3) c= 0; // ctrl c terminates

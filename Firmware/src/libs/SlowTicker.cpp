@@ -4,12 +4,13 @@
 
 #include "FreeRTOS.h"
 #include "timers.h"
-
+#include "semphr.h"
 
 // maximum frequency we can set
 #define MAX_FREQUENCY configTICK_RATE_HZ
 
 SlowTicker *SlowTicker::instance= nullptr;
+void *SlowTicker::lock;
 
 // This module uses FreeRTOS Timers to periodically call registered callbacks
 // Modules register with a function ( callback ) and a frequency
@@ -37,9 +38,9 @@ void SlowTicker::deleteInstance()
 void SlowTicker::timer_handler(TimerHandle_t xTimer)
 {
     int idx= (int)pvTimerGetTimerID(xTimer);
-    taskENTER_CRITICAL();
-    std::function<void(void)> cb= instance->callbacks[idx];
-    taskEXIT_CRITICAL();
+    xSemaphoreTake((QueueHandle_t)lock, portMAX_DELAY);
+    auto& cb= instance->callbacks[idx];
+    xSemaphoreGive((QueueHandle_t)lock);
     if(cb) {
         cb();
     }
@@ -47,15 +48,17 @@ void SlowTicker::timer_handler(TimerHandle_t xTimer)
 
 SlowTicker::SlowTicker()
 {
+    lock= xSemaphoreCreateMutex();
 }
 
 SlowTicker::~SlowTicker()
 {
+    vSemaphoreDelete((QueueHandle_t)lock);
 }
 
 int SlowTicker::attach(uint32_t frequency, std::function<void(void)> cb)
 {
-    taskENTER_CRITICAL();
+    xSemaphoreTake((QueueHandle_t)lock, portMAX_DELAY);
     uint32_t interval= 1000/frequency;
     uint32_t n= callbacks.size();
     char buf[32];
@@ -63,7 +66,7 @@ int SlowTicker::attach(uint32_t frequency, std::function<void(void)> cb)
     TimerHandle_t timer_handle= xTimerCreate(buf, pdMS_TO_TICKS(interval), pdTRUE, (void *)n, timer_handler);
     timers.push_back(timer_handle);
     callbacks.push_back(cb);
-    taskEXIT_CRITICAL();
+    xSemaphoreGive((QueueHandle_t)lock);
 
     if(xTimerStart(timer_handle, 1000) != pdPASS ) {
         // The timer could not be set into the Active state

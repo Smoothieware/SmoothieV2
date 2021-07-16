@@ -27,6 +27,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "main.h"
+
 YModem::YModem(txfunc_t txfunc) : txfnc(txfunc)
 {
 	xbuff= (unsigned char*) malloc(1030); /* 1024 for YModem 1k + 3 head chars + 2 crc + nul */
@@ -40,7 +42,7 @@ YModem::~YModem()
 void YModem::add(char c)
 {
 	while(inbuf.full()) {
-		vTaskDelay(pdMS_TO_TICKS(10));
+		safe_sleep(10);
 	}
 	inbuf.push_back(c);
 }
@@ -48,7 +50,7 @@ void YModem::add(char c)
 int YModem::_inbyte(int msec)
 {
 	while (inbuf.empty()) {
-		vTaskDelay(pdMS_TO_TICKS(10));
+		safe_sleep(10);
 		msec -= 10;
 		if (msec <= 0)
 			return -1;

@@ -1437,6 +1437,8 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
     os.printf("READY - %d\n", file_size);
 
     // wait for completion or timeout
+    // Note this will block the command thread, and also query processing
+    // may need to call handle_query every now and then (like safe_sleep)
     if(xSemaphoreTake(xSemaphore, pdMS_TO_TICKS(20000)) != pdTRUE) {
         printf("DEBUG: fast download timed out\n");
         state = -2;
