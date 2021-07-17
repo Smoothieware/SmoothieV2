@@ -314,32 +314,23 @@ task :help do
   puts " paxis=nnn - overrides the number of primary axis. default is 3"
 end
 
-desc "Upload via stlink"
-task :upload do
-  sh "st-flash --freq=4000 write #{OBJDIR}/#{PROG}.bin 0x08000000"
-end
-
-desc "Upload via st prog"
-task :uploadbig do
+desc "flash via dfu-util"
+task :flash do
   if TARGET == 'Nucleo'
-    sh "~/bin/flash-stm32 #{OBJDIR}/#{PROG}.bin"
-  elsif TARGET == 'Devebox'
-    # sh "upload-ym.py -f #{OBJDIR}/#{PROG}.bin USB0"
-    #sh "download-dl.py -f #{OBJDIR}/#{PROG}.bin ACM0"
-    sh "dfu-util -D #{OBJDIR}/#{PROG}.bin"
+    # using stlinkV3
+    sh "STM32_Programmer_CLI -q -c port=SWD -w #{OBJDIR}/#{PROG}.bin 0x08000000 -rst"
   else
-    die "Unknown upload protocol for target #{TARGET}"
+    # using dfu-util, which must be enabled in config.ini and dfu flasher flashed to qspi
+    sh "dfu-util -D #{OBJDIR}/#{PROG}.bin"
   end
 end
 
-# desc "Upload via openocd"
-# task :upload do
-#   sh "./flashit.openocd #{OBJDIR}/#{PROG}.elf"
-# end
-
-desc "Upload via dfu"
-task :dfu do
-  sh "dfu-util -d 1fc9:0083 -D #{OBJDIR}/#{PROG}.bin"
+desc "Download to sdcard"
+task :download do
+  # download over ymodem suitable for ftdi serial
+  #sh "../tools/upload-ym.py #{OBJDIR}/#{PROG}.bin USB0"
+  # download using the dl command suitabkle for ACM USB serial
+  sh "../tools/download-dl.py #{OBJDIR}/#{PROG}.bin ACM0"
 end
 
 desc 'clean build'

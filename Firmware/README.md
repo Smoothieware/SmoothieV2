@@ -1,6 +1,6 @@
 Currently runs on the NUCLEO-H745ZI-Q board and Devebox 743 board.
 
-To build the test cases do ```rake testing=1 -m```
+To build the test cases do ```rake target=Nucleo testing=1 -m```
 then flash to Nucleo, the results print out to the uart/serial found on the STLinkV3 USB serial.
 
 To make the Firmware do ```rake target=Nucleo -m```
@@ -29,7 +29,7 @@ Modules that have been ported so far...
 
 *NOTE* for the smooothiev2 Prime replace Nucleo above with Prime...
 
-```rake target=Prime -m```
+    rake target=Prime -m
 
 On the Prime there are 4 leds..
 
@@ -46,6 +46,7 @@ Initial Bootstrap
 -----------------
 V2 does not have a bootloader, the firmware itself can flash itself and do updates etc.
 To bootstrap the inital firmware (or to recover from bad firmware or bricking) you can use a jlink to flash the firmware or use the STLINKV3 drag and drop, or use the BOOT0 USB flashing (press BOOT0 button and reset)...
+
     STM32_Programmer_CLI -q -c port=usb1 -w smoothiev2_Nucleo/smoothiev2.bin 0x08000000 -rst
     (you can also use dfu-util -a 0 -D smoothiev2.bin --dfuse-address 0x08000000)
 
@@ -55,12 +56,15 @@ If using the STM32H745 you must first set the option bytes to only boot the M7 c
     (use port=usb1 if using BOOT0 mode)
 
 To unbrick if bad option bytes have been set...
+
     STM32_Programmer_CLI -c port=swd -rdu
 
 or to see all option bytes...
+
     STM32_Programmer_CLI -c port=swd -ob displ
 
 JLink has a better tool which fixes everything back to factory default...
+
     JLinkSTM32 -device STM32H745ZI_M7 -if SWD
 
 Subsequent Updates
