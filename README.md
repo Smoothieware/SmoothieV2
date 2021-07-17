@@ -6,7 +6,8 @@ The preferred and supported development environment is Linux.
 Currently runs on the NUCLEO-H745ZI-Q board and Devebox 743 board
 
 Currently uses the following toolchain..
-    gcc version 9.2.1 20191025 (release) [ARM/arm-9-branch revision 277599]
+
+     gcc version 9.2.1 20191025 (release) [ARM/arm-9-branch revision 277599]
     
 To get the tool chain you should do the following on Ubuntu based Linuxes...
 
@@ -14,33 +15,41 @@ To get the tool chain you should do the following on Ubuntu based Linuxes...
 
 or for Debian Stretch (and Ubuntu) get the tar from here...
 
-   https://developer.arm.com/open-source/gnu-toolchain/gnu-rm/downloads
+    https://developer.arm.com/open-source/gnu-toolchain/gnu-rm/downloads
 
-    Then detar to a directory and do...
+Then detar to a directory and do...
+
         export ARMTOOLS=/downloaddir/gcc-arm-none-eabi-{version}/bin
         (replacing {version} with the version you downloaded)
 
-To build ```cd Firmware; rake -m```
+You need to install ruby (and rake) to build...
 
-To build unit tests ```cd Firmware; rake testing=1 -m```
+    > sudo apt-get install ruby 
+
+To build first cd to the Firmware directory, then...
+    
+    rake -m
+
+To build all unit tests 
+    
+    rake testing=1 -m
 
 To compile only some unit tests in Firmware:
 
-```rake testing=1 test=streams```
+    rake testing=1 test=streams
+    rake testing=1 test=dispatch,streams,planner
 
-```rake testing=1 test=dispatch,streams,planner```
+To compile with debug symbols...
 
-To compile with debug symbols: (may not work as it is very slow)
-
-```rake testing=1 test=streams debug=1```
+    rake testing=1 test=streams debug=1 
 
 To compile a unit test that tests a module, and to include that module
 
-```rake testing=1 test=temperatureswitch modules=tools/temperatureswitch```
+    rake testing=1 test=temperatureswitch modules=tools/temperatureswitch   
 
-You need to install ruby (and rake) to build.
-
-```> sudo apt-get install ruby```
+As a convenience if dfu-util is setup you can do this to flash the build...
+    
+    rake target=Prime flash
 
 ## Windows
 The rake build system will run on Windows, however some utilities need to be installed first.
