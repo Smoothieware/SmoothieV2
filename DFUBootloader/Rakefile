@@ -114,7 +114,7 @@ hal_src.exclude(/_template\.c/)
 # the startup file
 startup_src = FileList["startup_stm32h7xx.s"]
 
-usb_src = FileList["XPD_USB/*.{c,cpp,s}", "USBDevice/Device/*.c", "USBDevice/Class/CDC/usbd_cdc.c", "USBDevice/Class/DFU/usbd_dfu.c"]
+usb_src = FileList["XPD_USB/*.{c,cpp,s}", "USBDevice/Device/*.c", "USBDevice/Class/DFU/usbd_dfu.c"]
 
 # application
 app_src = FileList["Src/**/*.{c,cpp,s}"]

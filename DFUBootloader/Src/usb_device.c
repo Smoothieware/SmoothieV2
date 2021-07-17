@@ -57,18 +57,6 @@ void UsbDevice_Init(void)
     	printf("ERROR: USBD_DFU_MountInterface failed\n");
     }
 
-#ifdef USE_CDC
-    /* All fields of Config have to be properly set up */
-    console_if->Config.InEpNum  = 0x81;
-    console_if->Config.OutEpNum = 0x01;
-    console_if->Config.NotEpNum = 0x82;
-
-    /* Mount the interfaces to the device */
-    if(USBD_CDC_MountInterface(console_if, UsbDevice) != USBD_E_OK) {
-    	printf("ERROR: USBD_CDC_MountInterface failed\n");
-    }
-#endif
-
     /* Initialize the device */
     USBD_Init(UsbDevice, dev_cfg);
 

@@ -55,9 +55,6 @@
 static void SystemClock_Config(void);
 static void CPU_CACHE_Enable(void);
 
-extern int cdc_read(uint8_t *ptr, int32_t len);
-extern int cdc_write(uint8_t *ptr, int32_t len);
-
 extern USBD_DFU_IfHandleType *const dfu_if;
 
 extern const USBD_DFU_AppType *const flash_if;
@@ -100,28 +97,7 @@ int main(void)
 	UsbDevice_Init();
 
 	while (1) {
-
-#ifdef USE_CDC
-		uint8_t rdbuf[512];
-		char wrbuf[256];
-		char line[128];
-		int cnt = 0;
-		int n = cdc_read(rdbuf, sizeof(rdbuf));
-		if(n < 0) continue;
-		for (int i = 0; i < n; ++i) {
-			char c = (char)rdbuf[i];
-			line[cnt++] = c;
-
-			if(c == '\n' || cnt >= sizeof(line) - 1) {
-				line[cnt] = 0;
-				puts(line);
-				strcpy(wrbuf, "ECHO: ");
-				strcat(wrbuf, line);
-				cdc_write((uint8_t *)wrbuf, strlen(wrbuf));
-				cnt = 0;
-			}
-		}
-#endif
+		//it is all done in interrupts
 	}
 }
 
