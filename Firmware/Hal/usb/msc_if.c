@@ -124,16 +124,13 @@ int8_t STORAGE_IsWriteProtected(uint8_t lun)
   * @retval Status (0: OK / -1: Error)
   */
 #define SD_TIMEOUT 100
-// 32 byte aligned buffer in non cacheable memory for DMA
+// 32 byte aligned buffer so it can be cache maintained (also 4 byte aligned for DMA)
 static uint8_t aligned_buffer[USBD_MSC_BUFFER_SIZE] __attribute__((aligned(32)));
 extern volatile int sd_read_ready;
 int8_t STORAGE_Read(uint8_t lun, uint8_t * buf, uint32_t blk_addr, uint16_t blk_len)
 {
     int8_t ret = -1;
     uint32_t size = blk_len * blocksize;
-    if(size > sizeof(aligned_buffer)) {
-        printf("MSC Buffer bigger than 512\n");
-    }
     if (BSP_SD_IsDetected(0) != SD_NOT_PRESENT) {
         sd_read_ready = 0;
         // make sure cache is flushed and invalidated so when DMA updates the RAM
@@ -183,7 +180,7 @@ int8_t STORAGE_Write(uint8_t lun, uint8_t * buf, uint32_t blk_addr, uint16_t blk
         // make sure cache is flushed to RAM so the DMA can read the correct data
         SCB_CleanDCache_by_Addr((uint32_t*)aligned_buffer, size);
         if(BSP_SD_WriteBlocks_DMA(0, (uint32_t *) aligned_buffer, blk_addr, blk_len) == BSP_ERROR_NONE) {
-           // Wait for write to complete or a timeout
+            // Wait for write to complete or a timeout
             uint32_t timeout = HAL_GetTick();
             while((sd_write_ready == 0) && ((HAL_GetTick() - timeout) < SD_TIMEOUT)) {}
             if (sd_write_ready != 0) {

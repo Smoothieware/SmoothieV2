@@ -431,10 +431,10 @@ void HAL_SD_RxCpltCallback(SD_HandleTypeDef *hsd)
   * @param hsd: Pointer SD handle
   * @retval None
   */
-#include <stdio.h>
+//#include <stdio.h>
 void HAL_SD_ErrorCallback(SD_HandleTypeDef *hsd)
 {
-	printf("BSP_SD_ErrorCallback: %04lX\n", hsd->ErrorCode);
+	//printf("BSP_SD_ErrorCallback: %04lX\n", hsd->ErrorCode);
 }
 
 #if (USE_SD_TRANSCEIVER != 0U)
