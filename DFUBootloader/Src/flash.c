@@ -86,7 +86,10 @@ static USBD_DFU_StatusType FlashIf_Manifest(void)
 static uint16_t FlashIf_GetTimeout_ms(uint8_t *addr, uint32_t len)
 {
 	// 32 bytes takes about 500us
-	return (500*(len/32))/1000;
+	//return (500*(len/32))/1000;
+	// As we wait for each flash to finish there is no timeout value needed
+	// we could interleave then a timeout would be as above.
+	return 0;
 }
 
 static uint8_t erased_sector[8];

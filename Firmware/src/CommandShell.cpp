@@ -1665,7 +1665,6 @@ bool CommandShell::dfu_cmd(std::string& params, OutputStream& os)
     if(((*(__IO uint32_t *) 0x081E0000) & 0xFFFF0000) == 0x20020000 &&
        ((*(__IO uint32_t *) 0x081E0004) & 0xFFFF0000) == 0x081E0000) {
         stop_everything();
-        __disable_irq();
         jump_to_program((uint32_t)0x081E0000);
         // should never get here
         __asm("bkpt #0");
@@ -1718,7 +1717,6 @@ bool CommandShell::qspi_cmd(std::string& params, OutputStream& os)
             if(((*(__IO uint32_t *) 0x90000000) & 0xFFFF0000) == 0x20020000 &&
                ((*(__IO uint32_t *) 0x90000004) & 0xFFFF0000) == 0x90000000) {
                 stop_everything();
-                __disable_irq();
                 jump_to_program((uint32_t)0x90000000);
                 // should never get here
                 __asm("bkpt #0");
