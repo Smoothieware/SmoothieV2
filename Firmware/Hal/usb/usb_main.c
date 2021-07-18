@@ -89,7 +89,8 @@ void HAL_USB_OTG_FS_MspInit(void* handle)
 	__HAL_RCC_USB2_OTG_FS_ULPI_CLK_SLEEP_DISABLE();
 
 	/*  enable USB interrupts */
-	NVIC_SetPriority(OTG_FS_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
+	// must be lower priority (higher number) than hal systick and sd interrupts
+	NVIC_SetPriority(OTG_FS_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY+1);
 	NVIC_EnableIRQ(OTG_FS_IRQn);
 }
 

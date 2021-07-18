@@ -87,6 +87,7 @@ bool CommandShell::initialize()
     THEDISPATCHER->add_handler( "dfu", std::bind( &CommandShell::dfu_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "qspi", std::bind( &CommandShell::qspi_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "flash", std::bind( &CommandShell::flash_cmd, this, _1, _2) );
+    THEDISPATCHER->add_handler( "msc", std::bind( &CommandShell::msc_cmd, this, _1, _2) );
 
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 20, std::bind(&CommandShell::m20_cmd, this, _1, _2));
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 115, std::bind(&CommandShell::m115_cmd, this, _1, _2));
@@ -1730,6 +1731,67 @@ bool CommandShell::qspi_cmd(std::string& params, OutputStream& os)
     }
 
     return true;
+}
+
+extern "C" int8_t STORAGE_IsReady(uint8_t lun);
+extern "C" int8_t STORAGE_Read(uint8_t lun, uint8_t * buf, uint32_t blk_addr, uint16_t blk_len);
+extern "C" int8_t STORAGE_Init(uint8_t lun);
+
+#include "usb_device.h"
+extern "C" int config_msc_enable;
+bool CommandShell::msc_cmd(std::string& params, OutputStream& os)
+{
+    HELP("switch to MSC file mode");
+    if(config_msc_enable == 0) {
+        os.printf("MSC is disabled in config.ini\n");
+        return true;
+    }
+
+    os.printf("NOTE: The system will reboot when the MSC is ejected on the host, otherwise a reset maybe required to resume\n");
+
+    // first shutdown selected things as MSC hogs the sdcard, and runs in interrupt mode, so RTOS will be blocked
+    f_unmount("sd");
+    FastTicker::getInstance()->stop();
+    StepTicker::getInstance()->stop();
+    Adc::stop();
+    set_abort_comms(); // should also shutdown Network
+    // shutdown_cdc();
+    vTaskSuspendAll();
+
+    STORAGE_Init(0);
+
+#if 0
+    if(STORAGE_IsReady(0) != 0) {
+        printf("STORAGE_IsReady says not ready\n");
+    }else{
+        printf("STORAGE_IsReady says ready\n");
+    }
+
+    uint8_t buf[512];
+    for (int i = 1; i < 100; ++i) {
+        int8_t ret;
+        if((ret=STORAGE_Read(0, buf, i, 1)) != 0) {
+            printf("error %d reading block %d\n", ret, i);
+            __asm("bkpt #0");
+        }
+        printf("Read block %d: %02X%02X\n", i, buf[0], buf[1]);
+    }
+#endif
+
+    // now startup MSC
+    UsbDevice_Init_MSC();
+    printf("DEBUG: MSC is now running\n");
+
+
+    // as nothing else can happen and MSC runs under Interrupts we sit in a tight loop here waiting for it to end
+    while(true) {
+        if(check_MSC()) {
+            // we have been ejected so reboot
+            printf("DEBUG: MSC has been safely ejected, now reboot\n");
+            HAL_Delay(250);
+            NVIC_SystemReset();
+        }
+    }
 }
 
 namespace ecce

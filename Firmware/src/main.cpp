@@ -46,6 +46,7 @@ static bool system_running = false;
 static Pin *aux_play_led = nullptr;
 extern "C" int config_dfu_required;
 extern "C" int config_second_usb_serial;
+extern "C" int config_msc_enable;
 
 // for ?, $I or $S queries
 // for ? then query_line will be nullptr
@@ -464,7 +465,7 @@ extern "C" size_t write_cdc(uint8_t, const char *buf, size_t len);
 extern "C" size_t read_cdc(uint8_t, char *buf, size_t len);
 extern "C" int setup_cdc();
 extern "C" int vcom_is_connected(uint8_t);
-extern "C" uint32_t get_dropped_bytes(uint8_t);
+extern "C" uint32_t vcom_get_dropped_bytes(uint8_t);
 
 static void usb_comms(void *param)
 {
@@ -519,7 +520,7 @@ static void usb_comms(void *param)
             }
             #if 1
             uint32_t db;
-            if((db= get_dropped_bytes(inst)) > 0) {
+            if((db= vcom_get_dropped_bytes(inst)) > 0) {
                 printf("WARNING: dropped bytes detected on USB Comms%d: %lu\n", inst+1, db);
             }
             #endif
@@ -837,6 +838,8 @@ static void smoothie_startup(void *)
                 printf("INFO: dfu is %s\n", enable_dfu?"enabled":"disabled");
                 config_second_usb_serial= cr.get_bool(m, "second_usb_serial_enable", false) ? 1 : 0;
                 printf("INFO: second usb serial is %s\n", config_second_usb_serial?"enabled":"disabled");
+                config_msc_enable= cr.get_bool(m, "msc_enable", true) ? 1 : 0;
+                printf("INFO: MSC is %s\n", config_msc_enable?"enabled":"disabled");
             }
         }
 

@@ -332,9 +332,14 @@ DRESULT SD_ioctl(BYTE lun, BYTE cmd, void *buff)
   * @param hsd: SD handle
   * @retval None
   */
-
+int sd_no_rtos= 0;
+volatile int sd_write_ready;
 void BSP_SD_WriteCpltCallback(uint32_t Instance)
 {
+	if(sd_no_rtos > 0) {
+		sd_write_ready= 1;
+		return;
+	}
     // We have not woken a task at the start of the ISR.
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     uint16_t v = WRITE_CPLT_MSG;
@@ -342,15 +347,19 @@ void BSP_SD_WriteCpltCallback(uint32_t Instance)
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
+volatile int sd_read_ready;
 void BSP_SD_ReadCpltCallback(uint32_t Instance)
 {
+	if(sd_no_rtos > 0) {
+		sd_read_ready= 1;
+		return;
+	}
     // We have not woken a task at the start of the ISR.
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     uint16_t v = READ_CPLT_MSG;
     xQueueSendFromISR(SDQueueID, &v, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR (xHigherPriorityTaskWoken);
 }
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
 
 /**
   * @brief  This function handles SDIO interrupt request.

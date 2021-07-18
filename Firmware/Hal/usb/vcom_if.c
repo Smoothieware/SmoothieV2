@@ -91,7 +91,7 @@ void teardown_vcom(uint8_t i)
 	printf("DEBUG: VCOM %d teardown\n", i+1);
 }
 
-uint32_t get_dropped_bytes(uint8_t i)
+uint32_t vcom_get_dropped_bytes(uint8_t i)
 {
 	if(i >= 2 || vcom_states[i] == NULL) return 0;
 	uint32_t db = vcom_states[i]->dropped_bytes;

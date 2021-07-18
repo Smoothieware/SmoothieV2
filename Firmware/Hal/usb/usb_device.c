@@ -24,6 +24,7 @@
 #include "usbd_cdc.h"
 #include "stm32_rom_dfu.h"
 #include "vcom_if.h"
+#include "msc_if.h"
 
 int config_dfu_required = 1;
 int config_second_usb_serial = 0;
@@ -58,10 +59,10 @@ void UsbDevice_Init(void)
     }
 
     // setup vcoms
-    USBD_CDC_IfHandleType *vcom_if= (USBD_CDC_IfHandleType*)setup_vcom(0);
+    USBD_CDC_IfHandleType *vcom_if = (USBD_CDC_IfHandleType*)setup_vcom(0);
     if(vcom_if == NULL) {
-    	printf("ERROR: Could not create vcom1\n");
-    	return;
+        printf("ERROR: Could not create vcom1\n");
+        return;
     }
 
     /* All fields of Config have to be properly set up */
@@ -74,23 +75,23 @@ void UsbDevice_Init(void)
         printf("ERROR: USBD_CDC_MountInterface vcom1 failed\n");
     }
 
-	if(config_second_usb_serial) {
-	    vcom_if= (USBD_CDC_IfHandleType*)setup_vcom(1);
-	    if(vcom_if == NULL) {
-	    	printf("ERROR: Could not create vcom2\n");
-	    	return;
-	    }
+    if(config_second_usb_serial) {
+        vcom_if = (USBD_CDC_IfHandleType*)setup_vcom(1);
+        if(vcom_if == NULL) {
+            printf("ERROR: Could not create vcom2\n");
+            return;
+        }
 
-	    /* All fields of Config have to be properly set up */
-	    vcom_if->Config.InEpNum  = 0x83;
-	    vcom_if->Config.OutEpNum = 0x02;
-	    vcom_if->Config.NotEpNum = 0x84;
+        /* All fields of Config have to be properly set up */
+        vcom_if->Config.InEpNum  = 0x83;
+        vcom_if->Config.OutEpNum = 0x02;
+        vcom_if->Config.NotEpNum = 0x84;
 
-	    /* Mount the interfaces to the device */
-	    if(USBD_CDC_MountInterface(vcom_if, UsbDevice) != USBD_E_OK) {
-	        printf("ERROR: USBD_CDC_MountInterface vcom2 failed\n");
-	    }
-	}
+        /* Mount the interfaces to the device */
+        if(USBD_CDC_MountInterface(vcom_if, UsbDevice) != USBD_E_OK) {
+            printf("ERROR: USBD_CDC_MountInterface vcom2 failed\n");
+        }
+    }
 
     /* Initialize the device */
     USBD_Init(UsbDevice, dev_cfg);
@@ -103,6 +104,47 @@ void UsbDevice_Init(void)
 void UsbDevice_DeInit(void)
 {
     USBD_Deinit(UsbDevice);
+    USBD_UnmountInterfaces(UsbDevice);
     teardown_vcom(0);
     teardown_vcom(1);
+}
+
+volatile int msc_allow_removal = 0;
+volatile int msc_stop_device = 0;
+int config_msc_enable= 1;
+
+void UsbDevice_Init_MSC(void)
+{
+    if(config_msc_enable == 0) return;
+
+    USBD_Disconnect(UsbDevice);
+    USBD_UnmountInterfaces(UsbDevice);
+    teardown_vcom(0);
+    teardown_vcom(1);
+
+    msc_if->Config.InEpNum  = 0x81;
+    msc_if->Config.OutEpNum = 0x01;
+
+    msc_allow_removal = 0;
+    msc_stop_device = 0;
+
+    /* Mount the interfaces to the device */
+    if(USBD_MSC_MountInterface(msc_if, UsbDevice) != USBD_E_OK) {
+        printf("ERROR: USBD_MSC_MountInterface failed\n");
+    }
+
+    /* The device connection can be made */
+    USBD_Connect(UsbDevice);
+}
+
+bool check_MSC()
+{
+    if(msc_allow_removal) {
+        if(msc_stop_device == 1) {
+            printf("INFO: MSC Stop device\n");
+            USBD_Deinit(UsbDevice);
+            return true;
+        }
+    }
+    return false;
 }

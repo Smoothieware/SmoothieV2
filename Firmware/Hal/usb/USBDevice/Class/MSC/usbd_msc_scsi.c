@@ -378,6 +378,7 @@ static uint32_t SCSI_RequestSense(USBD_MSC_IfHandleType *itf)
  * @param itf: reference of the MSC interface
  * @return The length of the response data: 0
  */
+extern int msc_stop_device;
 static uint32_t SCSI_StartStopUnit(USBD_MSC_IfHandleType *itf)
 {
     PACKED(struct) {
@@ -395,8 +396,8 @@ static uint32_t SCSI_StartStopUnit(USBD_MSC_IfHandleType *itf)
         };
         uint8_t Control;
     }*cmd = (void*)itf->CBW.CB;
+    msc_stop_device= cmd->START == 0 ? 1 : 0;
 
-    (void)cmd;
     return 0;
 }
 
@@ -405,6 +406,7 @@ static uint32_t SCSI_StartStopUnit(USBD_MSC_IfHandleType *itf)
  * @param itf: reference of the MSC interface
  * @return The length of the response data
  */
+extern int msc_allow_removal;
 static uint32_t SCSI_PreventAllowMediumRemoval(USBD_MSC_IfHandleType *itf)
 {
     PACKED(struct) {
@@ -420,8 +422,7 @@ static uint32_t SCSI_PreventAllowMediumRemoval(USBD_MSC_IfHandleType *itf)
             uint8_t __reserved1;
         };
     }*cmd = (void*)itf->CBW.CB;
-
-    (void)cmd;
+    msc_allow_removal= cmd->PREVENT == 0 ? 1 : 0;
     return 0;
 }
 

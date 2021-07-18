@@ -426,6 +426,17 @@ void HAL_SD_RxCpltCallback(SD_HandleTypeDef *hsd)
     BSP_SD_ReadCpltCallback((hsd == &hsd_sdmmc[0]) ? 0UL : 1UL);
 }
 
+/**
+  * @brief SD error callbacks
+  * @param hsd: Pointer SD handle
+  * @retval None
+  */
+#include <stdio.h>
+void HAL_SD_ErrorCallback(SD_HandleTypeDef *hsd)
+{
+	printf("BSP_SD_ErrorCallback: %04lX\n", hsd->ErrorCode);
+}
+
 #if (USE_SD_TRANSCEIVER != 0U)
 /**
   * @brief  Enable the SD Transceiver 1.8V Mode Callback.

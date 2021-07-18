@@ -35,7 +35,8 @@ extern USBD_HandleType *const UsbDevice;
 extern void HAL_USBD_Setup(void);
 void UsbDevice_Init(void);
 void UsbDevice_DeInit(void);
-
+void UsbDevice_Init_MSC(void);
+bool check_MSC();
 #ifdef __cplusplus
 }
 #endif

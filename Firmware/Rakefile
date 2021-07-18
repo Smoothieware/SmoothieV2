@@ -142,6 +142,7 @@ usb_src = FileList[
                 'Hal/usb/USBDevice/Device/*.c',
                 'Hal/usb/USBDevice/Class/DFU/*.c',
                 'Hal/usb/USBDevice/Class/CDC/usbd_cdc.c',
+                'Hal/usb/USBDevice/Class/MSC/*.c',
                 'Hal/usb/XPD_USB/*.c'
           ]
 
