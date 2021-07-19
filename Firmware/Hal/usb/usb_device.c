@@ -25,8 +25,9 @@
 #include "stm32_rom_dfu.h"
 #include "vcom_if.h"
 #include "msc_if.h"
+#include "usbd_msc.h"
 
-int config_dfu_required = 1;
+int config_dfu_required = 0;
 int config_second_usb_serial = 0;
 
 /** @brief USB device configuration */
@@ -121,6 +122,8 @@ void UsbDevice_Init_MSC(void)
     USBD_UnmountInterfaces(UsbDevice);
     teardown_vcom(0);
     teardown_vcom(1);
+
+    USBD_MSC_IfHandleType *msc_if= (USBD_MSC_IfHandleType*)setup_msc();
 
     msc_if->Config.InEpNum  = 0x81;
     msc_if->Config.OutEpNum = 0x01;

@@ -263,10 +263,8 @@ uint32_t MemoryPool::available()
     } while (1);
 }
 
-#if 0
-// convenience routines to allow alloc/dealloc in various RAMs from C
-#include "main.h"
 
 extern "C" void *AllocDTCMRAM(size_t size) { return _DTCMRAM->alloc(size); }
 extern "C" void DeallocDTCMRAM(void *mem) { _DTCMRAM->dealloc(mem); }
-#endif
+extern "C" void *AllocSRAM_1(size_t size) { return _SRAM_1->alloc(size); }
+extern "C" void DeallocSRAM_1(void *mem) { _SRAM_1->dealloc(mem); }

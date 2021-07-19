@@ -1,5 +1,6 @@
 #pragma once
 
+#ifdef __cplusplus
 #include <cstdint>
 #include <cstddef>
 
@@ -51,3 +52,17 @@ inline void  operator delete(void* p, MemoryPool& pool)
 }
 
 extern MemoryPool *_DTCMRAM;
+extern MemoryPool *_SRAM_1;
+
+extern "C" void *AllocDTCMRAM(size_t size);
+extern "C" void DeallocDTCMRAM(void *mem);
+extern "C" void *AllocSRAM_1(size_t size);
+extern "C" void DeallocSRAM_1(void *mem);
+
+#else
+// For c programs
+extern void *AllocDTCMRAM(size_t size);
+extern void DeallocDTCMRAM(void *mem);
+extern void *AllocSRAM_1(size_t size);
+extern void DeallocSRAM_1(void *mem);
+#endif

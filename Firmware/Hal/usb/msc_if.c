@@ -1,13 +1,16 @@
 #include "msc_if.h"
+#include "usbd_msc.h"
+
 #include "stm32h7xx_sd.h"
+#include "MemoryPool.h"
 
 #define FLASH_BLK_NBR 100
 #define FLASH_BLK_SIZ 512
 
-USBD_ReturnType Read_dev (uint8_t lun, uint8_t *dest, uint32_t blockAddr, uint16_t blockLen);
-USBD_ReturnType Write_dev (uint8_t lun, uint8_t *src, uint32_t blockAddr, uint16_t blockLen);
-void Init_dev(uint8_t lun);
-void DeInit_dev(uint8_t lun);
+static USBD_ReturnType Read_dev (uint8_t lun, uint8_t *dest, uint32_t blockAddr, uint16_t blockLen);
+static USBD_ReturnType Write_dev (uint8_t lun, uint8_t *src, uint32_t blockAddr, uint16_t blockLen);
+static void Init_dev(uint8_t lun);
+static void DeInit_dev(uint8_t lun);
 
 USBD_MSC_LUStatusType Status_dev =  {
     .BlockCount = FLASH_BLK_NBR,
@@ -38,23 +41,19 @@ USBD_MSC_LUType msc_lu[] = {
     },
 };
 
-USBD_MSC_IfHandleType hmsc_if = {
-    .Base.AltCount = 1,
-    .LUs = msc_lu,
-}, *const msc_if = &hmsc_if;
-
+static USBD_MSC_IfHandleType *msc_if;
 static uint16_t blocksize;
-
 extern int sd_no_rtos;
-/**
-  * @brief  Initializes the storage unit (medium)
-  * @param  lun: Logical unit number
-  * @retval Status (0 : OK / -1 : Error)
-  */
-int8_t STORAGE_Init(uint8_t lun)
+
+void *setup_msc()
 {
     sd_no_rtos = 1; // tells BSP to not use queue on cmplt interrupts
-    return 0;
+    msc_if= AllocSRAM_1(sizeof(USBD_MSC_IfHandleType));
+    if(msc_if != NULL) {
+    	msc_if->Base.AltCount = 1;
+    	msc_if->LUs = msc_lu;
+    }
+    return msc_if;
 }
 
 /**
@@ -85,7 +84,7 @@ int8_t STORAGE_GetCapacity(uint8_t lun, uint32_t * block_num,
   * @param  lun: Logical unit number
   * @retval Status (0: OK / -1: Error)
   */
-int8_t STORAGE_IsReady(uint8_t lun)
+int STORAGE_IsReady(uint8_t lun)
 {
     static int8_t prev_status = 0;
     int8_t ret = -1;
@@ -127,7 +126,7 @@ int8_t STORAGE_IsWriteProtected(uint8_t lun)
 // 32 byte aligned buffer so it can be cache maintained (also 4 byte aligned for DMA)
 static uint8_t aligned_buffer[USBD_MSC_BUFFER_SIZE] __attribute__((aligned(32)));
 extern volatile int sd_read_ready;
-int8_t STORAGE_Read(uint8_t lun, uint8_t * buf, uint32_t blk_addr, uint16_t blk_len)
+int STORAGE_Read(uint8_t lun, uint8_t * buf, uint32_t blk_addr, uint16_t blk_len)
 {
     int8_t ret = -1;
     uint32_t size = blk_len * blocksize;
@@ -213,23 +212,21 @@ int8_t STORAGE_GetMaxLun(void)
 
 
 // msc interface
-
-
-USBD_ReturnType Read_dev (uint8_t lun, uint8_t *dest, uint32_t blockAddr, uint16_t blockLen) /*!< Read media block */
+static USBD_ReturnType Read_dev (uint8_t lun, uint8_t *dest, uint32_t blockAddr, uint16_t blockLen) /*!< Read media block */
 {
     // Do read operation
     int ret = STORAGE_Read(lun, dest, blockAddr, blockLen);
     return ret == 0 ? USBD_E_OK : USBD_E_ERROR;
 }
 
-USBD_ReturnType Write_dev (uint8_t lun, uint8_t *src, uint32_t blockAddr, uint16_t blockLen) /*!< Write media block */
+static USBD_ReturnType Write_dev (uint8_t lun, uint8_t *src, uint32_t blockAddr, uint16_t blockLen) /*!< Write media block */
 {
     // Do write operation
     int ret = STORAGE_Write(lun, src, blockAddr, blockLen);
     return ret == 0 ? USBD_E_OK : USBD_E_ERROR;
 }
 
-void Init_dev(uint8_t lun)
+static void Init_dev(uint8_t lun)
 {
     // Initialize...
 
@@ -245,6 +242,6 @@ void Init_dev(uint8_t lun)
     msc_if->LUs[lun].Status->Writable = 1;
 }
 
-void DeInit_dev(uint8_t lun)
+static void DeInit_dev(uint8_t lun)
 {
 }

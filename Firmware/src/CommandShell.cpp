@@ -410,6 +410,10 @@ bool CommandShell::mem_cmd(std::string& params, OutputStream& os)
     if(!params.empty()) {
         os.printf("-- DTCMRAM --\n"); _DTCMRAM->debug(os);
     }
+    os.printf("SRAM_1: %lu used, %lu bytes free\n", _SRAM_1->get_size() - _SRAM_1->available(), _SRAM_1->available());
+    if(!params.empty()) {
+        os.printf("-- SRAM_1 --\n"); _SRAM_1->debug(os);
+    }
 
     os.set_no_response();
     return true;
@@ -1588,18 +1592,21 @@ bool CommandShell::break_cmd(std::string& params, OutputStream& os)
     return true;
 }
 
+extern "C" void shutdown_cdc();
 bool CommandShell::reset_cmd(std::string& params, OutputStream& os)
 {
     HELP("reset board");
-    os.printf("Reset will occur in 5 seconds, make sure to disconnect before that\n");
-    vTaskDelay(pdMS_TO_TICKS(5000));
+    os.printf("Reset will occur in 1 second\n");
+    vTaskDelay(pdMS_TO_TICKS(500));
+    f_unmount("sd");
+    shutdown_cdc();
+    vTaskDelay(pdMS_TO_TICKS(500));
     NVIC_SystemReset();
     return true;
 }
 
 #include "uart_comms.h"
 extern "C" void shutdown_sdmmc();
-extern "C" void shutdown_cdc();
 
 static void stop_everything(void)
 {
@@ -1733,10 +1740,6 @@ bool CommandShell::qspi_cmd(std::string& params, OutputStream& os)
     return true;
 }
 
-extern "C" int8_t STORAGE_IsReady(uint8_t lun);
-extern "C" int8_t STORAGE_Read(uint8_t lun, uint8_t * buf, uint32_t blk_addr, uint16_t blk_len);
-extern "C" int8_t STORAGE_Init(uint8_t lun);
-
 #include "usb_device.h"
 extern "C" int config_msc_enable;
 bool CommandShell::msc_cmd(std::string& params, OutputStream& os)
@@ -1757,8 +1760,6 @@ bool CommandShell::msc_cmd(std::string& params, OutputStream& os)
     set_abort_comms(); // should also shutdown Network
     // shutdown_cdc();
     vTaskSuspendAll();
-
-    STORAGE_Init(0);
 
 #if 0
     if(STORAGE_IsReady(0) != 0) {

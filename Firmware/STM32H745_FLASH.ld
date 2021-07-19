@@ -38,6 +38,7 @@ ENTRY(Reset_Handler)
 /* Highest address of the system stack */
 _estack = 0x20020000;    /* end of DTCMRAM */
 __top_DTCMRAM = _estack - 4096 ; /* guarantee at least 4k of stack */
+__top_SRAM_1 = 0x30020000 ;
 
 /* Specify the memory areas */
 MEMORY
@@ -215,12 +216,12 @@ SECTIONS
   	*(.flashloader_data)
   } >FLASH
 
- .usb_data (NOLOAD) :
+ .sram_1_data (NOLOAD) :
   {
-    PROVIDE_HIDDEN (__usb_data_start = .);
-    KEEP (*(SORT(.usb_data.*)))
-    KEEP (*(.usb_data*))
-    PROVIDE_HIDDEN (__usb_data_end = .);
+    PROVIDE_HIDDEN (__sram_1_start = .);
+    KEEP (*(SORT(.sram_1_data.*)))
+    KEEP (*(.sram_1_data*))
+    PROVIDE_HIDDEN (__sram_1_data_end = .);
   } >SRAM_1
 
   .ethernet_data (NOLOAD) :

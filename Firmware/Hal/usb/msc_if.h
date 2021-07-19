@@ -1,5 +1,14 @@
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#include <usbd_msc.h>
+#include <stdint.h>
 
-extern USBD_MSC_IfHandleType *const msc_if;
+void *setup_msc();
+int STORAGE_IsReady(uint8_t lun);
+int STORAGE_Read(uint8_t lun, uint8_t * buf, uint32_t blk_addr, uint16_t blk_len);
+
+#ifdef __cplusplus
+}
+#endif

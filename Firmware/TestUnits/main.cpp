@@ -111,11 +111,6 @@ void print_to_all_consoles(const char *str)
     printf("%s", str);
 }
 
-void setup_memory_pool()
-{
-    // dummy
-}
-
 extern "C" void vRunTestsTask(void *pvParameters)
 {
     run_tests();
@@ -132,11 +127,11 @@ extern "C" void vRunTestsTask(void *pvParameters)
 }
 
 #ifdef TESTCOMMS
-extern "C" size_t write_cdc(const char *buf, size_t len);
-extern "C" size_t read_cdc(char *buf, size_t len);
+extern "C" size_t write_cdc(int, const char *buf, size_t len);
+extern "C" size_t read_cdc(int, char *buf, size_t len);
 extern "C" int setup_cdc();
-extern "C" int vcom_connected();
-extern "C" uint32_t get_dropped_bytes();
+extern "C" int vcom_is_connected(int);
+extern "C" uint32_t vcom_get_dropped_bytes(int);
 
 static std::function<size_t(char *, size_t)> capture_fnc = nullptr;
 
@@ -157,21 +152,21 @@ extern "C" void usbComTask(void *pvParameters)
 
     // when we get the first connection it sends a one byte message to wake us up
     // it will block here until a connection is available
-    size_t n = read_cdc(rxBuff, 1);
-    if(rxBuff[0] != 1 || !vcom_connected()) {
+    size_t n = read_cdc(0, rxBuff, 1);
+    if(rxBuff[0] != 1 || !vcom_is_connected(0)) {
         printf("Unexpected CDC startup frame: %d\n", n);
     }
     printf("CDC connected\n");
 
-    static OutputStream theos([](const char *buf, size_t len) { return write_cdc(buf, len); });
+    static OutputStream theos([](const char *buf, size_t len) { return write_cdc(0, buf, len); });
     theos.puts("Welcome to TestUnits\nok\n");
 
     while(1) {
         // we read as much as we can, process it into lines and send it to the dispatch thread
         // certain characters are sent immediately the rest wait for end of line
-        size_t rdCnt = read_cdc(rxBuff, sizeof(rxBuff));
+        size_t rdCnt = read_cdc(0, rxBuff, sizeof(rxBuff));
         uint32_t db;
-        if((db=get_dropped_bytes()) > 0) {
+        if((db=vcom_get_dropped_bytes(0)) > 0) {
             printf("WARNING got dropped bytes: %lu\n", db);
         }
 
@@ -316,14 +311,14 @@ void send_test(OutputStream *os)
     for (int i = 0; i < n / 16; ++i) {
         strcat(buf, "123456789ABCDEF\n");
     }
-    write_cdc(buf, n);
+    write_cdc(0, buf, n);
     free(buf);
 
     // now send lots of little lines
     os->printf("Sending 1000 lines...\n", n);
     buf = strdup("ok\n");
     for (int i = 0; i < 1000; ++i) {
-        write_cdc(buf, strlen(buf));
+        write_cdc(0, buf, strlen(buf));
     }
     free(buf);
 }

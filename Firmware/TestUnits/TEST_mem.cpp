@@ -32,16 +32,23 @@ REGISTER_TEST(MemoryTest, stats)
 }
 
 char test_ram2_bss[128] __attribute__ ((section (".dtcm_text")));
+char test_ram3_bss[128] __attribute__ ((section (".sram_1_data")));
 __attribute__ ((section (".dtcm_text"))) char test_ram4_data[8]= {1,2,3,4,5,6,7,8};
 
 REGISTER_TEST(MemoryTest, other_rams)
 {
     TEST_ASSERT_EQUAL_PTR(0x20000000, (unsigned int)&test_ram2_bss);
     TEST_ASSERT_EQUAL_PTR(0x20000080, (unsigned int)&test_ram4_data);
+    TEST_ASSERT_EQUAL_PTR(0x30000000, (unsigned int)&test_ram3_bss);
 
     // check bss was cleared
     for (int i = 0; i < 128; ++i) {
         TEST_ASSERT_EQUAL_INT(0, test_ram2_bss[i]);
+    }
+
+    // check bss was cleared
+    for (int i = 0; i < 128; ++i) {
+        TEST_ASSERT_EQUAL_INT(0, test_ram3_bss[i]);
     }
 
     // check data areas were copied
@@ -134,6 +141,17 @@ REGISTER_TEST(MemoryTest, ramfunc)
     printf("ramfunc is at %p\n", testramfunc);
     TEST_ASSERT_TRUE((unsigned int)testramfunc >= 0x00000298 && (unsigned int)testramfunc < 0x0010000);
     TEST_ASSERT_EQUAL_INT(123, testramfunc());
+}
+
+REGISTER_TEST(MemoryTest, alloc)
+{
+    printf("sram_1 size=%lu, available=%lu\n", _SRAM_1->get_size(), _SRAM_1->available());
+    void *tram= AllocSRAM_1(256);
+    printf("sram_1 alloc is at %p, available=%lu\n", tram, _SRAM_1->available());
+    // allow for the statically allocated in bss
+    TEST_ASSERT_TRUE((unsigned int)tram >= 0x30000080 && (unsigned int)tram < 0x30200000);
+    DeallocSRAM_1(tram);
+    printf("sram_1 available=%lu\n", _SRAM_1->available());
 }
 
 #define _fast_data_ __attribute__ ((section(".dtcm_text")))

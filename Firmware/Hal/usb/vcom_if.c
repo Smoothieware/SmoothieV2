@@ -25,6 +25,8 @@
 #include "FreeRTOS.h"
 #include "stream_buffer.h"
 
+#include "MemoryPool.h"
+
 static void vcom_if_open      (void* itf, USBD_CDC_LineCodingType * lc);
 static void vcom_if_in_cmplt  (void* itf, uint8_t * pbuf, uint16_t length);
 static void vcom_if_out_cmplt (void* itf, uint8_t * pbuf, uint16_t length);
@@ -54,7 +56,8 @@ static const USBD_CDC_AppType vcom_app = {
 void *setup_vcom(uint8_t i)
 {
 	if(i >= 2 || vcom_states[i] != NULL) return NULL;
-	VCOM_STATE_T *state= malloc(sizeof(VCOM_STATE_T));
+	// use SRAM_1 as USB has better access to it
+	VCOM_STATE_T *state= AllocSRAM_1(sizeof(VCOM_STATE_T));
 	if(state == NULL) {
 		printf("ERROR: VCOM no mem\n");
 		return NULL;
@@ -84,7 +87,7 @@ void teardown_vcom(uint8_t i)
 	char buf[1] = {0};
 	xStreamBufferSend(vcom_states[i]->xStreamBuffer, (void *)buf, 1, 1000);
 	vStreamBufferDelete(vcom_states[i]->xStreamBuffer);
-	free(vcom_states[i]);
+	DeallocSRAM_1(vcom_states[i]);
 	vcom_states[i]= NULL;
 	free(vcom_ifs[i]);
 	vcom_ifs[i]= NULL;
