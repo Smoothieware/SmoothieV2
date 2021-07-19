@@ -1382,6 +1382,26 @@ bool CommandShell::config_set_cmd(std::string& params, OutputStream& os)
     return true;
 }
 
+// checks if idle and no heaters are on
+bool CommandShell::is_busy()
+{
+    if(!Conveyor::getInstance()->is_idle()) {
+        return true;
+    }
+
+    // scan all temperature controls and make sure they are all off
+    std::vector<Module*> controllers = Module::lookup_group("temperature control");
+    for(auto m : controllers) {
+        TemperatureControl::pad_temperature_t temp;
+        if(m->request("get_current_temperature", &temp)) {
+            if(temp.target_temperature > 0) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 bool CommandShell::download_cmd(std::string& params, OutputStream& os)
 {
     HELP("dl filename size - fast streaming binary download over USB serial");
@@ -1396,8 +1416,8 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
         return true;
     }
 
-    if(!Conveyor::getInstance()->is_idle()) {
-        os.printf("FAIL - download not allowed while printing or busy\n");
+    if(is_busy()) {
+        os.printf("FAIL - download not allowed while printing or heaters are on\n");
         return true;
     }
 
@@ -1419,7 +1439,7 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
     volatile ssize_t state = 0;
     SemaphoreHandle_t xSemaphore = xSemaphoreCreateBinary();
 
-    os.fast_capture_fnc= [&fp, &state, xSemaphore, file_size](char *buf, size_t len) {
+    os.fast_capture_fnc = [&fp, &state, xSemaphore, file_size](char *buf, size_t len) {
         // note this is being run in the Comms thread
         if(state < 0 || state >= file_size) return true; // we are in an error state or done
 
@@ -1462,7 +1482,7 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
-    os.fast_capture_fnc= nullptr;
+    os.fast_capture_fnc = nullptr;
 
     return true;
 }
@@ -1471,8 +1491,8 @@ bool CommandShell::ry_cmd(std::string& params, OutputStream& os)
 {
     HELP("ymodem recieve");
 
-    if(!Conveyor::getInstance()->is_idle()) {
-        os.printf("ry not allowed while printing or busy\n");
+    if(is_busy()) {
+        os.printf("FAIL - ymodem not allowed while printing or heaters are on\n");
         return true;
     }
 
@@ -1481,7 +1501,6 @@ bool CommandShell::ry_cmd(std::string& params, OutputStream& os)
         vTaskDelay(pdMS_TO_TICKS(2000));
     }
 
-
     YModem ymodem([&os](char c) {os.write(&c, 1);});
     // check we did not run out of memory
     if(!ymodem.is_ok()) {
@@ -1489,9 +1508,9 @@ bool CommandShell::ry_cmd(std::string& params, OutputStream& os)
         return true;
     }
 
-    os.capture_fnc= [&ymodem](char c) { ymodem.add(c); };
+    os.capture_fnc = [&ymodem](char c) { ymodem.add(c); };
     int ret = ymodem.receive();
-    os.capture_fnc= nullptr;
+    os.capture_fnc = nullptr;
 
     if(params.empty()) {
         if(ret > 0) {
@@ -1636,6 +1655,11 @@ bool CommandShell::flash_cmd(std::string& params, OutputStream& os)
 {
     HELP("flash the flashme.bin file");
 
+    if(is_busy()) {
+        os.printf("FAIL - flash not allowed while printing or heaters are on\n");
+        return true;
+    }
+
     if(!check_flashme_file(os, true)) {
         return true;
     }
@@ -1666,6 +1690,12 @@ bool CommandShell::flash_cmd(std::string& params, OutputStream& os)
 bool CommandShell::dfu_cmd(std::string& params, OutputStream& os)
 {
     HELP("start dfu");
+
+    if(is_busy()) {
+        os.printf("FAIL - DFU not allowed while printing or heaters are on\n");
+        return true;
+    }
+
     os.printf("NOTE: A reset will be required to resume if dfu-util is not run\n");
 #ifdef BOARD_NUCLEO
     // no qspi so dfu flash loader is in high flash 0x081E0000
@@ -1721,6 +1751,11 @@ bool CommandShell::qspi_cmd(std::string& params, OutputStream& os)
         }
 
         if(cmd == "run") {
+            if(is_busy()) {
+                os.printf("FAIL - qspi run not allowed while printing or heaters are on\n");
+                return true;
+            }
+
             // check the first entry is a valid stack pointer and jump into qspi
             if(((*(__IO uint32_t *) 0x90000000) & 0xFFFF0000) == 0x20020000 &&
                ((*(__IO uint32_t *) 0x90000004) & 0xFFFF0000) == 0x90000000) {
@@ -1750,6 +1785,11 @@ bool CommandShell::msc_cmd(std::string& params, OutputStream& os)
         return true;
     }
 
+    if(is_busy()) {
+        os.printf("FAIL - MSC not allowed while printing or heaters are on\n");
+        return true;
+    }
+
     os.printf("NOTE: The system will reboot when the MSC is ejected on the host, otherwise a reset maybe required to resume\n");
 
     // first shutdown selected things as MSC hogs the sdcard, and runs in interrupt mode, so RTOS will be blocked
@@ -1767,14 +1807,14 @@ bool CommandShell::msc_cmd(std::string& params, OutputStream& os)
 #if 0
     if(STORAGE_IsReady(0) != 0) {
         printf("STORAGE_IsReady says not ready\n");
-    }else{
+    } else {
         printf("STORAGE_IsReady says ready\n");
     }
 
     uint8_t buf[512];
     for (int i = 1; i < 100; ++i) {
         int8_t ret;
-        if((ret=STORAGE_Read(0, buf, i, 1)) != 0) {
+        if((ret = STORAGE_Read(0, buf, i, 1)) != 0) {
             printf("error %d reading block %d\n", ret, i);
             __asm("bkpt #0");
         }
@@ -1808,8 +1848,8 @@ bool CommandShell::edit_cmd(std::string& params, OutputStream& os)
     HELP("ed infile outfile - the ecce line editor");
 
     os.set_no_response(true);
-    if(!Conveyor::getInstance()->is_idle()) {
-        os.printf("ed not allowed while printing or busy\n");
+    if(is_busy()) {
+        os.printf("FAIL - download not allowed while printing or heaters are on\n");
         return true;
     }
 
@@ -1828,9 +1868,9 @@ bool CommandShell::edit_cmd(std::string& params, OutputStream& os)
 
     os.printf("type %%h for help\n");
 
-    os.capture_fnc= [](char c) { ecce::add_input(c); };
+    os.capture_fnc = [](char c) { ecce::add_input(c); };
     int ret = ecce::main(infile.c_str(), outfile.c_str(), [&os](char c) {os.write(&c, 1);});
-    os.capture_fnc= nullptr;
+    os.capture_fnc = nullptr;
     if(ret == 0) {
         os.printf("edit was successful\n");
     } else {

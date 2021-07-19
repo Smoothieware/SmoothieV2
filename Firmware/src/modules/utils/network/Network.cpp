@@ -6,6 +6,7 @@
 #include "OutputStream.h"
 #include "StringUtils.h"
 #include "md5.h"
+#include "CommandShell.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -248,6 +249,12 @@ extern uint32_t _image_end;
 bool Network::update_cmd( std::string& params, OutputStream& os )
 {
     HELP("update the firmware from web");
+
+    if(CommandShell::is_busy()) {
+        os.printf("FAIL - update is not allowed while printing or heaters are on\n");
+        return true;
+    }
+
 #ifdef BOARD_NUCLEO
     std::string urlbin = "http://smoothieware.org/_media/bin/nu.bin";
     std::string urlmd5 = "http://smoothieware.org/_media/bin/nu.md5";

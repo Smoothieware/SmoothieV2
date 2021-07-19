@@ -33,6 +33,7 @@
 #include "Pin.h"
 #include "Network.h"
 #include "StringUtils.h"
+#include "CommandShell.h"
 
 extern "C" {
     void Board_LED_Toggle(int);
@@ -469,8 +470,8 @@ extern "C" uint32_t vcom_get_dropped_bytes(uint8_t);
 
 static void usb_comms(void *param)
 {
-    int inst= (int)param;
-    printf("DEBUG: USB Comms%d thread running\n", inst+1);
+    int inst = (int)param;
+    printf("DEBUG: USB Comms%d thread running\n", inst + 1);
 
     // we set this to 1024 so ymodem will run faster (but if not needed then it can be as low as 256)
     const size_t usb_rx_buf_sz = 1024;
@@ -496,7 +497,7 @@ static void usb_comms(void *param)
         //printf("DEBUG: CDC%d connected\n", inst+1);
 
         // create an output stream that writes to the cdc
-        OutputStream *os= new OutputStream([inst](const char *buf, size_t len) { return write_cdc(inst, buf, len); });
+        OutputStream *os = new OutputStream([inst](const char *buf, size_t len) { return write_cdc(inst, buf, len); });
         output_streams.insert(os);
         vTaskDelay(pdMS_TO_TICKS(100));
         os->printf("Welcome to Smoothie\nok\n");
@@ -518,20 +519,20 @@ static void usb_comms(void *param)
                     process_command_buffer(n, usb_rx_buf, os, line, cnt, discard);
                 }
             }
-            #if 1
+#if 1
             uint32_t db;
-            if((db= vcom_get_dropped_bytes(inst)) > 0) {
-                printf("WARNING: dropped bytes detected on USB Comms%d: %lu\n", inst+1, db);
+            if((db = vcom_get_dropped_bytes(inst)) > 0) {
+                printf("WARNING: dropped bytes detected on USB Comms%d: %lu\n", inst + 1, db);
             }
-            #endif
+#endif
         }
 
         output_streams.erase(os);
         delete os;
-    }while(false);
+    } while(false);
 
     free(usb_rx_buf);
-    printf("DEBUG: USB Comms%d thread exiting\n", inst+1);
+    printf("DEBUG: USB Comms%d thread exiting\n", inst + 1);
     vTaskDelete(NULL);
 }
 
@@ -618,6 +619,7 @@ static void handle_query(bool need_done)
  * Other things can call dispatch_line direct from the in_command_ctx call.
  */
 extern "C" bool DFU_requested_detach();
+extern "C" void DFU_reset_requested_detach();
 static void command_handler()
 {
     printf("DEBUG: Command thread running\n");
@@ -645,12 +647,17 @@ static void command_handler()
 
             // special case if we see we got a DFU detach we call the dfu command
             if(config_dfu_required == 1 && DFU_requested_detach()) {
-                print_to_all_consoles("DFU firmware download has been requested, going down for update\n");
-                vTaskDelay(pdMS_TO_TICKS(100));
-                OutputStream nullos;
-                dispatch_line(nullos, "dfu");
-                // we should not return from this, if we do it means the dfu loader is not in qspi
-                config_dfu_required  = 0; // disable it for now
+                if(!CommandShell::is_busy()) {
+                    print_to_all_consoles("DFU firmware download has been requested, going down for update\n");
+                    vTaskDelay(pdMS_TO_TICKS(100));
+                    OutputStream nullos;
+                    dispatch_line(nullos, "dfu");
+                    // we should not return from this, if we do it means the dfu loader is not in qspi
+                    config_dfu_required  = 0; // disable it for now
+                } else {
+                    print_to_all_consoles("DFU is not allowed while printing or heaters are on\n");
+                    DFU_reset_requested_detach();
+                }
             }
         }
 
@@ -686,7 +693,6 @@ void safe_sleep(uint32_t ms)
     }
 }
 
-#include "CommandShell.h"
 #include "SlowTicker.h"
 #include "FastTicker.h"
 #include "StepTicker.h"
@@ -832,14 +838,14 @@ static void smoothie_startup(void *)
                     printf("INFO: auxilliary play led set to %s\n", aux_play_led->to_string().c_str());
                 }
                 flash_on_boot = cr.get_bool(m, "flash_on_boot", true);
-                printf("INFO: flash on boot is %s\n", flash_on_boot?"enabled":"disabled");
-                bool enable_dfu= cr.get_bool(m, "dfu_enable", false);
-                config_dfu_required= enable_dfu ? 1 : 0; // set it in the USB stack
-                printf("INFO: dfu is %s\n", enable_dfu?"enabled":"disabled");
-                config_second_usb_serial= cr.get_bool(m, "second_usb_serial_enable", false) ? 1 : 0;
-                printf("INFO: second usb serial is %s\n", config_second_usb_serial?"enabled":"disabled");
-                config_msc_enable= cr.get_bool(m, "msc_enable", true) ? 1 : 0;
-                printf("INFO: MSC is %s\n", config_msc_enable?"enabled":"disabled");
+                printf("INFO: flash on boot is %s\n", flash_on_boot ? "enabled" : "disabled");
+                bool enable_dfu = cr.get_bool(m, "dfu_enable", false);
+                config_dfu_required = enable_dfu ? 1 : 0; // set it in the USB stack
+                printf("INFO: dfu is %s\n", enable_dfu ? "enabled" : "disabled");
+                config_second_usb_serial = cr.get_bool(m, "second_usb_serial_enable", false) ? 1 : 0;
+                printf("INFO: second usb serial is %s\n", config_second_usb_serial ? "enabled" : "disabled");
+                config_msc_enable = cr.get_bool(m, "msc_enable", true) ? 1 : 0;
+                printf("INFO: MSC is %s\n", config_msc_enable ? "enabled" : "disabled");
             }
         }
 
@@ -1030,7 +1036,7 @@ static void smoothie_startup(void *)
             xTaskCreate(usb_comms, "USBCommsThread", 1500 / 4, (void*)1, (tskIDLE_PRIORITY + COMMS_PRI), (TaskHandle_t *) NULL);
         }
 
-    }else{
+    } else {
         printf("FATAL: USB and/or CDC setup failed\n");
     }
 

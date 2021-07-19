@@ -50,3 +50,8 @@ void STM32_ROM_DFU_Init(void)
 bool DFU_requested_detach() {
 	return dfuRequested;
 }
+
+void DFU_reset_requested_detach()
+{
+	dfuRequested= false;
+}

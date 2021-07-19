@@ -12,6 +12,7 @@ public:
     ~CommandShell(){};
 
     bool initialize();
+    static bool is_busy();
 
 private:
     bool truncate_file(const char *fn, int size, OutputStream& os);
