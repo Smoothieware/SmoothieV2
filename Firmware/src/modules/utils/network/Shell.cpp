@@ -271,8 +271,6 @@ static void shell_thread(void *arg)
         }
     }
 
-    printf("DEBUG: Network: Shell thread request end\n");
-
     // we collect pointers to the shells from the set as close_shell will delete itself from the set
     std::vector<shell_t*> psl;
     for (auto p_shell : shells) {
