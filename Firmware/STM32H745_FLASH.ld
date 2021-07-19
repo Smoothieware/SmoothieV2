@@ -190,10 +190,10 @@ SECTIONS
   .itcm_text :
   {
     . = ALIGN(4);
-    itcm_text_start = .;
-    *(.ramfunc*)
+    PROVIDE_HIDDEN(itcm_text_start = .);
+    KEEP(*(.ramfunc*))
     . = ALIGN(4);
-    itcm_text_end = .;
+    PROVIDE_HIDDEN(itcm_text_end = .);
   } >ITCMRAM AT> FLASH
 
 
@@ -202,19 +202,19 @@ SECTIONS
   .dtcm_text :
   {
     . = ALIGN(4);
-    dtcm_text_start = .;
-    *(.dtcm_text)
-    *(.dtcm_text*)
+    PROVIDE_HIDDEN(dtcm_text_start = .);
+    KEEP(*(.dtcm_text))
+    KEEP(*(.dtcm_text*))
     . = ALIGN(4);
-    dtcm_text_end = .;
+    PROVIDE_HIDDEN(dtcm_text_end = .);
   } >DTCMRAM AT> FLASH
 
   .dtcm_bss (NOLOAD) :
   {
     . = ALIGN(4);
-    __dtcm_bss_start = .;
-    *(.dtcm_bss*)
-    __dtcm_bss_end = .;
+    PROVIDE_HIDDEN(__dtcm_bss_start = .);
+    KEEP(*(.dtcm_bss*))
+    PROVIDE_HIDDEN(__dtcm_bss_end = .);
   } >DTCMRAM
 
   /* force the flashloader bin to the end of the image so we can easily check the magic number */
@@ -226,11 +226,9 @@ SECTIONS
 
  .sram_1_bss (NOLOAD) :
   {
-    __sram_1_start = .;
-    *(.sram_1_data.*)
-    *(.sram_1_data*)
-    *(.sram_1_bss*)
-    __sram_1_end = .;
+    PROVIDE_HIDDEN(__sram_1_start = .);
+    KEEP(*(.sram_1_bss*))
+    PROVIDE_HIDDEN(__sram_1_end = .);
   } >SRAM_1
 
   .ethernet_bss (NOLOAD) :

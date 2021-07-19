@@ -12,6 +12,7 @@
 #include "FreeRTOS_Sockets.h"
 
 #include <set>
+#include <vector>
 
 #define MAX_SERV 3
 #define BUFSIZE 256
@@ -166,6 +167,8 @@ static void shell_thread(void *arg)
 
         FreeRTOS_printf( ("DEBUG: shell: select returned %ld\n", i) );
 
+        if(abort_shell) break;
+
         if (i == 0) {
             // timeout
             continue;
@@ -179,7 +182,6 @@ static void shell_thread(void *arg)
 
         // At least one descriptor is ready
         if (FreeRTOS_FD_ISSET(listenfd, socketset)) {
-            if(abort_shell) break;
             // We have a new connection request create a new shell
             shell_t *p_shell = (shell_t *)malloc(sizeof(shell_t));
             if(p_shell != nullptr) {
@@ -269,16 +271,23 @@ static void shell_thread(void *arg)
         }
     }
 
+    printf("DEBUG: Network: Shell thread request end\n");
+
+    // we collect pointers to the shells from the set as close_shell will delete itself from the set
+    std::vector<shell_t*> psl;
     for (auto p_shell : shells) {
-        close_shell(p_shell);
+        psl.push_back(p_shell);
+    }
+    // now close them all
+    for(auto s : psl) {
+        close_shell(s);
     }
 
     FreeRTOS_DeleteSocketSet(socketset);
     FreeRTOS_closesocket(listenfd);
     xTimerDelete(timer_handle, 0);
-    vTaskDelete(NULL);
-
     printf("DEBUG: Network: Shell thread ended\n");
+    vTaskDelete(NULL);
 }
 
 void shell_init(void)
@@ -289,7 +298,6 @@ void shell_init(void)
 
 void shell_deinit()
 {
-    // FIXME this causes a HardFault
     abort_shell = true;
     FreeRTOS_SignalSocket(listenfd);
 }

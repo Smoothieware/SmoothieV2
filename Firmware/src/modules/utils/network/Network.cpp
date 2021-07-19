@@ -319,20 +319,17 @@ extern "C" void xNetworkDeInitialise();
 void Network::set_abort()
 {
     abort_network = true;
-#if 0
-    // FIXME this causes a HardFault
     if(enable_ftpd || enable_httpd) {
         FreeRTOS_TCPServerSignal(pxTCPServer);
     }
     pxTCPServer = nullptr;
+
     if(enable_shell) {
         extern void shell_deinit(void);
         shell_deinit();
     }
-#else
     // at least stop interrupts
     xNetworkDeInitialise();
-#endif
 }
 
 /* Main TCP thread loop */
