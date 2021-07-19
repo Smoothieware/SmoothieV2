@@ -1760,6 +1760,8 @@ bool CommandShell::msc_cmd(std::string& params, OutputStream& os)
     set_abort_comms(); // should also shutdown Network
     // shutdown_cdc();
     vTaskSuspendAll();
+    vTaskEndScheduler();
+    taskENABLE_INTERRUPTS();
 
 #if 0
     if(STORAGE_IsReady(0) != 0) {
