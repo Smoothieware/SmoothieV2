@@ -318,21 +318,21 @@ bool Network::update_cmd( std::string& params, OutputStream& os )
 extern "C" void xNetworkDeInitialise();
 void Network::set_abort()
 {
+    abort_network = true;
 #if 0
     // FIXME this causes a HardFault
     if(enable_ftpd || enable_httpd) {
         FreeRTOS_TCPServerSignal(pxTCPServer);
     }
-    if(enable_shell) {
-        extern void shell_close(void);
-        shell_close();
-    }
     pxTCPServer = nullptr;
+    if(enable_shell) {
+        extern void shell_deinit(void);
+        shell_deinit();
+    }
 #else
     // at least stop interrupts
     xNetworkDeInitialise();
 #endif
-    abort_network = true;
 }
 
 /* Main TCP thread loop */

@@ -50,7 +50,7 @@ static int write_back(shell_t *p_shell, const char *rbuf, size_t len)
         if(p_shell->os->is_closed()) return 0;
         BaseType_t n = FreeRTOS_send(p_shell->socket, rbuf, sz, 0);
         if(n < 0) {
-            printf("shell: error writing: %ld\n", n);
+            printf("DEBUG: shell: error writing: %ld\n", n);
             // send signal to quit this socket
             FreeRTOS_SignalSocket(p_shell->socket);
             return 0;
@@ -89,7 +89,7 @@ static void close_shell(shell_t *p_shell)
 
     // Free shell state
     if(shells.erase(p_shell) != 1) {
-        printf("shell: erasing shell not found\n");
+        printf("DEBUG: shell: erasing shell not found\n");
     }
     free(p_shell);
 }
@@ -120,7 +120,7 @@ static void shell_thread(void *arg)
     struct freertos_sockaddr shell_saddr;
     SocketSet_t socketset;
 
-    printf("Network: Shell thread started\n");
+    printf("DEBUG: Network: Shell thread started\n");
 
     memset(&shell_saddr, 0, sizeof (shell_saddr));
 
@@ -128,27 +128,27 @@ static void shell_thread(void *arg)
     listenfd = FreeRTOS_socket(FREERTOS_AF_INET, FREERTOS_SOCK_STREAM, FREERTOS_IPPROTO_TCP);
     configASSERT( listenfd != FREERTOS_INVALID_SOCKET );
     if(listenfd == FREERTOS_INVALID_SOCKET) {
-        printf("shell_thread: ERROR: Socket create failed\n");
+        printf("ERROR: shell_thread: Socket create failed\n");
         return;
     }
 
     shell_saddr.sin_port = FreeRTOS_htons(23);
     BaseType_t err;
     if ((err = FreeRTOS_bind(listenfd, &shell_saddr, sizeof (shell_saddr))) != 0) {
-        printf("shell_thread: ERROR: Socket bind failed: %ld\n", err);
+        printf("ERROR: shell_thread: Socket bind failed: %ld\n", err);
         return;
     }
 
     /* Put socket into listening mode */
     if ((err = FreeRTOS_listen(listenfd, MAX_SERV)) != 0) {
-        printf("shell_thread: ERROR: Listen failed: %ld", err);
+        printf("ERROR: shell_thread: Listen failed: %ld", err);
         return;
     }
 
     // OutputStream garbage collector timer
     TimerHandle_t timer_handle = xTimerCreate("osgarbage", pdMS_TO_TICKS(1000), pdTRUE, nullptr, os_garbage_collector);
     if(timer_handle == NULL || xTimerStart(timer_handle, 1000) != pdPASS) {
-        printf("shell_thread: WARNING: Failed to start the osgarbage timer\n");
+        printf("WARNING: shell_thread: WARNING: Failed to start the osgarbage timer\n");
     }
 
 
@@ -173,12 +173,13 @@ static void shell_thread(void *arg)
 
         if(i < 0) {
             // we got an error
-            printf("shell: ERROR: select returned an error: %ld\n", i);
+            printf("ERROR: shell: select returned an error: %ld\n", i);
             break;
         }
 
         // At least one descriptor is ready
         if (FreeRTOS_FD_ISSET(listenfd, socketset)) {
+            if(abort_shell) break;
             // We have a new connection request create a new shell
             shell_t *p_shell = (shell_t *)malloc(sizeof(shell_t));
             if(p_shell != nullptr) {
@@ -223,7 +224,7 @@ static void shell_thread(void *arg)
                 if (sock != FREERTOS_INVALID_SOCKET) {
                     FreeRTOS_closesocket(sock);
                 }
-                printf("shell: out of memory on listen\n");
+                printf("ERROR: shell: out of memory on listen\n");
             }
         }
 
@@ -252,7 +253,7 @@ static void shell_thread(void *arg)
                         while(!send_message_queue(p_shell->line, p_shell->os, false)) {
                             // make sure we are still connected
                             if(FreeRTOS_issocketconnected(p_shell->socket) != pdTRUE) {
-                                printf("shell: socket disconnected while waiting for command thread\n");
+                                printf("DEBUG: shell: socket disconnected while waiting for command thread\n");
                                 close_shell(p_shell);
                                 break;
                             }
@@ -277,7 +278,7 @@ static void shell_thread(void *arg)
     xTimerDelete(timer_handle, 0);
     vTaskDelete(NULL);
 
-    printf("Network: Shell thread ended\n");
+    printf("DEBUG: Network: Shell thread ended\n");
 }
 
 void shell_init(void)
@@ -286,8 +287,9 @@ void shell_init(void)
     xTaskCreate(shell_thread, "shell_thread", 350, NULL, tskIDLE_PRIORITY + COMMS_PRI, NULL);
 }
 
-void shell_close()
+void shell_deinit()
 {
+    // FIXME this causes a HardFault
     abort_shell = true;
     FreeRTOS_SignalSocket(listenfd);
 }

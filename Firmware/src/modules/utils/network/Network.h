@@ -36,7 +36,7 @@ class Network : public Module {
         std::string hostname;
         std::string ntp_server;
 
-        bool abort_network{false};
+        volatile bool abort_network{false};
         bool enable_shell{false};
         bool enable_httpd{false};
         bool enable_ftpd{false};
