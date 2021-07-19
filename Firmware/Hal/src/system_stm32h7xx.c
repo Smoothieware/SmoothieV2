@@ -257,9 +257,13 @@ void SystemInit (void)
 	extern const unsigned char dtcm_data;
 	memcpy(&dtcm_text_start, &dtcm_data, (uint32_t) (&dtcm_text_end - &dtcm_text_start));
 
+	// clear DTCM BSS
+	extern unsigned char __dtcm_bss_start, __dtcm_bss_end;
+	memset(&__dtcm_bss_start, 0, (uint32_t) (&__dtcm_bss_end - &__dtcm_bss_start));
+
 	// clear SRAM_1 BSS
-	extern unsigned char __sram_1_start, __sram_1_data_end;
-	memset(&__sram_1_start, 0, (uint32_t) (&__sram_1_data_end - &__sram_1_start));
+	extern unsigned char __sram_1_start, __sram_1_end;
+	memset(&__sram_1_start, 0, (uint32_t) (&__sram_1_end - &__sram_1_start));
 }
 
 /**

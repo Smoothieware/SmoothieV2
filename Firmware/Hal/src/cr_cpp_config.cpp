@@ -12,12 +12,12 @@ extern "C" void setup_memory_pool()
     // so static ctors can use them
     extern uint8_t dtcm_text_end;
     extern uint8_t __top_DTCMRAM;
-    extern uint8_t __sram_1_data_end;
+    extern uint8_t __sram_1_end;
     extern uint8_t __top_SRAM_1;
 
     // alocate remaining area to memory pool
     _DTCMRAM= new MemoryPool(&dtcm_text_end, &__top_DTCMRAM - &dtcm_text_end);
-    _SRAM_1= new MemoryPool(&__sram_1_data_end, &__top_SRAM_1 - &__sram_1_data_end);
+    _SRAM_1= new MemoryPool(&__sram_1_end, &__top_SRAM_1 - &__sram_1_end);
 }
 
 void *operator new(size_t size)

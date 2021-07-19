@@ -31,29 +31,29 @@ REGISTER_TEST(MemoryTest, stats)
     TEST_ASSERT_TRUE(mem3.uordblks == mem.uordblks);
 }
 
-char test_ram2_bss[128] __attribute__ ((section (".dtcm_text")));
-char test_ram3_bss[128] __attribute__ ((section (".sram_1_data")));
-__attribute__ ((section (".dtcm_text"))) char test_ram4_data[8]= {1,2,3,4,5,6,7,8};
+char test_dtcm_bss[128] __attribute__ ((section (".dtcm_bss")));
+char test_sram1_bss[128] __attribute__ ((section (".sram_1_bss")));
+ __attribute__ ((section (".dtcm_text"))) char test_dtcm_data[8]= {1,2,3,4,5,6,7,8};
 
 REGISTER_TEST(MemoryTest, other_rams)
 {
-    TEST_ASSERT_EQUAL_PTR(0x20000000, (unsigned int)&test_ram2_bss);
-    TEST_ASSERT_EQUAL_PTR(0x20000080, (unsigned int)&test_ram4_data);
-    TEST_ASSERT_EQUAL_PTR(0x30000000, (unsigned int)&test_ram3_bss);
+    TEST_ASSERT_EQUAL_PTR(0x20000000, (unsigned int)&test_dtcm_data);
+    TEST_ASSERT_EQUAL_PTR(0x20000018, (unsigned int)&test_dtcm_bss);
+    TEST_ASSERT_EQUAL_PTR(0x30000000, (unsigned int)&test_sram1_bss);
 
     // check bss was cleared
     for (int i = 0; i < 128; ++i) {
-        TEST_ASSERT_EQUAL_INT(0, test_ram2_bss[i]);
+        TEST_ASSERT_EQUAL_INT(0, test_dtcm_bss[i]);
     }
 
     // check bss was cleared
     for (int i = 0; i < 128; ++i) {
-        TEST_ASSERT_EQUAL_INT(0, test_ram3_bss[i]);
+        TEST_ASSERT_EQUAL_INT(0, test_sram1_bss[i]);
     }
 
     // check data areas were copied
     for (int i = 0; i < 8; ++i) {
-        TEST_ASSERT_EQUAL_INT(i+1, test_ram4_data[i]);
+        TEST_ASSERT_EQUAL_INT(i+1, test_dtcm_data[i]);
     }
 }
 

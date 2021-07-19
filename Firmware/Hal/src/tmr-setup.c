@@ -7,7 +7,7 @@
 
 // TODO move ramfunc define to a utils.h
 #define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
-#define _fast_data_ __attribute__ ((section(".dtcm_text")))
+#define _fast_data_ __attribute__ ((section(".dtcm_bss")))
 
 _fast_data_ static void (*tick_handler)();
 _fast_data_ static void (*untick_handler)();
@@ -19,14 +19,14 @@ static void (*fasttick_handler)();
 #define STEP_TIM_IRQn                        TIM3_IRQn
 #define STEP_TIM_IRQHandler                  TIM3_IRQHandler
 
-_fast_data_ static TIM_HandleTypeDef StepTimHandle={0};
+_fast_data_ static TIM_HandleTypeDef StepTimHandle;
 
 #define UNSTEP_TIM                             TIM4
 #define UNSTEP_TIM_CLK_ENABLE                  __HAL_RCC_TIM4_CLK_ENABLE
 #define UNSTEP_TIM_IRQn                        TIM4_IRQn
 #define UNSTEP_TIM_IRQHandler                  TIM4_IRQHandler
 
-_fast_data_ static TIM_HandleTypeDef UnStepTimHandle={0};
+_fast_data_ static TIM_HandleTypeDef UnStepTimHandle;
 
 #define FASTTICK_TIM                             TIM2
 #define FASTTICK_TIM_CLK_ENABLE                  __HAL_RCC_TIM2_CLK_ENABLE

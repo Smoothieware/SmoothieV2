@@ -148,7 +148,7 @@ SECTIONS
 
   /* Uninitialized data section */
   . = ALIGN(4);
-  .bss :
+  .bss (NOLOAD) :
   {
     /* This is used by the startup in order to initialize the .bss section */
     _sbss = .;         /* define a global symbol at bss start */
@@ -163,7 +163,7 @@ SECTIONS
   } >AXI_SRAM
 
   /* User_heap_stack section, used to check that there is enough RAM left */
-  ._user_heap_stack :
+  ._user_heap_stack (NOLOAD) :
   {
     . = ALIGN(8);
     PROVIDE ( end = . );
@@ -178,7 +178,7 @@ SECTIONS
   PROVIDE(__HeapTop = 0x24080000);
 
   /* copy vector table here */
-  .itcm_vectors :
+  .itcm_vectors (NOLOAD):
   {
     itcm_vectors_start = .;
     . = . + (__vectors_end__ - __vectors_start__);
@@ -209,6 +209,14 @@ SECTIONS
     dtcm_text_end = .;
   } >DTCMRAM AT> FLASH
 
+  .dtcm_bss (NOLOAD) :
+  {
+    . = ALIGN(4);
+    __dtcm_bss_start = .;
+    *(.dtcm_bss*)
+    __dtcm_bss_end = .;
+  } >DTCMRAM
+
   /* force the flashloader bin to the end of the image so we can easily check the magic number */
   .flashload_o :
   {
@@ -216,15 +224,16 @@ SECTIONS
   	*(.flashloader_data)
   } >FLASH
 
- .sram_1_data (NOLOAD) :
+ .sram_1_bss (NOLOAD) :
   {
-    PROVIDE_HIDDEN (__sram_1_start = .);
-    KEEP (*(SORT(.sram_1_data.*)))
-    KEEP (*(.sram_1_data*))
-    PROVIDE_HIDDEN (__sram_1_data_end = .);
+    __sram_1_start = .;
+    *(.sram_1_data.*)
+    *(.sram_1_data*)
+    *(.sram_1_bss*)
+    __sram_1_end = .;
   } >SRAM_1
 
-  .ethernet_data (NOLOAD) :
+  .ethernet_bss (NOLOAD) :
   {
     PROVIDE_HIDDEN (__ethernet_data_start = .);
     KEEP (*(SORT(.ethernet_data.*)))
