@@ -1849,7 +1849,7 @@ bool CommandShell::edit_cmd(std::string& params, OutputStream& os)
 
     os.set_no_response(true);
     if(is_busy()) {
-        os.printf("FAIL - download not allowed while printing or heaters are on\n");
+        os.printf("FAIL - ed not allowed while printing or heaters are on\n");
         return true;
     }
 
