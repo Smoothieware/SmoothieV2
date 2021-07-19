@@ -1757,8 +1757,9 @@ bool CommandShell::msc_cmd(std::string& params, OutputStream& os)
     FastTicker::getInstance()->stop();
     StepTicker::getInstance()->stop();
     Adc::stop();
-    set_abort_comms(); // should also shutdown Network
-    // shutdown_cdc();
+    set_abort_comms(); // this should also shutdown Network
+    stop_uart();
+
     vTaskSuspendAll();
     vTaskEndScheduler();
     taskENABLE_INTERRUPTS();
