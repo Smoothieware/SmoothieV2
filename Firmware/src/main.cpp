@@ -498,6 +498,7 @@ static void usb_comms(void *param)
 
         // create an output stream that writes to the cdc
         OutputStream *os = new OutputStream([inst](const char *buf, size_t len) { return write_cdc(inst, buf, len); });
+        os->set_is_usb();
         output_streams.insert(os);
         vTaskDelay(pdMS_TO_TICKS(100));
         os->printf("Welcome to Smoothie\nok\n");

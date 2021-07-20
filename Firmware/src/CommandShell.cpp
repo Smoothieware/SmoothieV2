@@ -1421,6 +1421,11 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
         return true;
     }
 
+    if(!os.is_usb()) {
+        os.printf("FAIL - download only allowed over USB\n");
+        return true;
+    }
+
     char *e = NULL;
     ssize_t file_size = strtol(sizestr.c_str(), &e, 10);
     if (e <= sizestr.c_str() || file_size <= 0) {

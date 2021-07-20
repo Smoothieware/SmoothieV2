@@ -15,9 +15,9 @@ class OutputStream
 public:
 	using wrfnc = std::function<size_t(const char *buffer, size_t size)>;
 	// create a null output stream
-	OutputStream() : xWriteMutex(nullptr), os(nullptr), fdbuf(nullptr), deleteos(false) { closed= uploading= false; clear_flags(); };
+	OutputStream() : xWriteMutex(nullptr), os(nullptr), fdbuf(nullptr), deleteos(false) { usb_flag= closed= uploading= false; clear_flags(); };
 	// create from an existing ostream
-	OutputStream(std::ostream *o) : xWriteMutex(nullptr), os(o), fdbuf(nullptr), deleteos(false) { closed= uploading= false; clear_flags(); };
+	OutputStream(std::ostream *o) : xWriteMutex(nullptr), os(o), fdbuf(nullptr), deleteos(false) { usb_flag= closed= uploading= false; clear_flags(); };
 	// create using a supplied write fnc
 	OutputStream(wrfnc f);
 
@@ -43,6 +43,8 @@ public:
     bool is_uploading() const { return uploading; }
     void set_stop_request(bool flg) { stop_request= flg; }
     bool get_stop_request() const { return stop_request; }
+    bool is_usb() const { return usb_flag; }
+    void set_is_usb() { usb_flag = true; }
 
     std::function<void(char)> capture_fnc;
     std::function<bool(char*, size_t)> fast_capture_fnc;
@@ -74,5 +76,6 @@ private:
 		bool no_response: 1;
 		bool done:1;
 		bool stop_request:1;
+        bool usb_flag:1;
 	};
 };

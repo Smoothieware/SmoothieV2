@@ -14,7 +14,7 @@ OutputStream::OutputStream(wrfnc f) : deleteos(true)
 {
 	clear_flags();
 	stop_request= false;
-    closed= uploading= false;
+    usb_flag= closed= uploading= false;
 	// create an output stream using the given write fnc
 	fdbuf = new FdBuf(this, f);
 	os = new std::ostream(fdbuf);
