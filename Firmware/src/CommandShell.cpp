@@ -1412,7 +1412,7 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
     os.set_no_response(true);
 
     if(fn.empty() || sizestr.empty()) {
-        os.printf("Usage: dl filename size\n");
+        os.printf("FAIL - Usage dl filename size\n");
         return true;
     }
 

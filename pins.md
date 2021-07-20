@@ -112,6 +112,13 @@ not 5v tolerant
 | PE9 | PWM1_1 |
 +-----+--------+
 
+Prime
++------+------------------+
+| PF11 | MSD LED          |
+| PJ14 | BOOT0_DETECT/MSD |
++------+------------------+
+
+
 # Gadgeteer headers
 ## GA
 | hdr | pin  | func         |

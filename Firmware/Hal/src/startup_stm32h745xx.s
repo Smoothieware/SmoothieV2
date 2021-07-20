@@ -92,10 +92,10 @@ LoopFillZerobss:
   cmp  r2, r3
   bcc  FillZerobss
 
-/* setup memory pools */
-  bl setup_memory_pool
 /* Call the clock system initialization function.*/
   bl  SystemInit
+/* setup memory pools */
+  bl setup_memory_pool
 /* Call static constructors */
     bl __libc_init_array
 /* Call the application's entry point.*/

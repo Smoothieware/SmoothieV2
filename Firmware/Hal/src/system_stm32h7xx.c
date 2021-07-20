@@ -84,7 +84,7 @@
 /*#define DATA_IN_ExtSDRAM*/
 
 /*!< Uncomment the following line if you need to use initialized data in D2 domain SRAM  */
-/* #define DATA_IN_D2_SRAM */
+#define DATA_IN_D2_SRAM
 
 /*!< Uncomment the following line if you need to relocate your vector Table in
      Internal SRAM. */
@@ -216,8 +216,6 @@ void SystemInit (void)
 	tmpreg = RCC->AHB2ENR;
 	(void) tmpreg;
 #endif /* DATA_IN_D2_SRAM */
-
-
 
 	/*
 	   * Disable the FMC bank1 (enabled after reset).

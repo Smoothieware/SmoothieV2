@@ -4,6 +4,8 @@
 #include "FreeRTOS.h" // defines public interface we're implementing here
 #include "task.h" // defines public interface we're implementing here
 
+#include <cstring>
+
 #ifdef MEMDEBUG
     #define MDEBUG(...) printf(__VA_ARGS__)
 #else
@@ -52,6 +54,8 @@ MemoryPool* MemoryPool::first = NULL;
 
 MemoryPool::MemoryPool(void* _base, uint32_t _size)
 {
+    // clear it first
+    //memset(_base, 0, _size);
     this->base = _base;
     this->size = _size;
 

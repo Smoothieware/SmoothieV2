@@ -22,7 +22,7 @@
 
 #include "benchmark_timer.h"
 
-#define TESTCOMMS
+//#define TESTCOMMS
 
 // // place holder
 bool dispatch_line(OutputStream& os, const char *line)
