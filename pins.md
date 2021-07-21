@@ -51,7 +51,7 @@ pins used on the headers when selecting a function in the Firmware
 |            |         |                          |
 | I2C1 SCL   | PA8     | n/a on devebox           |
 | I2C1 SDA   | PH8     |                          |
-+------------+---------+--------------------------+
+
 
 # USB
 | Name       | pin     | comment                  |
@@ -65,7 +65,6 @@ pins used on the headers when selecting a function in the Firmware
 | USB1vbus   | PB13    | Host Device              |
 | USB1dm     | PB14    | Host Device              |
 | USB1dp     | PB15    | Host Device              |
-+------------+---------+--------------------------+
 
 # SDCard 
 
@@ -78,7 +77,7 @@ pins used on the headers when selecting a function in the Firmware
 | SDMMC      | PC11    |                          |
 | SDMMC      | PC12    |                          |
 | SDMMC      | PD2     |                          |
-+------------+---------+--------------------------+
+
 
 # Ethernet
 
@@ -93,7 +92,7 @@ pins used on the headers when selecting a function in the Firmware
 | RXD0       | PC4     |                          |
 | RXD1       | PC5     |                          |
 | TXD1       | PG14    | PB13                     |
-+------------+---------+--------------------------+
+
 
 # Quad SPI
 
@@ -105,9 +104,8 @@ pins used on the headers when selecting a function in the Firmware
 | IO3      | PD13  |         |
 | NCS      | PB6   |         |
 | CLK      | PB2   |         |
-+----------+-------+---------+
 
-## not 5v tolerant 
+# not 5v tolerant 
 
 | pin     | comment                  |
 | ------- | ------------------------ |
@@ -118,7 +116,7 @@ pins used on the headers when selecting a function in the Firmware
 | PG1     |                          |
 | PA5     | SPI0CK                   |
 | PE9     | PWM1_1                   |
-+---------+--------------------------+
+
 
 # Nucleo Board
 
@@ -128,50 +126,48 @@ pins used on the headers when selecting a function in the Firmware
 | LED2       | PE1     |                          |
 | LED3       | PB14    |                          |
 | BUT        | PC13    |                          |
-+------------+---------+--------------------------+
 
 # Prime Board
 
-| pin        | function         | comment                  |
-| ---------- | -------          | ------------------------ |
-| PF11       | MSD LED          |                          |
-| PJ14       | BOOT0_DETECT/MSD |                          |
-| PH9        | LED1             |                          |
-| PH10       | LED2             |                          |
-| PH11       | LED3             |                          |
-| PH12       | LED4             |                          |
-+------------+------------------+--------------------------+
+| function         | pin   | comment                  |
+| ----------       | ----- | ------------------------ |
+| MSD LED          | PF11  |                          |
+| BOOT0_DETECT/MSD | PJ14  |                          |
+| LED1             | PH9   |                          |
+| LED2             | PH10  |                          |
+| LED3             | PH11  |                          |
+| LED4             | PH12  |                          |
+
 
 # Gadgeteer headers
 
 ## GA
 
-| hdr        | pin     | func                     |
-| ---------- | ------- | ------------------------ |
-| 1          |         | 3v3                      |
-| 2          |         | 5v                       |
-| 3          | PJ6     |                          |
-| 4          | PJ9     |                          |
-| 5          | PJ10    |                          |
-| 6          | PJ11    |                          |
-| 7          | PB5     | mot spi MOSI             |
-| 8          | PE6     | mot spi MISO             |
-| 9          | PE12    | mot spi CLK              |
-| 10         |         | gnd                      |
-+------------+---------+--------------------------+
+| hdr  | pin     | func                     |
+| ---- | ------- | ------------------------ |
+| 1    |         | 3v3                      |
+| 2    |         | 5v                       |
+| 3    | PJ6     |                          |
+| 4    | PJ9     |                          |
+| 5    | PJ10    |                          |
+| 6    | PJ11    |                          |
+| 7    | PB5     | mot spi MOSI             |
+| 8    | PE6     | mot spi MISO             |
+| 9    | PE12    | mot spi CLK              |
+| 10   |         | gnd                      |
 
 ## GB
 
-| hdr        | pin     | func                     |
-| ---------- | ------- | ------------------------ |
-| 1          |         | 3v3                      |
-| 2          |         | 5v                       |
-| 3          |         |                          |
-| 4          |         |                          |
-| 5          |         |                          |
-| 6          |         |                          |
-| 7          |         |                          |
-| 8          |         |                          |
-| 9          |         |                          |
-| 10         |         | gnd                      |
-+------------+---------+--------------------------+
+| hdr  | pin     | func                     |
+| ---- | ------- | ------------------------ |
+| 1    |         | 3v3                      |
+| 2    |         | 5v                       |
+| 3    |         |                          |
+| 4    |         |                          |
+| 5    |         |                          |
+| 6    |         |                          |
+| 7    |         |                          |
+| 8    |         |                          |
+| 9    |         |                          |
+| 10   |         | gnd                      |
+
