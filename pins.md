@@ -55,7 +55,7 @@ pins used on the headers when selecting a function in the Firmware
 
 # USB
 
-+------------+---------+--------------------------+
+
 | USB2vbus   | PA9     | ACM/CDC Device           |
 | USB2id     | PA10    | ACM/CDC Device           |
 | USB2       | PA11    | ACM/CDC Device           |
