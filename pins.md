@@ -51,13 +51,10 @@ pins used on the headers when selecting a function in the Firmware
 |            |         |                          |
 | I2C1 SCL   | PA8     | n/a on devebox           |
 | I2C1 SDA   | PH8     |                          |
-|            |         |                          |
-| LED1       | PB0     | Nucleo                   |
-| LED2       | PE1     | Nucleo                   |
-| LED3       | PB14    | Nucleo                   |
-| BUT        | PC13    | Nucleo                   |
 +------------+---------+--------------------------+
-| USB        |         |                          |
+
+# USB
+
 +------------+---------+--------------------------+
 | USB2vbus   | PA9     | ACM/CDC Device           |
 | USB2id     | PA10    | ACM/CDC Device           |
@@ -69,7 +66,9 @@ pins used on the headers when selecting a function in the Firmware
 | USB1dm     | PB14    | Host Device              |
 | USB1dp     | PB15    | Host Device              |
 +------------+---------+--------------------------+
-| SDCard     |         |                          |
+
+# SDCard 
+
 +------------+---------+--------------------------+
 | SDMMCDET   | PG10    |                          |
 | SDMMC      | PC8     |                          |
@@ -79,29 +78,35 @@ pins used on the headers when selecting a function in the Firmware
 | SDMMC      | PC12    |                          |
 | SDMMC      | PD2     |                          |
 +------------+---------+--------------------------+
-| Ethernet   | Prime   | Nucleo                   |
-+------------+---------+--------------------------+
-| RX_CLK     | PA1     |                          |
-| MDIO       | PA2     |                          |
-| RX_DV      | PA7     |                          |
-| TX_EN      | PB11    | PG11                     |
-| TXD0       | PB12    | PG13                     |
-| MDC        | PC1     |                          |
-| RXD0       | PC4     |                          |
-| RXD1       | PC5     |                          |
-| TXD1       | PG14    | PB13                     |
-+------------+---------+--------------------------+
-| Quad SPI   | Prime   | Devebox                  |
-+------------+---------+--------------------------+
-| IO0        | PD11    |                          |
-| IO1        | PF9     | PD12                     |
-| IO2        | PE2     |                          |
-| IO3        | PD13    |                          |
-| NCS        | PB6     |                          |
-| CLK        | PB2     |                          |
-+------------+---------+--------------------------+
 
-not 5v tolerant 
+# Ethernet
+
+| Name     | Prime | Nucleo  |
++----------+-------+---------+
+| RX_CLK   | PA1   |         |
+| MDIO     | PA2   |         |
+| RX_DV    | PA7   |         |
+| TX_EN    | PB11  | PG11    |
+| TXD0     | PB12  | PG13    |
+| MDC      | PC1   |         |
+| RXD0     | PC4   |         |
+| RXD1     | PC5   |         |
+| TXD1     | PG14  | PB13    |
++----------+-------+---------+
+
+# Quad SPI
+
++----------+-------+---------+
+| IO0      | PD11  |         |
+| IO1      | PF9   | PD12    |
+| IO2      | PE2   |         |
+| IO3      | PD13  |         |
+| NCS      | PB6   |         |
+| CLK      | PB2   |         |
++----------+-------+---------+
+
+## not 5v tolerant 
+
 +-----+--------+
 | PE8 |        |
 | PE7 |        |
@@ -112,15 +117,30 @@ not 5v tolerant
 | PE9 | PWM1_1 |
 +-----+--------+
 
-Prime
+# Nucleo Board
+
++------+------+
+| LED1 | PB0  |
+| LED2 | PE1  |
+| LED3 | PB14 |
+| BUT  | PC13 |
++------+------+
+
+# Prime Board
+
 +------+------------------+
 | PF11 | MSD LED          |
 | PJ14 | BOOT0_DETECT/MSD |
+| PH9  | LED1             |
+| PH10 | LED2             |
+| PH11 | LED3             |
+| PH12 | LED4             |
 +------+------------------+
 
-
 # Gadgeteer headers
+
 ## GA
+
 | hdr | pin  | func         |
 +-----+------+--------------+
 | 1   |      | 3v3          |
@@ -136,6 +156,7 @@ Prime
 +-----+------+--------------+
 
 ## GB
+
 | hdr | pin | func |
 +-----+-----+------+
 | 1   |     | 3v3  |

@@ -1809,24 +1809,6 @@ bool CommandShell::msc_cmd(std::string& params, OutputStream& os)
     vTaskEndScheduler();
     taskENABLE_INTERRUPTS();
 
-#if 0
-    if(STORAGE_IsReady(0) != 0) {
-        printf("STORAGE_IsReady says not ready\n");
-    } else {
-        printf("STORAGE_IsReady says ready\n");
-    }
-
-    uint8_t buf[512];
-    for (int i = 1; i < 100; ++i) {
-        int8_t ret;
-        if((ret = STORAGE_Read(0, buf, i, 1)) != 0) {
-            printf("error %d reading block %d\n", ret, i);
-            __asm("bkpt #0");
-        }
-        printf("Read block %d: %02X%02X\n", i, buf[0], buf[1]);
-    }
-#endif
-
     // now startup MSC
     UsbDevice_Init_MSC();
     printf("DEBUG: MSC is now running\n");

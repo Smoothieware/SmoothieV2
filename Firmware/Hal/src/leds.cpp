@@ -1,18 +1,26 @@
 #include "Pin.h"
 
+#if defined(BOARD_PRIME)
+    Pin("PH9", Pin::AS_OUTPUT),
+    Pin("PH10", Pin::AS_OUTPUT),
+    Pin("PH11", Pin::AS_OUTPUT),
+    Pin("PH12", Pin::AS_OUTPUT),
+#define NLEDS 4
 
-#ifdef BOARD_NUCLEO
+#elif definr(BOARD_NUCLEO)
 static Pin leds[] = {
 	Pin("PB0", Pin::AS_OUTPUT),
 	Pin("PE.1", Pin::AS_OUTPUT),
 	Pin("PB_14", Pin::AS_OUTPUT),
 };
 #define NLEDS 3
+
 #elif defined(BOARD_DEVEBOX)
 static Pin leds[] = {
 	Pin("PA1", Pin::AS_OUTPUT),
 };
 #define NLEDS 1
+
 #else
 	#error unrecognized board
 #endif
