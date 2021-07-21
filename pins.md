@@ -53,9 +53,9 @@ pins used on the headers when selecting a function in the Firmware
 | I2C1 SDA   | PH8     |                          |
 +------------+---------+--------------------------+
 
-# USB
+USB
 
-
++------------+---------+--------------------------+
 | USB2vbus   | PA9     | ACM/CDC Device           |
 | USB2id     | PA10    | ACM/CDC Device           |
 | USB2       | PA11    | ACM/CDC Device           |
@@ -67,7 +67,7 @@ pins used on the headers when selecting a function in the Firmware
 | USB1dp     | PB15    | Host Device              |
 +------------+---------+--------------------------+
 
-# SDCard 
+SDCard 
 
 +------------+---------+--------------------------+
 | SDMMCDET   | PG10    |                          |
@@ -79,7 +79,7 @@ pins used on the headers when selecting a function in the Firmware
 | SDMMC      | PD2     |                          |
 +------------+---------+--------------------------+
 
-# Ethernet
+Ethernet
 
 | Name     | Prime | Nucleo  |
 +----------+-------+---------+
@@ -94,7 +94,7 @@ pins used on the headers when selecting a function in the Firmware
 | TXD1     | PG14  | PB13    |
 +----------+-------+---------+
 
-# Quad SPI
+Quad SPI
 
 +----------+-------+---------+
 | IO0      | PD11  |         |
@@ -105,7 +105,7 @@ pins used on the headers when selecting a function in the Firmware
 | CLK      | PB2   |         |
 +----------+-------+---------+
 
-## not 5v tolerant 
+not 5v tolerant 
 
 +-----+--------+
 | PE8 |        |
@@ -117,7 +117,7 @@ pins used on the headers when selecting a function in the Firmware
 | PE9 | PWM1_1 |
 +-----+--------+
 
-# Nucleo Board
+Nucleo Board
 
 +------+------+
 | LED1 | PB0  |
@@ -126,7 +126,7 @@ pins used on the headers when selecting a function in the Firmware
 | BUT  | PC13 |
 +------+------+
 
-# Prime Board
+Prime Board
 
 +------+------------------+
 | PF11 | MSD LED          |
@@ -137,9 +137,9 @@ pins used on the headers when selecting a function in the Firmware
 | PH12 | LED4             |
 +------+------------------+
 
-# Gadgeteer headers
+Gadgeteer headers
 
-## GA
+GA
 
 | hdr | pin  | func         |
 +-----+------+--------------+
@@ -155,7 +155,7 @@ pins used on the headers when selecting a function in the Firmware
 | 10  |      | gnd          |
 +-----+------+--------------+
 
-## GB
+GB
 
 | hdr | pin | func |
 +-----+-----+------+
