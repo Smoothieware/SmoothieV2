@@ -11,6 +11,9 @@ public:
     static CommandShell *getInstance() { if(instance==nullptr) instance= new CommandShell(); return instance; }
     static bool is_busy();
 
+    bool dfu_cmd(std::string& params, OutputStream& os);
+    bool flash_cmd(std::string& params, OutputStream& os);
+
 private:
     CommandShell();
     ~CommandShell(){};
@@ -51,9 +54,7 @@ private:
     bool truncate_cmd(std::string& params, OutputStream& os);
     bool break_cmd(std::string& params, OutputStream& os);
     bool reset_cmd(std::string& params, OutputStream& os);
-    bool flash_cmd(std::string& params, OutputStream& os);
     bool qspi_cmd(std::string& params, OutputStream& os);
-    bool dfu_cmd(std::string& params, OutputStream& os);
     bool jog_cmd(std::string& params, OutputStream& os);
     bool edit_cmd(std::string& params, OutputStream& os);
     bool msc_cmd(std::string& params, OutputStream& os);

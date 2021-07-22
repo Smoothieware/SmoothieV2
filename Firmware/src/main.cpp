@@ -649,8 +649,9 @@ static void command_handler()
                 if(!CommandShell::is_busy()) {
                     print_to_all_consoles("DFU firmware download has been requested, going down for update\n");
                     vTaskDelay(pdMS_TO_TICKS(100));
-                    OutputStream nullos;
-                    dispatch_line(nullos, "dfu");
+                    OutputStream stdout_os(&std::cout);
+                    std::string str;
+                    CommandShell::getInstance()->dfu_cmd(str, stdout_os);
                     // we should not return from this, if we do it means the dfu loader is not in qspi
                     config_dfu_required  = 0; // disable it for now
                 } else {
@@ -994,7 +995,7 @@ static void smoothie_startup(void *)
     } while(0);
 
     // create the command shell, it is dependent on some of the above
-    CommandShell *shell = CommandShell::getInstance();
+    CommandShell *commandshell= CommandShell::getInstance();
 
     if(ok) {
         if(!fast_ticker->start()) {
@@ -1071,7 +1072,8 @@ static void smoothie_startup(void *)
         OutputStream os(&std::cout);
         if(check_flashme_file(os, false)) {
             // we have a valid flashme file, so flash
-            THEDISPATCHER->dispatch("flash", os);
+            std::string str;
+            commandshell->flash_cmd(str, os);
             // we should not get here, if we did there was a problem with the flashme.bin file
             printf("ERROR: Problem with the flashme.bin file, no update done\n");
             config_error_msg = "ERROR: There was a problem flashing the flashme.bin file, it seems to be invalid\n";
