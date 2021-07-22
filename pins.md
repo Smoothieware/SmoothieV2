@@ -131,7 +131,7 @@ pins used on the headers when selecting a function in the Firmware
 
 | function         | pin   | comment |
 | ----------       | ----- | ------- |
-| MSC LED          | PF11  |         |
+| MSC LED          | PF13  |         |
 | BOOT0_DETECT/MSC | PJ14  |         |
 | LED1             | PH9   |         |
 | LED2             | PH10  |         |
