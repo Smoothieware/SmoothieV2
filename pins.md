@@ -1,23 +1,22 @@
 Note the Name is not a chip designation, it is a mapping of the
 pins used on the headers when selecting a function in the Firmware
 
-
 | Name       | pin     | comment                  |
 | ---------- | ------- | ------------------------ |
-| ADC1_0     | PA0_C   | for thermistors only     |
-| ADC1_1     | PF11    |                          |
-| ADC1_2     | PF12    |                          |
-| ADC1_3     | PB0     |                          |
-| ADC1_4     | PC2     |                          |
-| ADC1_5     | PC3     |                          |
-| ADC1_6     | PA3     |                          |
-|            |         | for voltage only         |
-| ADC3_0     | PC0     | VMOT                     |
-| ADC3_1     | PF10    | VFET                     |
-| ADC3_2     | PF8     |                          |
-| ADC3_3     | PF6     |                          |
-| ADC3_4     | PF4     |                          |
-| ADC3_5     | PH5     |                          |
+| ADC1_0     | PA0_C   | T1 for thermistors only  |
+| ADC1_1     | PF11    | T4 board                 |
+| ADC1_2     | PF12    | T2                       |
+| ADC1_3     | PB0     | T3                       |
+| ADC1_4     | PC2     | G                        |
+| ADC1_5     | PC3     | G                        |
+| ADC1_6     | PA3     | G                        |
+|            |         |                          |
+| ADC3_0     | PC0     | N/C for voltage only     |
+| ADC3_1     | PF10    | B                        |
+| ADC3_2     | PF8     | VFET                     |
+| ADC3_3     | PF6     | B                        |
+| ADC3_4     | PF4     | B                        |
+| ADC3_5     | PH5     | VMOT                     |
 |            |         |                          |
 | PWM1_1     | PE9     |                          |
 | PWM1_2     | PE11    |                          |
