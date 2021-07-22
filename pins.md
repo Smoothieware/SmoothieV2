@@ -12,8 +12,8 @@ pins used on the headers when selecting a function in the Firmware
 | ADC1_5     | PC3     |                          |
 | ADC1_6     | PA3     |                          |
 |            |         |                          |
-| ADC3_0     | PC0     | for voltage inputs       |
-| ADC3_1     | PF10    |                          |
+| ADC3_0     | PC0     | VMOT                     |
+| ADC3_1     | PF10    | VFET                     |
 | ADC3_2     | PF8     |                          |
 | ADC3_3     | PF6     |                          |
 | ADC3_4     | PF4     |                          |
@@ -131,8 +131,8 @@ pins used on the headers when selecting a function in the Firmware
 
 | function         | pin   | comment |
 | ----------       | ----- | ------- |
-| MSD LED          | PF11  |         |
-| BOOT0_DETECT/MSD | PJ14  |         |
+| MSC LED          | PF11  |         |
+| BOOT0_DETECT/MSC | PJ14  |         |
 | LED1             | PH9   |         |
 | LED2             | PH10  |         |
 | LED3             | PH11  |         |
