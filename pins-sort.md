@@ -1,3 +1,5 @@
+| function         | pin   | comment                |
+| --               | --    | --                     |
 | ADC1_0           | PA0_C |                        |
 | RX_CLK           | PA1   |                        |
 | MDIO             | PA2   |                        |
