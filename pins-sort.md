@@ -15,9 +15,9 @@
 | USB2             | PA12  | ACM/CDC Device         |
 | ADC1_3           | PB0   | T3                     |
 |                  | PB1   |                        |
-| QSPI_CLK         | PB2   |                        |
+| QSPI_CLK         | PB2   | QSPI                   |
 | SPI0MOSI         | PB5   |                        |
-| QSPI_NCS         | PB6   |                        |
+| QSPI_NCS         | PB6   | QSPI                   |
 | SSR2             | PB7   |                        |
 | hotend_FET       | PB8   |                        |
 | UART4_TX         | PB9   | control port           |
@@ -80,7 +80,7 @@
 | ADC1_1           | PF11  | T4                     |
 | ADC1_2           | PF12  | T2                     |
 | MSC LED          | PF13  |                        |
-| OutputEnb        | PF14  |                        |
+| OutputEnb        | PF14  | mosfets                |
 | ESZN             | PF15  |                        |
 |                  | PG0   |                        |
 |                  | PG1   |                        |
@@ -106,6 +106,7 @@
 | LED2             | PH10  |                        |
 | LED3             | PH11  |                        |
 | LED4             | PH12  |                        |
+| Mot Enable       | PH13  |                        |
 | UART4_RX         | PH14  | control port           |
 | ESZN             | PH15  |                        |
 | ESZP             | PI0   |                        |

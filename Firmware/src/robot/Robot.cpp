@@ -94,10 +94,10 @@
 #define DEFAULT_EN_PIN(a)  default_stepper_pins[a][2]
 
 static const char* const default_stepper_pins[][3] = {
-    {"PJ1", "PJ2",  "nc"}, // X step, dir, enb
-    {"PJ3", "PJ4",  "nc"}, // Y step, dir, enb
-    {"PJ5", "PJ6",  "nc"}, // Z step, dir, enb
-    {"PJ7", "PJ8",  "nc"}, // A step, dir, enb
+    {"PD3", "PD4",  "nc"}, // X step, dir, enb
+    {"PK2", "PG2",  "nc"}, // Y step, dir, enb
+    {"PG3", "PG4",  "nc"}, // Z step, dir, enb
+    {"PC6", "PG5",  "nc"}, // A step, dir, enb
     {"nc", "nc", "nc"}, // B step, dir, enb
     {"nc", "nc","nc"}, // C step, dir, enb
 };

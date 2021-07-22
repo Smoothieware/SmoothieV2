@@ -32,8 +32,6 @@ pins used on the headers when selecting a function in the Firmware
 | UART3_TX   | PD8     | Debug nucleo             |
 | UART2_RX   | PD6     | debug prime              |
 | UART2_TX   | PD5     | debug prime              |
-| UART2_CTS  | PD3     | n/c                      |
-| UART2_RTS  | PD4     | n/c                      |
 | UART4_RX   | PH14    | control port             |
 | UART4_TX   | PB9     | control port             |
 |            |         |                          |
