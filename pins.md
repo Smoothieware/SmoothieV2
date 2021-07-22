@@ -4,14 +4,14 @@ pins used on the headers when selecting a function in the Firmware
 
 | Name       | pin     | comment                  |
 | ---------- | ------- | ------------------------ |
-| ADC1_0     | PA0_C   | for thermistors          |
+| ADC1_0     | PA0_C   | for thermistors only     |
 | ADC1_1     | PF11    |                          |
 | ADC1_2     | PF12    |                          |
 | ADC1_3     | PB0     |                          |
 | ADC1_4     | PC2     |                          |
 | ADC1_5     | PC3     |                          |
 | ADC1_6     | PA3     |                          |
-|            |         |                          |
+|            |         | for voltage only         |
 | ADC3_0     | PC0     | VMOT                     |
 | ADC3_1     | PF10    | VFET                     |
 | ADC3_2     | PF8     |                          |
