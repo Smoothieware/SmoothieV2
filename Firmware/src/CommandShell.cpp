@@ -1817,7 +1817,7 @@ bool CommandShell::msc_cmd(std::string& params, OutputStream& os)
     printf("DEBUG: MSC is now running\n");
 
     // msc led flashes when in msc mode
-    Pin msc_led("PF11", Pin::AS_OUTPUT);
+    Pin msc_led("PF13", Pin::AS_OUTPUT);
     // as nothing else can happen and MSC runs under Interrupts we sit in a tight loop here waiting for it to end
     uint32_t flash_time = HAL_GetTick();
     while(true) {
