@@ -38,9 +38,12 @@
 
 #define HELP(m) if(params == "-h") { os.printf("%s\n", m); return true; }
 
+CommandShell* CommandShell::instance= nullptr;
+
 CommandShell::CommandShell()
 {
     mounted = false;
+    initialize();
 }
 
 bool CommandShell::initialize()

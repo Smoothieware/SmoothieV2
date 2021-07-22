@@ -42,8 +42,6 @@ extern "C" {
 }
 
 static bool system_running = false;
-// static bool rpi_port_enabled = false;
-// static uint32_t rpi_baudrate = 115200;
 static Pin *aux_play_led = nullptr;
 extern "C" int config_dfu_required;
 extern "C" int config_second_usb_serial;
@@ -827,9 +825,7 @@ static void smoothie_startup(void *)
                 printf("INFO: grbl mode %s\n", f ? "set" : "not set");
                 config_override = cr.get_bool(m, "config-override", false);
                 printf("INFO: use config override is %s\n", config_override ? "set" : "not set");
-                // rpi_port_enabled = cr.get_bool(m, "rpi_port_enable", false);
-                // rpi_baudrate = cr.get_int(m, "rpi_baudrate", 115200);
-                // printf("INFO: rpi port is %senabled, at baudrate: %lu\n", rpi_port_enabled ? "" : "not ", rpi_baudrate);
+
                 std::string p = cr.get_string(m, "aux_play_led", "nc");
                 aux_play_led = new Pin(p.c_str(), Pin::AS_OUTPUT);
                 if(!aux_play_led->connected()) {
@@ -838,6 +834,7 @@ static void smoothie_startup(void *)
                 } else {
                     printf("INFO: auxilliary play led set to %s\n", aux_play_led->to_string().c_str());
                 }
+
                 flash_on_boot = cr.get_bool(m, "flash_on_boot", true);
                 printf("INFO: flash on boot is %s\n", flash_on_boot ? "enabled" : "disabled");
                 bool enable_dfu = cr.get_bool(m, "dfu_enable", false);
@@ -996,9 +993,8 @@ static void smoothie_startup(void *)
         ok = true;
     } while(0);
 
-    // create the commandshell, it is dependent on some of the above
-    CommandShell *shell = new CommandShell();
-    shell->initialize();
+    // create the command shell, it is dependent on some of the above
+    CommandShell *shell = CommandShell::getInstance();
 
     if(ok) {
         if(!fast_ticker->start()) {

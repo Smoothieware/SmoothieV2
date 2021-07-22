@@ -8,13 +8,15 @@ class GCode;
 class CommandShell
 {
 public:
-    CommandShell();
-    ~CommandShell(){};
-
-    bool initialize();
+    static CommandShell *getInstance() { if(instance==nullptr) instance= new CommandShell(); return instance; }
     static bool is_busy();
 
 private:
+    CommandShell();
+    ~CommandShell(){};
+    static CommandShell *instance;
+    bool initialize();
+
     bool truncate_file(const char *fn, int size, OutputStream& os);
 
     // commands

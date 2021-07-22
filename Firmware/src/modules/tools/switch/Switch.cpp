@@ -101,7 +101,7 @@ bool Switch::configure(ConfigReader& cr, ConfigReader::section_map_t& m)
 
         // input pin polling
         // TODO we should only have one of these in Switch and call each switch instance
-        SlowTicker::getInstance()->attach(100, std::bind(&Switch::pinpoll_tick, this));
+        SlowTicker::getInstance()->attach(50, std::bind(&Switch::pinpoll_tick, this));
         is_input= true;
         output_type= NONE;
         return true;
@@ -504,10 +504,7 @@ void Switch::handle_switch_changed()
 }
 
 // Check the state of the button and act accordingly
-// This is an ISR
-// we need to protect switch_state from concurrent access so it is an atomic_bool
 // this just sets the state and lets handle_switch_changed() change the actual pins
-// TODO however if there is no output_on_command and output_off_command set it could set the pins here instead
 // FIXME there is a race condition where if the button is pressed and released faster than the command loop runs then it will not see the button as active
 void Switch::pinpoll_tick()
 {

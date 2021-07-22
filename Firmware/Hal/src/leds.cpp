@@ -7,7 +7,7 @@
     Pin("PH12", Pin::AS_OUTPUT),
 #define NLEDS 4
 
-#elif definr(BOARD_NUCLEO)
+#elif defined(BOARD_NUCLEO)
 static Pin leds[] = {
 	Pin("PB0", Pin::AS_OUTPUT),
 	Pin("PE.1", Pin::AS_OUTPUT),

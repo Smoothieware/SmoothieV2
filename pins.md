@@ -68,106 +68,106 @@ pins used on the headers when selecting a function in the Firmware
 
 # SDCard 
 
-| Name       | pin     | comment                  |
-| ---------- | ------- | ------------------------ |
-| SDMMCDET   | PG10    |                          |
-| SDMMC      | PC8     |                          |
-| SDMMC      | PC9     |                          |
-| SDMMC      | PC10    |                          |
-| SDMMC      | PC11    |                          |
-| SDMMC      | PC12    |                          |
-| SDMMC      | PD2     |                          |
+| Name       | pin     | comment |
+| ---------- | ------- | ------- |
+| SDMMCDET   | PG10    |         |
+| SDMMC      | PC8     |         |
+| SDMMC      | PC9     |         |
+| SDMMC      | PC10    |         |
+| SDMMC      | PC11    |         |
+| SDMMC      | PC12    |         |
+| SDMMC      | PD2     |         |
 
 
 # Ethernet
 
-| Name       | Prime   | Nucleo                   |
-| ---------- | ------- | ------------------------ |
-| RX_CLK     | PA1     |                          |
-| MDIO       | PA2     |                          |
-| RX_DV      | PA7     |                          |
-| TX_EN      | PB11    | PG11                     |
-| TXD0       | PB12    | PG13                     |
-| MDC        | PC1     |                          |
-| RXD0       | PC4     |                          |
-| RXD1       | PC5     |                          |
-| TXD1       | PG14    | PB13                     |
+| Name       | Prime   | Nucleo  |
+| ---------- | ------- | ------- |
+| RX_CLK     | PA1     |         |
+| MDIO       | PA2     |         |
+| RX_DV      | PA7     |         |
+| TX_EN      | PB11    | PG11    |
+| TXD0       | PB12    | PG13    |
+| MDC        | PC1     |         |
+| RXD0       | PC4     |         |
+| RXD1       | PC5     |         |
+| TXD1       | PG14    | PB13    |
 
 
 # Quad SPI
 
-| Name       | pin     | comment                  |
-| ---------- | ------- | ------------------------ |
-| IO0      | PD11  |         |
-| IO1      | PF9   | PD12    |
-| IO2      | PE2   |         |
-| IO3      | PD13  |         |
-| NCS      | PB6   |         |
-| CLK      | PB2   |         |
+| Name       | pin     | comment |
+| ---------- | ------- | ------- |
+| IO0        | PD11    |         |
+| IO1        | PF9     | PD12    |
+| IO2        | PE2     |         |
+| IO3        | PD13    |         |
+| NCS        | PB6     |         |
+| CLK        | PB2     |         |
 
 # not 5v tolerant 
 
-| pin     | comment                  |
-| ------- | ------------------------ |
-| PE8     |                          |
-| PE7     |                          |
-| PA4     |                          |
-| PB1     |                          |
-| PG1     |                          |
-| PA5     | SPI0CK                   |
-| PE9     | PWM1_1                   |
+| pin     | comment   |
+| ------- | --------- |
+| PE8     |           |
+| PE7     |           |
+| PA4     |           |
+| PB1     |           |
+| PG1     |           |
+| PA5     | SPI0CK    |
+| PE9     | PWM1_1    |
 
 
 # Nucleo Board
 
-| Name       | pin     | comment                  |
-| ---------- | ------- | ------------------------ |
-| LED1       | PB0     |                          |
-| LED2       | PE1     |                          |
-| LED3       | PB14    |                          |
-| BUT        | PC13    |                          |
+| Name       | pin     | comment  |
+| ---------- | ------- | -------- |
+| LED1       | PB0     |          |
+| LED2       | PE1     |          |
+| LED3       | PB14    |          |
+| BUT        | PC13    |          |
 
 # Prime Board
 
-| function         | pin   | comment                  |
-| ----------       | ----- | ------------------------ |
-| MSD LED          | PF11  |                          |
-| BOOT0_DETECT/MSD | PJ14  |                          |
-| LED1             | PH9   |                          |
-| LED2             | PH10  |                          |
-| LED3             | PH11  |                          |
-| LED4             | PH12  |                          |
+| function         | pin   | comment |
+| ----------       | ----- | ------- |
+| MSD LED          | PF11  |         |
+| BOOT0_DETECT/MSD | PJ14  |         |
+| LED1             | PH9   |         |
+| LED2             | PH10  |         |
+| LED3             | PH11  |         |
+| LED4             | PH12  |         |
 
 
 # Gadgeteer headers
 
 ## GA
 
-| hdr  | pin     | func                     |
-| ---- | ------- | ------------------------ |
-| 1    |         | 3v3                      |
-| 2    |         | 5v                       |
-| 3    | PJ6     |                          |
-| 4    | PJ9     |                          |
-| 5    | PJ10    |                          |
-| 6    | PJ11    |                          |
-| 7    | PB5     | mot spi MOSI             |
-| 8    | PE6     | mot spi MISO             |
-| 9    | PE12    | mot spi CLK              |
-| 10   |         | gnd                      |
+| hdr  | pin     | func            |
+| ---- | ------- | --------------- |
+| 1    |         | 3v3             |
+| 2    |         | 5v              |
+| 3    | PJ6     |                 |
+| 4    | PJ9     |                 |
+| 5    | PJ10    |                 |
+| 6    | PJ11    |                 |
+| 7    | PB5     | mot spi MOSI    |
+| 8    | PE6     | mot spi MISO    |
+| 9    | PE12    | mot spi CLK     |
+| 10   |         | gnd             |
 
 ## GB
 
-| hdr  | pin     | func                     |
-| ---- | ------- | ------------------------ |
-| 1    |         | 3v3                      |
-| 2    |         | 5v                       |
-| 3    |         |                          |
-| 4    |         |                          |
-| 5    |         |                          |
-| 6    |         |                          |
-| 7    |         |                          |
-| 8    |         |                          |
-| 9    |         |                          |
-| 10   |         | gnd                      |
+| hdr  | pin     | func      |
+| ---- | ------- | --------- |
+| 1    |         | 3v3       |
+| 2    |         | 5v        |
+| 3    |         |           |
+| 4    |         |           |
+| 5    |         |           |
+| 6    |         |           |
+| 7    |         |           |
+| 8    |         |           |
+| 9    |         |           |
+| 10   |         | gnd       |
 
