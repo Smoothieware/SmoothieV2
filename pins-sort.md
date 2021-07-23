@@ -22,7 +22,7 @@
 | hotend_FET       | PB8   |                        |
 | UART4_TX         | PB9   | control port           |
 | PROBE            | PB10  |                        |
-| USART3_RX        | PB11  |                        |
+| UART3_RX         | PB11  | uart                   |
 | USB1id           | PB12  | Host Device (not used) |
 | USB1vbus         | PB13  | Host Device            |
 | USB1dm           | PB14  | Host Device            |
@@ -47,7 +47,7 @@
 | UART2_TX         | PD5   | debug prime            |
 | UART2_RX         | PD6   | debug prime            |
 | extra fet        | PD7   |                        |
-| UART3_TX         | PD8   | Debug nucleo           |
+| UART3_TX         | PD8   | Uart                   |
 |                  | PD9   |                        |
 |                  | PD10  |                        |
 | IO0              | PD11  | QSPI                   |

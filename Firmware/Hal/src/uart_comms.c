@@ -21,10 +21,25 @@ static xTaskHandle xTaskToNotify = NULL;
 /* Transmit and receive buffers */
 static RingBuffer_t *rxrb;
 
-// select the UART to use
-#if defined(USE_UART3) && UART3_PINSET == 8
+/*
+| UART3_RX   | PD9     | Debug nucleo             |
+| UART3_TX   | PD8     | Debug nucleo             |
 
-// UART3 on nucleo is routed to the stlinkv3
+| UART2_RX   | PD6     | debug prime              |
+| UART2_TX   | PD5     | debug prime              |
+
+| UART4_RX   | PB8     | debug devebox            |
+| UART4_TX   | PB9     | debug devebox            |
+
+| UART4_RX   | PH14    | control port prime       |
+| UART4_TX   | PB9     | control port prime       |
+
+| UART3_RX   | PB11    | spare prime              |
+| UART3_TX   | PD8     | spare prime              |
+*/
+
+// select the UART to use for debug port
+#if defined(USE_UART3) && UART3_PINSET == 9
 #define USARTx_INSTANCE               USART3
 #define USARTx_CLK_ENABLE()           LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART3)
 #define USARTx_CLK_SOURCE()           LL_RCC_SetUSARTClockSource(LL_RCC_USART234578_CLKSOURCE_PCLK1)
@@ -40,7 +55,6 @@ static RingBuffer_t *rxrb;
 #define USARTx_SET_RX_GPIO_AF()       LL_GPIO_SetAFPin_8_15(GPIOD, LL_GPIO_PIN_9, LL_GPIO_AF_7)
 
 #elif defined(USE_UART4) && UART4_PINSET == 8
-// UART4 on devebox is PA0 PA1
 #define USARTx_INSTANCE               UART4
 #define USARTx_CLK_ENABLE()           LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_UART4)
 #define USARTx_CLK_SOURCE()           LL_RCC_SetUSARTClockSource(LL_RCC_USART234578_CLKSOURCE_PCLK1)
@@ -54,6 +68,36 @@ static RingBuffer_t *rxrb;
 #define USARTx_RX_PIN                 LL_GPIO_PIN_8
 #define USARTx_RX_GPIO_PORT           GPIOB
 #define USARTx_SET_RX_GPIO_AF()       LL_GPIO_SetAFPin_8_15(GPIOB, LL_GPIO_PIN_8, LL_GPIO_AF_8)
+
+#elif defined(USE_UART4) && UART4_PINSET == 14
+#define USARTx_INSTANCE               UART4
+#define USARTx_CLK_ENABLE()           LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_UART4)
+#define USARTx_CLK_SOURCE()           LL_RCC_SetUSARTClockSource(LL_RCC_USART234578_CLKSOURCE_PCLK1)
+#define USARTx_IRQn                   UART4_IRQn
+#define USARTx_IRQHandler             UART4_IRQHandler
+
+#define USARTx_GPIO_CLK_ENABLE()      LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOB|LL_AHB4_GRP1_PERIPH_GPIOH)
+#define USARTx_TX_PIN                 LL_GPIO_PIN_9
+#define USARTx_TX_GPIO_PORT           GPIOB
+#define USARTx_SET_TX_GPIO_AF()       LL_GPIO_SetAFPin_8_15(GPIOB, LL_GPIO_PIN_9, LL_GPIO_AF_8)
+#define USARTx_RX_PIN                 LL_GPIO_PIN_14
+#define USARTx_RX_GPIO_PORT           GPIOH
+#define USARTx_SET_RX_GPIO_AF()       LL_GPIO_SetAFPin_8_15(GPIOH, LL_GPIO_PIN_14, LL_GPIO_AF_8)
+
+#elif defined(USE_UART2) && UART2_PINSET == 6
+#define USARTx_INSTANCE               UART2
+#define USARTx_CLK_ENABLE()           LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_UART2)
+#define USARTx_CLK_SOURCE()           LL_RCC_SetUSARTClockSource(LL_RCC_USART234578_CLKSOURCE_PCLK1)
+#define USARTx_IRQn                   UART2_IRQn
+#define USARTx_IRQHandler             UART2_IRQHandler
+
+#define USARTx_GPIO_CLK_ENABLE()      LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOD)
+#define USARTx_TX_PIN                 LL_GPIO_PIN_5
+#define USARTx_TX_GPIO_PORT           GPIOD
+#define USARTx_SET_TX_GPIO_AF()       LL_GPIO_SetAFPin_0_7(GPIOD, LL_GPIO_PIN_5, LL_GPIO_AF_7)
+#define USARTx_RX_PIN                 LL_GPIO_PIN_6
+#define USARTx_RX_GPIO_PORT           GPIOD
+#define USARTx_SET_RX_GPIO_AF()       LL_GPIO_SetAFPin_0_7(GPIOD, LL_GPIO_PIN_6, LL_GPIO_AF_7)
 
 #else
 #error Board needs to define which UART to use (USE_UART[0|1|2|3|4]) and pinset to use (eg UART3_PINSET=8)
