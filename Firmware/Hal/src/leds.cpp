@@ -11,9 +11,9 @@
 static Pin leds[] = {
 	Pin("PB0", Pin::AS_OUTPUT),
 	Pin("PE.1", Pin::AS_OUTPUT),
-	Pin("PB_14", Pin::AS_OUTPUT),
+	//Pin("PB_14", Pin::AS_OUTPUT),
 };
-#define NLEDS 3
+#define NLEDS 2
 
 #elif defined(BOARD_DEVEBOX)
 static Pin leds[] = {

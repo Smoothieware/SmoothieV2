@@ -38,6 +38,8 @@
 // register this module for creation in main
 REGISTER_MODULE(Switch, Switch::load_switches)
 
+std::set<Switch*> Switch::input_list;
+
 bool Switch::load_switches(ConfigReader& cr)
 {
     printf("DEBUG: configure switches\n");
@@ -99,11 +101,15 @@ bool Switch::configure(ConfigReader& cr, ConfigReader::section_map_t& m)
             switch_state = input_pin_state;
         }
 
-        // input pin polling
-        // TODO we should only have one of these in Switch and call each switch instance
-        SlowTicker::getInstance()->attach(50, std::bind(&Switch::pinpoll_tick, this));
         is_input= true;
         output_type= NONE;
+
+        // setup input pin polling
+        input_list.insert(this);
+        if(input_list.size() == 1) {
+            // we only have one of these in Switch and it is setup on first entry
+            SlowTicker::getInstance()->attach(50, Switch::pinpoll_tick);
+        }
         return true;
     }
 
@@ -327,7 +333,7 @@ void Switch::on_halt(bool flg)
     if(flg) {
         if(this->ignore_on_halt) return;
 
-        // set pin to failsafe value
+        // set pin to halt value
         switch(this->output_type) {
             case DIGITAL: this->digital_pin->set(this->halt_setting); break;
             case SIGMADELTA: this->sigmadelta_pin->set(this->halt_setting); break;
@@ -503,44 +509,46 @@ void Switch::handle_switch_changed()
     }
 }
 
-// Check the state of the button and act accordingly
+// Check the state of any input buttons and act accordingly
 // this just sets the state and lets handle_switch_changed() change the actual pins
 // FIXME there is a race condition where if the button is pressed and released faster than the command loop runs then it will not see the button as active
 void Switch::pinpoll_tick()
 {
-    if(!is_input) return;
+    for(auto inp : input_list) {
+        if(!inp->is_input) continue;
 
-    bool switch_changed = false;
+        bool switch_changed = false;
 
-    // See if pin changed
-    bool current_state = input_pin->get();
-    if(this->input_pin_state != current_state) {
-        this->input_pin_state = current_state;
-        // If pin high
-        if( this->input_pin_state ) {
-            // if switch is a toggle switch
-            if( this->input_pin_behavior == toggle_behavior ) {
-                this->switch_state= !this->switch_state;
+        // See if pin changed
+        bool current_state = inp->input_pin->get();
+        if(inp->input_pin_state != current_state) {
+            inp->input_pin_state = current_state;
+            // If pin high
+            if( inp->input_pin_state ) {
+                // if switch is a toggle switch
+                if( inp->input_pin_behavior == toggle_behavior ) {
+                    inp->switch_state= !inp->switch_state;
+
+                } else {
+                    // else default is momentary
+                    inp->switch_state = inp->input_pin_state;
+                }
+                switch_changed = true;
 
             } else {
-                // else default is momentary
-                this->switch_state = this->input_pin_state;
-            }
-            switch_changed = true;
-
-        } else {
-            // else if button released
-            if( this->input_pin_behavior == momentary_behavior ) {
-                // if switch is momentary
-                this->switch_state = this->input_pin_state;
-                switch_changed = true;
+                // else if button released
+                if( inp->input_pin_behavior == momentary_behavior ) {
+                    // if switch is momentary
+                    inp->switch_state = inp->input_pin_state;
+                    switch_changed = true;
+                }
             }
         }
-    }
 
-    if(switch_changed) {
-        // we need to call handle_switch_changed but in the command thread context
-        // in case there is a command to be issued
-        want_command_ctx= true;
+        if(switch_changed) {
+            // we need to call handle_switch_changed but in the command thread context
+            // in case there is a command to be issued
+            inp->want_command_ctx= true;
+        }
     }
 }

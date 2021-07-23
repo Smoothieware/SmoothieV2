@@ -5,6 +5,7 @@
 #include "Pin.h"
 
 #include <string>
+#include <set>
 
 class GCode;
 class OutputStream;
@@ -26,13 +27,14 @@ class Switch : public Module {
 
     private:
         bool configure(ConfigReader& cr, ConfigReader::section_map_t& m);
-        void pinpoll_tick(void);
+        static void pinpoll_tick(void);
 
         bool handle_gcode(GCode& gcode, OutputStream& os);
         void handle_switch_changed();
         bool match_input_on_gcode(const GCode& gcode) const;
         bool match_input_off_gcode(const GCode& gcode) const;
 
+        static std::set<Switch*> input_list;
         float switch_value;
         float default_on_value;
         OUTPUT_TYPE output_type;
