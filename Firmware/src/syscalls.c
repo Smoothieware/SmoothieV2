@@ -10,7 +10,7 @@
 #include <fcntl.h>
 
 #include "ff.h"
-#include "uart_comms.h"
+#include "uart_debug.h"
 
 extern int fatfs_to_errno( FRESULT Result );
 

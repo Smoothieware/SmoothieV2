@@ -1,7 +1,7 @@
 /*
  * handles interrupt driven uart I/O for primary UART/DEBUG port
  */
-#include "uart_comms.h"
+#include "uart_debug.h"
 
 #include "stm32h7xx_hal.h"
 

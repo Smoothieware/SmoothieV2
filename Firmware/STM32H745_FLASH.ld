@@ -36,9 +36,9 @@
 ENTRY(Reset_Handler)
 
 /* Highest address of the system stack */
-_estack = 0x20020000;    /* end of DTCMRAM */
+_estack = ORIGIN(DTCMRAM) + LENGTH(DTCMRAM);    /* end of DTCMRAM */
 __top_DTCMRAM = _estack - 4096 ; /* guarantee at least 4k of stack */
-__top_SRAM_1 = 0x30020000 ;
+__top_SRAM_1 = ORIGIN(SRAM_1) + LENGTH(SRAM_1) ;
 
 /* Specify the memory areas */
 MEMORY
@@ -175,7 +175,7 @@ SECTIONS
 
   /* start of heap and end of heap */
   PROVIDE(__HeapBase = _end);
-  PROVIDE(__HeapTop = 0x24080000);
+  PROVIDE(__HeapTop = ORIGIN(AXI_SRAM) + LENGTH(AXI_SRAM));
 
   /* copy vector table here */
   .itcm_vectors (NOLOAD):

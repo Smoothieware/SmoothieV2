@@ -1632,7 +1632,7 @@ bool CommandShell::reset_cmd(std::string& params, OutputStream& os)
     return true;
 }
 
-#include "uart_comms.h"
+#include "uart_debug.h"
 extern "C" void shutdown_sdmmc();
 
 static void stop_everything(void)

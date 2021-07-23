@@ -18,7 +18,7 @@
 #include "ff.h"
 #include "semphr.h"
 
-#include "uart_comms.h"
+#include "uart_debug.h"
 #include "benchmark_timer.h"
 
 #include "Module.h"
