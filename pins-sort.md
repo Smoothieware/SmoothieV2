@@ -7,7 +7,7 @@
 |                  | PA4   |                        |
 | SPI0CK           | PA5   |                        |
 | SPI0MISO         | PA6   |                        |
-| RX_DV            | PA7   |                        |
+| RX_DV            | PA7   | ETH                    |
 | I2C1 SCL         | PA8   | n/a on devebox         |
 | USB2vbus         | PA9   | ACM/CDC Device         |
 | USB2id           | PA10  | ACM/CDC Device         |

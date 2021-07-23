@@ -21,14 +21,14 @@ static std::set<std::string> black_listed {
     "PD11", "PF9", "PE2", "PD13", "PB6", "PB2",           // QSPI
 #endif
     "PG10", "PC8", "PC9", "PC10", "PC11", "PC12", "PD2", // SDCard
-    #if defined(BOARD_NUCLEO)
+#if defined(BOARD_NUCLEO)
     "PA1", "PA2", "PA7", "PB13", "PC1", "PC4", "PC5", "PG11", "PG13", // Ethernet
-    #endif
-    #if defined(BOARD_PRIME)
-    "PA1", "PA2", "PA7", "PB11", "PC1", "PC4", "PC5", "PG13", "PG14", // Ethernet
+#endif
+#if defined(BOARD_PRIME)
+    "PA1", "PA2", "PA7", "PG11", "PC1", "PC4", "PC5", "PG12", "PG13", // Ethernet
     "PB12", "PB13", "PB14", "PB15", // USB1
     "PA9", "PA10", "PA11", "PA12",  // USB2
-    #endif
+#endif
 };
 
 static uint16_t gpiopin2pin(uint16_t gpin)

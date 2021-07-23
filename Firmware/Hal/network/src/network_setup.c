@@ -67,12 +67,12 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef* heth)
 		PA1     ------> ETH_REF_CLK
 		PA2     ------> ETH_MDIO
 		PA7     ------> ETH_CRS_DV
-		PB11    ------> ETH_TX_EN
-		PB12    ------> ETH_TXD0
 		PC1     ------> ETH_MDC
 		PC4     ------> ETH_RXD0
 		PC5     ------> ETH_RXD1
-		PG14    ------> ETH_TXD1
+		PG11    ------> ETH_TX_EN
+		PG12    ------> ETH_TXD1
+		PG13    ------> ETH_TXD0
 		*/
 		GPIO_InitStruct.Pin = GPIO_PIN_1 | GPIO_PIN_4 | GPIO_PIN_5;
 		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -88,14 +88,7 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef* heth)
 		GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
 		HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-		GPIO_InitStruct.Pin = GPIO_PIN_11 | GPIO_PIN_12;
-		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-		GPIO_InitStruct.Pull = GPIO_NOPULL;
-		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-		GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
-		HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-		GPIO_InitStruct.Pin = GPIO_PIN_14;
+		GPIO_InitStruct.Pin = GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13;
 		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
 		GPIO_InitStruct.Pull = GPIO_NOPULL;
 		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -110,12 +103,12 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef* heth)
 		allocate_hal_pin(GPIOA, GPIO_PIN_1);
 		allocate_hal_pin(GPIOA, GPIO_PIN_2);
 		allocate_hal_pin(GPIOA, GPIO_PIN_7);
-		allocate_hal_pin(GPIOB, GPIO_PIN_11);
-		allocate_hal_pin(GPIOB, GPIO_PIN_12);
 		allocate_hal_pin(GPIOC, GPIO_PIN_1);
 		allocate_hal_pin(GPIOC, GPIO_PIN_4);
 		allocate_hal_pin(GPIOC, GPIO_PIN_5);
-		allocate_hal_pin(GPIOG, GPIO_PIN_14);
+		allocate_hal_pin(GPIOG, GPIO_PIN_11);
+		allocate_hal_pin(GPIOG, GPIO_PIN_12);
+		allocate_hal_pin(GPIOG, GPIO_PIN_13);
 
 		/* USER CODE END ETH_MspInit 1 */
 	}
