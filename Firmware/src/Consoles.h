@@ -14,3 +14,8 @@ void command_handler();
 // print string to all connected consoles
 extern "C" void print_to_all_consoles(const char *);
 extern "C" void set_abort_comms();
+
+// the communications task priority (lower number is lower priority)
+#define COMMS_PRI 3UL
+// The command thread priority
+#define CMDTHRD_PRI 2UL

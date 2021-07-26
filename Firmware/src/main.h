@@ -23,8 +23,3 @@ extern "C" {
 }
 
 #define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
-
-// the communications task priority (lower number is lower priority)
-#define COMMS_PRI 3UL
-// The command thread priority
-#define CMDTHRD_PRI 2UL
