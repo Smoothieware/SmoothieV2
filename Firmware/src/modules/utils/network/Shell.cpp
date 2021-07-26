@@ -2,6 +2,7 @@
 #include "OutputStream.h"
 #include "RingBuffer.h"
 #include "MessageQueue.h"
+#include "Consoles.h"
 
 #include "FreeRTOS.h"
 #include "timers.h"

@@ -7,14 +7,7 @@ class OutputStream;
 
 using StartupFunc_t = std::function<void()>;
 void register_startup(StartupFunc_t sf);
-
-// TODO may move to Dispatcher
-bool dispatch_line(OutputStream& os, const char *line);
-bool process_command_buffer(size_t n, char *rxBuf, OutputStream *os, char *line, size_t& cnt, bool& discard, bool wait=true);
-
-// print string to all connected consoles
-extern "C" void print_to_all_consoles(const char *);
-extern "C" void set_abort_comms();
+const char *get_config_error_msg();
 
 // sleep for given ms, but don't block things like ?
 void safe_sleep(uint32_t ms);
@@ -22,6 +15,12 @@ void safe_sleep(uint32_t ms);
 // get the vmotor and vfet voltages
 float get_voltage_monitor(const char* name);
 int get_voltage_monitor_names(const char *names[]);
+
+extern "C" {
+    void Board_LED_Toggle(int);
+    void Board_LED_Set(int, bool);
+    bool Board_LED_Test(int);
+}
 
 #define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
 

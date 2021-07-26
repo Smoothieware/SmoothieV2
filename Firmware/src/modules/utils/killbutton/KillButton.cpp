@@ -3,6 +3,7 @@
 #include "ConfigReader.h"
 #include "SlowTicker.h"
 #include "main.h"
+#include "Consoles.h"
 
 #define kill_button_enable_key "enable"
 #define kill_button_pin_key "pin"

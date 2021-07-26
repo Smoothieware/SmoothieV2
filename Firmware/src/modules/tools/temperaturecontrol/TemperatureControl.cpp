@@ -9,6 +9,7 @@
 #include "Dispatcher.h"
 #include "main.h"
 #include "PID_Autotuner.h"
+#include "Consoles.h"
 
 #include <math.h>
 #include <string.h>

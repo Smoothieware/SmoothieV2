@@ -1,5 +1,45 @@
 #include "main.h"
 
+#include "Adc.h"
+#include "Adc3.h"
+#include "CommandShell.h"
+#include "ConfigReader.h"
+#include "Consoles.h"
+#include "Conveyor.h"
+#include "CurrentControl.h"
+#include "Dispatcher.h"
+#include "Endstops.h"
+#include "Extruder.h"
+#include "FastTicker.h"
+#include "GCode.h"
+#include "GCodeProcessor.h"
+#include "KillButton.h"
+#include "Laser.h"
+#include "MessageQueue.h"
+#include "Module.h"
+#include "Network.h"
+#include "OutputStream.h"
+#include "Pin.h"
+#include "Planner.h"
+#include "Player.h"
+#include "Pwm.h"
+#include "RingBuffer.h"
+#include "Robot.h"
+#include "SlowTicker.h"
+#include "StepTicker.h"
+#include "StringUtils.h"
+#include "Switch.h"
+#include "TemperatureControl.h"
+#include "ZProbe.h"
+
+#include "FreeRTOS.h"
+#include "task.h"
+#include "ff.h"
+#include "semphr.h"
+
+#include "uart_debug.h"
+#include "benchmark_timer.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -13,56 +53,20 @@
 #include <vector>
 #include <functional>
 
-#include "FreeRTOS.h"
-#include "task.h"
-#include "ff.h"
-#include "semphr.h"
-
-#include "uart_debug.h"
-#include "benchmark_timer.h"
-
-#include "Module.h"
-#include "OutputStream.h"
-#include "MessageQueue.h"
-#include "GCode.h"
-#include "GCodeProcessor.h"
-#include "Dispatcher.h"
-#include "Robot.h"
-#include "RingBuffer.h"
-#include "Conveyor.h"
-#include "Pin.h"
-#include "Network.h"
-#include "StringUtils.h"
-#include "CommandShell.h"
-
-extern "C" {
-    void Board_LED_Toggle(int);
-    void Board_LED_Set(int, bool);
-    bool Board_LED_Test(int);
-}
 
 static bool system_running = false;
 static Pin *aux_play_led = nullptr;
 extern "C" int config_dfu_required;
-extern "C" int config_second_usb_serial;
 extern "C" int config_msc_enable;
 
-// for ?, $I or $S queries
-// for ? then query_line will be nullptr
-struct query_t {
-    OutputStream *query_os;
-    char *query_line;
-};
-static RingBuffer<struct query_t, 8> queries; // thread safe FIFO
-
-static FILE *upload_fp = nullptr;
 static std::string config_error_msg;
 
-// TODO maybe move to Dispatcher
-static GCodeProcessor gp;
-static bool loaded_configuration = false;
-static bool config_override = false;
-static const char *OVERRIDE_FILE = "/sd/config-override";
+const char *get_config_error_msg() {
+    if(!config_error_msg.empty()) {
+        return config_error_msg.c_str();
+    }
+    return nullptr;
+}
 
 #ifdef BOARD_NUCLEO
 #define MAGIC_NUMBER 0x1234567898765401LL
@@ -147,603 +151,6 @@ bool check_flashme_file(OutputStream& os, bool errors)
     return true;
 }
 
-// load configuration from override file
-static bool load_config_override(OutputStream& os)
-{
-    std::fstream fsin(OVERRIDE_FILE, std::fstream::in);
-    if(fsin.is_open()) {
-        std::string s;
-        OutputStream nullos;
-        // foreach line dispatch it
-        while (std::getline(fsin, s)) {
-            if(s[0] == ';') continue;
-            // Parse the Gcode
-            GCodeProcessor::GCodes_t gcodes;
-            gp.parse(s.c_str(), gcodes);
-            // dispatch it
-            for(auto& i : gcodes) {
-                if(i.get_code() >= 500 && i.get_code() <= 503) continue; // avoid recursion death
-                if(!THEDISPATCHER->dispatch(i, nullos)) {
-                    os.printf("WARNING: load_config_override: this line was not handled: %s\n", s.c_str());
-                }
-            }
-        }
-        loaded_configuration = true;
-        fsin.close();
-
-    } else {
-        loaded_configuration = false;
-        return false;
-    }
-
-    return true;
-}
-
-// can be called by modules when in command thread context
-bool dispatch_line(OutputStream& os, const char *ln)
-{
-    // need a mutable copy
-    std::string line(ln);
-
-    // map some special M codes to commands as they violate the gcode spec and pass a string parameter
-    // M23, M32, M117, M30 => m23, m32, m117, rm and handle as a command
-    // also M28
-    if(line.rfind("M23 ", 0) == 0) line[0] = 'm';
-    else if(line.rfind("M30 ", 0) == 0) line.replace(0, 3, "rm");   // make into an rm command
-    else if(line.rfind("M32 ", 0) == 0) line[0] = 'm';
-    else if(line.rfind("M117 ", 0) == 0) line[0] = 'm';
-    else if(line.rfind("M28 ", 0) == 0) {
-        // handle save to file:- M28 filename
-        const char *upload_filename = line.substr(4).c_str();
-        upload_fp = fopen(upload_filename, "w");
-        if(upload_fp != nullptr) {
-            os.set_uploading(true);
-            os.printf("Writing to file: %s\nok\n", upload_filename);
-        } else {
-            os.printf("open failed, File: %s.\nok\n", upload_filename);
-        }
-        return true;
-    }
-
-    // see if a command
-    if(islower(line[0]) || line[0] == '$') {
-        // dispatch command
-        if(!THEDISPATCHER->dispatch(line.c_str(), os)) {
-            if(line[0] == '$') {
-                os.puts("error:Invalid statement\n");
-            } else {
-                os.printf("error:Unsupported command - %s\n", line.c_str());
-            }
-
-        } else if(!os.is_no_response()) {
-            os.puts("ok\n");
-        }
-        os.set_no_response(false);
-
-        return true;
-    }
-
-    // Handle Gcode
-    GCodeProcessor::GCodes_t gcodes;
-
-    // Parse gcode
-    if(!gp.parse(line.c_str(), gcodes)) {
-        if(gcodes.empty()) {
-            // line failed checksum, send resend request
-            os.printf("rs N%d\n", gp.get_line_number() + 1);
-            return true;
-        }
-
-        auto& g = gcodes.back();
-        // we have to check for certain gcodes which are known to violate spec (eg M28)
-        if(g.has_error()) {
-            // Word parse Error
-            if(THEDISPATCHER->is_grbl_mode()) {
-                os.printf("error:gcode parse failed %s - %s\n", g.get_error_message(), line.c_str());
-            } else {
-                os.printf("// WARNING gcode parse failed %s - %s\n", g.get_error_message(), line.c_str());
-            }
-            // TODO add option to HALT in this case
-        } else {
-            // this shouldn't happen
-            printf("WARNING: parse returned false but no error\n");
-        }
-        gcodes.pop_back();
-    }
-
-    // if we are uploading (M28) just save entire line, we do this here to take advantage
-    // of the line resend if needed
-    if(os.is_uploading()) {
-        if(line == "M29") {
-            // done uploading, close file
-            fclose(upload_fp);
-            upload_fp = nullptr;
-            os.set_uploading(false);
-            os.printf("Done saving file.\nok\n");
-            return true;
-        }
-        // just save the line to the file
-        if(upload_fp != nullptr) {
-            // write out line
-            if(fputs(line.c_str(), upload_fp) < 0 || fputc('\n', upload_fp) < 0) {
-                // we got an error
-                fclose(upload_fp);
-                upload_fp = nullptr;
-                os.printf("Error:error writing to file.\n");
-            }
-        }
-        os.printf("ok\n");
-        return true;
-    }
-
-    if(gcodes.empty()) {
-        // if gcodes is empty then was a M110, just send ok
-        os.puts("ok\n");
-        return true;
-    }
-
-    // dispatch gcodes
-    // NOTE return one ok per line instead of per GCode only works for regular gcodes like G0-G3, G92 etc
-    // gcodes returning data like M114 should NOT be put on multi gcode lines.
-    int ngcodes = gcodes.size();
-    for(auto& i : gcodes) {
-        //i.dump(os);
-        if(i.has_m() || i.has_g()) {
-            // potentially handle M500 - M503 here
-            OutputStream *pos = &os;
-            std::fstream *fsout = nullptr;
-            bool m500 = false;
-
-            if(i.has_m() && (i.get_code() >= 500 && i.get_code() <= 503)) {
-                if(i.get_code() == 500) {
-                    // we have M500 so redirect os to a config-override file
-                    fsout = new std::fstream(OVERRIDE_FILE, std::fstream::out | std::fstream::trunc);
-                    if(!fsout->is_open()) {
-                        os.printf("ERROR: opening file: %s\n", OVERRIDE_FILE);
-                        delete fsout;
-                        return true;
-                    }
-                    pos = new OutputStream(fsout);
-                    m500 = true;
-
-                } else if(i.get_code() == 501) {
-                    if(load_config_override(os)) {
-                        os.printf("configuration override loaded\nok\n");
-                    } else {
-                        os.printf("failed to load configuration override\nok\n");
-                    }
-                    return true;
-
-                } else if(i.get_code() == 502) {
-                    remove(OVERRIDE_FILE);
-                    os.printf("configuration override file deleted\nok\n");
-                    return true;
-
-                } else if(i.get_code() == 503) {
-                    if(loaded_configuration) {
-                        os.printf("// NOTE: config override loaded\n");
-                    } else {
-                        os.printf("// NOTE: No config override loaded\n");
-                    }
-                    i.set_command('M', 500, 3); // change gcode to be M500.3
-                }
-            }
-
-            // if this is a multi gcode line then dispatch must not send ok unless this is the last one
-            if(!THEDISPATCHER->dispatch(i, *pos, ngcodes == 1 && !m500)) {
-                // no handler processed this gcode, return ok - ignored
-                if(ngcodes == 1) os.puts("ok - ignored\n");
-            }
-
-            // clean up after M500
-            if(m500) {
-                m500 = false;
-                fsout->close();
-                delete fsout;
-                delete pos; // this would be the file output stream
-                if(!config_override) {
-                    os.printf("WARNING: override will NOT be loaded on boot\n", OVERRIDE_FILE);
-                }
-                os.printf("Settings Stored to %s\nok\n", OVERRIDE_FILE);
-            }
-
-        } else {
-            // if it has neither g or m then it was a blank line or comment
-            os.puts("ok\n");
-        }
-        --ngcodes;
-    }
-
-    return true;
-}
-
-
-static std::set<OutputStream*> output_streams;
-
-// this is here so we do not need to duplicate this logic for
-// USB serial, UART serial, Network Shell, SDCard player thread
-// NOTE this can block if message queue is full. set wait to false to not wait too long
-bool process_command_buffer(size_t n, char *rx_buf, OutputStream *os, char *line, size_t& cnt, bool& discard, bool wait)
-{
-    for (size_t i = 0; i < n; ++i) {
-        line[cnt] = rx_buf[i];
-        if(os->capture_fnc) {
-            os->capture_fnc(line[cnt]);
-            continue;
-        }
-
-        if(line[cnt] == 24) { // ^X
-            if(!Module::is_halted()) {
-                Module::broadcast_halt(true);
-                os->puts("ALARM: Abort during cycle\n");
-            }
-            discard = false;
-            cnt = 0;
-
-        } else if(line[cnt] == 25) { // ^Y
-            if(Module::is_halted()) {
-                // will also do what $X does
-                Module::broadcast_halt(false);
-                os->puts("[Caution: Unlocked]\n");
-
-            } else {
-                // there is a race condition where the host may send the ^Y so fast after
-                // the $J -c that it is executed first, which would leave the system in cont mode
-                // We set the stop_request flag if we are not in continuous jog mode and
-                // check that before setting cont mode.
-                if(Conveyor::getInstance()->get_continuous_mode()) {
-                    // stop continuous jog mode
-                    Conveyor::getInstance()->set_continuous_mode(false);
-                } else {
-                    // set generic stop request, currently used to see if we got ^Y before cont mode and to abort
-                    // some file commands
-                    os->set_stop_request(true);
-                }
-            }
-
-        } else if(line[cnt] == '?') {
-            if(!queries.full()) {
-                queries.push_back({os, nullptr});
-            }
-
-        } else if(discard) {
-            // we discard long lines until we get the newline
-            if(line[cnt] == '\n') discard = false;
-
-        } else if(cnt >= MAX_LINE_LENGTH - 1) {
-            // discard long lines
-            discard = true;
-            cnt = 0;
-            os->puts("error:Discarding long line\n");
-
-        } else if(line[cnt] == '\n') {
-            os->clear_flags(); // clear the done flag here to avoid race conditions
-            line[cnt] = '\0'; // remove the \n and nul terminate
-            if(cnt >= 2 && line[0] == '$' && (line[1] == 'I' || line[1] == 'S' || line[1] == 'X')) {
-                if(line[1] == 'X') {
-                    // handle $X here
-                    if(Module::is_halted()) {
-                        Module::broadcast_halt(false);
-                        os->puts("[Caution: Unlocked]\n");
-                    }
-                    os->puts("ok\n");
-
-                } else if(!queries.full()) {
-                    // Handle $I and $S as instant queries
-                    queries.push_back({os, strdup(line)});
-                }
-
-            } else {
-                if(!send_message_queue(line, os, wait)) {
-                    // we were told not to wait and the queue was full
-                    // the caller will now need to call send_message_queue()
-                    cnt = 0;
-                    return false;
-                }
-            }
-            cnt = 0;
-
-        } else if(line[cnt] == '\r') {
-            // ignore CR
-            continue;
-
-        } else if(line[cnt] == 8 || line[cnt] == 127) { // BS or DEL
-            if(cnt > 0) --cnt;
-
-        } else {
-            ++cnt;
-        }
-    }
-
-    return true;
-}
-
-static volatile bool abort_comms = false;
-
-extern "C" size_t write_cdc(uint8_t, const char *buf, size_t len);
-extern "C" size_t read_cdc(uint8_t, char *buf, size_t len);
-extern "C" int setup_cdc();
-extern "C" int vcom_is_connected(uint8_t);
-extern "C" uint32_t vcom_get_dropped_bytes(uint8_t);
-
-static void usb_comms(void *param)
-{
-    int inst = (int)param;
-    printf("DEBUG: USB Comms%d thread running\n", inst + 1);
-
-    // we set this to 1024 so ymodem will run faster (but if not needed then it can be as low as 256)
-    const size_t usb_rx_buf_sz = 1024;
-    char *usb_rx_buf = (char *)malloc(usb_rx_buf_sz);
-    if(usb_rx_buf == nullptr) {
-        printf("FATAL: no memory for usb_rx_buf\n");
-        return;
-    }
-
-    do {
-        // on first connect we send a welcome message
-        while(!abort_comms) {
-            // when we get the first connection it sends a one byte message to wake us up
-            // it will block here until a connection is available
-            size_t n = read_cdc(inst, usb_rx_buf, 1);
-            if(n > 0 && vcom_is_connected(inst)) {
-                break;
-            }
-        }
-
-        if(abort_comms) break;
-
-        //printf("DEBUG: CDC%d connected\n", inst+1);
-
-        // create an output stream that writes to the cdc
-        OutputStream *os = new OutputStream([inst](const char *buf, size_t len) { return write_cdc(inst, buf, len); });
-        os->set_is_usb();
-        output_streams.insert(os);
-        vTaskDelay(pdMS_TO_TICKS(100));
-        os->printf("Welcome to Smoothie\nok\n");
-
-        // now read lines and dispatch them
-        char line[MAX_LINE_LENGTH];
-        size_t cnt = 0;
-        bool discard = false;
-
-        while(!abort_comms) {
-            // this read will block if no data is available
-            size_t n = read_cdc(inst, usb_rx_buf, usb_rx_buf_sz);
-            if(n > 0) {
-                if(os->fast_capture_fnc) {
-                    if(!os->fast_capture_fnc(usb_rx_buf, n)) {
-                        os->fast_capture_fnc = nullptr; // we are done ok
-                    }
-                } else {
-                    process_command_buffer(n, usb_rx_buf, os, line, cnt, discard);
-                }
-            }
-#if 1
-            uint32_t db;
-            if((db = vcom_get_dropped_bytes(inst)) > 0) {
-                printf("WARNING: dropped bytes detected on USB Comms%d: %lu\n", inst + 1, db);
-            }
-#endif
-        }
-
-        output_streams.erase(os);
-        delete os;
-    } while(false);
-
-    free(usb_rx_buf);
-    printf("DEBUG: USB Comms%d thread exiting\n", inst + 1);
-    vTaskDelete(NULL);
-}
-
-// debug port
-static void uart_debug_comms(void *)
-{
-    printf("DEBUG: UART Debug Comms thread running\n");
-    set_notification_uart(xTaskGetCurrentTaskHandle());
-
-    // create an output stream that writes to the uart
-    static OutputStream os([](const char *buf, size_t len) { return write_uart(buf, len); });
-    output_streams.insert(&os);
-
-    const TickType_t waitms = pdMS_TO_TICKS( 300 );
-
-    char rx_buf[256];
-    char line[MAX_LINE_LENGTH];
-    size_t cnt = 0;
-    bool discard = false;
-    while(!abort_comms) {
-        // Wait to be notified that there has been a UART irq. (it may have been rx or tx so may not be anything to read)
-        uint32_t ulNotificationValue = ulTaskNotifyTake( pdFALSE, waitms );
-
-        if( ulNotificationValue != 1 ) {
-            /* The call to ulTaskNotifyTake() timed out. check anyway */
-            if(abort_comms) break;
-        }
-
-        size_t n = read_uart(rx_buf, sizeof(rx_buf));
-        if(n > 0) {
-            process_command_buffer(n, rx_buf, &os, line, cnt, discard);
-        }
-    }
-    output_streams.erase(&os);
-    printf("DEBUG: UART Debug Comms thread exiting\n");
-    vTaskDelete(NULL);
-}
-
-#include "Uart.h"
-static void uart_console_comms(void *)
-{
-    printf("DEBUG: UART Console Comms thread running\n");
-    UART *uart= UART::getInstance(1); // TODO make this configurable (1 is nucleo)
-    if(!uart->init(115200, 8, 1, 0)) {
-        printf("ERROR: Failed it init uart 1\n");
-        return;
-    }
-
-    // create an output stream that writes to this uart
-    static OutputStream os([uart](const char *buf, size_t len) { return uart->write((uint8_t*)buf, len); });
-    output_streams.insert(&os);
-
-    const TickType_t waitms = pdMS_TO_TICKS(300);
-
-    char rx_buf[256];
-    char line[MAX_LINE_LENGTH];
-    size_t cnt = 0;
-    bool discard = false;
-    while(!abort_comms) {
-        size_t n = uart->read((uint8_t*)rx_buf, sizeof(rx_buf), waitms);
-        if(n > 0) {
-            process_command_buffer(n, rx_buf, &os, line, cnt, discard);
-        }
-    }
-    output_streams.erase(&os);
-    printf("DEBUG: UART Console Comms thread exiting\n");
-    vTaskDelete(NULL);
-}
-
-void set_abort_comms()
-{
-    abort_comms = true;
-
-#ifndef NONETWORK
-    Network *network = static_cast<Network *>(Module::lookup("network"));
-    if(network != nullptr) network->set_abort();
-#endif
-}
-
-// this prints the string to all consoles that are connected and active
-// must be called in command thread context
-void print_to_all_consoles(const char *str)
-{
-    for(auto i : output_streams) {
-        i->puts(str);
-    }
-}
-
-static void handle_query(bool need_done)
-{
-    // set in comms thread, and executed in the command thread to avoid thread clashes.
-    // the trouble with this is that ? does not reply if a long command is blocking call to dispatch_line
-    // test commands for instance or a long line when the queue is full or G4 etc
-    // so long as safe_sleep() is called then this will still be processed
-    // also dispatch any instant queries we have recieved
-    while(!queries.empty()) {
-        struct query_t q = queries.pop_front();
-        if(q.query_line == nullptr) { // it is a ? query
-            std::string r;
-            Robot::getInstance()->get_query_string(r);
-            q.query_os->puts(r.c_str());
-
-        } else {
-            Dispatcher::getInstance()->dispatch(q.query_line, *q.query_os);
-            free(q.query_line);
-        }
-        // on last one (Does presume they are the same os though)
-        // FIXME may not work as expected when there are multiple I/O channels and output streams
-        if(need_done && queries.empty()) q.query_os->set_done();
-    }
-}
-
-/*
- * All commands must be executed in the context of this thread. It is equivalent to the main_loop in v1.
- * Commands are sent to this thread via the message queue from things that can block (like I/O)
- * Other things can call dispatch_line direct from the in_command_ctx call.
- */
-extern "C" bool DFU_requested_detach();
-extern "C" void DFU_reset_requested_detach();
-static void command_handler()
-{
-    printf("DEBUG: Command thread running\n");
-
-    for(;;) {
-        char *line;
-        OutputStream *os = nullptr;
-        bool idle = false;
-
-        // This will timeout after 100 ms
-        if(receive_message_queue(&line, &os)) {
-            //printf("DEBUG: got line: %s\n", line);
-            dispatch_line(*os, line);
-            handle_query(false);
-            os->set_done(); // set after all possible output
-
-        } else {
-            // timed out or other error
-            idle = true;
-            if(config_error_msg.empty()) {
-                // toggle led to show we are alive, but idle
-                Board_LED_Toggle(0);
-            }
-            handle_query(true);
-
-            // special case if we see we got a DFU detach we call the dfu command
-            if(config_dfu_required == 1 && DFU_requested_detach()) {
-                if(!CommandShell::is_busy()) {
-                    print_to_all_consoles("DFU firmware download has been requested, going down for update\n");
-                    vTaskDelay(pdMS_TO_TICKS(100));
-                    OutputStream stdout_os(&std::cout);
-                    std::string str;
-                    CommandShell::getInstance()->dfu_cmd(str, stdout_os);
-                    // we should not return from this, if we do it means the dfu loader is not in qspi
-                    config_dfu_required  = 0; // disable it for now
-                } else {
-                    print_to_all_consoles("DFU is not allowed while printing or heaters are on\n");
-                    DFU_reset_requested_detach();
-                }
-            }
-        }
-
-        // call in_command_ctx for all modules that want it
-        // dispatch_line can be called from that
-        Module::broadcast_in_commmand_ctx(idle);
-
-        // we check the queue to see if it is ready to run
-        // we specifically deal with this in append_block, but need to check for other places
-        if(Conveyor::getInstance() != nullptr) {
-            Conveyor::getInstance()->check_queue();
-        }
-    }
-}
-
-// called only in command thread context, it will sleep (and yield) thread but will also
-// process things like instant query
-void safe_sleep(uint32_t ms)
-{
-    // here we need to sleep (and yield) for 10ms then check if we need to handle the query command
-    TickType_t delayms = pdMS_TO_TICKS(10); // 10 ms sleep
-    while(ms > 0) {
-        vTaskDelay(delayms);
-        // presumably there is a long running command that
-        // may need Outputstream which will set done flag when it is done
-        handle_query(false);
-
-        if(ms > 10) {
-            ms -= 10;
-        } else {
-            break;
-        }
-    }
-}
-
-#include "SlowTicker.h"
-#include "FastTicker.h"
-#include "StepTicker.h"
-#include "ConfigReader.h"
-#include "Switch.h"
-#include "Planner.h"
-#include "Robot.h"
-#include "KillButton.h"
-#include "Extruder.h"
-#include "TemperatureControl.h"
-#include "Adc.h"
-#include "Adc3.h"
-#include "Pwm.h"
-#include "CurrentControl.h"
-#include "Laser.h"
-#include "Endstops.h"
-#include "ZProbe.h"
-#include "Player.h"
-
 #define SD_CONFIG
 
 #ifndef SD_CONFIG
@@ -782,6 +189,8 @@ int get_voltage_monitor_names(const char *names[])
     }
     return i;
 }
+
+extern bool config_override;
 
 // this is used to add callback functions to be called once the system is running
 static std::vector<StartupFunc_t> startup_fncs;
@@ -830,8 +239,6 @@ static void smoothie_startup(void *)
             break;
         }
 
-
-
         std::fstream fs;
         fs.open("/sd/config.ini", std::fstream::in);
         if(!fs.is_open()) {
@@ -840,7 +247,6 @@ static void smoothie_startup(void *)
             //f_unmount("sd");
             break;
         }
-
 
         ConfigReader cr(fs);
         printf("DEBUG: Starting configuration of modules from sdcard...\n");
@@ -873,12 +279,12 @@ static void smoothie_startup(void *)
                 bool enable_dfu = cr.get_bool(m, "dfu_enable", false);
                 config_dfu_required = enable_dfu ? 1 : 0; // set it in the USB stack
                 printf("INFO: dfu is %s\n", enable_dfu ? "enabled" : "disabled");
-                config_second_usb_serial = cr.get_bool(m, "second_usb_serial_enable", false) ? 1 : 0;
-                printf("INFO: second usb serial is %s\n", config_second_usb_serial ? "enabled" : "disabled");
                 config_msc_enable = cr.get_bool(m, "msc_enable", true) ? 1 : 0;
                 printf("INFO: MSC is %s\n", config_msc_enable ? "enabled" : "disabled");
             }
         }
+
+        configure_consoles(cr);
 
         printf("DEBUG: configure the planner\n");
         Planner *planner = Planner::getInstance();
@@ -1049,27 +455,8 @@ static void smoothie_startup(void *)
         // Module::broadcast_halt(true);
     }
 
-    // create queue for incoming buffers from the I/O ports
-    if(!create_message_queue()) {
-        // Failed to create the queue.
-        printf("Error: failed to create comms i/o queue\n");
-    }
-
-    // Start debug comms threads higher priority than the command thread
-    // fixed stack size of 4k Bytes each
-    xTaskCreate(uart_debug_comms, "UARTDebugThread", 1500 / 4, NULL, (tskIDLE_PRIORITY + COMMS_PRI), (TaskHandle_t *) NULL);
-
-    xTaskCreate(uart_console_comms, "UARTConsoleThread", 1500 / 4, NULL, (tskIDLE_PRIORITY + COMMS_PRI), (TaskHandle_t *) NULL);
-
-    // setup usb and cdc first
-    if(setup_cdc()) {
-        xTaskCreate(usb_comms, "USBCommsThread", 1500 / 4, 0, (tskIDLE_PRIORITY + COMMS_PRI), (TaskHandle_t *) NULL);
-        if(config_second_usb_serial == 1) {
-            xTaskCreate(usb_comms, "USBCommsThread", 1500 / 4, (void*)1, (tskIDLE_PRIORITY + COMMS_PRI), (TaskHandle_t *) NULL);
-        }
-
-    } else {
-        printf("FATAL: USB and/or CDC setup failed\n");
+    if(!start_consoles()) {
+        printf("ERROR: consoles failed to start\n");
     }
 
     // run any startup functions that have been registered
@@ -1120,6 +507,7 @@ static void smoothie_startup(void *)
     }
 
     // run the command handler in this thread
+    // it is in Consoles.cpp
     command_handler();
 
     // does not return from above

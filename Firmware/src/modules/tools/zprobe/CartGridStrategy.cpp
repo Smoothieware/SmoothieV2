@@ -88,6 +88,7 @@
 #include "BaseSolution.h"
 #include "StringUtils.h"
 #include "OutputStream.h"
+#include "Consoles.h"
 
 #include <string>
 #include <algorithm>

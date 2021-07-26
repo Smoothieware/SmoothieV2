@@ -18,6 +18,7 @@
 #include "Adc.h"
 #include "Adc3.h"
 #include "GCodeProcessor.h"
+#include "Consoles.h"
 
 #include "FreeRTOS.h"
 #include "task.h"

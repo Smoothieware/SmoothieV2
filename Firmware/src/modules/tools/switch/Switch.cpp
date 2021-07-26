@@ -11,6 +11,7 @@
 #include "Dispatcher.h"
 #include "Conveyor.h"
 #include "main.h"
+#include "Consoles.h"
 
 #include <algorithm>
 #include <math.h>

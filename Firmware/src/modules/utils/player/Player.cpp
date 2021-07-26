@@ -10,6 +10,7 @@
 #include "TemperatureControl.h"
 #include "main.h"
 #include "MessageQueue.h"
+#include "Consoles.h"
 
 #include "FreeRTOS.h"
 #include "task.h"

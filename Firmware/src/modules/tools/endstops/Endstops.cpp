@@ -13,6 +13,7 @@
 #include "Dispatcher.h"
 #include "main.h"
 #include "BaseSolution.h"
+#include "Consoles.h"
 
 #include <ctype.h>
 #include <algorithm>

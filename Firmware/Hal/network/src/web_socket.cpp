@@ -2,6 +2,7 @@
 
 #include "OutputStream.h"
 #include "main.h"
+#include "Consoles.h"
 
 /* FreeRTOS includes. */
 #include "FreeRTOS.h"

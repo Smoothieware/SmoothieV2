@@ -146,22 +146,23 @@ UART::~UART()
 // cache aligned
 static uint8_t RXBuffer[2][RX_BUFFER_SIZE] __attribute__((section (".sram_1_bss"), aligned(32))); // put in SRAM_1
 
-bool UART::init(int baud, int bits, int stopbits, int parity)
+bool UART::init(uart_settings_t set)
 {
     if(_valid) {
-        if(baud != _baud || bits != _bits || stopbits != _stopbits || parity != _parity) {
+        if(memcmp(&settings, &set, sizeof(uart_settings_t)) != 0) {
             printf("ERROR: UART channel %d, already set with different parameters\n", _channel);
             return false;
         }
         return true;
     }
+    settings= set;
 
     UART_HandleTypeDef UartHandle = {0};
     UartHandle.Instance        = _channel == 0 ? USART1x : USART2x;
-    UartHandle.Init.BaudRate   = baud;
-    UartHandle.Init.WordLength = bits == 8 ? UART_WORDLENGTH_8B : bits == 7 ? UART_WORDLENGTH_7B : UART_WORDLENGTH_9B;
-    UartHandle.Init.StopBits   = stopbits == 1 ? UART_STOPBITS_1 : stopbits == 2 ? UART_STOPBITS_2 : UART_STOPBITS_0_5;
-    UartHandle.Init.Parity     = parity == 0 ? UART_PARITY_NONE : parity == 1 ? UART_PARITY_ODD : UART_PARITY_EVEN;
+    UartHandle.Init.BaudRate   = settings.baudrate;
+    UartHandle.Init.WordLength = settings.bits == 8 ? UART_WORDLENGTH_8B : settings.bits == 7 ? UART_WORDLENGTH_7B : UART_WORDLENGTH_9B;
+    UartHandle.Init.StopBits   = settings.stop_bits == 1 ? UART_STOPBITS_1 : settings.stop_bits == 2 ? UART_STOPBITS_2 : UART_STOPBITS_0_5;
+    UartHandle.Init.Parity     = settings.parity == 0 ? UART_PARITY_NONE : settings.parity == 1 ? UART_PARITY_ODD : UART_PARITY_EVEN;
     UartHandle.Init.HwFlowCtl  = UART_HWCONTROL_NONE;
     UartHandle.Init.Mode       = UART_MODE_TX_RX;
     UartHandle.Init.OverSampling = UART_OVERSAMPLING_16;
@@ -173,10 +174,6 @@ bool UART::init(int baud, int bits, int stopbits, int parity)
 
     _huart = malloc(sizeof(UART_HandleTypeDef));
     memcpy(_huart, &UartHandle, sizeof(UART_HandleTypeDef));
-    _baud = baud;
-    _bits = bits;
-    _stopbits = stopbits;
-    _parity = parity;
     _valid = true;
 
     // create ring buffers
