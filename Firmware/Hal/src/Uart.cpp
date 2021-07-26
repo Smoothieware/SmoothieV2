@@ -11,6 +11,7 @@
 
 #include "FreeRTOS.h"
 #include "stream_buffer.h"
+#include "Hal_pin.h"
 
 UART *UART::uart_channel[2];
 // static
@@ -233,6 +234,8 @@ extern "C" void HAL_UART_MspInit(UART_HandleTypeDef *huart)
         GPIO_InitStruct.Pin = USART1x_RX_PIN;
         GPIO_InitStruct.Alternate = USART1x_RX_AF;
         HAL_GPIO_Init(USART1x_RX_GPIO_PORT, &GPIO_InitStruct);
+        allocate_hal_pin(USART1x_TX_GPIO_PORT, USART1x_TX_PIN);
+        allocate_hal_pin(USART1x_RX_GPIO_PORT, USART1x_RX_PIN);
 
         hdma_tx[0].Instance                 = USART1x_TX_DMA_STREAM;
         hdma_tx[0].Init.Request             = USART1x_TX_DMA_CHANNEL;
@@ -290,6 +293,9 @@ extern "C" void HAL_UART_MspInit(UART_HandleTypeDef *huart)
         GPIO_InitStruct.Pin = USART2x_RX_PIN;
         GPIO_InitStruct.Alternate = USART2x_RX_AF;
         HAL_GPIO_Init(USART2x_RX_GPIO_PORT, &GPIO_InitStruct);
+        allocate_hal_pin(USART2x_TX_GPIO_PORT, USART2x_TX_PIN);
+        allocate_hal_pin(USART2x_RX_GPIO_PORT, USART2x_RX_PIN);
+
         hdma_tx[1].Instance                 = USART2x_TX_DMA_STREAM;
         hdma_tx[1].Init.Request             = USART2x_TX_DMA_CHANNEL;
         hdma_tx[1].Init.Direction           = DMA_MEMORY_TO_PERIPH;
