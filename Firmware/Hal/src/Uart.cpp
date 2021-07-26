@@ -430,7 +430,7 @@ void UART::tx_cplt_callback()
         }
         // HACK ALERT, there is a bug in the HAL that causes the normal operation to be unreliable
         // and higher priority interrupts can delay this in UART_DMATransmitCplt() where it no longer works.
-        // this hack seems to work, and fix the issue.
+        // this hack seems to work, and fix the issue. symptoms are that HAL_UART_TxCpltCallback does not get called.
         SET_BIT(((UART_HandleTypeDef*)_huart)->Instance->CR1, USART_CR1_TCIE);
     }
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
@@ -473,7 +473,7 @@ size_t UART::write(uint8_t *buf, uint16_t len, uint32_t timeout)
         }
         // HACK ALERT, there is a bug in the HAL that causes the normal operation to be unreliable
         // and higher priority interrupts can delay this in UART_DMATransmitCplt() where it no longer works.
-        // this hack seems to work, and fix the issue.
+        // this hack seems to work, and fix the issue. symptoms are that HAL_UART_TxCpltCallback does not get called.
         SET_BIT(huart->Instance->CR1, USART_CR1_TCIE);
 
         //printf("Wrote direct\n");

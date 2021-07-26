@@ -536,7 +536,7 @@ static void usb_comms(void *param)
 }
 
 // debug port
-static void uart_comms(void *)
+static void uart_debug_comms(void *)
 {
     printf("DEBUG: UART Debug Comms thread running\n");
     set_notification_uart(xTaskGetCurrentTaskHandle());
@@ -567,6 +567,37 @@ static void uart_comms(void *)
     }
     output_streams.erase(&os);
     printf("DEBUG: UART Debug Comms thread exiting\n");
+    vTaskDelete(NULL);
+}
+
+#include "Uart.h"
+static void uart_console_comms(void *)
+{
+    printf("DEBUG: UART Console Comms thread running\n");
+    UART *uart= UART::getInstance(1); // TODO make this configurable (1 is nucleo)
+    if(!uart->init(115200, 8, 1, 0)) {
+        printf("ERROR: Failed it init uart 1\n");
+        return;
+    }
+
+    // create an output stream that writes to this uart
+    static OutputStream os([uart](const char *buf, size_t len) { return uart->write((uint8_t*)buf, len); });
+    output_streams.insert(&os);
+
+    const TickType_t waitms = pdMS_TO_TICKS(300);
+
+    char rx_buf[256];
+    char line[MAX_LINE_LENGTH];
+    size_t cnt = 0;
+    bool discard = false;
+    while(!abort_comms) {
+        size_t n = uart->read((uint8_t*)rx_buf, sizeof(rx_buf), waitms);
+        if(n > 0) {
+            process_command_buffer(n, rx_buf, &os, line, cnt, discard);
+        }
+    }
+    output_streams.erase(&os);
+    printf("DEBUG: UART Console Comms thread exiting\n");
     vTaskDelete(NULL);
 }
 
@@ -1026,7 +1057,9 @@ static void smoothie_startup(void *)
 
     // Start debug comms threads higher priority than the command thread
     // fixed stack size of 4k Bytes each
-    xTaskCreate(uart_comms, "UARTCommsThread", 1500 / 4, NULL, (tskIDLE_PRIORITY + COMMS_PRI), (TaskHandle_t *) NULL);
+    xTaskCreate(uart_debug_comms, "UARTDebugThread", 1500 / 4, NULL, (tskIDLE_PRIORITY + COMMS_PRI), (TaskHandle_t *) NULL);
+
+    xTaskCreate(uart_console_comms, "UARTConsoleThread", 1500 / 4, NULL, (tskIDLE_PRIORITY + COMMS_PRI), (TaskHandle_t *) NULL);
 
     // setup usb and cdc first
     if(setup_cdc()) {

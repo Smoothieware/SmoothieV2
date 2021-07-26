@@ -12,7 +12,7 @@
 
 REGISTER_TEST(UARTTest, UART_class)
 {
-    printf("Started..\n");
+    printf("Started at 9600 baud..\n");
     // UART 1 on Nucleo is pins PD8/PD9
     UART *uart = UART::getInstance(1);
     TEST_ASSERT_NOT_NULL(uart);
