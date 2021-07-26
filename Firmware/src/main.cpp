@@ -535,9 +535,10 @@ static void usb_comms(void *param)
     vTaskDelete(NULL);
 }
 
+// debug port
 static void uart_comms(void *)
 {
-    printf("DEBUG: UART Comms thread running\n");
+    printf("DEBUG: UART Debug Comms thread running\n");
     set_notification_uart(xTaskGetCurrentTaskHandle());
 
     // create an output stream that writes to the uart
@@ -565,7 +566,7 @@ static void uart_comms(void *)
         }
     }
     output_streams.erase(&os);
-    printf("DEBUG: UART Comms thread exiting\n");
+    printf("DEBUG: UART Debug Comms thread exiting\n");
     vTaskDelete(NULL);
 }
 
@@ -1023,7 +1024,7 @@ static void smoothie_startup(void *)
         printf("Error: failed to create comms i/o queue\n");
     }
 
-    // Start comms threads higher priority than the command thread
+    // Start debug comms threads higher priority than the command thread
     // fixed stack size of 4k Bytes each
     xTaskCreate(uart_comms, "UARTCommsThread", 1500 / 4, NULL, (tskIDLE_PRIORITY + COMMS_PRI), (TaskHandle_t *) NULL);
 

@@ -130,7 +130,6 @@ Infinite_Loop:
 g_pfnVectors:
   .word  _estack
   .word  Reset_Handler
-
   .word  NMI_Handler
   .word  HardFault_Handler
   .word  MemManage_Handler
@@ -145,8 +144,6 @@ g_pfnVectors:
   .word  0
   .word  PendSV_Handler
   .word  SysTick_Handler
-
-  /* External Interrupts */
   .word     WWDG_IRQHandler                   /* Window WatchDog Interrupt ( wwdg1_it, wwdg2_it) */
   .word     PVD_AVD_IRQHandler                /* PVD/AVD through EXTI Line detection */
   .word     TAMP_STAMP_IRQHandler             /* Tamper and TimeStamps through the EXTI line */

@@ -28,14 +28,10 @@ pins used on the headers when selecting a function in the Firmware
 | PWM2_3     | PI7     |                          |
 | PWM2_4     | PI2     |                          |
 |            |         |                          |
-| UART3_RX   | PD9     | Debug nucleo             |
-| UART3_TX   | PD8     | Debug nucleo             |
-| UART2_RX   | PD6     | debug prime              |
-| UART2_TX   | PD5     | debug prime              |
-| UART4_RX   | PH14    | control port prime       |
-| UART4_TX   | PB9     | control port prime       |
-| UART3_RX   | PB11    | spare prime              |
-| UART3_TX   | PD8     | spare prime              |
+| UART 0 TX  | PD8     | H/W USART3               |
+| UART 0 RX  | PB11    |                          |
+| UART 1 TX  | PB9     | H/W USART4               |
+| UART 1 RX  | PH14    | PB8 on Nucleo            |
 |            |         |                          |
 | SPI0CK     | PA5     |                          |
 | SPI0MOSI   | PB5     |                          |
@@ -119,23 +115,29 @@ pins used on the headers when selecting a function in the Firmware
 
 # Nucleo Board
 
-| Name       | pin     | comment  |
-| ---------- | ------- | -------- |
-| LED1       | PB0     |          |
-| LED2       | PE1     |          |
-| LED3       | PB14    |          |
-| BUT        | PC13    |          |
+| Name       | pin     | comment      |
+| ---------- | ------- | --------     |
+| LED1       | PB0     |              |
+| LED2       | PE1     |              |
+| LED3       | PB14    |              |
+| BUT        | PC13    |              |
+| UART3_RX   | PD9     | Debug nucleo |
+| UART3_TX   | PD8     | Debug nucleo |
+| UART 1 RX  | PB8     |              |
+| UART 1 TX  | PB9     |              |
 
 # Prime Board
 
-| function         | pin   | comment |
-| ----------       | ----- | ------- |
-| MSC LED          | PF13  |         |
-| BOOT0_DETECT/MSC | PJ14  |         |
-| LED1             | PH9   |         |
-| LED2             | PH10  |         |
-| LED3             | PH11  |         |
-| LED4             | PH12  |         |
+| function         | pin   | comment     |
+| ----------       | ----- | -------     |
+| MSC LED          | PF13  |             |
+| BOOT0_DETECT/MSC | PJ14  |             |
+| LED1             | PH9   |             |
+| LED2             | PH10  |             |
+| LED3             | PH11  |             |
+| LED4             | PH12  |             |
+| UART2_RX         | PD6   | debug prime |
+| UART2_TX         | PD5   | debug prime |
 
 
 # Gadgeteer headers
@@ -162,8 +164,8 @@ pins used on the headers when selecting a function in the Firmware
 | 1    |         | 3v3       |
 | 2    |         | 5v        |
 | 3    | PD9     |           |
-| 4    | PB9     | USART4_TX |
-| 5    | PH14    | USART4_RX |
+| 4    | PB9     | UART1 TX  |
+| 5    | PH14    | UART1 RX  |
 | 6    | PK0     |           |
 | 7    | PK1     |           |
 | 8    | PH8     | I2C3_SDA  |
@@ -192,8 +194,8 @@ pins used on the headers when selecting a function in the Firmware
 | 1    |         | 3v3       |
 | 2    |         | 5v        |
 | 3    | PE7     |           |
-| 4    | PD8     | USART3_TX |
-| 5    | PB11    | USART3_RX |
+| 4    | PD8     | UART0 TX  |
+| 5    | PB11    | UART0 RX  |
 | 6    | PE9     | TIM1_CH1  |
 | 7    | PE11    | TIM1_CH2  |
 | 8    | PE13    | TIM1_CH3  |

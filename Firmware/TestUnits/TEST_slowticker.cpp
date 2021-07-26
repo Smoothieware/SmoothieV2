@@ -50,7 +50,7 @@ REGISTER_TEST(SlowTicker, test_1_20_100_hz)
     timer_cnt100= 0;
     // test for 5 seconds which should be around 100 callbacks for 20 and 500 for 100
     for (int i = 0; i < 5; ++i) {
-        vTaskDelay(pdMS_TO_TICKS(1000));;
+        vTaskDelay(pdMS_TO_TICKS(1000));
         printf("time %d seconds, timer1 %d, timer20 %d, timer100 %d\n", i+1, timer_cnt1, timer_cnt20, timer_cnt100);
     }
 

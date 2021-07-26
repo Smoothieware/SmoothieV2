@@ -181,8 +181,10 @@ bool SPI::init(int bits, int mode, int frequency)
 
 SPI::~SPI()
 {
-	HAL_SPI_DeInit((SPI_HandleTypeDef*)_hspi);
-	free(_hspi);
+    if(_valid) {
+	   HAL_SPI_DeInit((SPI_HandleTypeDef*)_hspi);
+	   free(_hspi);
+    }
 }
 
 int SPI::write(int value)

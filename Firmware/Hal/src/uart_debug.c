@@ -1,5 +1,5 @@
 /*
- * handles interrupt driven uart I/O for primary UART/DEBUG port
+ * handles interrupt driven uart I/O for primary DEBUG port
  */
 #include "uart_debug.h"
 
@@ -30,7 +30,7 @@ static RingBuffer_t *rxrb;
 
 | UART4_RX   | PB8     | debug devebox            |
 | UART4_TX   | PB9     | debug devebox            |
-
+Note...
 | UART4_RX   | PH14    | control port prime       |
 | UART4_TX   | PB9     | control port prime       |
 
@@ -198,7 +198,7 @@ void Configure_USART(void)
     /* (2) NVIC Configuration for USART interrupts */
     /*  - Set priority for USARTx_IRQn */
     /*  - Enable USARTx_IRQn */
-    NVIC_SetPriority(USARTx_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
+    NVIC_SetPriority(USARTx_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY+2);
     NVIC_EnableIRQ(USARTx_IRQn);
 
     /* (3) Enable USART peripheral clock and clock source ***********************/

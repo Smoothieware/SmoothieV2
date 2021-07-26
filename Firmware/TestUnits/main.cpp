@@ -18,7 +18,7 @@
 #include "MessageQueue.h"
 #include "SlowTicker.h"
 
-#include "uart_comms.h"
+#include "uart_debug.h"
 
 #include "benchmark_timer.h"
 
