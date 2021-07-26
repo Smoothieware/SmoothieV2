@@ -475,7 +475,7 @@ static void uart_debug_comms(void *)
 
 #include "Uart.h"
 static uint8_t uart_channel;
-static UART::uart_settings_t uart_console_settings;
+static UART::settings_t uart_console_settings;
 static void uart_console_comms(void *)
 {
     printf("DEBUG: UART Console Comms thread running\n");

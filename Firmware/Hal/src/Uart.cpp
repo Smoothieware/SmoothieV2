@@ -146,10 +146,10 @@ UART::~UART()
 // cache aligned
 static uint8_t RXBuffer[2][RX_BUFFER_SIZE] __attribute__((section (".sram_1_bss"), aligned(32))); // put in SRAM_1
 
-bool UART::init(uart_settings_t set)
+bool UART::init(settings_t set)
 {
     if(_valid) {
-        if(memcmp(&settings, &set, sizeof(uart_settings_t)) != 0) {
+        if(memcmp(&settings, &set, sizeof(settings_t)) != 0) {
             printf("ERROR: UART channel %d, already set with different parameters\n", _channel);
             return false;
         }

@@ -152,6 +152,7 @@ if TESTING
   # Unity tests
   src = FileList['Unity/src/*.c', 'src/**/*.{c,cpp,s}']
   src.exclude(/(src\/main.cpp)/) # we don't want the Firmware main.cpp
+  src.exclude(/(src\/Consoles.cpp)/) # or this
   src.exclude(/(src\/modules)/) # TODO these are not needed yet
 
   if ENV['test'].nil?

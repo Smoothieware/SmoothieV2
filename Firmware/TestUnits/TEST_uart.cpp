@@ -16,10 +16,24 @@ REGISTER_TEST(UARTTest, UART_class)
     // UART 1 on Nucleo is pins PD8/PD9
     UART *uart = UART::getInstance(1);
     TEST_ASSERT_NOT_NULL(uart);
-    TEST_ASSERT_TRUE(uart->init(9600, 8, 1, 0));
+    UART::settings_t settings= {
+        .baudrate= 9600,
+        .bits= 8,
+        .stop_bits= 1,
+        .parity= 0
+    };
+
+    TEST_ASSERT_TRUE(uart->init(settings));
     TEST_ASSERT_TRUE(uart->valid());
+
     printf("Expect an error report...\n");
-    TEST_ASSERT_FALSE(uart->init(2400, 7, 1, 1));
+    UART::settings_t settings2= {
+        .baudrate= 2400,
+        .bits= 8,
+        .stop_bits= 1,
+        .parity= 0
+    };
+    TEST_ASSERT_FALSE(uart->init(settings2));
 
     uint8_t buf[]= {'1','2','3','4','5','6','7','8','9','\n', '\0'};
     int n= 10;
