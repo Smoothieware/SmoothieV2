@@ -151,17 +151,6 @@ bool check_flashme_file(OutputStream& os, bool errors)
     return true;
 }
 
-#define SD_CONFIG
-
-#ifndef SD_CONFIG
-#include STRING_CONFIG_H
-static std::string str(string_config);
-static std::stringstream ss(str);
-#else
-extern "C" bool setup_sdmmc();
-static FATFS fatfs; /* File system object */
-#endif
-
 // voltage monitors, name -> <channel,scale>
 static std::map<std::string, std::tuple<int32_t, float>> voltage_monitors;
 
@@ -190,7 +179,6 @@ int get_voltage_monitor_names(const char *names[])
     return i;
 }
 
-extern bool config_override;
 
 // this is used to add callback functions to be called once the system is running
 static std::vector<StartupFunc_t> startup_fncs;
@@ -198,6 +186,10 @@ void register_startup(StartupFunc_t sf)
 {
     startup_fncs.push_back(sf);
 }
+
+extern "C" bool setup_sdmmc();
+static FATFS fatfs; /* File system object */
+extern bool config_override;
 
 static void smoothie_startup(void *)
 {
@@ -225,7 +217,6 @@ static void smoothie_startup(void *)
 
     // open the config file
     do {
-#ifdef SD_CONFIG
         if(!setup_sdmmc()) {
             std::cout << "Error: setting up sdmmc\n";
             break;
@@ -250,10 +241,6 @@ static void smoothie_startup(void *)
 
         ConfigReader cr(fs);
         printf("DEBUG: Starting configuration of modules from sdcard...\n");
-#else
-        ConfigReader cr(ss);
-        printf("DEBUG: Starting configuration of modules from memory...\n");
-#endif
 
         {
             // get general system settings
@@ -410,13 +397,11 @@ static void smoothie_startup(void *)
             printf("ERROR: Pwm::post_config_setup failed\n");
         }
 
-#ifdef SD_CONFIG
         // close the file stream
         fs.close();
 
         // unmount sdcard
         //f_unmount("sd");
-#endif
 
         // initialize planner before conveyor this is when block queue is created
         // which needs to know how many actuators there are, which it gets from robot

@@ -21,5 +21,3 @@ extern "C" {
     void Board_LED_Set(int, bool);
     bool Board_LED_Test(int);
 }
-
-#define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))

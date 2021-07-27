@@ -402,6 +402,12 @@ static void usb_comms(void *param)
         os->set_is_usb();
         output_streams.insert(os);
         vTaskDelay(pdMS_TO_TICKS(100));
+
+        if(get_config_error_msg() != nullptr) {
+            // if there was a serious config error we print it out here
+            os->printf("\n%s\n", get_config_error_msg());
+        }
+
         os->printf("Welcome to Smoothie\nok\n");
 
         // now read lines and dispatch them
@@ -677,25 +683,25 @@ bool configure_consoles(ConfigReader& cr)
 
     ConfigReader::section_map_t ucm;
     if(cr.get_section("uart console", ucm)) {
-        uart_console_enabled= cr.get_bool(ucm, "enable", false);
+        uart_console_enabled = cr.get_bool(ucm, "enable", false);
         printf("INFO: uart console is %s\n", uart_console_enabled ? "enabled" : "disabled");
         if(uart_console_enabled) {
-            uart_channel= cr.get_int(ucm, "channel", 0);
-            uart_console_settings.baudrate= cr.get_int(ucm, "baudrate", 115200);
-            uart_console_settings.bits= cr.get_int(ucm, "bits", 8);
-            uart_console_settings.stop_bits= cr.get_int(ucm, "stop_bits", 1);
-            std::string parity= cr.get_string(ucm, "parity", "none");
-            if(parity=="none") uart_console_settings.parity= 0;
-            else if(parity=="odd") uart_console_settings.parity= 1;
-            else if(parity=="even") uart_console_settings.parity= 2;
+            uart_channel = cr.get_int(ucm, "channel", 0);
+            uart_console_settings.baudrate = cr.get_int(ucm, "baudrate", 115200);
+            uart_console_settings.bits = cr.get_int(ucm, "bits", 8);
+            uart_console_settings.stop_bits = cr.get_int(ucm, "stop_bits", 1);
+            std::string parity = cr.get_string(ucm, "parity", "none");
+            if(parity == "none") uart_console_settings.parity = 0;
+            else if(parity == "odd") uart_console_settings.parity = 1;
+            else if(parity == "even") uart_console_settings.parity = 2;
             else printf("ERROR: uart console parity must be one of none|odd|even\n");
             printf("INFO: uart console settings: channel=%d, baudrate=%lu, bits=%d, stop_bits=%d, parity=%d\n",
-                uart_channel, uart_console_settings.baudrate, uart_console_settings.bits, uart_console_settings.stop_bits, uart_console_settings.parity);
+                   uart_channel, uart_console_settings.baudrate, uart_console_settings.bits, uart_console_settings.stop_bits, uart_console_settings.parity);
         }
 
-    }else{
+    } else {
         printf("INFO: no uart console section found, disabled\n");
-        uart_console_enabled= false;
+        uart_console_enabled = false;
     }
 
     return true;
