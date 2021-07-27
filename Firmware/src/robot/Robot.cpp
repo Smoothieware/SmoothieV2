@@ -533,6 +533,9 @@ void Robot::on_halt(bool flg)
 
 void Robot::enable_all_motors(bool flg)
 {
+    // do not enable motors if in halt state
+    if(flg && halted) return;
+
     if(flg && motors_enable_pin != nullptr) {
         // global not enable pin
         motors_enable_pin->set(false);
