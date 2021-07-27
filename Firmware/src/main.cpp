@@ -243,16 +243,19 @@ static void smoothie_startup(void *)
         printf("DEBUG: Starting configuration of modules from sdcard...\n");
 
         {
-            // get general system settings
-            ConfigReader::section_map_t m;
-            if(cr.get_section("general", m)) {
-                bool f = cr.get_bool(m, "grbl_mode", false);
+            // get general and system settings
+            ConfigReader::section_map_t gm;
+            if(cr.get_section("general", gm)) {
+                bool f = cr.get_bool(gm, "grbl_mode", false);
                 THEDISPATCHER->set_grbl_mode(f);
                 printf("INFO: grbl mode %s\n", f ? "set" : "not set");
-                config_override = cr.get_bool(m, "config-override", false);
+                config_override = cr.get_bool(gm, "config-override", false);
                 printf("INFO: use config override is %s\n", config_override ? "set" : "not set");
+            }
 
-                std::string p = cr.get_string(m, "aux_play_led", "nc");
+            ConfigReader::section_map_t sm;
+            if(cr.get_section("system", sm)) {
+                std::string p = cr.get_string(sm, "aux_play_led", "nc");
                 aux_play_led = new Pin(p.c_str(), Pin::AS_OUTPUT);
                 if(!aux_play_led->connected()) {
                     delete aux_play_led;
@@ -261,12 +264,12 @@ static void smoothie_startup(void *)
                     printf("INFO: auxilliary play led set to %s\n", aux_play_led->to_string().c_str());
                 }
 
-                flash_on_boot = cr.get_bool(m, "flash_on_boot", true);
+                flash_on_boot = cr.get_bool(sm, "flash_on_boot", true);
                 printf("INFO: flash on boot is %s\n", flash_on_boot ? "enabled" : "disabled");
-                bool enable_dfu = cr.get_bool(m, "dfu_enable", false);
+                bool enable_dfu = cr.get_bool(sm, "dfu_enable", false);
                 config_dfu_required = enable_dfu ? 1 : 0; // set it in the USB stack
                 printf("INFO: dfu is %s\n", enable_dfu ? "enabled" : "disabled");
-                config_msc_enable = cr.get_bool(m, "msc_enable", true) ? 1 : 0;
+                config_msc_enable = cr.get_bool(sm, "msc_enable", true) ? 1 : 0;
                 printf("INFO: MSC is %s\n", config_msc_enable ? "enabled" : "disabled");
             }
         }

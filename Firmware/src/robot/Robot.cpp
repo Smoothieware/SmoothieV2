@@ -371,15 +371,20 @@ bool Robot::configure(ConfigReader& cr)
             motors_enable_pin->set(false); // it is a not enable
             printf("DEBUG:configure-robot: Motor ENN is on pin %s\n", motors_enable_pin->to_string().c_str());
         }
+    }
+
+    // system settings
+    ConfigReader::section_map_t sm;
+    if(cr.get_section("system", sm)) {
         // global enable pin for all fets
-#if defined(BOARD_PRIME)
+        #if defined(BOARD_PRIME)
         const char *default_fets_enn= "PF14";
         const char *default_fets_power= "PD7";
-#else
+        #else
         const char *default_fets_enn= "nc";
         const char *default_fets_power= "nc";
-#endif
-        fets_enable_pin= new Pin(cr.get_string(mm, fets_enable_pin_key, default_fets_enn), Pin::AS_OUTPUT);
+        #endif
+        fets_enable_pin= new Pin(cr.get_string(sm, fets_enable_pin_key, default_fets_enn), Pin::AS_OUTPUT);
         if(!fets_enable_pin->connected()) {
             delete fets_enable_pin;
             fets_enable_pin= nullptr;
@@ -387,7 +392,8 @@ bool Robot::configure(ConfigReader& cr)
             fets_enable_pin->set(false); // it is a not enable
             printf("DEBUG:configure-robot: FET NEnable is on pin %s\n", fets_enable_pin->to_string().c_str());
         }
-        fets_power_enable_pin= new Pin(cr.get_string(mm, fets_power_enable_pin_key, default_fets_power), Pin::AS_OUTPUT);
+
+        fets_power_enable_pin= new Pin(cr.get_string(sm, fets_power_enable_pin_key, default_fets_power), Pin::AS_OUTPUT);
         if(!fets_power_enable_pin->connected()) {
             delete fets_power_enable_pin;
             fets_power_enable_pin= nullptr;
