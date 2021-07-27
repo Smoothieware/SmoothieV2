@@ -66,8 +66,8 @@
 
 // only one of these for all the drivers
 #define common_key                      "common"
-#define motor_reset_pin_key             "motor_reset_pin"
 #define motors_enable_pin_key           "motors_enable_pin"
+#define fets_enable_pin_key             "fets_enable_pin"
 #define check_driver_errors_key         "check_driver_errors"
 #define halt_on_driver_alarm_key        "halt_on_driver_alarm"
 
@@ -353,26 +353,36 @@ bool Robot::configure(ConfigReader& cr)
     auto s = ssm.find(common_key);
     if(s != ssm.end()) {
         auto& mm = s->second; // map of general actuator config settings
-#ifdef BOARD_MINIALPHA
-        // driver reset pin, mini alpha is GPIO3_5
-        Pin motor_reset_pin(cr.get_string(mm, motor_reset_pin_key, "nc"), Pin::AS_OUTPUT);
-        if(motor_reset_pin.connected()) {
-            // set high, leaves it high
-            motor_reset_pin.set(true);
-        }
 
-#elif defined(DRIVER_TMC2590)
+#if defined(DRIVER_TMC2590)
         check_driver_errors= cr.get_bool(mm, check_driver_errors_key, false);
         halt_on_driver_alarm= cr.get_bool(mm, halt_on_driver_alarm_key, false);
+        const char *default_motor_enn= "PH13";
+#else
+        const char *default_motor_enn= "nc";
 #endif
         // global enable pin for all motors
-        motors_enable_pin= new Pin(cr.get_string(mm, motors_enable_pin_key, "nc"), Pin::AS_OUTPUT);
+        motors_enable_pin= new Pin(cr.get_string(mm, motors_enable_pin_key, default_motor_enn), Pin::AS_OUTPUT);
         if(!motors_enable_pin->connected()) {
             delete motors_enable_pin;
             motors_enable_pin= nullptr;
         }else{
             motors_enable_pin->set(false); // it is a not enable
-            printf("DEBUG:configure-robot: ENN is enabled on pin %s\n", motors_enable_pin->to_string().c_str());
+            printf("DEBUG:configure-robot: Motor ENN is on pin %s\n", motors_enable_pin->to_string().c_str());
+        }
+        // global enable pin for all fets
+#if defined(BOARD_PRIME)
+        const char *default_fets_enn= "PF14";
+#else
+        const char *default_fets_enn= "nc";
+#endif
+        fets_enable_pin= new Pin(cr.get_string(mm, fets_enable_pin_key, default_fets_enn), Pin::AS_OUTPUT);
+        if(!fets_enable_pin->connected()) {
+            delete fets_enable_pin;
+            fets_enable_pin= nullptr;
+        }else{
+            fets_enable_pin->set(false); // it is a not enable
+            printf("DEBUG:configure-robot: FET NEnable is on pin %s\n", fets_enable_pin->to_string().c_str());
         }
     }
 
@@ -519,8 +529,12 @@ void Robot::on_halt(bool flg)
     halted = flg;
 
     if(motors_enable_pin != nullptr) {
-        // global enable pin
+        // global not enable pin for motors
         motors_enable_pin->set(flg);
+    }
+    if(fets_enable_pin != nullptr) {
+        // global not enable pin for fets
+        fets_enable_pin->set(flg);
     }
 
     if(flg) {

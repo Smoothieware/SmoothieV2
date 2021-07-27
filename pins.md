@@ -128,17 +128,18 @@ pins used on the headers when selecting a function in the Firmware
 
 # Prime Board
 
-| function         | pin   | comment     |
-| ----------       | ----- | -------     |
-| MSC LED          | PF13  |             |
-| BOOT0_DETECT/MSC | PJ14  |             |
-| LED1             | PH9   |             |
-| LED2             | PH10  |             |
-| LED3             | PH11  |             |
-| LED4             | PH12  |             |
-| UART2_RX         | PD6   | debug prime |
-| UART2_TX         | PD5   | debug prime |
-
+| function         | pin   | comment    |
+| ----------       | ----- | -------    |
+| MSC LED          | PF13  |            |
+| BOOT0_DETECT/MSC | PJ14  |            |
+| LED1             | PH9   |            |
+| LED2             | PH10  |            |
+| LED3             | PH11  |            |
+| LED4             | PH12  |            |
+| UART2_RX         | PD6   | debug port |
+| UART2_TX         | PD5   | debug port |
+| FET Enable       | PF14  |            |
+| Motor NOT Enable | PH13  |            |
 
 # Gadgeteer headers
 
