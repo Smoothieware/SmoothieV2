@@ -271,6 +271,8 @@ static void smoothie_startup(void *)
                 printf("INFO: dfu is %s\n", enable_dfu ? "enabled" : "disabled");
                 config_msc_enable = cr.get_bool(sm, "msc_enable", true) ? 1 : 0;
                 printf("INFO: MSC is %s\n", config_msc_enable ? "enabled" : "disabled");
+            }else{
+                printf("WARNING: no [system] section found, defaults used\n");
             }
         }
 

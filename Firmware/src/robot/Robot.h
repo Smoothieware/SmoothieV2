@@ -161,7 +161,7 @@ private:
     float delta_segments_per_second;                     // Setting : Used to split lines into segments for delta based on speed
     float seconds_per_minute;                            // for realtime speed change
     float default_acceleration;                          // the defualt accleration if not set for each axis
-    float s_value{0.8};                                       // modal S value
+    float s_value{0.8};                                  // modal S value
 
     // Number of arc generation iterations by small angle approximation before exact arc trajectory
     // correction. This parameter may be decreased if there are issues with the accuracy of the arc
@@ -173,9 +173,9 @@ private:
     float max_speed;                                     // Setting : max allowable speed in mm/s for any move
     float park_position[2];
 
-    Pin *motors_enable_pin;                              // global enable pin
-    Pin *fets_enable_pin;                                // global enable pin
-    Pin *fets_power_enable_pin;                          // global enable pin
+    Pin *motors_enable_pin{nullptr};                      // global enable pin
+    Pin *fets_enable_pin{nullptr};                       // global enable pin
+    Pin *fets_power_enable_pin{nullptr};                 // global enable pin
     uint8_t n_motors;                                    //count of the motors/axis registered
 
     volatile bool halted{false};

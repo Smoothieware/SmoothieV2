@@ -401,7 +401,11 @@ bool Robot::configure(ConfigReader& cr)
             fets_power_enable_pin->set(false); // it is a not enable
             printf("DEBUG:configure-robot: FET Power NEnable is on pin %s\n", fets_power_enable_pin->to_string().c_str());
         }
+
+    }else{
+        printf("WARNING:configure-robot: no [system] section found, all disabled\n");
     }
+
 
     // initialise actuator positions to current cartesian position (X0 Y0 Z0)
     // so the first move can be correct if homing is not performed
