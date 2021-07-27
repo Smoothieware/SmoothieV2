@@ -9,10 +9,11 @@
 #include <malloc.h>
 #include <fstream>
 #include <vector>
-#include <functional>
-#include "Consoles.h"
+
+#include "benchmark_timer.h"
 #include "CommandShell.h"
 #include "ConfigReader.h"
+#include "Consoles.h"
 #include "Conveyor.h"
 #include "Dispatcher.h"
 #include "GCode.h"
@@ -27,7 +28,6 @@
 #include "Robot.h"
 #include "StringUtils.h"
 #include "uart_debug.h"
-#include "benchmark_timer.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -496,6 +496,7 @@ static void uart_console_comms(void *)
     size_t cnt = 0;
     bool discard = false;
     while(!abort_comms) {
+        // this will block until a character is available or timeout
         size_t n = uart->read((uint8_t*)rx_buf, sizeof(rx_buf), waitms);
         if(n > 0) {
             process_command_buffer(n, rx_buf, &os, line, cnt, discard);
