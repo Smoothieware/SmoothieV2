@@ -19,7 +19,7 @@
 | SPI0MOSI         | PB5   |                        |
 | QSPI_NCS         | PB6   | QSPI                   |
 | SSR2             | PB7   |                        |
-| hotend_FET       | PB8   |                        |
+| hotend FET       | PB8   |                        |
 | UART4_TX         | PB9   | control port           |
 | PROBE            | PB10  |                        |
 | UART3_RX         | PB11  | uart                   |

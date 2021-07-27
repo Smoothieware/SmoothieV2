@@ -126,7 +126,7 @@ pins used on the headers when selecting a function in the Firmware
 | UART 1 RX  | PB8     |              |
 | UART 1 TX  | PB9     |              |
 
-# Prime Board
+# Prime Board builtins
 
 | function         | pin   | comment    |
 | ----------       | ----- | -------    |
@@ -138,8 +138,23 @@ pins used on the headers when selecting a function in the Firmware
 | LED4             | PH12  |            |
 | UART2_RX         | PD6   | debug port |
 | UART2_TX         | PD5   | debug port |
-| FET Enable       | PF14  |            |
+| FET NOT Enable   | PF14  |            |
+| FET PowerShutoff | PD7   |            |
 | Motor NOT Enable | PH13  |            |
+| SSR1             | PI4   |            |
+| SSR2             | PB7   |            |
+| Hotend1          | PE0   |            |
+| Hotend2          | PB8   |            |
+| Bed              | PE3   |            |
+| Fan 1            |       |            |
+| Fan 2            |       |            |
+| Endstop Xmin     |       |            |
+| Endstop Xmax     |       |            |
+| Endstop Ymin     |       |            |
+| Endstop Ymax     |       |            |
+| Endstop Zmin     |       |            |
+| Endstop Zmax     |       |            |
+| Probe            |       |            |
 
 # Gadgeteer headers
 

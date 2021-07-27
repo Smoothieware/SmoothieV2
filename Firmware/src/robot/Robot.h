@@ -175,6 +175,7 @@ private:
 
     Pin *motors_enable_pin;                              // global enable pin
     Pin *fets_enable_pin;                                // global enable pin
+    Pin *fets_power_enable_pin;                          // global enable pin
     uint8_t n_motors;                                    //count of the motors/axis registered
 
     volatile bool halted{false};
