@@ -687,7 +687,7 @@ void vAssertCalled( const char *pcFile, uint32_t ulLine )
     } else {
         pcAssertedFileName = pcFile;
     }
-    printf("ERROR: vAssertCalled( %s, %ld\n", pcFile, ulLine);
+    printf("ERROR: vAssertCalled( %s, %ld )\n", pcFile, ulLine);
 
     // return;
 

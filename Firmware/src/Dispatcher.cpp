@@ -39,7 +39,7 @@ static bool is_allowed_mcode(int m) {
 // Must be called from the command thread context
 bool Dispatcher::dispatch(GCode& gc, OutputStream& os, bool need_ok) const
 {
-    configASSERT(strcmp(pcTaskGetName(NULL), "CommandThread") == 0);
+    configASSERT(strncmp(pcTaskGetName(NULL), "CommandThread", configMAX_TASK_NAME_LEN-1) == 0);
 
 	os.clear_flags();
 	if(Module::is_halted()) {

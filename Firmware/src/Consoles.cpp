@@ -85,7 +85,7 @@ bool load_config_override(OutputStream& os)
 // can be called by modules when in command thread context
 bool dispatch_line(OutputStream& os, const char *ln)
 {
-    configASSERT(strcmp(pcTaskGetName(NULL), "CommandThread") == 0);
+    configASSERT(strncmp(pcTaskGetName(NULL), "CommandThread", configMAX_TASK_NAME_LEN-1) == 0);
 
     // need a mutable copy
     std::string line(ln);
