@@ -85,9 +85,10 @@ bool load_config_override(OutputStream& os)
 // can be called by modules when in command thread context
 bool dispatch_line(OutputStream& os, const char *ln)
 {
+    configASSERT(strcmp(pcTaskGetName(NULL), "CommandThread") == 0);
+
     // need a mutable copy
     std::string line(ln);
-
     // map some special M codes to commands as they violate the gcode spec and pass a string parameter
     // M23, M32, M117, M30 => m23, m32, m117, rm and handle as a command
     // also M28

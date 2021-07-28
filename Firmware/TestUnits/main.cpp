@@ -508,7 +508,7 @@ int main()   //int argc, char *argv[])
     printf("MCU clock rate= %lu Hz\n", SystemCoreClock);
     print_clocks();
 
-    xTaskCreate(vRunTestsTask, "vTestsTask", 1024, /* *4 as 32bit words */
+    xTaskCreate(vRunTestsTask, "CommandThread", 1024, /* *4 as 32bit words */
                 NULL, (tskIDLE_PRIORITY + 2UL), (TaskHandle_t *) NULL);
 
 #ifdef TESTCOMMS

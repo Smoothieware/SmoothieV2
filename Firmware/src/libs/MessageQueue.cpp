@@ -8,7 +8,7 @@ static QueueHandle_t queue_handle;
 bool create_message_queue()
 {
     // create queue for dispatch of lines, can be sent to by several tasks
-    queue_handle = xQueueCreate( 10, sizeof( comms_msg_t ) );
+    queue_handle = xQueueCreate(10, sizeof(comms_msg_t));
     if( queue_handle == 0 ) {
         // Failed to create the queue.
         printf("ERROR: failed to create dispatch queue\n");

@@ -10,7 +10,8 @@
 #include <string.h>
 #include <cstdarg>
 
-using namespace std;
+#include "FreeRTOS.h"
+#include "task.h"
 
 //#define DEBUG_WARNING printf
 #define DEBUG_WARNING(...)
@@ -38,6 +39,8 @@ static bool is_allowed_mcode(int m) {
 // Must be called from the command thread context
 bool Dispatcher::dispatch(GCode& gc, OutputStream& os, bool need_ok) const
 {
+    configASSERT(strcmp(pcTaskGetName(NULL), "CommandThread") == 0);
+
 	os.clear_flags();
 	if(Module::is_halted()) {
 		// If we are halted then we reject most g/m codes unless in exception list
