@@ -1818,13 +1818,14 @@ bool CommandShell::msc_cmd(std::string& params, OutputStream& os)
     printf("DEBUG: MSC is now running\n");
 
     // msc led flashes when in msc mode
+    // TODO needs to be configurable
     Pin msc_led("PF13", Pin::AS_OUTPUT);
     // as nothing else can happen and MSC runs under Interrupts we sit in a tight loop here waiting for it to end
     uint32_t flash_time = HAL_GetTick();
     while(true) {
         if(check_MSC()) {
             // we have been ejected so reboot
-            printf("DEBUG: MSC has been safely ejected, now reboot\n");
+            printf("DEBUG: MSC has been safely ejected, now rebooting\n");
             msc_led.set(true);
             HAL_Delay(250);
             NVIC_SystemReset();

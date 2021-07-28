@@ -243,7 +243,7 @@ static void smoothie_startup(void *)
         printf("DEBUG: Starting configuration of modules from sdcard...\n");
 
         {
-            // get general and system settings
+            // get general settings
             ConfigReader::section_map_t gm;
             if(cr.get_section("general", gm)) {
                 bool f = cr.get_bool(gm, "grbl_mode", false);
@@ -252,7 +252,9 @@ static void smoothie_startup(void *)
                 config_override = cr.get_bool(gm, "config-override", false);
                 printf("INFO: use config override is %s\n", config_override ? "set" : "not set");
             }
-
+        }
+        {
+            // get system settings
             ConfigReader::section_map_t sm;
             if(cr.get_section("system", sm)) {
                 std::string p = cr.get_string(sm, "aux_play_led", "nc");
