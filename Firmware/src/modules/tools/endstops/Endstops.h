@@ -34,6 +34,7 @@ class Endstops : public Module
         bool debounced_get(Pin *pin);
         void process_home_command(GCode& gcode, OutputStream& os);
         void set_homing_offset(GCode& gcode, OutputStream& os);
+        void rotary_delta_M306(GCode& gcode, OutputStream& os);
         bool handle_G28(GCode& gcode, OutputStream& os);
         bool handle_mcode(GCode& gcode, OutputStream& os);
 
