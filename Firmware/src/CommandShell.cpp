@@ -1053,7 +1053,7 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
             if(Module::is_halted()) break;
         }
 
-    } else if (what == "raw") {
+    } else if (what == "raw" || what == "acc") {
 
         // issues raw steps to the specified axis usage: axis steps steps/sec
         std::string axis = stringutils::shift_parameter( params );
@@ -1081,9 +1081,18 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
         }
 
         uint32_t sps = strtol(stepspersec.c_str(), NULL, 10);
+
+        if(what == "acc") {
+            // convert actuator units to steps
+            steps= lroundf(Robot::getInstance()->actuators[a]->get_steps_per_mm() * steps);
+            // convert steps per unit to steps/sec
+            sps= lroundf(Robot::getInstance()->actuators[a]->get_steps_per_mm() * sps);
+        }
+
         sps = std::max(sps, (uint32_t)1);
 
         os.printf("issuing %d steps at a rate of %d steps/sec on the %c axis\n", steps, sps, ax);
+
         uint32_t delayus = 1000000.0F / sps;
         for(int s = 0; s < steps; s++) {
             if(Module::is_halted()) break;
@@ -1101,6 +1110,7 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
         os.printf(" test square size iterations [feedrate]\n");
         os.printf(" test circle radius iterations [feedrate]\n");
         os.printf(" test raw axis steps steps/sec\n");
+        os.printf(" test acc axis units units/sec\n");
     }
 
     return true;
