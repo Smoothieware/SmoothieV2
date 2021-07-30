@@ -1002,8 +1002,7 @@ bool Endstops::handle_mcode(GCode& gcode, OutputStream& os)
                 os.printf("\n");
 
             } else {
-                // FIXME don't use ABC
-                os.printf(";Theta offset (degrees):\nM206 A%1.5f B%1.5f C%1.5f\n",
+                os.printf(";Theta offset (degrees):\nM206 X%1.5f Y%1.5f Z%1.5f\n",
                           homing_axis[X_AXIS].home_offset, homing_axis[Y_AXIS].home_offset, homing_axis[Z_AXIS].home_offset);
             }
 

@@ -348,7 +348,7 @@ bool Robot::configure(ConfigReader& cr)
         actuators[a]->set_acceleration(cr.get_float(mm, acceleration_key, -1)); // mm/secs² if -1 it uses the default acceleration
     }
 
-    check_max_actuator_speeds(); // check the configs are sane
+    check_max_actuator_speeds(nullptr); // check the configs are sane
 
     // common settings for all drivers/actuators
     auto s = ssm.find(common_key);
@@ -728,7 +728,7 @@ Robot::wcs_t Robot::mcs2wcs(const Robot::wcs_t& pos) const
 
 // this does a sanity check that actuator speeds do not exceed steps rate capability
 // we will override the actuator max_rate if the combination of max_rate and steps/sec exceeds base_stepping_frequency
-void Robot::check_max_actuator_speeds()
+void Robot::check_max_actuator_speeds(OutputStream* os)
 {
     for (size_t i = 0; i < n_motors; i++) {
         //if(actuators[i]->is_extruder()) continue; //extruders are not included in this check
@@ -736,7 +736,11 @@ void Robot::check_max_actuator_speeds()
         float step_freq = actuators[i]->get_max_rate() * actuators[i]->get_steps_per_mm();
         if (step_freq > StepTicker::getInstance()->get_frequency()) {
             actuators[i]->set_max_rate(floorf(StepTicker::getInstance()->get_frequency() / actuators[i]->get_steps_per_mm()));
-            printf("WARNING: actuator %d rate exceeds base_stepping_frequency * ..._steps_per_mm: %f, setting to %f\n", i, step_freq, actuators[i]->get_max_rate());
+            if(os == nullptr) {
+                printf("WARNING: actuator %d rate exceeds base_stepping_frequency * ..._steps_per_mm: %f, setting to %f\n", i, step_freq, actuators[i]->get_max_rate());
+            }else{
+                os->printf("WARNING: actuator %d rate exceeds base_stepping_frequency * ..._steps_per_mm: %f, setting to %f\n", i, step_freq, actuators[i]->get_max_rate());
+            }
         }
     }
 }
@@ -1072,7 +1076,7 @@ bool Robot::handle_mcodes(GCode& gcode, OutputStream& os)
                 os.printf("%c:%f ", axis, actuators[i]->get_steps_per_mm());
             }
             os.set_append_nl();
-            check_max_actuator_speeds();
+            check_max_actuator_speeds(&os);
             return true;
 
         case 114: {
@@ -1138,7 +1142,7 @@ bool Robot::handle_mcodes(GCode& gcode, OutputStream& os)
                     }
                 }
 
-                if(gcode.get_subcode() == 1) check_max_actuator_speeds();
+                if(gcode.get_subcode() == 1) check_max_actuator_speeds(&os);
             }
             break;
 
@@ -1225,7 +1229,7 @@ bool Robot::handle_M909(GCode& gcode, OutputStream& os)
                 float s= actuators[i]->get_steps_per_mm()*((float)microsteps/current_microsteps);
                 actuators[i]->change_steps_per_mm(s);
                 os.printf("steps/mm for %c temporarily changed to: %f\n", axis, s);
-                check_max_actuator_speeds();
+                check_max_actuator_speeds(&os);
             }
         }
     }

@@ -140,7 +140,9 @@ UART::~UART()
 
 /* Definition for USART2x's NVIC */
 #define USART2x_IRQn                      UART4_IRQn
+#ifndef BOARD_DEVEBOX
 #define USART2x_IRQHandler                UART4_IRQHandler
+#endif
 
 #define RX_BUFFER_SIZE   (32*4) // 128
 // cache aligned

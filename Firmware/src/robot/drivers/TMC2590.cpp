@@ -1,6 +1,7 @@
 #if defined(DRIVER_TMC2590)
 #include "TMC2590.h"
 #include "main.h"
+#include "Consoles.h"
 #include "OutputStream.h"
 #include "Robot.h"
 #include "StepperMotor.h"

@@ -49,7 +49,6 @@ public:
     void set_s_value(float s) { s_value = s; }
     void  push_state();
     void  pop_state();
-    void check_max_actuator_speeds();
     float to_millimeters( float value ) const { return this->inch_mode ? value * 25.4F : value; }
     float from_millimeters( float value) const { return this->inch_mode ? value / 25.4F : value;  }
     float get_axis_position(int axis) const { return(this->machine_position[axis]); }
@@ -140,6 +139,7 @@ private:
     void clearToolOffset();
     int get_active_extruder() const;
     void periodic_checks();
+    void check_max_actuator_speeds(OutputStream* os);
 
     std::array<wcs_t, MAX_WCS> wcs_offsets; // these are persistent once saved with M500
     uint8_t current_wcs{0}; // 0 means G54 is enabled this is persistent once saved with M500
