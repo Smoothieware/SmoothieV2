@@ -187,28 +187,17 @@ SPI::~SPI()
     }
 }
 
-int SPI::write(int value)
+// writes and reads number of _bits sized words
+bool SPI::write_read(void *wvalue, void *rvalue, uint32_t n)
 {
-	int n = _bits > 8 ? 2 : 1;
-	uint8_t tx_buf[n];
-	uint8_t rx_buf[n];
+    if(wvalue == nullptr || rvalue == nullptr) return false;
 
-	tx_buf[0] = value & 0xFF;
-	if(n > 1) {
-		tx_buf[1] = value >> 8;
-	}
-
-	if(HAL_SPI_TransmitReceive((SPI_HandleTypeDef*)_hspi, tx_buf, rx_buf, n, 1000) != HAL_OK) {
+	if(HAL_SPI_TransmitReceive((SPI_HandleTypeDef*)_hspi, (uint8_t*)wvalue, (uint8_t*)rvalue, n, 1000) != HAL_OK) {
 		/* Transfer error in transmission process */
-		return 0;
+		return false;
 	}
 
-	int ret = rx_buf[0];
-	if(n > 1) {
-		ret |= (rx_buf[1] << 8);
-	}
-
-	return ret;
+	return true;
 }
 
 /**

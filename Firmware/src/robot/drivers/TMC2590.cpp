@@ -150,6 +150,13 @@
 SPI *TMC2590::spi = nullptr;
 bool TMC2590::common_setup = false;
 uint32_t TMC2590::max_current = 4000; // 4 amps
+
+#ifdef BOARD_DEVEBOX
+constexpr static int spichannel= 0;
+#else
+constexpr static int spichannel= 1;
+#endif
+
 /*
  * Constructor
  */
@@ -165,14 +172,14 @@ TMC2590::TMC2590(char d) : designator(d)
     // setup singleton spi instance
     if(spi == nullptr) {
         bool ok = false;
-        spi = SPI::getInstance(0);
+        spi = SPI::getInstance(spichannel);
         if(spi != nullptr) {
             if(spi->init(8, 3, 1000000)) { // 8bit, mode3, 1MHz
                 ok = true;
             }
         }
         if(!ok) {
-            printf("ERROR: TMC2590 failed to get SPI\n");
+            printf("ERROR: TMC2590 failed to get SPI channel %d\n", spichannel);
             return;
         }
     }
@@ -933,7 +940,9 @@ bool TMC2590::isShortToGroundB(void)
 //is motor channel A connected
 bool TMC2590::isOpenLoadA(void)
 {
-    if (!this->started) {
+    // NOTE this will give false readings if not moving or going fast
+    // should only test when going slow
+    if (!this->started || this->isStandStill()) {
         return false;
     }
     return (driver_status_result & STATUS_OPEN_LOAD_A);
@@ -942,7 +951,7 @@ bool TMC2590::isOpenLoadA(void)
 //is motor channel B connected
 bool TMC2590::isOpenLoadB(void)
 {
-    if (!this->started) {
+    if (!this->started || this->isStandStill()) {
         return false;
     }
     return (driver_status_result & STATUS_OPEN_LOAD_B);
@@ -1232,32 +1241,28 @@ bool TMC2590::set_raw_register(OutputStream& stream, uint32_t reg, uint32_t val)
  * returns the current status
  * sends 20bits, the last 20 bits of the 24bits is taken as the command
  */
-void TMC2590::send20bits(unsigned long datagram)
+void TMC2590::send20bits(uint32_t datagram)
 {
-    uint8_t buf[] {(uint8_t)(datagram >> 16), (uint8_t)(datagram >>  8), (uint8_t)(datagram & 0xff)};
-    uint8_t rbuf[3];
+    uint8_t txbuf[] {(uint8_t)(datagram >> 16), (uint8_t)(datagram >>  8), (uint8_t)(datagram & 0xff)};
+    uint8_t rxbuf[3];
 
     // write/read the values
-    sendSPI(buf, 3, rbuf);
-
-    // construct reply
-    unsigned long i_datagram = ((rbuf[0] << 16) | (rbuf[1] << 8) | (rbuf[2])) >> 4;
-
-    //store the datagram as status result
-    driver_status_result = i_datagram;
-
-    // printf("DEBUG: SPI - %c: sent: %05lX received: %05lX\n", designator, datagram, i_datagram);
+    if(sendSPI(txbuf, rxbuf)) {
+        //store the datagram as status result
+        uint32_t i_datagram = ((rxbuf[0] << 16) | (rxbuf[1] << 8) | (rxbuf[2])) >> 4;
+        driver_status_result = i_datagram;
+    }else{
+        printf("ERROR: send20bits failed\n");
+    }
 }
 
 // Called by the drivers codes to send and receive SPI data to/from the chip
-int TMC2590::sendSPI(uint8_t *b, int cnt, uint8_t *r)
+bool TMC2590::sendSPI(void *b, void *r)
 {
     spi_cs->set(false);
-    for (int i = 0; i < cnt; ++i) {
-        r[i] = spi->write(b[i]);
-    }
+    bool stat= spi->write_read(b, r, 3);
     spi_cs->set(true);
-    return cnt;
+    return stat;
 }
 
 #define HAS(X) (gcode.has_arg(X))

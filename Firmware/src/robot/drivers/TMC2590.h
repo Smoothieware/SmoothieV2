@@ -419,8 +419,8 @@ private:
     bool check_error_status_bits(OutputStream& stream);
 
     // SPI sender
-    inline void send20bits(unsigned long datagram);
-    int sendSPI(uint8_t *b, int cnt, uint8_t *r);
+    inline void send20bits(uint32_t datagram);
+    bool sendSPI(void *b, void *r);
 
     // one set of common settings
     static bool common_setup;

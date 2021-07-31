@@ -1,4 +1,6 @@
 #pragma once
+#include <cstdint>
+
 class SPI
 {
 
@@ -22,14 +24,7 @@ public:
 	 */
 	bool init(int bits=8, int mode=0, int frequency=1000000);
 
-	/** Write to the SPI Slave and return the response
-	 *
-	 *  @param value Data to be sent to the SPI slave
-	 *
-	 *  @returns
-	 *    Response from the SPI slave
-	*/
-	int write(int value);
+	bool write_read(void *wvalue, void *rvalue, uint32_t n);
 	bool valid() const { return _valid; }
 	void *get_hspi() const { return _hspi; }
 	static SPI *spi_channel[2];
