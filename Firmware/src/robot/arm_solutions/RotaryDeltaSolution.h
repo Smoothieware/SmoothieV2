@@ -15,19 +15,19 @@ class RotaryDeltaSolution : public BaseSolution {
 
     private:
         void init();
-        int delta_calcAngleYZ(float x0, float y0, float z0, float &theta) const;
-        int delta_calcForward(float theta1, float theta2, float theta3, float &x0, float &y0, float &z0) const;
+        int delta_calcAngleYZ(double x0, double y0, double z0, double &theta) const;
+        int delta_calcForward(double theta1, double theta2, double theta3, double &x0, double &y0, double &z0) const;
 
-        float delta_e;			// End effector length
-        float delta_f;			// Base length
-        float delta_re;			// Carbon rod length
-        float delta_rf;			// Servo horn length
-        float delta_z_offset ;		// Distance from delta 8mm rod/pulley to table/bed
+        double delta_e;			// End effector length
+        double delta_f;			// Base length
+        double delta_re;			// Carbon rod length
+        double delta_rf;			// Servo horn length
+        double delta_z_offset ;		// Distance from delta 8mm rod/pulley to table/bed
 			       		// NOTE: For OpenPnP, set the zero to be about 25mm above the bed
 
-        float delta_ee_offs;		// Ball joint plane to bottom of end effector surface
-        float tool_offset;		// Distance between end effector ball joint plane and tip of tool
-        float z_calc_offset;
+        double delta_ee_offs;		// Ball joint plane to bottom of end effector surface
+        double tool_offset;		// Distance between end effector ball joint plane and tip of tool
+        double z_calc_offset;
 
         struct {
             bool debug_flag:1;

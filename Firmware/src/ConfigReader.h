@@ -27,6 +27,7 @@ public:
     float get_float(const section_map_t&, const char *key, float def=0.0F);
     int get_int(const section_map_t&, const char *key, int def=0);
     bool get_bool(const section_map_t&, const char *key, bool def=false);
+    double get_double(const section_map_t& m, const char *key, double def);
 
 private:
     static bool match_section(const char *line, std::string& section_name);

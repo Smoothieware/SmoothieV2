@@ -278,7 +278,7 @@ DEFINES= defines.join(' ')
 DEPFLAGS = '-MMD '
 CSTD = '-std=gnu11'
 FFLAGS = ' -fmessage-length=0 -fno-builtin-printf -ffunction-sections -fdata-sections '
-CFLAGS = FFLAGS + DEPFLAGS + " -Wall -Wshadow -Wundef  -mcpu=cortex-m7 -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16  " + (DEBUG ? "-O0 -g3 " : "-O2 -g")
+CFLAGS = FFLAGS + DEPFLAGS + " -Wall -Wshadow -Wundef  -mcpu=cortex-m7 -mthumb -mfloat-abi=hard -mfpu=fpv5-d16  " + (DEBUG ? "-O0 -g3 " : "-O2 -g")
 CPPFLAGS = CFLAGS + ' -Wno-psabi  -fno-rtti -fno-common -std=gnu++14 -fno-exceptions '
 
 # Linker script to be used.
@@ -291,7 +291,7 @@ LOPTIONS = ['-Wl,--gc-sections', '-Wl,-print-memory-usage',
             '-Wl,--wrap=dprintf', '-Wl,--wrap=vdprintf',
             '-Wl,--wrap=fprintf', '-Wl,--wrap=vfprintf',
             '-Wl,--undefined=HAL_InitTick',
-            '-mcpu=cortex-m7', '-mfpu=fpv5-sp-d16', '-mfloat-abi=hard', '-mthumb', '-fno-exceptions',
+            '-mcpu=cortex-m7', '-mfpu=fpv5-d16', '-mfloat-abi=hard', '-mthumb', '-fno-exceptions',
             '-Wl,--wrap=__aeabi_unwind_cpp_pr0','-Wl,--wrap=__aeabi_unwind_cpp_pr1','-Wl,--wrap=__aeabi_unwind_cpp_pr2']
 
 LDFLAGS = " -Wl,--cref -Wl,-Map=#{OBJDIR}/#{PROG}.map -T#{LSCRIPT} " + LOPTIONS.join(" ")

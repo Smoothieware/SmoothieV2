@@ -14,13 +14,12 @@
 #define tool_offset_key "delta_tool_offset"
 #define delta_mirror_xy_key "delta_mirror_xy"
 
-const static float pi     = 3.14159265358979323846;    // PI
-const static float two_pi = 2 * pi;
-const static float sin120 = 0.86602540378443864676372317075294; //sqrt3/2.0
-const static float cos120 = -0.5;
-const static float tan60  = 1.7320508075688772935274463415059; //sqrt3;
-const static float sin30  = 0.5;
-const static float tan30  = 0.57735026918962576450914878050196; //1/sqrt3
+constexpr static double pi     = M_PI; // 3.141592653589793238463;    // PI
+constexpr static double sin120 = 0.86602540378443864676372317075294; //sqrt3/2.0
+constexpr static double cos120 = -0.5;
+constexpr static double tan60  = 1.7320508075688772935274463415059; //sqrt3;
+constexpr static double sin30  = 0.5;
+constexpr static double tan30  = 0.57735026918962576450914878050196; //1/sqrt3
 
 RotaryDeltaSolution::RotaryDeltaSolution(ConfigReader& cr)
 {
@@ -30,26 +29,26 @@ RotaryDeltaSolution::RotaryDeltaSolution(ConfigReader& cr)
     }
 
     // End effector length
-    delta_e = cr.get_float(m, delta_e_key, 131.636F);
+    delta_e = cr.get_double(m, delta_e_key, 131.636);
 
     // Base length
-    delta_f = cr.get_float(m, delta_f_key, 190.526F);
+    delta_f = cr.get_double(m, delta_f_key, 190.526);
 
     // Carbon rod length
-    delta_re = cr.get_float(m, delta_re_key, 270.000F);
+    delta_re = cr.get_double(m, delta_re_key, 270.000);
 
     // Servo horn length
-    delta_rf = cr.get_float(m, delta_rf_key, 90.000F);
+    delta_rf = cr.get_double(m, delta_rf_key, 90.000);
 
     // Distance from delta 8mm rod/pulley to table/bed,
     // NOTE: For OpenPnP, set the zero to be about 25mm above the bed..
-    delta_z_offset = cr.get_float(m, delta_z_offset_key, 290.700F);
+    delta_z_offset = cr.get_double(m, delta_z_offset_key, 290.700);
 
     // Ball joint plane to bottom of end effector surface
-    delta_ee_offs = cr.get_float(m, delta_ee_offs_key, 15.000F);
+    delta_ee_offs = cr.get_double(m, delta_ee_offs_key, 15.000);
 
     // Distance between end effector ball joint plane and tip of tool (PnP)
-    tool_offset = cr.get_float(m, tool_offset_key, 30.500F);
+    tool_offset = cr.get_double(m, tool_offset_key, 30.500);
 
     // mirror the XY axis
     mirror_xy = cr.get_bool(m, delta_mirror_xy_key, true);
@@ -60,70 +59,70 @@ RotaryDeltaSolution::RotaryDeltaSolution(ConfigReader& cr)
 
 // inverse kinematics
 // helper functions, calculates angle theta1 (for YZ-pane)
-int RotaryDeltaSolution::delta_calcAngleYZ(float x0, float y0, float z0, float &theta) const
+int RotaryDeltaSolution::delta_calcAngleYZ(double x0, double y0, double z0, double &theta) const
 {
-    float y1 = -0.5F * tan30 * delta_f; // f/2 * tan 30
-    y0      -=  0.5F * tan30 * delta_e; // shift center to edge
+    double y1 = -0.5 * tan30 * delta_f; // f/2 * tan 30
+    y0      -=  0.5 * tan30 * delta_e; // shift center to edge
     // z = a + b*y
-    float a = (x0 * x0 + y0 * y0 + z0 * z0 + delta_rf * delta_rf - delta_re * delta_re - y1 * y1) / (2.0F * z0);
-    float b = (y1 - y0) / z0;
+    double a = (x0 * x0 + y0 * y0 + z0 * z0 + delta_rf * delta_rf - delta_re * delta_re - y1 * y1) / (2.0 * z0);
+    double b = (y1 - y0) / z0;
 
-    float d = -(a + b * y1) * (a + b * y1) + delta_rf * (b * b * delta_rf + delta_rf); // discriminant
-    if (d < 0.0F) return -1;                                            // non-existing point
+    double d = -(a + b * y1) * (a + b * y1) + delta_rf * (b * b * delta_rf + delta_rf); // discriminant
+    if (d < 0.0) return -1;                                            // non-existing point
 
-    float yj = (y1 - a * b - sqrtf(d)) / (b * b + 1.0F);               // choosing outer point
-    float zj = a + b * yj;
+    double yj = (y1 - a * b - sqrt(d)) / (b * b + 1.0);               // choosing outer point
+    double zj = a + b * yj;
 
-    theta = 180.0F * atanf(-zj / (y1 - yj)) / pi + ((yj > y1) ? 180.0F : 0.0F);
+    theta = 180.0 * atan(-zj / (y1 - yj)) / pi + ((yj > y1) ? 180.0 : 0.0);
     return 0;
 }
 
 // forward kinematics: (theta1, theta2, theta3) -> (x0, y0, z0)
 // returned status: 0=OK, -1=non-existing position
-int RotaryDeltaSolution::delta_calcForward(float theta1, float theta2, float theta3, float &x0, float &y0, float &z0) const
+int RotaryDeltaSolution::delta_calcForward(double theta1, double theta2, double theta3, double &x0, double &y0, double &z0) const
 {
-    float t = (delta_f - delta_e) * tan30 / 2.0F;
-    float degrees_to_radians = pi / 180.0F;
+    double t = (delta_f - delta_e) * tan30 / 2.0;
+    double degrees_to_radians = pi / 180.0;
 
     theta1 *= degrees_to_radians;
     theta2 *= degrees_to_radians;
     theta3 *= degrees_to_radians;
 
-    float y1 = -(t + delta_rf * cosf(theta1));
-    float z1 = -delta_rf * sinf(theta1);
+    double y1 = -(t + delta_rf * cos(theta1));
+    double z1 = -delta_rf * sin(theta1);
 
-    float y2 = (t + delta_rf * cosf(theta2)) * sin30;
-    float x2 = y2 * tan60;
-    float z2 = -delta_rf * sinf(theta2);
+    double y2 = (t + delta_rf * cos(theta2)) * sin30;
+    double x2 = y2 * tan60;
+    double z2 = -delta_rf * sin(theta2);
 
-    float y3 = (t + delta_rf * cosf(theta3)) * sin30;
-    float x3 = -y3 * tan60;
-    float z3 = -delta_rf * sinf(theta3);
+    double y3 = (t + delta_rf * cos(theta3)) * sin30;
+    double x3 = -y3 * tan60;
+    double z3 = -delta_rf * sin(theta3);
 
-    float dnm = (y2 - y1) * x3 - (y3 - y1) * x2;
+    double dnm = (y2 - y1) * x3 - (y3 - y1) * x2;
 
-    float w1 = y1 * y1 + z1 * z1;
-    float w2 = x2 * x2 + y2 * y2 + z2 * z2;
-    float w3 = x3 * x3 + y3 * y3 + z3 * z3;
+    double w1 = y1 * y1 + z1 * z1;
+    double w2 = x2 * x2 + y2 * y2 + z2 * z2;
+    double w3 = x3 * x3 + y3 * y3 + z3 * z3;
 
     // x = (a1*z + b1)/dnm
-    float a1 = (z2 - z1) * (y3 - y1) - (z3 - z1) * (y2 - y1);
-    float b1 = -((w2 - w1) * (y3 - y1) - (w3 - w1) * (y2 - y1)) / 2.0F;
+    double a1 = (z2 - z1) * (y3 - y1) - (z3 - z1) * (y2 - y1);
+    double b1 = -((w2 - w1) * (y3 - y1) - (w3 - w1) * (y2 - y1)) / 2.0;
 
     // y = (a2*z + b2)/dnm;
-    float a2 = -(z2 - z1) * x3 + (z3 - z1) * x2;
-    float b2 = ((w2 - w1) * x3 - (w3 - w1) * x2) / 2.0F;
+    double a2 = -(z2 - z1) * x3 + (z3 - z1) * x2;
+    double b2 = ((w2 - w1) * x3 - (w3 - w1) * x2) / 2.0;
 
     // a*z^2 + b*z + c = 0
-    float a = a1 * a1 + a2 * a2 + dnm * dnm;
-    float b = 2.0F * (a1 * b1 + a2 * (b2 - y1 * dnm) - z1 * dnm * dnm);
-    float c = (b2 - y1 * dnm) * (b2 - y1 * dnm) + b1 * b1 + dnm * dnm * (z1 * z1 - delta_re * delta_re);
+    double a = a1 * a1 + a2 * a2 + dnm * dnm;
+    double b = 2.0 * (a1 * b1 + a2 * (b2 - y1 * dnm) - z1 * dnm * dnm);
+    double c = (b2 - y1 * dnm) * (b2 - y1 * dnm) + b1 * b1 + dnm * dnm * (z1 * z1 - delta_re * delta_re);
 
     // discriminant
-    float d = b * b - (float)4.0F * a * c;
-    if (d < 0.0F) return -1; // non-existing point
+    double d = b * b - 4.0 * a * c;
+    if (d < 0.0) return -1; // non-existing point
 
-    z0 = -(float)0.5F * (b + sqrtf(d)) / a;
+    z0 = -0.5 * (b + sqrt(d)) / a;
     x0 = (a1 * z0 + b1) / dnm;
     y0 = (a2 * z0 + b2) / dnm;
 
@@ -141,21 +140,21 @@ void RotaryDeltaSolution::init()
 void RotaryDeltaSolution::cartesian_to_actuator(const float cartesian_mm[], ActuatorCoordinates &actuator_mm ) const
 {
     //We need to translate the Cartesian coordinates in mm to the actuator position required in mm so the stepper motor  functions
-    float alpha_theta = 0.0F;
-    float beta_theta  = 0.0F;
-    float gamma_theta = 0.0F;
+    double alpha_theta = 0.0;
+    double beta_theta  = 0.0;
+    double gamma_theta = 0.0;
 
     //Code from Trossen Robotics tutorial, has X in front Y to the right and Z to the left
     // firepick is X at the back and negates X0 X0
     // selected by a config option
-    float x0 = cartesian_mm[X_AXIS];
-    float y0 = cartesian_mm[Y_AXIS];
+    double x0 = cartesian_mm[X_AXIS];
+    double y0 = cartesian_mm[Y_AXIS];
     if(mirror_xy) {
         x0 = -x0;
         y0 = -y0;
     }
 
-    float z_with_offset = cartesian_mm[Z_AXIS] + z_calc_offset; //The delta calculation below places zero at the top.  Subtract the Z offset to make zero at the bottom.
+    double z_with_offset = cartesian_mm[Z_AXIS] + z_calc_offset; //The delta calculation below places zero at the top.  Subtract the Z offset to make zero at the bottom.
 
     int status =              delta_calcAngleYZ(x0,                    y0,                  z_with_offset, alpha_theta);
     if (status == 0) status = delta_calcAngleYZ(x0 * cos120 + y0 * sin120, y0 * cos120 - x0 * sin120, z_with_offset, beta_theta); // rotate co-ordinates to +120 deg
@@ -196,7 +195,7 @@ void RotaryDeltaSolution::cartesian_to_actuator(const float cartesian_mm[], Actu
 
 void RotaryDeltaSolution::actuator_to_cartesian(const ActuatorCoordinates &actuator_mm, float cartesian_mm[] ) const
 {
-    float x, y, z;
+    double x, y, z;
     //Use forward kinematics
     delta_calcForward(actuator_mm[ALPHA_STEPPER], actuator_mm[BETA_STEPPER ], actuator_mm[GAMMA_STEPPER], x, y, z);
     if(mirror_xy) {

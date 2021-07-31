@@ -201,6 +201,17 @@ float ConfigReader::get_float(const section_map_t& m, const char *key, float def
     return def;
 }
 
+double ConfigReader::get_double(const section_map_t& m, const char *key, double def)
+{
+    auto s = m.find(key);
+    if(s != m.end()) {
+        // TODO should check it is a valid float
+        return strtod(s->second.c_str(), nullptr);
+    }
+
+    return def;
+}
+
 bool ConfigReader::get_bool(const section_map_t& m, const char *key, bool def)
 {
     auto s = m.find(key);
