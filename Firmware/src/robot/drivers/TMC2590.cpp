@@ -170,11 +170,12 @@ TMC2590::TMC2590(char d) : designator(d)
     error_detected.reset();
 
     // setup singleton spi instance
+    // TODO move to config and make channel configurable
     if(spi == nullptr) {
         bool ok = false;
         spi = SPI::getInstance(spichannel);
         if(spi != nullptr) {
-            if(spi->init(8, 3, 1000000)) { // 8bit, mode3, 1MHz
+            if(spi->init(8, 3, 45000)) { // 8bit, mode3, 45KHz
                 ok = true;
             }
         }
