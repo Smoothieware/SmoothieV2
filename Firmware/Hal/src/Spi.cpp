@@ -251,11 +251,21 @@ bool SPI::write_read(void *wvalue, void *rvalue, uint32_t n)
 {
     if(wvalue == nullptr || rvalue == nullptr) return false;
 
+#if 0
+    // there maybe a bug when sending more than one byte
     if(HAL_SPI_TransmitReceive((SPI_HandleTypeDef*)_hspi, (uint8_t*)wvalue, (uint8_t*)rvalue, n, 1000) != HAL_OK) {
         /* Transfer error in transmission process */
         return false;
     }
-
+#else
+    // send one byte at a time
+    for (uint32_t i = 0; i < n; ++i) {
+        if(HAL_SPI_TransmitReceive((SPI_HandleTypeDef*)_hspi, ((uint8_t*)wvalue)+i, ((uint8_t*)rvalue)+i, 1, 1000) != HAL_OK) {
+            /* Transfer error in transmission process */
+            return false;
+        }
+    }
+#endif
     // printf("Sent: "); for (uint32_t i = 0; i < n; ++i) printf("%02X ", ((char*)wvalue)[i]); printf("\n");
     // printf("Rcvd: "); for (uint32_t i = 0; i < n; ++i) printf("%02X ", ((char*)rvalue)[i]); printf("\n");
 
