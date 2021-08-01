@@ -123,6 +123,10 @@ bool SPI::init(int bits, int mode, int frequency)
         return true;
     }
 
+    _bits = bits;
+    _mode = mode;
+    _hz = frequency;
+
 #if 0
     // TODO maybe only do this if requested frequency is below 750KHz
     // change the clock the SPI uses
@@ -207,7 +211,6 @@ bool SPI::init(int bits, int mode, int frequency)
     }
     printf("DEBUG: SPI frequency set to: %lu hz\n", spi_hz / f);
 
-
     /* Set the SPI parameters */
     SPI_HandleTypeDef SpiHandle{0};
     SpiHandle.Instance               = _channel == 0 ? SPI1x : SPI2x;
@@ -231,9 +234,6 @@ bool SPI::init(int bits, int mode, int frequency)
     }
     _hspi = malloc(sizeof(SPI_HandleTypeDef));
     memcpy(_hspi, &SpiHandle, sizeof(SPI_HandleTypeDef));
-    _bits = bits;
-    _mode = mode;
-    _hz = frequency;
     _valid = true;
     return true;
 }
@@ -251,10 +251,9 @@ bool SPI::write_read(void *wvalue, void *rvalue, uint32_t n)
 {
     if(wvalue == nullptr || rvalue == nullptr) return false;
 
-#if 0
-    // there maybe a bug when sending and recieving more than one byte
+#if 1
     if(HAL_SPI_TransmitReceive((SPI_HandleTypeDef*)_hspi, (uint8_t*)wvalue, (uint8_t*)rvalue, n, 1000) != HAL_OK) {
-        /* Transfer error in transmission process */
+        // Transfer error in transmission process
         return false;
     }
 #else
@@ -299,7 +298,7 @@ extern "C" void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi)
         /* SPI SCK GPIO pin configuration  */
         GPIO_InitStruct.Pin       = SPI1x_SCK_PIN;
         GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
-        GPIO_InitStruct.Pull      = GPIO_PULLDOWN;
+        GPIO_InitStruct.Pull      = (SPI::spi_channel[0]->get_mode() & 2) ? GPIO_PULLUP : GPIO_PULLDOWN;
         GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_HIGH;
         GPIO_InitStruct.Alternate = SPI1x_SCK_AF;
         HAL_GPIO_Init(SPI1x_SCK_GPIO_PORT, &GPIO_InitStruct);
@@ -336,7 +335,7 @@ extern "C" void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi)
         /* SPI SCK GPIO pin configuration  */
         GPIO_InitStruct.Pin       = SPI2x_SCK_PIN;
         GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
-        GPIO_InitStruct.Pull      = GPIO_PULLDOWN;
+        GPIO_InitStruct.Pull      = (SPI::spi_channel[1]->get_mode() & 2) ? GPIO_PULLUP : GPIO_PULLDOWN;
         GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_HIGH;
         GPIO_InitStruct.Alternate = SPI2x_SCK_AF;
         HAL_GPIO_Init(SPI2x_SCK_GPIO_PORT, &GPIO_InitStruct);

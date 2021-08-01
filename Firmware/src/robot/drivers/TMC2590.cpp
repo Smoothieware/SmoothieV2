@@ -1061,21 +1061,24 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
         stream.printf("Slope control - high: %d, low: %d\n", slope_high, slope_low);
 
         readStatus(TMC2590_READOUT_ALL_FLAGS);
-        if((driver_status_result & 0x00300) != 0x00300) stream.printf("WARNING: Read all flags appears incorrect: %05lX\n", driver_status_result);
-        value = driver_status_result;
-        if(value & 0xFFC00) {
-            stream.printf("Detailed Flags...\n");
-            if(value & 0x80000) stream.printf("  Low voltage detected\n");
-            if(value & 0x40000) stream.printf("  ENN enabled\n");
-            if(value & 0x20000) stream.printf("  Short to high B\n");
-            if(value & 0x10000) stream.printf("  Short to low B\n");
-            if(value & 0x08000) stream.printf("  Short to high A\n");
-            if(value & 0x04000) stream.printf("  Short to low A\n");
-            if(value & 0x02000) stream.printf("  Overtemp 150\n");
-            if(value & 0x01000) stream.printf("  Overtemp 136\n");
-            if(value & 0x00800) stream.printf("  Overtemp 120\n");
-            if(value & 0x00400) stream.printf("  Overtemp 100\n");
-            //if((value & ~0x403FF) != 0) errors= true; // any except ENN
+        if((driver_status_result & 0x00300) != 0x00300) {
+            stream.printf("WARNING: Read all flags appears incorrect: %05lX\n", driver_status_result);
+        }else{
+            value = driver_status_result;
+            if(value & 0xFFC00) {
+                stream.printf("Detailed Flags...\n");
+                if(value & 0x80000) stream.printf("  Low voltage detected\n");
+                if(value & 0x40000) stream.printf("  ENN enabled\n");
+                if(value & 0x20000) stream.printf("  Short to high B\n");
+                if(value & 0x10000) stream.printf("  Short to low B\n");
+                if(value & 0x08000) stream.printf("  Short to high A\n");
+                if(value & 0x04000) stream.printf("  Short to low A\n");
+                if(value & 0x02000) stream.printf("  Overtemp 150\n");
+                if(value & 0x01000) stream.printf("  Overtemp 136\n");
+                if(value & 0x00800) stream.printf("  Overtemp 120\n");
+                if(value & 0x00400) stream.printf("  Overtemp 100\n");
+                //if((value & ~0x403FF) != 0) errors= true; // any except ENN
+            }
         }
 
         stream.printf("Register dump:\n");
