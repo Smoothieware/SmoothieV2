@@ -56,7 +56,7 @@
 #define runaway_error_range_key "runaway_error_range"
 
 #ifdef BOARD_PRIMEALPHA
-Pin *TemperatureControl::vfet_enable_pin{nullptr};
+Pin *TemperatureControl::vfet_enable_pin {nullptr};
 #endif
 
 TemperatureControl::TemperatureControl(const char *name) : Module("temperature control", name)
@@ -114,7 +114,7 @@ bool TemperatureControl::load_controls(ConfigReader& cr)
 #ifdef BOARD_PRIMEALPHA
     if(cnt > 0) {
         // turn on the vfet enable
-        vfet_enable_pin= new Pin("GPIO4_10", Pin::AS_OUTPUT);
+        vfet_enable_pin = new Pin("GPIO4_10", Pin::AS_OUTPUT);
         vfet_enable_pin->set(true);
     }
 #endif
@@ -210,26 +210,19 @@ bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t
         this->heater_pin->set(0);
         //set_low_on_debug(heater_pin->port_number, heater_pin->pin);
         // TODO use single fasttimer for all sigma delta
-        float freq= cr.get_float(m, pwm_frequency_key, 2000);
-        if(freq >= FastTicker::get_min_frequency()) { // if >= 1KHz use FastTicker
-            if(FastTicker::getInstance()->attach((uint32_t)freq, std::bind(&SigmaDeltaPwm::on_tick, this->heater_pin)) < 0) {
-                printf("INFO: configure-temperature: ERROR Fast Ticker was not set (Too slow?)\n");
-                return false;
-            }
-
-        }else{
-            if(SlowTicker::getInstance()->attach((uint32_t)freq, std::bind(&SigmaDeltaPwm::on_tick, this->heater_pin)) < 0) {
-                printf("INFO: configure-temperature: ERROR Slow Ticker was not set (Too fast?)\n");
-                return false;
-            }
+        float freq = cr.get_float(m, pwm_frequency_key, 2000);
+        // use fast ticker as it is ISR based and will preempt tasks
+        if(FastTicker::getInstance()->attach((uint32_t)freq, std::bind(&SigmaDeltaPwm::on_tick, this->heater_pin)) < 0) {
+            printf("INFO: configure-temperature: ERROR SigmaDelta Ticker was not set\n");
+            return false;
         }
     }
 
     // runaway timer
     SlowTicker::getInstance()->attach(1, std::bind(&TemperatureControl::check_runaway, this));
 
-    // sensor reading tick
-    SlowTicker::getInstance()->attach( this->readings_per_second, std::bind(&TemperatureControl::thermistor_read_tick, this));
+    // sensor reading tick, again needs to be ISR based as it is critical
+    FastTicker::getInstance()->attach(this->readings_per_second, std::bind(&TemperatureControl::thermistor_read_tick, this));
     this->PIDdt = 1.0 / this->readings_per_second;
 
     // PID
@@ -673,11 +666,11 @@ void TemperatureControl::check_runaway()
                             broadcast_halt(true);
                             this->runaway_state = NOT_HEATING;
                             this->runaway_timer = 0;
-                            #ifdef BOARD_PRIMEALPHA
+#ifdef BOARD_PRIMEALPHA
                             // as this is a potential mosfet failing on we shut off all mosfets
                             vfet_enable_pin->set(false);
                             print_to_all_consoles("WARNING: All mosfets have been turned off until reset\n");
-                            #endif
+#endif
                         }
 
                     } else {
