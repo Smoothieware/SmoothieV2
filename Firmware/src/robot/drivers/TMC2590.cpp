@@ -1185,8 +1185,6 @@ const std::array<TMC2590::e_t, 6> TMC2590::tests {{
 // check error bits and report, only report once, and debounce the test
 bool TMC2590::check_error_status_bits(OutputStream& stream)
 {
-    AutoLock l(mutex);
-
     readStatus(TMC2590_READOUT_POSITION); // get the status bits
     // test the flags are ok
     if((driver_status_result & 0x00300) != 0){
@@ -1226,6 +1224,8 @@ bool TMC2590::check_error_status_bits(OutputStream& stream)
 
 bool TMC2590::check_errors()
 {
+    AutoLock l(mutex);
+
     std::ostringstream oss;
     OutputStream os(&oss);
     bool b = check_error_status_bits(os);
