@@ -9,8 +9,14 @@
 
 #include "stm32h7xx.h" // for HAL_Delay()
 
+static volatile int timer_cnt20hz= 0;
 static volatile int timer_cnt2khz= 0;
 static volatile int timer_cnt10khz= 0;
+
+static void timer_callback20hz(void)
+{
+    ++timer_cnt20hz;
+}
 
 static void timer_callback2khz(void)
 {
@@ -37,6 +43,10 @@ REGISTER_TEST(FastTicker, test_2khz_and_10khz)
     // won't start as nothing has attached to it
     TEST_ASSERT_FALSE(flt->start());
 
+    // 20 Hz
+    int n0= flt->attach(20, timer_callback20hz);
+    TEST_ASSERT_TRUE(n0 >= 0);
+
     // 2 KHz
     int n1= flt->attach(2000, timer_callback2khz);
     TEST_ASSERT_TRUE(n1 >= 0);
@@ -46,25 +56,29 @@ REGISTER_TEST(FastTicker, test_2khz_and_10khz)
     TEST_ASSERT_TRUE(flt->is_running());
 
     // test for 2 seconds
+    timer_cnt20hz= 0;
     timer_cnt2khz= 0;
     HAL_Delay(2000);
-    printf("time 2 seconds, timer2khz %d\n", timer_cnt2khz);
+    printf("time 2 seconds, timer2khz %d, timer20hz %d\n", timer_cnt2khz, timer_cnt20hz);
+    TEST_ASSERT_INT_WITHIN(1, 2*20, timer_cnt20hz);
     TEST_ASSERT_INT_WITHIN(10, 2*2000, timer_cnt2khz);
 
     // add 10 KHz
     int n2= flt->attach(10000, timer_callback10khz);
     TEST_ASSERT_TRUE(n2 >= 0 && n2 > n1);
 
+    timer_cnt20hz= 0;
     timer_cnt2khz= 0;
     timer_cnt10khz= 0;
     // test for 2 seconds
     HAL_Delay(2000);
     TEST_ASSERT_TRUE(flt->stop());
-    printf("time 2 seconds, timer2khz %d, timer10khz %d\n", timer_cnt2khz, timer_cnt10khz);
+    printf("time 2 seconds, timer2khz %d, timer10khz %d, timer20hz %d\n", timer_cnt2khz, timer_cnt10khz, timer_cnt20hz);
 
     flt->detach(n1);
     flt->detach(n2);
 
+    TEST_ASSERT_INT_WITHIN(1, 2*20, timer_cnt20hz);
     TEST_ASSERT_INT_WITHIN(50, 2*2000, timer_cnt2khz);
     TEST_ASSERT_INT_WITHIN(200, 2*10000, timer_cnt10khz);
 
