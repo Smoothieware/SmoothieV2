@@ -10,6 +10,7 @@
 #include "ConfigReader.h"
 #include "StringUtils.h"
 #include "GCode.h"
+#include "Lock.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -188,6 +189,9 @@ TMC2590::TMC2590(char d) : designator(d)
             return;
         }
     }
+
+    // setup a mutex to stop concurrent access of M911 and timer
+    mutex= xSemaphoreCreateMutex();
 
     // setting the default register values
     driver_control_register_value = DRIVER_CONTROL_REGISTER;
@@ -1006,11 +1010,12 @@ bool TMC2590::isCurrentScalingHalfed()
 
 void TMC2590::dump_status(OutputStream& stream, bool readable)
 {
-    busy= true;
+    AutoLock l(mutex);
+
     // always report errors
     error_reported.reset();
     error_detected.set();
-    bool errors= false;
+    //bool errors= false;
 
     if (readable) {
         stream.printf("designator %c, actuator %s, Chip type TMC2590\n", designator, name.c_str());
@@ -1070,7 +1075,7 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
             if(value & 0x01000) stream.printf("  Overtemp 136\n");
             if(value & 0x00800) stream.printf("  Overtemp 120\n");
             if(value & 0x00400) stream.printf("  Overtemp 100\n");
-            if((value & ~0x403FF) != 0) errors= true; // any except ENN
+            //if((value & ~0x403FF) != 0) errors= true; // any except ENN
         }
 
         stream.printf("Register dump:\n");
@@ -1150,13 +1155,11 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
     error_detected.reset();
 
     // if we have a reset pin and there was an error, then reset
-    if(errors && reset_pin != nullptr) {
-        reset_pin->set(false);
-        vTaskDelay(pdMS_TO_TICKS(10));
-        reset_pin->set(true);
-    }
-
-    busy= false;
+    // if(errors && reset_pin != nullptr) {
+    //     reset_pin->set(false);
+    //     vTaskDelay(pdMS_TO_TICKS(10));
+    //     reset_pin->set(true);
+    // }
 }
 
 // static test functions
@@ -1182,6 +1185,8 @@ const std::array<TMC2590::e_t, 6> TMC2590::tests {{
 // check error bits and report, only report once, and debounce the test
 bool TMC2590::check_error_status_bits(OutputStream& stream)
 {
+    AutoLock l(mutex);
+
     readStatus(TMC2590_READOUT_POSITION); // get the status bits
     // test the flags are ok
     if((driver_status_result & 0x00300) != 0){
@@ -1221,7 +1226,6 @@ bool TMC2590::check_error_status_bits(OutputStream& stream)
 
 bool TMC2590::check_errors()
 {
-    if(busy) return false;
     std::ostringstream oss;
     OutputStream os(&oss);
     bool b = check_error_status_bits(os);

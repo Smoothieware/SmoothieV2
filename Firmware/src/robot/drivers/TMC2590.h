@@ -450,7 +450,7 @@ private:
     std::bitset<8> error_detected;
     std::bitset<8> error_reported;
 
-    volatile bool busy{false};
+    void *mutex;
 
     // only needed for the tuning app report
     struct {
