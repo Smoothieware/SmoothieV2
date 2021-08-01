@@ -427,6 +427,8 @@ private:
 
     // one instance of SPI is shared
     static SPI *spi;
+    static Pin *reset_pin;
+
     Pin *spi_cs;
     std::string name;
 
@@ -447,6 +449,8 @@ private:
     // used to debounce the errors
     std::bitset<8> error_detected;
     std::bitset<8> error_reported;
+
+    volatile bool busy{false};
 
     // only needed for the tuning app report
     struct {

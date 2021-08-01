@@ -214,6 +214,7 @@ static void smoothie_startup(void *)
 
     bool flash_on_boot = true;
     bool ok = false;
+    bool adcok= false;
 
     // open the config file
     do {
@@ -395,7 +396,8 @@ static void smoothie_startup(void *)
         }
 
         // setup ADC
-        if(!Adc::post_config_setup()) {
+        adcok= Adc::post_config_setup();
+        if(!adcok) {
             printf("ERROR: ADC failed to setup\n");
         }
 
@@ -436,7 +438,7 @@ static void smoothie_startup(void *)
             printf("Error: failed to start StepTicker\n");
         }
 
-        if(!Adc::start()) {
+        if(adcok && !Adc::start()) {
             printf("Error: failed to start ADC\n");
         }
 

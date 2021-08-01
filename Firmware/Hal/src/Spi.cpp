@@ -16,7 +16,6 @@
 #define SPI1x_SCK_GPIO_CLK_ENABLE()       __HAL_RCC_GPIOA_CLK_ENABLE()
 #define SPI1x_MISO_GPIO_CLK_ENABLE()      __HAL_RCC_GPIOA_CLK_ENABLE()
 #define SPI1x_MOSI_GPIO_CLK_ENABLE()      __HAL_RCC_GPIOB_CLK_ENABLE()
-#define RCC_PERIPHCLK_SPI1x               RCC_PERIPHCLK_SPI1
 #define SPI1x_FORCE_RESET()               __HAL_RCC_SPI1_FORCE_RESET()
 #define SPI1x_RELEASE_RESET()             __HAL_RCC_SPI1_RELEASE_RESET()
 #define SPI1x_IRQn                        SPI1_IRQn
@@ -38,7 +37,6 @@
 #define SPI2x                             SPI2
 #define SPI2x_CLK_ENABLE()                __HAL_RCC_SPI2_CLK_ENABLE()
 #define DMA1_CLK_ENABLE()                 __HAL_RCC_DMA2_CLK_ENABLE()
-#define RCC_PERIPHCLK_SPI2x               RCC_PERIPHCLK_SPI2
 #define SPI2x_SCK_GPIO_CLK_ENABLE()       __HAL_RCC_GPIOB_CLK_ENABLE()
 #define SPI2x_MISO_GPIO_CLK_ENABLE()      __HAL_RCC_GPIOB_CLK_ENABLE()
 #define SPI2x_MOSI_GPIO_CLK_ENABLE()      __HAL_RCC_GPIOB_CLK_ENABLE()
@@ -125,15 +123,17 @@ bool SPI::init(int bits, int mode, int frequency)
         return true;
     }
 
-#if 1
+#if 0
+    // TODO maybe only do this if requested frequency is below 750KHz
     // change the clock the SPI uses
     RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
 
     if(_channel == 1) {
+        // set to 10MHz for SPI
         PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SPI4;
         PeriphClkInitStruct.PLL2.PLL2M = 25;
         PeriphClkInitStruct.PLL2.PLL2N = 150;
-        PeriphClkInitStruct.PLL2.PLL2P = 4;
+        PeriphClkInitStruct.PLL2.PLL2P = 15;
         PeriphClkInitStruct.PLL2.PLL2Q = 15;
         PeriphClkInitStruct.PLL2.PLL2R = 2;
         PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_0;
@@ -148,17 +148,26 @@ bool SPI::init(int bits, int mode, int frequency)
 
         /* SPI4 clock enable */
         __HAL_RCC_SPI4_CLK_ENABLE();
+
     }else if(_channel == 0){
-        PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SPI1x;
+        // set to 10MHz for SPI
+        PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SPI2;
+        #ifdef BOARD_NUCLEO
+        PeriphClkInitStruct.PLL2.PLL2M = 1;
+        PeriphClkInitStruct.PLL2.PLL2N = 20;
+        PeriphClkInitStruct.PLL2.PLL2P = 16;
+        PeriphClkInitStruct.PLL2.PLL2Q = 16;
+        PeriphClkInitStruct.PLL2.PLL2R = 2;
+        #else
         PeriphClkInitStruct.PLL2.PLL2M = 25;
         PeriphClkInitStruct.PLL2.PLL2N = 150;
-        PeriphClkInitStruct.PLL2.PLL2P = 4;
+        PeriphClkInitStruct.PLL2.PLL2P = 15;
         PeriphClkInitStruct.PLL2.PLL2Q = 15;
         PeriphClkInitStruct.PLL2.PLL2R = 2;
+        #endif
         PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_0;
         PeriphClkInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2VCOMEDIUM;
         PeriphClkInitStruct.PLL2.PLL2FRACN = 0;
-
         PeriphClkInitStruct.Spi123ClockSelection = RCC_SPI123CLKSOURCE_PLL2;
 
         if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK) {
@@ -167,6 +176,7 @@ bool SPI::init(int bits, int mode, int frequency)
         }
         SPI1x_CLK_ENABLE();
     }
+    spi_hz= 10000000; // 10 MHz
 #endif
 
     uint32_t spi_hz;
@@ -177,7 +187,7 @@ bool SPI::init(int bits, int mode, int frequency)
 #else
     // divisor needed for requested frequency
     spi_hz= SystemCoreClock / 2;
-    uint32_t f = (uint32_t) (SystemCoreClock / (2 * frequency));
+    uint32_t f = (uint32_t) spi_hz / frequency;
 #endif
 
     uint32_t psc = 0;
@@ -245,6 +255,9 @@ bool SPI::write_read(void *wvalue, void *rvalue, uint32_t n)
         /* Transfer error in transmission process */
         return false;
     }
+
+    // printf("Sent: "); for (uint32_t i = 0; i < n; ++i) printf("%02X ", ((char*)wvalue)[i]); printf("\n");
+    // printf("Rcvd: "); for (uint32_t i = 0; i < n; ++i) printf("%02X ", ((char*)rvalue)[i]); printf("\n");
 
     return true;
 }

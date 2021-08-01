@@ -23,7 +23,7 @@ REGISTER_TEST(SPITest, Spi_class)
 {
     SPI *spi = SPI::getInstance(0);
     TEST_ASSERT_NOT_NULL(spi);
-    TEST_ASSERT_TRUE(spi->init(8, 3, 45000));
+    TEST_ASSERT_TRUE(spi->init(8, 3, 100000));
     TEST_ASSERT_TRUE(spi->valid());
 
     printf("Expect an error...\n");

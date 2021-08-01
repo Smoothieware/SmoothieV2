@@ -134,7 +134,7 @@ bool Adc::post_config_setup()
     int nc = allocated_channels.size();
     if(nc == 0) {
         printf("WARNING: ADC No channels allocated\n");
-        return true;
+        return false;
     }
 
     /* ### - 1 - Initialize ADC peripheral #################################### */

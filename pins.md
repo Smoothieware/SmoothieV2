@@ -128,33 +128,34 @@ pins used on the headers when selecting a function in the Firmware
 
 # Prime Board builtins
 
-| function         | pin   | comment    |
-| ----------       | ----- | -------    |
-| MSC LED          | PF13  |            |
-| BOOT0_DETECT/MSC | PJ14  |            |
-| LED1             | PH9   |            |
-| LED2             | PH10  |            |
-| LED3             | PH11  |            |
-| LED4             | PH12  |            |
-| UART2_RX         | PD6   | debug port |
-| UART2_TX         | PD5   | debug port |
-| FET NOT Enable   | PF14  |            |
-| FET PowerShutoff | PD7   |            |
-| Motor NOT Enable | PH13  |            |
-| SSR1             | PI4   |            |
-| SSR2             | PB7   |            |
-| Hotend1          | PE0   |            |
-| Hotend2          | PB8   |            |
-| Bed              | PE3   |            |
-| Fan 1            |       |            |
-| Fan 2            |       |            |
-| Endstop Xmin     |       |            |
-| Endstop Xmax     |       |            |
-| Endstop Ymin     |       |            |
-| Endstop Ymax     |       |            |
-| Endstop Zmin     |       |            |
-| Endstop Zmax     |       |            |
-| Probe            |       |            |
+| function         | pin   | comment       |
+| ----------       | ----- | -------       |
+| MSC LED          | PF13  |               |
+| BOOT0_DETECT/MSC | PJ14  |               |
+| LED1             | PH9   |               |
+| LED2             | PH10  |               |
+| LED3             | PH11  |               |
+| LED4             | PH12  |               |
+| UART2_RX         | PD6   | debug port    |
+| UART2_TX         | PD5   | debug port    |
+| FET NOT Enable   | PF14  |               |
+| FET PowerShutoff | PD7   |               |
+| Motor NOT Enable | PH13  |               |
+| Motors reset     | n/a   | normally high |
+| SSR1             | PI4   |               |
+| SSR2             | PB7   |               |
+| Hotend1          | PE0   |               |
+| Hotend2          | PB8   |               |
+| Bed              | PE3   |               |
+| Fan 1            |       |               |
+| Fan 2            |       |               |
+| Endstop Xmin     |       |               |
+| Endstop Xmax     |       |               |
+| Endstop Ymin     |       |               |
+| Endstop Ymax     |       |               |
+| Endstop Zmin     |       |               |
+| Endstop Zmax     |       |               |
+| Probe            |       |               |
 
 # Gadgeteer headers
 

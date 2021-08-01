@@ -11,6 +11,8 @@
 #include "StringUtils.h"
 #include "GCode.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
 
 #include <cmath>
 #include <iostream>
@@ -145,11 +147,13 @@
 #define raw_register_key                "reg"
 #define step_interpolation_key          "step_interpolation"
 #define passive_fast_decay_key          "passive_fast_decay"
+#define reset_pin_key                   "reset_pin"
 
 //statics common to all instances
 SPI *TMC2590::spi = nullptr;
 bool TMC2590::common_setup = false;
 uint32_t TMC2590::max_current = 4000; // 4 amps
+Pin *TMC2590::reset_pin = nullptr;
 
 #ifdef BOARD_DEVEBOX
 constexpr static int spichannel= 0;
@@ -175,7 +179,7 @@ TMC2590::TMC2590(char d) : designator(d)
         bool ok = false;
         spi = SPI::getInstance(spichannel);
         if(spi != nullptr) {
-            if(spi->init(8, 3, 45000)) { // 8bit, mode3, 45KHz
+            if(spi->init(8, 3, 500000)) { // 8bit, mode3, 500KHz
                 ok = true;
             }
         }
@@ -283,6 +287,16 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
         if(c != ssm.end()) {
             auto& cm = c->second; // map of common tmc2590 config values
             max_current = cr.get_int(cm, max_current_key, 4000);
+            if(reset_pin == nullptr) {
+                reset_pin= new Pin(cr.get_string(cm, reset_pin_key, "nc"), Pin::AS_OUTPUT);
+                if(reset_pin->connected()) {
+                    printf("DEBUG:configure-tmc2590: reset pin set to: %s\n", reset_pin->to_string().c_str());
+                    reset_pin->set(true); // turns on all drivers
+                }else{
+                    delete reset_pin;
+                    reset_pin= nullptr;
+                }
+            }
         }
         common_setup = true;
     }
@@ -992,14 +1006,19 @@ bool TMC2590::isCurrentScalingHalfed()
 
 void TMC2590::dump_status(OutputStream& stream, bool readable)
 {
+    busy= true;
     // always report errors
     error_reported.reset();
     error_detected.set();
+    bool errors= false;
 
     if (readable) {
         stream.printf("designator %c, actuator %s, Chip type TMC2590\n", designator, name.c_str());
 
         check_error_status_bits(stream);
+
+        readStatus(TMC2590_READOUT_POSITION); // get the status bits
+        if((driver_status_result & 0x00300) != 0) stream.printf("WARNING: Response read appears incorrect: %05lX\n", driver_status_result);
 
         if (this->isStallGuardReached()) {
             stream.printf("Stall Guard level reached\n");
@@ -1009,8 +1028,6 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
             stream.printf("Motor is standing still\n");
         }
 
-        readStatus(TMC2590_READOUT_POSITION); // get the status bits
-        if((driver_status_result & 0x00300) != 0) stream.printf("WARNING: Response read appears incorrect: %05lX\n", driver_status_result);
         int value = getReadoutValue();
         stream.printf("Microstep position phase A: %d\n", value);
 
@@ -1053,6 +1070,7 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
             if(value & 0x01000) stream.printf("  Overtemp 136\n");
             if(value & 0x00800) stream.printf("  Overtemp 120\n");
             if(value & 0x00400) stream.printf("  Overtemp 100\n");
+            if((value & ~0x403FF) != 0) errors= true; // any except ENN
         }
 
         stream.printf("Register dump:\n");
@@ -1130,6 +1148,15 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
 
     error_reported.reset();
     error_detected.reset();
+
+    // if we have a reset pin and there was an error, then reset
+    if(errors && reset_pin != nullptr) {
+        reset_pin->set(false);
+        vTaskDelay(pdMS_TO_TICKS(10));
+        reset_pin->set(true);
+    }
+
+    busy= false;
 }
 
 // static test functions
@@ -1148,8 +1175,8 @@ const std::array<TMC2590::e_t, 6> TMC2590::tests {{
     {1, true, "Overtemperature Shutdown"},
     {2, true, "SHORT to ground on channel A"},
     {3, true, "SHORT to ground on channel B"},
-    {4, false, "Channel A seems to be unconnected"},
-    {5, false, "Channel B seems to be unconnected"}
+    // {4, false, "Channel A seems to be unconnected"}, // unreliable
+    // {5, false, "Channel B seems to be unconnected"}
 }};
 
 // check error bits and report, only report once, and debounce the test
@@ -1194,6 +1221,7 @@ bool TMC2590::check_error_status_bits(OutputStream& stream)
 
 bool TMC2590::check_errors()
 {
+    if(busy) return false;
     std::ostringstream oss;
     OutputStream os(&oss);
     bool b = check_error_status_bits(os);
@@ -1245,7 +1273,7 @@ bool TMC2590::set_raw_register(OutputStream& stream, uint32_t reg, uint32_t val)
 void TMC2590::send20bits(uint32_t datagram)
 {
     uint8_t txbuf[] {(uint8_t)(datagram >> 16), (uint8_t)(datagram >>  8), (uint8_t)(datagram & 0xff)};
-    uint8_t rxbuf[3];
+    uint8_t rxbuf[3] {0};
 
     // write/read the values
     if(sendSPI(txbuf, rxbuf)) {
