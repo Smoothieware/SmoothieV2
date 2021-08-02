@@ -9,6 +9,11 @@
 #include <stdio.h>
 #include <cstring>
 
+
+#include "FreeRTOS.h"
+#include "task.h"
+#include "semphr.h"
+
 /* Define SPI1 for 1st SPI */
 #define SPI1x                              SPI1
 #define SPI1x_CLK_ENABLE()                __HAL_RCC_SPI1_CLK_ENABLE()
@@ -111,6 +116,8 @@ SPI::SPI(int channel)
 {
     _valid = false;
     _channel = channel;
+    // setup a mutex to stop concurrent access
+    mutex= xSemaphoreCreateMutex();
 }
 
 bool SPI::init(int bits, int mode, int frequency)
@@ -234,16 +241,30 @@ bool SPI::init(int bits, int mode, int frequency)
     }
     _hspi = malloc(sizeof(SPI_HandleTypeDef));
     memcpy(_hspi, &SpiHandle, sizeof(SPI_HandleTypeDef));
-    _valid = true;
+
+   _valid = true;
+
     return true;
 }
 
 SPI::~SPI()
 {
+    vSemaphoreDelete(mutex);
     if(_valid) {
         HAL_SPI_DeInit((SPI_HandleTypeDef*)_hspi);
         free(_hspi);
     }
+}
+
+bool SPI::begin_transaction(uint32_t tmoms)
+{
+    uint32_t t= pdMS_TO_TICKS(tmoms);
+    return xSemaphoreTake(mutex, t) == pdTRUE;
+}
+
+void SPI::end_transaction()
+{
+    xSemaphoreGive(mutex);
 }
 
 // writes and reads number of _bits sized words

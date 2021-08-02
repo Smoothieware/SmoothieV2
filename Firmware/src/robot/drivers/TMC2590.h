@@ -450,8 +450,6 @@ private:
     std::bitset<8> error_detected;
     std::bitset<8> error_reported;
 
-    void *mutex;
-
     // only needed for the tuning app report
     struct {
         int8_t vblank_time:8;

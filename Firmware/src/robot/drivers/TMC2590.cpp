@@ -12,9 +12,6 @@
 #include "GCode.h"
 #include "Lock.h"
 
-#include "FreeRTOS.h"
-#include "task.h"
-
 #include <cmath>
 #include <iostream>
 
@@ -189,9 +186,6 @@ TMC2590::TMC2590(char d) : designator(d)
             return;
         }
     }
-
-    // setup a mutex to stop concurrent access of M911 and timer
-    mutex= xSemaphoreCreateMutex();
 
     // setting the default register values
     driver_control_register_value = DRIVER_CONTROL_REGISTER;
@@ -1010,8 +1004,6 @@ bool TMC2590::isCurrentScalingHalfed()
 
 void TMC2590::dump_status(OutputStream& stream, bool readable)
 {
-    AutoLock l(mutex);
-
     // always report errors
     error_reported.reset();
     error_detected.set();
@@ -1227,8 +1219,6 @@ bool TMC2590::check_error_status_bits(OutputStream& stream)
 
 bool TMC2590::check_errors()
 {
-    AutoLock l(mutex);
-
     std::ostringstream oss;
     OutputStream os(&oss);
     bool b = check_error_status_bits(os);
@@ -1295,9 +1285,12 @@ void TMC2590::send20bits(uint32_t datagram)
 // Called by the drivers codes to send and receive SPI data to/from the chip
 bool TMC2590::sendSPI(void *b, void *r)
 {
+    // lock the SPI bus for this transaction
+    if(!spi->begin_transaction()) return false;
     spi_cs->set(false);
     bool stat= spi->write_read(b, r, 3);
     spi_cs->set(true);
+    spi->end_transaction();
     return stat;
 }
 

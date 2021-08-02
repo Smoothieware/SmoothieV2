@@ -28,12 +28,16 @@ public:
 	bool valid() const { return _valid; }
 	void *get_hspi() const { return _hspi; }
     uint8_t get_mode() const { return _mode; }
+    bool begin_transaction(uint32_t tmoms=10000);
+    void end_transaction();
+
 	static SPI *spi_channel[2];
 
 private:
 	SPI(int channel);
 	virtual ~SPI();
 	void *_hspi;
+    void *mutex;
 	bool _valid;
 	int _channel;
 	int _bits;
