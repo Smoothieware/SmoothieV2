@@ -839,6 +839,7 @@ bool TMC2590::isEnabled()
  */
 void TMC2590::readStatus(int8_t read_value)
 {
+    unsigned long old_driver_configuration_register_value = driver_configuration_register_value;
     //reset the readout configuration
     driver_configuration_register_value &= ~(READ_SELECTION_PATTERN);
     //this now equals TMC2590_READOUT_POSITION - so we just have to check the other two options
@@ -850,8 +851,11 @@ void TMC2590::readStatus(int8_t read_value)
         driver_configuration_register_value |= READ_ALL_FLAGS;
     }
 
-    // we need to write the value twice - one time for configuring, second time to get the value
-    send20bits(driver_configuration_register_value);
+    // FIXME this needs to be atomic as a readStatus inbetween the two could change the results read back
+    if (driver_configuration_register_value != old_driver_configuration_register_value) {
+        // we need to write the value twice - one time for configuring, second time to get the value
+        send20bits(driver_configuration_register_value);
+    }
     //write the configuration to get the last status
     send20bits(driver_configuration_register_value);
 }
@@ -1007,7 +1011,6 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
     // always report errors
     error_reported.reset();
     error_detected.set();
-    //bool errors= false;
 
     if (readable) {
         stream.printf("designator %c, actuator %s, Chip type TMC2590\n", designator, name.c_str());
@@ -1069,7 +1072,6 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
                 if(value & 0x01000) stream.printf("  Overtemp 136\n");
                 if(value & 0x00800) stream.printf("  Overtemp 120\n");
                 if(value & 0x00400) stream.printf("  Overtemp 100\n");
-                //if((value & ~0x403FF) != 0) errors= true; // any except ENN
             }
         }
 
@@ -1148,13 +1150,6 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
 
     error_reported.reset();
     error_detected.reset();
-
-    // if we have a reset pin and there was an error, then reset
-    // if(errors && reset_pin != nullptr) {
-    //     reset_pin->set(false);
-    //     vTaskDelay(pdMS_TO_TICKS(10));
-    //     reset_pin->set(true);
-    // }
 }
 
 // static test functions
@@ -1178,6 +1173,7 @@ const std::array<TMC2590::e_t, 6> TMC2590::tests {{
 }};
 
 // check error bits and report, only report once, and debounce the test
+// can be called from timer task or command task
 bool TMC2590::check_error_status_bits(OutputStream& stream)
 {
     readStatus(TMC2590_READOUT_POSITION); // get the status bits
@@ -1217,6 +1213,7 @@ bool TMC2590::check_error_status_bits(OutputStream& stream)
     return error;
 }
 
+// called from the timer task
 bool TMC2590::check_errors()
 {
     std::ostringstream oss;
