@@ -19,6 +19,7 @@
 #include "Adc3.h"
 #include "GCodeProcessor.h"
 #include "Consoles.h"
+#include "BaseSolution.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -761,40 +762,40 @@ bool CommandShell::get_cmd(std::string& params, OutputStream& os)
 
 
     } else if (what == "fk" || what == "ik") {
-        // string p= shift_parameter( params );
+        std::string p= stringutils::shift_parameter( params );
         // bool move= false;
         // if(p == "-m") {
         //     move= true;
-        //     p= shift_parameter( params );
+        //     p= stringutils::shift_parameter( params );
         // }
 
-        // std::vector<float> v= parse_number_list(p.c_str());
-        // if(p.empty() || v.size() < 1) {
-        //     os.printf("error:usage: get [fk|ik] [-m] x[,y,z]\n");
-        //     return true;
-        // }
+        std::vector<float> v= stringutils::parse_number_list(p.c_str());
+        if(p.empty() || v.size() < 1) {
+            os.printf("error:usage: get [fk|ik] [-m] x[,y,z]\n");
+            return true;
+        }
 
-        // float x= v[0];
-        // float y= (v.size() > 1) ? v[1] : x;
-        // float z= (v.size() > 2) ? v[2] : y;
+        float x= v[0];
+        float y= (v.size() > 1) ? v[1] : x;
+        float z= (v.size() > 2) ? v[2] : y;
 
-        // if(what == "fk") {
-        //     // do forward kinematics on the given actuator position and display the cartesian coordinates
-        //     ActuatorCoordinates apos{x, y, z};
-        //     float pos[3];
-        //     Robot::getInstance()->arm_solution->actuator_to_cartesian(apos, pos);
-        //     os.printf("cartesian= X %f, Y %f, Z %f\n", pos[0], pos[1], pos[2]);
-        //     x= pos[0];
-        //     y= pos[1];
-        //     z= pos[2];
+        if(what == "fk") {
+            // do forward kinematics on the given actuator position and display the cartesian coordinates
+            ActuatorCoordinates apos{x, y, z};
+            float pos[3];
+            Robot::getInstance()->arm_solution->actuator_to_cartesian(apos, pos);
+            os.printf("cartesian= X %f, Y %f, Z %f\n", pos[0], pos[1], pos[2]);
+            x= pos[0];
+            y= pos[1];
+            z= pos[2];
 
-        // }else{
-        //     // do inverse kinematics on the given cartesian position and display the actuator coordinates
-        //     float pos[3]{x, y, z};
-        //     ActuatorCoordinates apos;
-        //     Robot::getInstance()->arm_solution->cartesian_to_actuator(pos, apos);
-        //     os.printf("actuator= X %f, Y %f, Z %f\n", apos[0], apos[1], apos[2]);
-        // }
+        }else{
+            // do inverse kinematics on the given cartesian position and display the actuator coordinates
+            float pos[3]{x, y, z};
+            ActuatorCoordinates apos;
+            Robot::getInstance()->arm_solution->cartesian_to_actuator(pos, apos);
+            os.printf("actuator= X %f, Y %f, Z %f\n", apos[0], apos[1], apos[2]);
+        }
 
         // if(move) {
         //     // move to the calculated, or given, XYZ
