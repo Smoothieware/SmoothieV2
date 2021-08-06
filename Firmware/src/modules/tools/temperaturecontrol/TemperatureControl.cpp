@@ -151,6 +151,7 @@ bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t
             this->readonly = false;
 
         } else {
+            printf("ERROR: configure-temperature control: heater pin is invalid %s\n", hp.c_str());
             this->readonly = true;
             delete heater_pin;
             heater_pin = nullptr;

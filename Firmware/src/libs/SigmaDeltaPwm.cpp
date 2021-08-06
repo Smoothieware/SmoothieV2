@@ -20,6 +20,7 @@ SigmaDeltaPwm::SigmaDeltaPwm(const char *pin_name)
     if(from_string(pin_name) && as_output()) {
         taskENTER_CRITICAL();
         instances.insert(this);
+        taskEXIT_CRITICAL();
         if(fastticker == -1) {
             // first one create the one ticker
             // use fast ticker as it is ISR based and will preempt tasks
@@ -28,7 +29,6 @@ SigmaDeltaPwm::SigmaDeltaPwm(const char *pin_name)
                 printf("ERROR: SigmaDeltaPwm: ERROR SigmaDelta FastTicker was not set\n");
             }
         }
-        taskEXIT_CRITICAL();
 
     }else{
         printf("ERROR: SigmaDeltaPwm: ERROR invalid pin %s\n", pin_name);
