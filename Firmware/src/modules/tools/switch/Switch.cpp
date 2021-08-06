@@ -142,8 +142,8 @@ bool Switch::configure(ConfigReader& cr, ConfigReader::section_map_t& m)
 
     if(type == "sigmadeltapwm") {
         output_type = SIGMADELTA;
-        sigmadelta_pin = new SigmaDeltaPwm();
-        if(!sigmadelta_pin->from_string(output_pin) || !sigmadelta_pin->as_output() || !sigmadelta_pin->connected()) {
+        sigmadelta_pin = new SigmaDeltaPwm(output_pin.c_str());
+        if(!sigmadelta_pin->connected()) {
             printf("ERROR: switch-config - Selected sigmadelta pin is invalid\n");
             delete sigmadelta_pin;
             return false;
@@ -245,13 +245,6 @@ bool Switch::configure(ConfigReader& cr, ConfigReader::section_map_t& m)
         THEDISPATCHER->add_handler(input_off_command_letter == 'G' ? Dispatcher::GCODE_HANDLER : Dispatcher::MCODE_HANDLER, input_off_command_code, std::bind(&Switch::handle_gcode, this, _1, _2));
     }else{
         printf("WARNING: switch-config - input_off_command is not legal\n");
-    }
-
-    if(output_type == SIGMADELTA) {
-        // SIGMADELTA tick
-        // TODO We should probably have one timer for all sigmadelta pins
-        // TODO we should be allowed to set the frequency for this
-        FastTicker::getInstance()->attach(1000, std::bind(&SigmaDeltaPwm::on_tick, sigmadelta_pin));
     }
 
     return true;

@@ -1,15 +1,45 @@
 #include "SigmaDeltaPwm.h"
 
+#include "FastTicker.h"
+#include "FreeRTOS.h"
+#include "task.h"
+
 #define confine(value, min, max) (((value) < (min))?(min):(((value) > (max))?(max):(value)))
 
 #define PID_PWM_MAX 256
 
-SigmaDeltaPwm::SigmaDeltaPwm()
+std::set<SigmaDeltaPwm*> SigmaDeltaPwm::instances;
+int SigmaDeltaPwm::fastticker= -1;
+
+SigmaDeltaPwm::SigmaDeltaPwm(const char *pin_name)
 {
     _max = PID_PWM_MAX - 1;
     _pwm = -1;
     _sd_direction = false;
     _sd_accumulator = 0;
+    if(from_string(pin_name) && as_output()) {
+        taskENTER_CRITICAL();
+        instances.insert(this);
+        if(fastticker == -1) {
+            // first one create the one ticker
+            // use fast ticker as it is ISR based and will preempt tasks
+            fastticker= FastTicker::getInstance()->attach(2000, SigmaDeltaPwm::global_tick);
+            if(fastticker < 0) {
+                printf("ERROR: SigmaDeltaPwm: ERROR SigmaDelta FastTicker was not set\n");
+            }
+        }
+        taskEXIT_CRITICAL();
+
+    }else{
+        printf("ERROR: SigmaDeltaPwm: ERROR invalid pin %s\n", pin_name);
+    }
+}
+
+SigmaDeltaPwm::~SigmaDeltaPwm()
+{
+    taskENTER_CRITICAL();
+    instances.erase(this);
+    taskEXIT_CRITICAL();
 }
 
 void SigmaDeltaPwm::pwm(int new_pwm)
@@ -32,6 +62,14 @@ void SigmaDeltaPwm::set(bool value)
 {
     _pwm = -1;
     Pin::set(value);
+}
+
+// static
+void SigmaDeltaPwm::global_tick(void)
+{
+    for(auto s : instances) {
+        s->on_tick();
+    }
 }
 
 void SigmaDeltaPwm::on_tick(void)

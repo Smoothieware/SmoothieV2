@@ -26,7 +26,6 @@
 
 #define readings_per_second_key "readings_per_second"
 #define max_pwm_key "max_pwm"
-#define pwm_frequency_key "pwm_frequency"
 #define bang_bang_key "bang_bang"
 #define hysteresis_key "hysteresis"
 #define heater_pin_key "heater_pin"
@@ -54,10 +53,6 @@
 #define runaway_heating_timeout_key "runaway_heating_timeout"
 #define runaway_cooling_timeout_key "runaway_cooling_timeout"
 #define runaway_error_range_key "runaway_error_range"
-
-#ifdef BOARD_PRIMEALPHA
-Pin *TemperatureControl::vfet_enable_pin {nullptr};
-#endif
 
 TemperatureControl::TemperatureControl(const char *name) : Module("temperature control", name)
 {
@@ -111,14 +106,6 @@ bool TemperatureControl::load_controls(ConfigReader& cr)
         printf("INFO: configure-temperature control: NOTE: no TemperatureControl(s) configured\n");
     }
 
-#ifdef BOARD_PRIMEALPHA
-    if(cnt > 0) {
-        // turn on the vfet enable
-        vfet_enable_pin = new Pin("GPIO4_10", Pin::AS_OUTPUT);
-        vfet_enable_pin->set(true);
-    }
-#endif
-
     return cnt > 0;
 }
 
@@ -157,16 +144,21 @@ bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t
     this->min_temp = cr.get_float(m, min_temp_key, 0);
 
     // Heater pin
-    this->heater_pin = new SigmaDeltaPwm();
-    this->heater_pin->from_string(cr.get_string(m, heater_pin_key, "nc"));
-    if(this->heater_pin->connected()) {
-        this->heater_pin->as_output();
-        this->readonly = false;
+    std::string hp= cr.get_string(m, heater_pin_key, "nc");
+    if(hp != "nc" && !hp.empty()) {
+        this->heater_pin = new SigmaDeltaPwm(hp.c_str());
+        if(this->heater_pin->connected()) {
+            this->readonly = false;
 
-    } else {
-        this->readonly = true;
-        delete heater_pin;
+        } else {
+            this->readonly = true;
+            delete heater_pin;
+            heater_pin = nullptr;
+        }
+
+    }else{
         heater_pin = nullptr;
+        this->readonly = true;
     }
 
     // For backward compatibility, default to a thermistor sensor.
@@ -209,19 +201,12 @@ bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t
         this->heater_pin->max_pwm( cr.get_float(m, max_pwm_key, 255) );
         this->heater_pin->set(0);
         //set_low_on_debug(heater_pin->port_number, heater_pin->pin);
-        // TODO use single fasttimer for all sigma delta
-        float freq = cr.get_float(m, pwm_frequency_key, 2000);
-        // use fast ticker as it is ISR based and will preempt tasks
-        if(FastTicker::getInstance()->attach((uint32_t)freq, std::bind(&SigmaDeltaPwm::on_tick, this->heater_pin)) < 0) {
-            printf("INFO: configure-temperature: ERROR SigmaDelta Ticker was not set\n");
-            return false;
-        }
     }
 
     // runaway timer
     SlowTicker::getInstance()->attach(1, std::bind(&TemperatureControl::check_runaway, this));
 
-    // sensor reading tick, again needs to be ISR based as it is critical
+    // sensor reading tick, needs to be ISR based as it is critical
     FastTicker::getInstance()->attach(this->readings_per_second, std::bind(&TemperatureControl::thermistor_read_tick, this));
     this->PIDdt = 1.0 / this->readings_per_second;
 
@@ -666,11 +651,6 @@ void TemperatureControl::check_runaway()
                             broadcast_halt(true);
                             this->runaway_state = NOT_HEATING;
                             this->runaway_timer = 0;
-#ifdef BOARD_PRIMEALPHA
-                            // as this is a potential mosfet failing on we shut off all mosfets
-                            vfet_enable_pin->set(false);
-                            print_to_all_consoles("WARNING: All mosfets have been turned off until reset\n");
-#endif
                         }
 
                     } else {
