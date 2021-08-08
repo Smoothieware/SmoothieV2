@@ -720,7 +720,7 @@ bool CommandShell::modules_cmd(std::string& params, OutputStream& os)
 
 bool CommandShell::get_cmd(std::string& params, OutputStream& os)
 {
-    HELP("get pos|wcs|state|status|temp|volts")
+    HELP("get pos|wcs|state|status|temp|volts|fk|ik")
     std::string what = stringutils::shift_parameter( params );
     bool handled = true;
     if (what == "temp") {
@@ -759,15 +759,13 @@ bool CommandShell::get_cmd(std::string& params, OutputStream& os)
             }
         }
 
-
-
     } else if (what == "fk" || what == "ik") {
         std::string p= stringutils::shift_parameter( params );
-        // bool move= false;
-        // if(p == "-m") {
-        //     move= true;
-        //     p= stringutils::shift_parameter( params );
-        // }
+        bool move= false;
+        if(p == "-m") {
+            move= true;
+            p= stringutils::shift_parameter( params );
+        }
 
         std::vector<float> v= stringutils::parse_number_list(p.c_str());
         if(p.empty() || v.size() < 1) {
@@ -797,16 +795,15 @@ bool CommandShell::get_cmd(std::string& params, OutputStream& os)
             os.printf("actuator= X %f, Y %f, Z %f\n", apos[0], apos[1], apos[2]);
         }
 
-        // if(move) {
-        //     // move to the calculated, or given, XYZ
-        //     char cmd[64];
-        //     snprintf(cmd, sizeof(cmd), "G53 G0 X%f Y%f Z%f", x, y, z);
-        //     struct SerialMessage message;
-        //     message.message = cmd;
-        //     message.stream = &(StreamOutput::NullStream);
-        //     THEKERNEL->call_event(ON_CONSOLE_LINE_RECEIVED, &message );
-        //     THECONVEYOR->wait_for_idle();
-        // }
+        if(move) {
+            // move to the calculated, or given, XYZ
+            Robot::getInstance()->push_state();
+            Robot::getInstance()->absolute_mode = true;
+            Robot::getInstance()->next_command_is_MCS = true; // must use machine coordinates
+            THEDISPATCHER->dispatch(os, 'G', 0, 'X', x, 'Y', y, 'Z', z, 0);
+            Robot::getInstance()->pop_state();
+            Conveyor::getInstance()->wait_for_idle();
+        }
 
     } else if (what == "pos") {
         // convenience to call all the various M114 variants, shows ABC axis where relevant
