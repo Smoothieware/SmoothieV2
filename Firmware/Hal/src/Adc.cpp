@@ -215,31 +215,6 @@ bool Adc::stop()
     return true;
 }
 
-// This will take 154 us per sample with current settings
-// for 8 samples on a channel this is 1.2ms per channel
-// with 2 channels this gets called about every 2.4ms
-void Adc::sample_isr()
-{
-    if(!running) return;
-
-    // I think this means we have 8 samples from each channel interleaved
-    int n = allocated_channels.size();
-    int o = 0;
-    for(uint16_t c : allocated_channels) {
-        Adc *adc = getInstance(c);
-        if(adc == nullptr || !adc->valid) continue; // not setup
-        // pick it out of the array
-        uint16_t dataADC[num_samples];
-        for(int i = 0; i < num_samples; ++i) {
-            dataADC[i] = aADCxConvertedData[(i * n) + o];
-        }
-        memcpy(adc->sample_buffer, dataADC, sizeof(dataADC));
-        ++o;
-    }
-}
-
-#define USE_MEDIAN_FILTER
-#ifdef USE_MEDIAN_FILTER
 static void split(uint16_t data[], unsigned int n, uint16_t x, unsigned int& i, unsigned int& j)
 {
     do {
@@ -268,48 +243,48 @@ static unsigned int quick_median(uint16_t data[], unsigned int n)
     }
     return k;
 }
-#endif
+
+// This will take 154 us per sample with current settings
+// for 8 samples on a channel this is 1.2ms per channel
+// with 2 channels this gets called about every 2.4ms
+void Adc::sample_isr()
+{
+    if(!running) return;
+
+    // I think this means we have 8 samples from each channel interleaved
+    int n = allocated_channels.size();
+    int o = 0;
+    for(uint16_t c : allocated_channels) {
+        Adc *adc = getInstance(c);
+        if(adc == nullptr || !adc->valid) continue; // not setup
+        // pick it out of the array
+        uint16_t dataADC[num_samples];
+        for(int i = 0; i < num_samples; ++i) {
+            dataADC[i] = aADCxConvertedData[(i * n) + o];
+        }
+        memcpy(adc->sample_buffer, dataADC, sizeof(dataADC));
+        ++o;
+    }
+
+    // calculate median for each buffer, avoids having to lock the buffer
+    for(uint16_t c : allocated_channels) {
+        Adc *adc = getInstance(c);
+        if(adc == nullptr || !adc->valid) continue; // not setup
+        adc->last_sample= adc->sample_buffer[quick_median(adc->sample_buffer, num_samples)];
+    }
+}
 
 // gets called 20 times a second from an ISR or timer
 uint32_t Adc::read()
 {
-    uint16_t median_buffer[num_samples];
-
-    // needs atomic access TODO maybe be able to use std::atomic here or some lockless mutex
-    taskENTER_CRITICAL();
-    memcpy(median_buffer, sample_buffer, sizeof(median_buffer));
-    taskEXIT_CRITICAL();
-
-#ifdef USE_MEDIAN_FILTER
     // returns the median value of the last 8 samples
-    return median_buffer[quick_median(median_buffer, num_samples)];
-
-#else
-    // sort the 8 readings and return the average of the middle 4
-    std::sort(median_buffer, median_buffer + num_samples);
-    int sum = 0;
-    for (int i = num_samples / 4; i < (num_samples - (num_samples / 4)); ++i) {
-        sum += median_buffer[i];
-    }
-    return sum / (num_samples / 2);
-
-#endif
+    return last_sample;
 }
 
 float Adc::read_raw()
 {
     // just return the voltage on the pin
-    uint16_t median_buffer[num_samples];
-
-    // needs atomic access TODO maybe be able to use std::atomic here or some lockless mutex
-    taskENTER_CRITICAL();
-    memcpy(median_buffer, sample_buffer, sizeof(median_buffer));
-    taskEXIT_CRITICAL();
-
-    // take the median value
-    unsigned int i = quick_median(median_buffer, num_samples);
-    uint16_t adc = median_buffer[i];
-
+    uint16_t adc = last_sample;
     float v = 3.3F * ((float)adc / get_max_value());
     return v;
 }

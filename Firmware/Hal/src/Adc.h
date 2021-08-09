@@ -44,6 +44,6 @@ private:
     uint32_t not_ready_error{0};
     // buffer storing the last num_samples readings for each channel instance
     uint16_t sample_buffer[num_samples]{0};
-    uint16_t ave_buf[4]{0};
+    uint32_t last_sample{0};
 };
 
