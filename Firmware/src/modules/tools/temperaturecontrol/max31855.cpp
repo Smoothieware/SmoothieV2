@@ -90,13 +90,18 @@ void MAX31855::get_raw(OutputStream& os)
     cs->set(true);
     spi->end_transaction();
 
-    os.printf("raw read %04X, %04X\n", data[0], data[1]);
+    os.printf("MAX31855 raw read %04X, %04X, errors: %d\n", data[0], data[1], errors);
+    errors= 0;
     if(data[0] & 1) {
         os.printf("  error detected: %02X - ", data[1] & 0x07);
-        if(data[1] & 1) os.printf("open circuit ");
-        if(data[1] & 2) os.printf("short to ground ");
-        if(data[1] & 4) os.printf("short to Vcc ");
-        os.printf("\n");
+        if(data[1] & 8) { // this presumes SPI MISO is pulled high
+            os.printf("no SPI slave present\n");
+        }else{
+            if(data[1] & 1) os.printf("open circuit ");
+            if(data[1] & 2) os.printf("short to ground ");
+            if(data[1] & 4) os.printf("short to Vcc ");
+            os.printf("\n");
+        }
     } else {
         float t = (((int16_t)data[0]) >> 2) / 4.0F;
         os.printf("  Thermocouple temp: %f\n", t);
@@ -151,5 +156,6 @@ void MAX31855::do_read()
     }else{
         // we got 4 readings of inf in a row so we have a problem
         average_temperature= infinityf();
+        ++errors;
     }
  }

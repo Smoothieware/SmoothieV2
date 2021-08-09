@@ -327,6 +327,7 @@ extern "C" void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi)
         /* SPI MISO GPIO pin configuration  */
         GPIO_InitStruct.Pin = SPI1x_MISO_PIN;
         GPIO_InitStruct.Alternate = SPI1x_MISO_AF;
+        GPIO_InitStruct.Pull      = GPIO_PULLUP;
         HAL_GPIO_Init(SPI1x_MISO_GPIO_PORT, &GPIO_InitStruct);
 
         /* SPI MOSI GPIO pin configuration  */
@@ -364,6 +365,7 @@ extern "C" void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi)
         /* SPI MISO GPIO pin configuration  */
         GPIO_InitStruct.Pin = SPI2x_MISO_PIN;
         GPIO_InitStruct.Alternate = SPI2x_MISO_AF;
+        GPIO_InitStruct.Pull      = GPIO_PULLUP;
         HAL_GPIO_Init(SPI2x_MISO_GPIO_PORT, &GPIO_InitStruct);
 
         /* SPI MOSI GPIO pin configuration  */

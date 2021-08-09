@@ -25,4 +25,5 @@ class MAX31855 : public TempSensor
         float average_temperature{0};
         float readings[4]{0};
         uint32_t cnt{0};
+        uint32_t errors{0};
 };
