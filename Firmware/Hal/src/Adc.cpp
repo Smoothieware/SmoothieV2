@@ -270,7 +270,7 @@ static unsigned int quick_median(uint16_t data[], unsigned int n)
 }
 #endif
 
-// gets called 20 times a second from a timer
+// gets called 20 times a second from an ISR or timer
 uint32_t Adc::read()
 {
     uint16_t median_buffer[num_samples];

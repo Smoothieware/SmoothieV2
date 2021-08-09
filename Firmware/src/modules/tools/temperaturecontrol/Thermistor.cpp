@@ -231,6 +231,7 @@ bool Thermistor::calc_jk()
     return true;
 }
 
+// NOTE this maybe called from an ISR
 float Thermistor::get_temperature()
 {
     float t = adc_value_to_temperature(new_thermistor_reading());
@@ -298,6 +299,7 @@ float Thermistor::adc_value_to_temperature(uint32_t adc_value)
     return t;
 }
 
+// NOTE called from an ISR
 int Thermistor::new_thermistor_reading()
 {
     // filtering done in Adc

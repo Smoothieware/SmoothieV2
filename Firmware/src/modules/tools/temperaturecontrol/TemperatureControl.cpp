@@ -144,7 +144,7 @@ bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t
     this->min_temp = cr.get_float(m, min_temp_key, 0);
 
     // Heater pin
-    std::string hp= cr.get_string(m, heater_pin_key, "nc");
+    std::string hp = cr.get_string(m, heater_pin_key, "nc");
     if(hp != "nc" && !hp.empty()) {
         this->heater_pin = new SigmaDeltaPwm(hp.c_str());
         if(this->heater_pin->connected()) {
@@ -157,7 +157,7 @@ bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t
             heater_pin = nullptr;
         }
 
-    }else{
+    } else {
         heater_pin = nullptr;
         this->readonly = true;
     }
@@ -472,7 +472,6 @@ bool TemperatureControl::request(const char *key, void *value)
     return false;
 }
 
-
 void TemperatureControl::set_desired_temperature(float desired_temperature)
 {
     // Never go over the configured max temperature
@@ -510,20 +509,18 @@ float TemperatureControl::get_temperature()
     return last_reading;
 }
 
+// NOTE this is an ISR, so no printfs or blocking allowed
 void TemperatureControl::thermistor_read_tick()
 {
     float temperature = sensor->get_temperature();
     if(!this->readonly && target_temperature > 2) {
         if (isinf(temperature) || temperature < min_temp || temperature > max_temp) {
             target_temperature = UNDEFINED;
-            heater_pin->set((this->o = 0));
+            heater_pin->set(false);
+            this->o = 0;
 
-            char error_msg[132];
-            snprintf(error_msg, sizeof(error_msg), "ERROR: MINTEMP or MAXTEMP triggered on %s. Check your temperature sensors!\nHALT asserted - reset or M999 required\n", designator.c_str());
-            print_to_all_consoles(error_msg);
-
-            // force into ALARM state
-            broadcast_halt(true);
+            // defer the error message to a non ISR (eg runaway timer)
+            temp_violated = true;
 
         } else {
             pid_process(temperature);
@@ -589,8 +586,18 @@ void TemperatureControl::pid_process(float temperature)
 void TemperatureControl::check_runaway()
 {
     if(is_halted()) return;
-    // printf("DEBUG: check_runaway: %s\n", designator.c_str());
 
+    if(temp_violated) {
+        char error_msg[132];
+        snprintf(error_msg, sizeof(error_msg), "ERROR: MINTEMP or MAXTEMP triggered on %s. Check your temperature sensors!\nHALT asserted - reset or M999 required\n", designator.c_str());
+        print_to_all_consoles(error_msg);
+        // force into ALARM state
+        broadcast_halt(true);
+        temp_violated= false;
+        return;
+    }
+
+    // printf("DEBUG: check_runaway: %s\n", designator.c_str());
     // see if runaway detection is enabled
     if(this->runaway_heating_timeout == 0 && this->runaway_range == 0) return;
 
