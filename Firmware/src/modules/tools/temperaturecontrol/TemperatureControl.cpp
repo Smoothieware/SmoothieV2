@@ -16,9 +16,7 @@
 
 // Temp sensor implementations:
 #include "Thermistor.h"
-//#include "max31855.h"
-//#include "AD8495.h"
-//#include "PT100_E3D.h"
+#include "max31855.h"
 
 #define UNDEFINED -1
 
@@ -165,18 +163,12 @@ bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t
     // For backward compatibility, default to a thermistor sensor.
     std::string sensor_type = cr.get_string(m, sensor_key, "thermistor");
 
-    // Instantiate correct sensor
-    delete sensor;
-    sensor = nullptr; // In case we fail to create a new sensor.
     if(sensor_type.compare("thermistor") == 0) {
         sensor = new Thermistor();
 
-//  } else if(sensor_type.compare("max31855") == 0) { // needs porting
-//      sensor = new Max31855();
-//  } else if(sensor_type.compare("ad8495") == 0) {
-//      sensor = new AD8495();
-//  } else if(sensor_type.compare("pt100_e3d") == 0) {
-//      sensor = new PT100_E3D();
+    } else if(sensor_type.compare("max31855") == 0) {
+        sensor = new MAX31855();
+
     } else {
         sensor = new TempSensor(); // A dummy implementation
     }
@@ -184,6 +176,8 @@ bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t
     // allow sensor to read the config
     if(!sensor->configure(cr, m)) {
         printf("INFO: configure-temperature: %s sensor %s failed to configure\n", get_instance_name(), sensor_type.c_str());
+        delete sensor;
+        sensor= nullptr;
         return false;
     }
 
@@ -416,7 +410,6 @@ bool TemperatureControl::handle_mcode(GCode & gcode, OutputStream & os)
                 this->set_desired_temperature(v);
                 // wait for temp to be reached, no more gcodes will be fetched until this is complete
                 if( gcode.get_code() == this->set_and_wait_m_code) {
-                    // FIXME does isinf work?
                     if(isinf(get_temperature()) && isinf(sensor->get_temperature())) {
                         os.printf("Temperature reading is unreliable on %s HALT asserted - reset or M999 required\n", designator.c_str());
                         broadcast_halt(true);
@@ -611,6 +604,8 @@ void TemperatureControl::check_runaway()
 
     } else {
         float current_temperature = this->get_temperature();
+        if(isinf(current_temperature)) return; // ignore bad temp readings
+
         // heater is active
         switch( this->runaway_state ) {
             case NOT_HEATING: // If we were previously not trying to heat, but we are now, change to state WAITING_FOR_TEMP_TO_BE_REACHED

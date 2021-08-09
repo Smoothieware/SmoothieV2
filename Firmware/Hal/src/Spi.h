@@ -30,7 +30,9 @@ public:
     uint8_t get_mode() const { return _mode; }
     bool begin_transaction(uint32_t tmoms=10000);
     void end_transaction();
+    int get_channel() const { return _channel; }
 
+    static int get_n_channels() { return 2; }
 	static SPI *spi_channel[2];
 
 private:
