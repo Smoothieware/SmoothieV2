@@ -1102,6 +1102,8 @@ void Endstops::rotary_delta_M306(GCode& gcode, OutputStream& os)
         Robot::getInstance()->actuators[2]->get_current_position()
     };
 
+    #if 0
+    // FIXME the last probe is not in degrees for a rotary, so this is no longer valid
     if (gcode.has_arg('L') && gcode.get_arg('L') != 0) {
         // specifying L1 it will take the last probe position (set by G30) which is degrees moved
         // we convert that to actual postion of the actuator when it triggered.
@@ -1119,6 +1121,7 @@ void Endstops::rotary_delta_M306(GCode& gcode, OutputStream& os)
         current_angle[1] += d;
         current_angle[2] += d;
     }
+    #endif
 
     float theta_offset[3];
     for (int i = 0; i < 3; ++i) {

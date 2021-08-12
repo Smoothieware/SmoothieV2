@@ -801,8 +801,8 @@ bool CommandShell::get_cmd(std::string& params, OutputStream& os)
             Robot::getInstance()->absolute_mode = true;
             Robot::getInstance()->next_command_is_MCS = true; // must use machine coordinates
             THEDISPATCHER->dispatch(os, 'G', 0, 'X', x, 'Y', y, 'Z', z, 0);
-            Robot::getInstance()->pop_state();
             Conveyor::getInstance()->wait_for_idle();
+            Robot::getInstance()->pop_state();
         }
 
     } else if (what == "pos") {
@@ -1110,6 +1110,9 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
         os.printf(" test raw axis steps steps/sec\n");
         os.printf(" test acc axis units units/sec\n");
     }
+
+    // wait for the test to complete
+    Conveyor::getInstance()->wait_for_idle();
 
     return true;
 }

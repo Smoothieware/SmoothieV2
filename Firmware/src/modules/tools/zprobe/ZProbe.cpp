@@ -224,7 +224,7 @@ bool ZProbe::run_probe(float& mm, float feedrate, float max_dist, bool reverse)
     // NOTE this works for deltas as well as all three actuators move the same amount in Z
     mm = z_start_pos - Robot::getInstance()->actuators[Z_AXIS]->get_current_position();
 
-    // set the last probe position to the actuator units moved during this home
+    // set the last probe position to the z distance moved during probe
     Robot::getInstance()->set_last_probe_position(std::make_tuple(0, 0, mm, probe_detected ? 1 : 0));
 
     probing = false;
