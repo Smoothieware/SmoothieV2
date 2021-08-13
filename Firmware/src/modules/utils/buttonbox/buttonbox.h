@@ -21,5 +21,5 @@ class ButtonBox : public Module {
             bool state;
         };
         std::vector<but_t> buttons;
-        RingBuffer<std::string, 10> commands;
+        RingBuffer<const char*, 10> commands;
 };

@@ -98,12 +98,12 @@ void ButtonBox::button_tick()
     for(auto& i : buttons) {
         if(!i.state && i.but->get()) {
             // pressed
-            commands.push_back(i.press_act);
+            commands.push_back(i.press_act.c_str());
             i.state= true;
 
         } else if(i.state && !i.but->get()) {
             // released
-            commands.push_back(i.release_act);
+            commands.push_back(i.release_act.c_str());
             i.state= false;
         }
     }
@@ -114,7 +114,7 @@ void ButtonBox::in_command_ctx(bool idle)
 {
     if(!commands.empty()) {
         OutputStream os; // null output stream
-        std::string cmd = commands.pop_front();
+        std::string cmd(commands.pop_front());
         if(cmd == "^Y") {
             Conveyor::getInstance()->set_continuous_mode(false);
         } else {
