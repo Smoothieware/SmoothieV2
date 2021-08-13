@@ -1032,6 +1032,7 @@ bool Robot::handle_mcodes(GCode& gcode, OutputStream& os)
             if(!is_grbl_mode()) break;
         // fall through to M2
         case 2: // M2 end of program
+            Conveyor::getInstance()->wait_for_idle();
             current_wcs = 0;
             absolute_mode = true;
             break;
