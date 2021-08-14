@@ -1226,6 +1226,14 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
 
         // calculate minimum distance to travel to accomodate acceleration and feedrate
         float acc = Robot::getInstance()->get_default_acceleration();
+
+        // get lowest acceleration of selected axis
+        for (int i = 0; i < n_motors; ++i) {
+            if(delta[i] == 0) continue;
+            float ma =  Robot::getInstance()->actuators[i]->get_acceleration(); // in mm/sec²
+            if(ma > 0.0001F && ma < acc) acc= ma;
+        }
+
         float t = fr / acc; // time to reach frame rate
         float d = 0.5F * acc * powf(t, 2); // distance required to accelerate
         d *= 2; // include distance to decelerate
