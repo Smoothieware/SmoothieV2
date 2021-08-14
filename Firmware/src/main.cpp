@@ -201,6 +201,9 @@ static void smoothie_startup(void *)
     // create the FastTicker here as it is used by some modules
     FastTicker *fast_ticker = FastTicker::getInstance();
 
+    // create the SlowTicker here as it is used by some modules
+    SlowTicker *slow_ticker = SlowTicker::getInstance();
+
     // create the StepTicker, don't start it yet
     StepTicker *step_ticker = StepTicker::getInstance();
 
@@ -432,6 +435,10 @@ static void smoothie_startup(void *)
     if(ok) {
         if(!fast_ticker->start()) {
             printf("WARNING: failed to start FastTicker (maybe nothing is using it?)\n");
+        }
+
+        if(!slow_ticker->start()) {
+            printf("WARNING: failed to start SlowTicker\n");
         }
 
         if(!step_ticker->start()) {

@@ -20,6 +20,8 @@ class SlowTicker
         // call back frequency in Hz
         int attach(uint32_t frequency, std::function<void(void)> cb);
         void detach(int n);
+        bool start();
+        bool stop();
 
     private:
         static SlowTicker *instance;
@@ -28,5 +30,5 @@ class SlowTicker
         static void timer_handler(void *xTimer);
         std::vector<void *> timers;
         std::vector<std::function<void(void)>> callbacks;
-        static void *lock;
+        bool started{false};
 };
