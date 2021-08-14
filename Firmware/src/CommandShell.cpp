@@ -1239,6 +1239,8 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         }
         // stream->printf("distance: %f, time:%f, X%f Y%f Z%f, speed:%f\n", d, t, delta[0], delta[1], delta[2], fr);
 
+        // wait for any activity to stop
+        Conveyor::getInstance()->wait_for_idle();
         // turn off any compensation transform so Z does not move as we jog
         auto savect = Robot::getInstance()->compensationTransform;
         Robot::getInstance()->reset_compensated_machine_position();
