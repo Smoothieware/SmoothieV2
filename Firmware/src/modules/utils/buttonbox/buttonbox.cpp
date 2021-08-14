@@ -87,9 +87,12 @@ bool ButtonBox::configure(ConfigReader& cr)
     printf("INFO: %d button(s) loaded\n", cnt);
 
     if(cnt > 0) {
-        SlowTicker::getInstance()->attach(20, std::bind(&ButtonBox::button_tick, this));
+        if(SlowTicker::getInstance()->attach(20, std::bind(&ButtonBox::button_tick, this)) < 0) {
+            printf("ERROR: configure-buttonbox: failed to attach to SlowTicker\n");
+        }
         return true;
     }
+
     return false;
 }
 
@@ -122,6 +125,8 @@ void ButtonBox::button_tick()
                 }
 
             } else {
+                // Do not block and if queue was full the command is lost
+                // (We could change the state of the button that caused this so it tries again)
                 send_message_queue(cmd, &os, false);
             }
         }
