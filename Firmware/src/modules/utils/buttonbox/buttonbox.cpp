@@ -97,7 +97,7 @@ bool ButtonBox::configure(ConfigReader& cr)
 // Note this is the RTOS timer task so don't do anything slow or blocking in here
 void ButtonBox::button_tick()
 {
-    static OutputStream nullos; // null output stream
+    static OutputStream os; // NULL output stream, but we need to keep some state between calls
     for(auto& i : buttons) {
         const char *cmd = nullptr;
         if(!i.state && i.but->get()) {
@@ -112,16 +112,17 @@ void ButtonBox::button_tick()
         }
 
         if(cmd != nullptr) {
-            if(strcmp(cmd, "^Y") == 0) {
+            if(strcmp(cmd, "$J STOP") == 0) {
+                // stop jog command, check for race condition
                 if(Conveyor::getInstance()->get_continuous_mode()) {
                     Conveyor::getInstance()->set_continuous_mode(false);
                 } else {
                     // set so $J will be ignored if sent too fast
-                    nullos.set_stop_request(true);
+                    os.set_stop_request(true);
                 }
 
             } else {
-                send_message_queue(cmd, &nullos, false);
+                send_message_queue(cmd, &os, false);
             }
         }
     }
