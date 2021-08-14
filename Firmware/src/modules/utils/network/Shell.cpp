@@ -250,10 +250,11 @@ static void shell_thread(void *arg)
 
                     // this could block which would then also block any output that the
                     // command thread needs to make causing deadlock
-                    // so tell it to not wait, and if it returns false it means it gave up waiting
+                    // so tell it to not wait, and if it returns false it means it had no room
                     if(!process_command_buffer(n, buf, p_shell->os, p_shell->line, p_shell->cnt, p_shell->discard, false)) {
-                        // and keep trying to resubmit, this will yield for about 100ms
+                        // and keep trying to resubmit
                         while(!send_message_queue(p_shell->line, p_shell->os, false)) {
+                            vTaskDelay(pdMS_TO_TICKS(100));
                             // make sure we are still connected
                             if(FreeRTOS_issocketconnected(p_shell->socket) != pdTRUE) {
                                 printf("DEBUG: shell: socket disconnected while waiting for command thread\n");
