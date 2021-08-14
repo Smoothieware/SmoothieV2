@@ -1119,7 +1119,7 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
 
 bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
 {
-    HELP("instant jog: $J [-c] X0.01 [S0.5] - axis can be XYZABC, optional speed (Snnn) is scale of max_rate. -c turns on continuous jog mode");
+    HELP("instant jog: $J [-c] X0.01 [Y1] [Z1] [S0.5] - axis can be XYZABC, optional speed (Snnn) is scale of max_rate. -c turns on continuous jog mode");
 
     os.set_no_response(true);
 
@@ -1138,7 +1138,7 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
     }
 
     if(params.empty()) {
-        os.printf("usage: $J [-c] X0.01 [S0.5] - axis can be XYZABC, optional speed is scale of max_rate. -c turns on continuous jog mode\n");
+        os.printf("usage: $J [-c] X0.01 [Y1] [Z1] [S0.5] - axis can be XYZABC, optional speed is scale of max_rate. -c turns on continuous jog mode\n");
         return true;
     }
 
@@ -1251,7 +1251,9 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
 
         // Conveyor::getInstance()->dump_queue();
 
-        // tell it to run the second block until told to stop
+        // tell it to run the first block to acclerate upto speed
+        // then continue to send the second block until told to stop
+        // then send third block to decelerate
         if(!Conveyor::getInstance()->set_continuous_mode(true)) {
             os.printf("error:unable to set continuous jog mode\n");
             return true;
@@ -1263,7 +1265,7 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
 
         // run until we get a stop request
         while(!os.get_stop_request()) {
-            safe_sleep(10);
+            safe_sleep(10); // services status requests etc
             if(Module::is_halted()) break;
         }
 
