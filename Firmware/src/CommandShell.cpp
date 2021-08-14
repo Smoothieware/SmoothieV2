@@ -40,7 +40,7 @@
 
 #define HELP(m) if(params == "-h") { os.printf("%s\n", m); return true; }
 
-CommandShell* CommandShell::instance= nullptr;
+CommandShell* CommandShell::instance = nullptr;
 
 CommandShell::CommandShell()
 {
@@ -760,22 +760,22 @@ bool CommandShell::get_cmd(std::string& params, OutputStream& os)
         }
 
     } else if (what == "fk" || what == "ik") {
-        std::string p= stringutils::shift_parameter( params );
-        bool move= false;
+        std::string p = stringutils::shift_parameter( params );
+        bool move = false;
         if(p == "-m") {
-            move= true;
-            p= stringutils::shift_parameter( params );
+            move = true;
+            p = stringutils::shift_parameter( params );
         }
 
-        std::vector<float> v= stringutils::parse_number_list(p.c_str());
+        std::vector<float> v = stringutils::parse_number_list(p.c_str());
         if(p.empty() || v.size() < 1) {
             os.printf("error:usage: get [fk|ik] [-m] x[,y,z]\n");
             return true;
         }
 
-        float x= v[0];
-        float y= (v.size() > 1) ? v[1] : x;
-        float z= (v.size() > 2) ? v[2] : y;
+        float x = v[0];
+        float y = (v.size() > 1) ? v[1] : x;
+        float z = (v.size() > 2) ? v[2] : y;
 
         if(what == "fk") {
             // do forward kinematics on the given actuator position and display the cartesian coordinates
@@ -783,13 +783,13 @@ bool CommandShell::get_cmd(std::string& params, OutputStream& os)
             float pos[3];
             Robot::getInstance()->arm_solution->actuator_to_cartesian(apos, pos);
             os.printf("cartesian= X %f, Y %f, Z %f\n", pos[0], pos[1], pos[2]);
-            x= pos[0];
-            y= pos[1];
-            z= pos[2];
+            x = pos[0];
+            y = pos[1];
+            z = pos[2];
 
-        }else{
+        } else {
             // do inverse kinematics on the given cartesian position and display the actuator coordinates
-            float pos[3]{x, y, z};
+            float pos[3] {x, y, z};
             ActuatorCoordinates apos;
             Robot::getInstance()->arm_solution->cartesian_to_actuator(pos, apos);
             os.printf("actuator= X %f, Y %f, Z %f\n", apos[0], apos[1], apos[2]);
@@ -1082,9 +1082,9 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
 
         if(what == "acc") {
             // convert actuator units to steps
-            steps= lroundf(Robot::getInstance()->actuators[a]->get_steps_per_mm() * steps);
+            steps = lroundf(Robot::getInstance()->actuators[a]->get_steps_per_mm() * steps);
             // convert steps per unit to steps/sec
-            sps= lroundf(Robot::getInstance()->actuators[a]->get_steps_per_mm() * sps);
+            sps = lroundf(Robot::getInstance()->actuators[a]->get_steps_per_mm() * sps);
         }
 
         sps = std::max(sps, (uint32_t)1);
@@ -1181,7 +1181,6 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
 
     // select slowest axis rate to use
     int cnt = 0;
-    int axis = 0;
     for (int i = 0; i < n_motors; ++i) {
         if(delta[i] != 0) {
             ++cnt;
@@ -1190,16 +1189,12 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
             } else {
                 rate_mm_s = std::min(rate_mm_s, Robot::getInstance()->actuators[i]->get_max_rate());
             }
-            axis = i;
             //printf("%d %f S%f\n", i, delta[i], rate_mm_s);
         }
     }
 
     if(cnt == 0) {
         os.printf("error:no delta jog specified\n");
-        return true;
-    } else if(cont_mode && cnt > 1) {
-        os.printf("error:continuous mode can only have one axis\n");
         return true;
     }
 
@@ -1217,56 +1212,74 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
 
     float fr = rate_mm_s * scale;
 
-    auto savect = Robot::getInstance()->compensationTransform;
+
     if(cont_mode) {
-        // $J -c returns ok when done
+        // continuous jog mode, will move until told to stop and sends ok when stopped
         os.set_no_response(false);
 
         if(os.get_stop_request()) {
             // there is a race condition where the host may send the ^Y so fast after
             // the $J -c that it is executed first, which would leave the system in cont mode
-            // in that case stop_request would be set instead
             os.set_stop_request(false);
             return true;
         }
 
-        // continuous jog mode, will move until told to stop
         // calculate minimum distance to travel to accomodate acceleration and feedrate
         float acc = Robot::getInstance()->get_default_acceleration();
         float t = fr / acc; // time to reach frame rate
         float d = 0.5F * acc * powf(t, 2); // distance required to accelerate
         d *= 2; // include distance to decelerate
         d = roundf(d + 0.5F); // round up to nearest mm
+
         // we need to move at least this distance to reach full speed
-        if(delta[axis] < 0) delta[axis] = -d;
-        else delta[axis] = d;
-        //printf("time: %f, delta: %f, fr: %f\n", t, d, fr);
+        for (int i = 0; i < n_motors; ++i) {
+            if(delta[i] != 0) {
+                delta[i]= d * (delta[i]<0?-1:1);
+            }
+        }
+        // stream->printf("distance: %f, time:%f, X%f Y%f Z%f, speed:%f\n", d, t, delta[0], delta[1], delta[2], fr);
 
         // turn off any compensation transform so Z does not move as we jog
+        auto savect = Robot::getInstance()->compensationTransform;
         Robot::getInstance()->reset_compensated_machine_position();
 
-        // we have to wait for the queue to be totally empty
-        Conveyor::getInstance()->wait_for_idle();
+        // feed three blocks that allow full acceleration, full speed and full deceleration
+        Conveyor::getInstance()->set_hold(true);
+        Robot::getInstance()->delta_move(delta, fr, n_motors); // accelerates upto speed
+        Robot::getInstance()->delta_move(delta, fr, n_motors); // continues at full speed
+        Robot::getInstance()->delta_move(delta, fr, n_motors); // decelerates to zero
 
-        // Set continuous mode
-        Conveyor::getInstance()->set_continuous_mode(true);
-    }
+        // Conveyor::getInstance()->dump_queue();
 
-    Robot::getInstance()->delta_move(delta, fr, n_motors);
+        // tell it to run the second block until told to stop
+        if(!Conveyor::getInstance()->set_continuous_mode(true)) {
+            os.printf("error:unable to set continuous jog mode\n");
+            return true;
+        }
 
-    // turn off queue delay and run it now
-    Conveyor::getInstance()->force_queue();
+        // start it running
+        Conveyor::getInstance()->set_hold(false);
+        Conveyor::getInstance()->force_queue();
 
-    if(cont_mode) {
-        // we have to wait for the continuous move to be stopped
-        Conveyor::getInstance()->wait_for_idle();
-        // unset continuous mode is superfluous as it had to be unset to get here
+        // run until we get a stop request
+        while(!os.get_stop_request()) {
+            safe_sleep(10);
+            if(Module::is_halted()) break;
+        }
+
         Conveyor::getInstance()->set_continuous_mode(false);
+        os.set_stop_request(false);
+        Conveyor::getInstance()->wait_for_idle();
 
         // reset the position based on current actuator position
         Robot::getInstance()->reset_position_from_current_actuator_position();
         // restore compensationTransform
-        Robot::getInstance()->compensationTransform = savect;
+        Robot::getInstance()->compensationTransform= savect;
+
+    }else{
+        Robot::getInstance()->delta_move(delta, fr, n_motors);
+        // turn off queue delay and run it now
+        Conveyor::getInstance()->force_queue();
     }
 
     return true;
@@ -1829,12 +1842,12 @@ bool CommandShell::msc_cmd(std::string& params, OutputStream& os)
     printf("DEBUG: MSC is now running\n");
 
     // msc led flashes when in msc mode
-    #ifdef BOARD_PRIME
+#ifdef BOARD_PRIME
     // TODO needs to be configurable
     Pin msc_led("PF13", Pin::AS_OUTPUT);
-    #else
+#else
     Pin msc_led("nc", Pin::AS_OUTPUT);
-    #endif
+#endif
     // as nothing else can happen and MSC runs under Interrupts we sit in a tight loop here waiting for it to end
     uint32_t flash_time = HAL_GetTick();
     while(true) {
@@ -1845,7 +1858,7 @@ bool CommandShell::msc_cmd(std::string& params, OutputStream& os)
             HAL_Delay(250);
             NVIC_SystemReset();
         }
-        if((HAL_GetTick() - flash_time) > 300){ // 300ms flash period
+        if((HAL_GetTick() - flash_time) > 300) { // 300ms flash period
             msc_led.set(!msc_led.get());
             flash_time = HAL_GetTick();
         }

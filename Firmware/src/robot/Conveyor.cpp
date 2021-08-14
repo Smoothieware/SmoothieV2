@@ -35,7 +35,8 @@ Conveyor::Conveyor() : Module("conveyor")
     allow_fetch = false;
     flush= false;
     halted= false;
-    continuous= false;
+    continuous_mode= 0;
+    hold_queue= false;
 }
 
 bool Conveyor::configure(ConfigReader& cr)
@@ -62,7 +63,8 @@ void Conveyor::on_halt(bool flg)
 
     if(flg) {
         flush= true;
-        continuous= false;
+        continuous_mode= 0 ;
+        hold_queue= false;
     }
 }
 
@@ -131,10 +133,49 @@ void Conveyor::check_queue(bool force)
     }
 }
 
+bool Conveyor::set_continuous_mode(bool f)
+{
+    if(f) {
+        if(PQUEUE->empty() || !hold_queue) return false;
+
+        // copy the tickinfo of the second block on the queue, we know there are 3 items on the queue
+        PQUEUE->start_iteration(); // pointing at head (which is empty)
+        if(PQUEUE->is_at_tail()) return false; // this is an error
+        PQUEUE->tailward_get(); // latest item
+        if(PQUEUE->is_at_tail()) return false; // this is also an error
+        Block* b= PQUEUE->tailward_get(); // second item
+        if(PQUEUE->is_at_tail()) return false; // this is also an errors there should be one more item
+
+        auto n_actuators= Robot::getInstance()->get_number_registered_motors();
+        Block::tickinfo_t *saved= new Block::tickinfo_t[n_actuators];
+        if(saved == nullptr) return false; // out of memory
+
+        for(int i = 0; i < n_actuators; ++i) {
+            saved[i]= b->tick_info[i];
+        }
+
+        saved_block= saved;
+        continuous_mode= 1;
+
+    }else{
+        continuous_mode= 0;
+        if(saved_block != nullptr) {
+            Block::tickinfo_t *saved= static_cast<Block::tickinfo_t *>(saved_block);
+            delete [] saved;
+            saved_block= nullptr;
+        }
+    }
+    return true;
+}
+
 // called from step ticker ISR
 // we only ever access or change the read/tail index of the queue so this is thread safe
 _ramfunc_ bool Conveyor::get_next_block(Block **block)
 {
+    // this is used to allow us to put blocks onto an empty queue and not start until we say so
+    // do not use to hold the queue when it is running otherwise it will stop with zero deceleration
+    if(hold_queue) return false;
+
     // empty the entire queue
     if (flush){
         while (!PQUEUE->empty()) {
@@ -148,6 +189,19 @@ _ramfunc_ bool Conveyor::get_next_block(Block **block)
     this->current_feedrate= 0;
 
     if(halted || PQUEUE->empty()) return false; // we do not have anything to give
+
+    if(continuous_mode > 1){
+        // keep feeding the second in the queue
+        Block *b= PQUEUE->get_tail();
+        // reset variable parts of the block
+        b->reset(static_cast<Block::tickinfo_t*>(saved_block));
+        b->is_ticking= true;
+        b->recalculate_flag= false;
+        this->current_feedrate= b->nominal_speed;
+        *block= b;
+        return true;
+    }
+
 
     // wait for queue to fill up, optimizes planning
     if(!allow_fetch) return false;
@@ -171,8 +225,10 @@ _ramfunc_ bool Conveyor::get_next_block(Block **block)
 // called from step ticker ISR when block is finished, do not do anything slow here
 _ramfunc_ void Conveyor::block_finished()
 {
-    // release the tail
-    PQUEUE->release_tail();
+    if(continuous_mode <= 1){
+        PQUEUE->release_tail();
+        if(continuous_mode == 1) continuous_mode= 2;
+    }
 }
 
 /*
@@ -202,11 +258,16 @@ void Conveyor::dump_queue()
 {
     // start the iteration at the head
     PQUEUE->start_iteration();
-    Block *b = PQUEUE->get_head();
+    if(PQUEUE->is_at_tail()) {
+        printf("Empty\n");
+        return;
+    }
+
+    Block *b;
     int i= 0;
-    while (!PQUEUE->is_at_tail()) {
+    do{
+        b= PQUEUE->tailward_get(); // walk towards the tail
         printf("block %03d > ", ++i);
         b->debug();
-        b= PQUEUE->tailward_get(); // walk towards the tail
-    }
+    } while(!PQUEUE->is_at_tail());
 }
