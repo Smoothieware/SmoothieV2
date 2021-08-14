@@ -16,6 +16,13 @@ Block::Block()
     clear();
 }
 
+Block::~Block()
+{
+    if(tick_info != nullptr) {
+        delete [] tick_info;
+    }
+}
+
 void Block::init(uint8_t n)
 {
     n_actuators = n;
