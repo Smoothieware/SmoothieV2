@@ -79,7 +79,7 @@ bool ButtonBox::configure(ConfigReader& cr)
         };
         buttons.push_back(bt);
 
-        printf("DEBUG: button %s, press: %s, release: %s\n", name.c_str(), press.c_str(), release.c_str());
+        printf("DEBUG: button %s - %s, press: %s, release: %s\n", name.c_str(), b->to_string().c_str(), press.c_str(), release.c_str());
 
         ++cnt;
     }
@@ -102,7 +102,7 @@ void ButtonBox::button_tick()
 {
     static OutputStream os; // NULL output stream, but we need to keep some state between calls
     for(auto& i : buttons) {
-        const char *cmd = nullptr;
+        const char *cmd;
         if(!i.state && i.but->get()) {
             // pressed
             cmd = i.press_act.c_str();
@@ -112,6 +112,9 @@ void ButtonBox::button_tick()
             // released
             cmd = i.release_act.c_str();
             i.state = false;
+
+        } else {
+            cmd= nullptr;
         }
 
         if(cmd != nullptr) {
