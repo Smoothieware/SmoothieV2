@@ -1214,15 +1214,16 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
 
 
     if(cont_mode) {
-         if(os.get_stop_request()) {
+        // continuous jog mode, will move until told to stop and sends ok when stopped
+        os.set_no_response(false);
+
+        if(os.get_stop_request()) {
             // there is a race condition where the host may send the ^Y so fast after
             // the $J -c that it is executed first, which would leave the system in cont mode
-            // in that case stop_request would be set instead
             os.set_stop_request(false);
             return true;
         }
 
-        // continuous jog mode, will move until told to stop
         // calculate minimum distance to travel to accomodate acceleration and feedrate
         float acc = Robot::getInstance()->get_default_acceleration();
         float t = fr / acc; // time to reach frame rate
@@ -1248,9 +1249,11 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         Robot::getInstance()->delta_move(delta, fr, n_motors); // continues at full speed
         Robot::getInstance()->delta_move(delta, fr, n_motors); // decelerates to zero
 
+        // Conveyor::getInstance()->dump_queue();
+
         // tell it to run the second block until told to stop
         if(!Conveyor::getInstance()->set_continuous_mode(true)) {
-            os.printf("error:Not enough memory to run continuous mode\n");
+            os.printf("error:unable to set continuous jog mode\n");
             return true;
         }
 

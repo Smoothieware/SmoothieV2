@@ -258,11 +258,16 @@ void Conveyor::dump_queue()
 {
     // start the iteration at the head
     PQUEUE->start_iteration();
-    Block *b = PQUEUE->get_head();
+    if(PQUEUE->is_at_tail()) {
+        printf("Empty\n");
+        return;
+    }
+
+    Block *b;
     int i= 0;
-    while (!PQUEUE->is_at_tail()) {
+    do{
+        b= PQUEUE->tailward_get(); // walk towards the tail
         printf("block %03d > ", ++i);
         b->debug();
-        b= PQUEUE->tailward_get(); // walk towards the tail
-    }
+    } while(!PQUEUE->is_at_tail());
 }
