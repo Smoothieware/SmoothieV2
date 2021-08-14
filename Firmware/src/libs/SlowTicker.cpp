@@ -10,7 +10,6 @@
 #define MAX_FREQUENCY configTICK_RATE_HZ
 
 SlowTicker *SlowTicker::instance= nullptr;
-void *SlowTicker::lock;
 
 // This module uses FreeRTOS Timers to periodically call registered callbacks
 // Modules register with a function ( callback ) and a frequency
@@ -38,43 +37,69 @@ void SlowTicker::deleteInstance()
 void SlowTicker::timer_handler(TimerHandle_t xTimer)
 {
     int idx= (int)pvTimerGetTimerID(xTimer);
-    xSemaphoreTake((QueueHandle_t)lock, portMAX_DELAY);
     auto& cb= instance->callbacks[idx];
-    xSemaphoreGive((QueueHandle_t)lock);
     if(cb) {
         cb();
     }
 }
 
 SlowTicker::SlowTicker()
-{
-    lock= xSemaphoreCreateMutex();
-}
+{}
 
 SlowTicker::~SlowTicker()
+{}
+
+bool SlowTicker::start()
 {
-    vSemaphoreDelete((QueueHandle_t)lock);
+    // start all timers
+    for(auto i : timers) {
+        if(xTimerStart(i, 1000) != pdPASS ) {
+            // The timer could not be set into the Active state
+            printf("ERROR: Failed to start the timer: %s\n", pcTimerGetName(i));
+            return false;
+        }
+    }
+    started= true;
+    return true;
 }
 
+bool SlowTicker::stop()
+{
+    int cnt= 0;
+    for(auto i : timers) {
+        ++cnt;
+        if(xTimerStop(i, 1000) != pdPASS ) {
+            // The timer could not be set into the Active state
+            printf("ERROR: Failed to stop the timer: %s\n", pcTimerGetName(i));
+            return false;
+        }
+    }
+    started= false;
+    return true;
+}
+
+// WARNING attach can only be called when timers have not yet been started
+// TODO if we need to do this then we need to make sure a timer cannot fire while we update callbacks and timers
 int SlowTicker::attach(uint32_t frequency, std::function<void(void)> cb)
 {
-    xSemaphoreTake((QueueHandle_t)lock, portMAX_DELAY);
-    uint32_t interval= 1000/frequency;
-    uint32_t n= callbacks.size();
-    char buf[32];
-    snprintf(buf, sizeof(buf), "SlowTimer%lu", n);
-    TimerHandle_t timer_handle= xTimerCreate(buf, pdMS_TO_TICKS(interval), pdTRUE, (void *)n, timer_handler);
-    timers.push_back(timer_handle);
-    callbacks.push_back(cb);
-    xSemaphoreGive((QueueHandle_t)lock);
-
-    if(xTimerStart(timer_handle, 1000) != pdPASS ) {
-        // The timer could not be set into the Active state
-        printf("ERROR: Failed to start the timer: %lu\n", n);
+    if(started) {
+        printf("ERROR: Cannot attach a slowtimer when timers are running\n");
         return -1;
     }
 
-    printf("DEBUG: SlowTicker added freq: %luHz, period: %lums\n", frequency, interval);
+    uint32_t interval= 1000/frequency;
+    uint32_t n= callbacks.size();
+    char buf[32];
+    snprintf(buf, sizeof(buf), "SlowTicker%lu", n);
+    TimerHandle_t timer_handle= xTimerCreate(buf, pdMS_TO_TICKS(interval), pdTRUE, (void *)n, timer_handler);
+    if(timer_handle == NULL) {
+        printf("ERROR: SlowTicker failed to create timer\n");
+        return -1;
+    }
+    timers.push_back(timer_handle);
+    callbacks.push_back(cb);
+
+    printf("DEBUG: SlowTicker %lu added freq: %luHz, period: %lums\n", n, frequency, interval);
 
     // return the index it is in
     return n;
@@ -84,6 +109,11 @@ void SlowTicker::detach(int n)
 {
     // TODO need to remove it but that would change all the indexes
     // For now we just zero the handle
+    if(started) {
+        printf("WARNING: Cannot deattach a slowtimer when timers are running\n");
+
+    }
+
     TimerHandle_t timer_handle= timers[n];
     if(timer_handle != nullptr) {
         if(xTimerStop(timer_handle, 1000) != pdPASS) {
