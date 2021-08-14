@@ -72,5 +72,4 @@ private:
 
     volatile bool running{false};
     static bool started;
-    bool continuing{false};
 };
