@@ -6,6 +6,9 @@
 #include "Pin.h"
 #include "OutputStream.h"
 #include "Conveyor.h"
+#include "MessageQueue.h"
+
+#include <cstring>
 
 #define enable_key "enable"
 #define pin_key "pin"
@@ -69,10 +72,10 @@ bool ButtonBox::configure(ConfigReader& cr)
         std::string release = cr.get_string(m, release_key, "");
 
         but_t bt {
-            .but= b,
-            .press_act= press,
-            .release_act=  release,
-            .state= false,
+            .but = b,
+            .press_act = press,
+            .release_act =  release,
+            .state = false,
         };
         buttons.push_back(bt);
 
@@ -85,7 +88,6 @@ bool ButtonBox::configure(ConfigReader& cr)
 
     if(cnt > 0) {
         SlowTicker::getInstance()->attach(20, std::bind(&ButtonBox::button_tick, this));
-        want_command_ctx = true;
         return true;
     }
     return false;
@@ -95,30 +97,32 @@ bool ButtonBox::configure(ConfigReader& cr)
 // Note this is the RTOS timer task so don't do anything slow or blocking in here
 void ButtonBox::button_tick()
 {
+    static OutputStream nullos; // null output stream
     for(auto& i : buttons) {
+        const char *cmd = nullptr;
         if(!i.state && i.but->get()) {
             // pressed
-            commands.push_back(i.press_act.c_str());
-            i.state= true;
+            cmd = i.press_act.c_str();
+            i.state = true;
 
         } else if(i.state && !i.but->get()) {
             // released
-            commands.push_back(i.release_act.c_str());
-            i.state= false;
+            cmd = i.release_act.c_str();
+            i.state = false;
         }
-    }
-}
 
-// This is called periodically to allow commands to be issued in the command thread context
-void ButtonBox::in_command_ctx(bool idle)
-{
-    if(!commands.empty()) {
-        OutputStream os; // null output stream
-        std::string cmd(commands.pop_front());
-        if(cmd == "^Y") {
-            Conveyor::getInstance()->set_continuous_mode(false);
-        } else {
-            dispatch_line(os, cmd.c_str());
+        if(cmd != nullptr) {
+            if(strcmp(cmd, "^Y") == 0) {
+                if(Conveyor::getInstance()->get_continuous_mode()) {
+                    Conveyor::getInstance()->set_continuous_mode(false);
+                } else {
+                    // set so $J will be ignored if sent too fast
+                    nullos.set_stop_request(true);
+                }
+
+            } else {
+                send_message_queue(cmd, &nullos, false);
+            }
         }
     }
 }

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Module.h"
-#include "RingBuffer.h"
 
 class Pin;
 
@@ -10,7 +9,6 @@ class ButtonBox : public Module {
         ButtonBox();
         static bool create(ConfigReader& cr);
         bool configure(ConfigReader& cr);
-        virtual void in_command_ctx(bool);
 
     private:
         void button_tick();
@@ -21,5 +19,4 @@ class ButtonBox : public Module {
             bool state;
         };
         std::vector<but_t> buttons;
-        RingBuffer<const char*, 10> commands;
 };

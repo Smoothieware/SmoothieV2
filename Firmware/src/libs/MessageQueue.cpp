@@ -32,7 +32,7 @@ int get_message_queue_space()
 // the line is copied into the message so can be on the stack
 // This call will block until there is room in the queue unless wait is false
 // in which case it will only wait for 100ms
-bool send_message_queue(char *pline, OutputStream *pos, bool wait)
+bool send_message_queue(const char *pline, OutputStream *pos, bool wait)
 {
     comms_msg_t msg_buffer;
 	strcpy(msg_buffer.pline, pline);
@@ -42,7 +42,7 @@ bool send_message_queue(char *pline, OutputStream *pos, bool wait)
     return r == pdTRUE;
 }
 
-bool send_message_queue(char *pline, void *pos)
+bool send_message_queue(const char *pline, void *pos)
 {
 	return send_message_queue(pline, (OutputStream*)pos);
 }
