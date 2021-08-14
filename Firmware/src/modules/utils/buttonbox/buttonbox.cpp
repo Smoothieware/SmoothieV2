@@ -119,13 +119,7 @@ void ButtonBox::button_tick()
 
         if(cmd != nullptr) {
             if(strcmp(cmd, "$J STOP") == 0) {
-                // stop jog command, check for race condition
-                if(Conveyor::getInstance()->get_continuous_mode()) {
-                    Conveyor::getInstance()->set_continuous_mode(false);
-                } else {
-                    // set so $J will be ignored if sent too fast
-                    os.set_stop_request(true);
-                }
+                os.set_stop_request(true);
 
             } else {
                 // Do not block and if queue was full the command is lost
