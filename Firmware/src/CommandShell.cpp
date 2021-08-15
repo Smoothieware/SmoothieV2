@@ -1224,19 +1224,17 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
             return true;
         }
 
-        // calculate minimum distance to travel to accomodate acceleration and feedrate
-        float acc = Robot::getInstance()->get_default_acceleration();
-
         // get lowest acceleration of selected axis
+        float acc = Robot::getInstance()->get_default_acceleration();
         for (int i = 0; i < n_motors; ++i) {
             if(delta[i] == 0) continue;
             float ma =  Robot::getInstance()->actuators[i]->get_acceleration(); // in mm/sec²
             if(ma > 0.0001F && ma < acc) acc= ma;
         }
 
+        // calculate minimum distance to travel to accomodate acceleration and feedrate
         float t = fr / acc; // time to reach frame rate
         float d = 0.5F * acc * powf(t, 2); // distance required to accelerate
-        d *= 2; // include distance to decelerate
         d = roundf(d + 0.5F); // round up to nearest mm
 
         // we need to move at least this distance to reach full speed
@@ -1245,7 +1243,7 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
                 delta[i]= d * (delta[i]<0?-1:1);
             }
         }
-        // stream->printf("distance: %f, time:%f, X%f Y%f Z%f, speed:%f\n", d, t, delta[0], delta[1], delta[2], fr);
+        //printf("distance: %f, time:%f, X%f Y%f Z%f A%f, speed:%f, acc:%f\n", d, t, delta[0], delta[1], delta[2], delta[3], fr, acc);
 
         // wait for any activity to stop
         Conveyor::getInstance()->wait_for_idle();
@@ -1259,7 +1257,7 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         Robot::getInstance()->delta_move(delta, fr, n_motors); // continues at full speed
         Robot::getInstance()->delta_move(delta, fr, n_motors); // decelerates to zero
 
-        // Conveyor::getInstance()->dump_queue();
+        //Conveyor::getInstance()->dump_queue();
 
         // tell it to run the first block to acclerate upto speed
         // then continue to send the second block until told to stop

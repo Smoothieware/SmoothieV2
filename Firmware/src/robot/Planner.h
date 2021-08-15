@@ -9,7 +9,10 @@ class PlannerQueue;
 class ConfigReader;
 class Conveyor;
 
+#ifndef N_PRIMARY_AXIS
 #define N_PRIMARY_AXIS 3
+#endif
+
 class Robot;
 
 class Planner

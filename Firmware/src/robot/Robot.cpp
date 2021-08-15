@@ -1802,7 +1802,7 @@ bool Robot::append_milestone(const float target[], float rate_mm_s)
 #if MAX_ROBOT_ACTUATORS > 3
     sos = 0;
     // for the extruders just copy the position, and possibly scale it from mm³ to mm
-    for (size_t i = E_AXIS; i < n_motors; i++) {
+    for (size_t i = A_AXIS; i < n_motors; i++) {
         actuator_pos[i] = transformed_target[i];
         if(actuators[i]->is_extruder() && get_e_scale_fnc) {
             // NOTE this relies on the fact only one extruder is active at a time
