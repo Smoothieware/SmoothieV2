@@ -105,7 +105,7 @@ void ButtonBox::button_tick()
     for(auto& i : buttons) {
         bool state_changed= false;
         bool new_state;
-        const char *cmd;
+        const char *cmd= nullptr;
         if(!i.state && i.but->get()) {
             // pressed
             cmd = i.press_act.c_str();
@@ -114,12 +114,15 @@ void ButtonBox::button_tick()
 
         } else if(i.state && !i.but->get()) {
             // released
-            cmd = i.release_act.c_str();
-            state_changed= true;
-            new_state= false;
-
-        } else {
-            cmd= nullptr;
+            std::string c = i.release_act;
+            if(!c.empty()) {
+                state_changed= true;
+                new_state= false;
+                cmd= c.c_str();
+            }else{
+                // empty command for release
+                i.state= false;
+            }
         }
 
         if(state_changed && cmd != nullptr) {
