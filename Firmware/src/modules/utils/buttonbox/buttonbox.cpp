@@ -101,30 +101,39 @@ bool ButtonBox::configure(ConfigReader& cr)
 void ButtonBox::button_tick()
 {
     static OutputStream os; // NULL output stream, but we need to keep some state between calls
+
     for(auto& i : buttons) {
+        bool state_changed= false;
+        bool new_state;
         const char *cmd;
         if(!i.state && i.but->get()) {
             // pressed
             cmd = i.press_act.c_str();
-            i.state = true;
+            state_changed= true;
+            new_state= true;
 
         } else if(i.state && !i.but->get()) {
             // released
             cmd = i.release_act.c_str();
-            i.state = false;
+            state_changed= true;
+            new_state= false;
 
         } else {
             cmd= nullptr;
         }
 
-        if(cmd != nullptr) {
+        if(state_changed && cmd != nullptr) {
             if(strcmp(cmd, "$J STOP") == 0) {
                 os.set_stop_request(true);
+                i.state = new_state;
 
             } else {
-                // Do not block and if queue was full the command is lost
-                // (We could change the state of the button that caused this so it tries again)
-                send_message_queue(cmd, &os, false);
+                // Do not block and if queue was full the command is not sent
+                // so we do not change the state of the button that caused this so it tries again
+                // next tick if the button has not changed since.
+                if(send_message_queue(cmd, &os, false)) {
+                    i.state = new_state;
+                }
             }
         }
     }
