@@ -975,15 +975,19 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
     AutoPushPop app; // this will save the state and restore it on exit
     std::string what = stringutils::shift_parameter( params );
     OutputStream nullos;
-
+    bool disas= false;
     if (what == "jog") {
-        // jogs back and forth usage: axis distance iterations [feedrate]
-        std::string axis = stringutils::shift_parameter( params );
-        std::string dist = stringutils::shift_parameter( params );
-        std::string iters = stringutils::shift_parameter( params );
-        std::string speed = stringutils::shift_parameter( params );
+        // jogs back and forth usage: axis [-d] distance iterations [feedrate], -d means disable arm solution
+        std::string axis = stringutils::shift_parameter(params);
+        if(axis == "-d") {
+            disas= true;
+            axis = stringutils::shift_parameter(params);
+        }
+        std::string dist = stringutils::shift_parameter(params);
+        std::string iters = stringutils::shift_parameter(params);
+        std::string speed = stringutils::shift_parameter(params);
         if(axis.empty() || dist.empty() || iters.empty()) {
-            os.printf("usage: jog axis distance iterations [feedrate]\n");
+            os.printf("usage: jog [-d] axis distance iterations [feedrate]\n");
             return true;
         }
         float d = strtof(dist.c_str(), NULL);
@@ -992,11 +996,13 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
 
         bool toggle = false;
         Robot::getInstance()->absolute_mode = false;
+        if(disas) Robot::getInstance()->disable_arm_solution= true;
         for (uint32_t i = 0; i < n; ++i) {
             THEDISPATCHER->dispatch(nullos, 'G', 1, 'F', f, toupper(axis[0]), toggle ? -d : d, 0);
             if(Module::is_halted()) break;
             toggle = !toggle;
         }
+        if(disas) Robot::getInstance()->disable_arm_solution= false;
 
     } else if (what == "circle") {
         // draws a circle around origin. usage: radius iterations [feedrate]
