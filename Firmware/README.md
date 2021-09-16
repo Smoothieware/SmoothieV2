@@ -9,7 +9,7 @@ Firmware currently runs on UART at 115200 baud and on USB serial at ttyACM0.
 
 The config file is called config.ini on the sdcard and examples are shown in the ConfigSamples directory, config-3d.ini is for a 3d printer, and config-laser.ini is for laser, these would be renamed config.ini and copied to the sdcard.
 
-Currently the max stepping rate is limited to 150Khz as this seems the upper limit to handle the step interrupt.
+Currently the max stepping rate is limited to 200Khz as this seems the upper limit to handle the step interrupt.
 
 Enough modules have been ported to run a 3D printer, a CNC Router and also a laser is supported.
 

@@ -1,6 +1,14 @@
 # smoothie version 2 for STM32H745 (and STM32H743)
 Smoothie V2 using STM32 HAL and FreeRTOS.
 
+All essential modules are ported and seem to work.
+
+NOTE on STM32H745 the M4 Core has to be configured to be asleep on boot
+(see the Initial Bootstrap section in Firmware/README.md).
+There is currently no code to support the M4 Core, everything runs on the M7 core.
+There is a considerable amount of work to be done to support the dual core operation.
+
+
 The preferred and supported development environment is Linux.
 
 Currently runs on the NUCLEO-H745ZI-Q board and Devebox 743 board
