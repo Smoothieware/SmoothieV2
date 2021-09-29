@@ -47,6 +47,8 @@ Initial Bootstrap
 V2 does not have a bootloader, the firmware itself can flash itself and do updates etc.
 To bootstrap the inital firmware (or to recover from bad firmware or bricking) you can use a jlink to flash the firmware or use the STLINKV3 drag and drop, or use the BOOT0 USB flashing (press BOOT0 button and reset)...
 
+Download STM32_Programmer_CLI from https://www.st.com/en/development-tools/stm32cubeprog.html
+
     STM32_Programmer_CLI -q -c port=usb1 -w smoothiev2_Nucleo/smoothiev2.bin 0x08000000 -rst
     (you can also use dfu-util -a 0 -D smoothiev2.bin --dfuse-address 0x08000000)
 
