@@ -255,7 +255,10 @@ bool Network::update_cmd( std::string& params, OutputStream& os )
         return true;
     }
 
-#ifdef BOARD_NUCLEO
+#ifdef BOARD_PRIME
+    std::string urlbin = "http://smoothieware.org/_media/bin/pr.bin";
+    std::string urlmd5 = "http://smoothieware.org/_media/bin/pr.md5";
+#elif BOARD_NUCLEO
     std::string urlbin = "http://smoothieware.org/_media/bin/nu.bin";
     std::string urlmd5 = "http://smoothieware.org/_media/bin/nu.md5";
 #elif defined(BOARD_DEVEBOX)

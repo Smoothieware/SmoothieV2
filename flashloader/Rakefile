@@ -156,11 +156,11 @@ if TARGET == 'Nucleo'
   defines << '-DSTM32H745xx'
   defines << '-DHSE_VALUE=8000000'
 elsif TARGET == 'Prime'
-  # on G5
-  defines << '-DUSE_UART0'
-  defines << "-DUART0_PINSET=15"
+  defines << '-DUSE_UART2'
+  defines << "-DUART2_PINSET=6"
   defines << '-DBOARD_PRIME'
   defines << '-DSTM32H745xx'
+  defines << '-DHSE_VALUE=25000000'
 elsif TARGET == 'Devebox'
   defines << '-DUSE_UART4'
   defines << '-DUART4_PINSET=8'

@@ -1,10 +1,12 @@
 #include "Pin.h"
 
 #if defined(BOARD_PRIME)
+static Pin leds[] = {
     Pin("PH9", Pin::AS_OUTPUT),
     Pin("PH10", Pin::AS_OUTPUT),
     Pin("PH11", Pin::AS_OUTPUT),
     Pin("PH12", Pin::AS_OUTPUT),
+};
 #define NLEDS 4
 
 #elif defined(BOARD_NUCLEO)

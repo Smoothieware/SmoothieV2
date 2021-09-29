@@ -45,6 +45,22 @@
 #define USARTx_RX_GPIO_PORT           GPIOB
 #define USARTx_SET_RX_GPIO_AF()       LL_GPIO_SetAFPin_8_15(GPIOB, LL_GPIO_PIN_8, LL_GPIO_AF_8)
 
+#elif defined(USE_UART2) && UART4_PINSET == 6
+// UART2 on Prime is PD5 PD6
+#define USARTx_INSTANCE               UART2
+#define USARTx_CLK_ENABLE()           LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_UART2)
+#define USARTx_CLK_SOURCE()           LL_RCC_SetUSARTClockSource(LL_RCC_USART234578_CLKSOURCE_PCLK1)
+#define USARTx_IRQn                   UART2_IRQn
+#define USARTx_IRQHandler             UART2_IRQHandler
+
+#define USARTx_GPIO_CLK_ENABLE()      LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOD)
+#define USARTx_TX_PIN                 LL_GPIO_PIN_5
+#define USARTx_TX_GPIO_PORT           GPIOD
+#define USARTx_SET_TX_GPIO_AF()       LL_GPIO_SetAFPin_0_7(GPIOD, LL_GPIO_PIN_5, LL_GPIO_AF_7)
+#define USARTx_RX_PIN                 LL_GPIO_PIN_6
+#define USARTx_RX_GPIO_PORT           GPIOD
+#define USARTx_SET_RX_GPIO_AF()       LL_GPIO_SetAFPin_0_7(GPIOD, LL_GPIO_PIN_6, LL_GPIO_AF_7)
+
 #else
 #error Board needs to define which UART to use (USE_UART[0|1|2|3|4]) and pinset to use (eg UART3_PINSET=8)
 #endif

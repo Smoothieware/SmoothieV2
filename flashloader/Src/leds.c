@@ -2,8 +2,18 @@
 
 typedef struct {GPIO_TypeDef* port; uint16_t pin; int invert; } LEDS_t;
 
-#ifdef BOARD_NUCLEO
+#if defined(BOARD_PRIME)
+#define NLEDS 4
+static LEDS_t LEDS[NLEDS] = {
+	{GPIOH, GPIO_PIN_9, 0},
+	{GPIOH, GPIO_PIN_10, 0},
+	{GPIOH, GPIO_PIN_11, 0},
+	{GPIOH, GPIO_PIN_12, 0}
+};
 
+#define LEDS_GPIO_CLK_ENABLE()  {__HAL_RCC_GPIOH_CLK_ENABLE(); }
+
+#elif BOARD_NUCLEO
 #define NLEDS 3
 static LEDS_t LEDS[NLEDS] = {
 	{GPIOB, GPIO_PIN_0, 0},
@@ -13,7 +23,6 @@ static LEDS_t LEDS[NLEDS] = {
 #define LEDS_GPIO_CLK_ENABLE()  {__HAL_RCC_GPIOB_CLK_ENABLE(); __HAL_RCC_GPIOE_CLK_ENABLE(); }
 
 #elif defined(BOARD_DEVEBOX)
-
 #define NLEDS 1
 static LEDS_t LEDS[NLEDS] = { {GPIOA, GPIO_PIN_1, 1} };
 #define LEDS_GPIO_CLK_ENABLE()  {__HAL_RCC_GPIOA_CLK_ENABLE();}
