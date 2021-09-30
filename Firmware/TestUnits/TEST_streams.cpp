@@ -46,9 +46,11 @@ REGISTER_TEST(StreamsTest, xprintf)
 
 REGISTER_TEST(StreamsTest, cout)
 {
+    printf("Should see cout output...\n");
 	std::cout << "Hello World!" << "\n";
 	std::cout << "Hello World, " << 1.234F << " that was a float 1.234\n";
 	std::cout << "Hello World, " << 1234 << " that was an int 1234\n";
+    std::cerr << "cerr Hello World\n";
 	std::set<int> s;
 	s.insert(1);
 	s.insert(2);
@@ -74,7 +76,10 @@ REGISTER_TEST(StreamsTest, cout)
 REGISTER_TEST(StreamsTest, OutputStream_null)
 {
 	OutputStream os;
-	os.printf("hello null stream");
+	os.printf("hello null stream\n");
+    OutputStream os2(&std::cout);
+    os2.printf("hello cout stream\n");
+
 }
 
 REGISTER_TEST(StreamsTest, OutputStream_sstream)

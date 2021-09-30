@@ -33,11 +33,11 @@ Modules that have been ported so far...
 
 On the Prime there are 4 leds..
 
-1. led3 - smoothie led, flashes slowly when idle, does not flash when busy
-2. led4 - smoothie led, on when executing moves, flashes when in HALT
+1. led1 - smoothie led, flashes slowly when idle, does not flash when busy
+2. led2 - smoothie led, on when executing moves, flashes when in HALT
 
 Both flash if there was a serious config error.
-All 4 leds flash if there is no sdcard inserted.
+TBD All 4 leds flash if there is no sdcard inserted.
 
 The debug UART port is on the STLink3 ACM0 on the Nucleo,
 baud rate 115200.

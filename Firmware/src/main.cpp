@@ -222,22 +222,22 @@ static void smoothie_startup(void *)
     // open the config file
     do {
         if(!setup_sdmmc()) {
-            std::cout << "Error: setting up sdmmc\n";
+            printf("Error: setting up sdmmc\n");
             break;
         }
 
-        // TODO check the card is inserted
+        // TODO check the card is inserted flash 4 leds if not
 
         int ret = f_mount(&fatfs, "sd", 1);
         if(FR_OK != ret) {
-            std::cout << "Error: mounting: " << "/sd: " << ret << "\n";
+            printf("Error: mounting: /sd: %d\n", ret);
             break;
         }
 
         std::fstream fs;
         fs.open("/sd/config.ini", std::fstream::in);
         if(!fs.is_open()) {
-            std::cout << "Error: opening file: " << "/sd/config.ini" << "\n";
+            printf("Error: opening file: /sd/config.ini\n");
             // unmount sdcard
             //f_unmount("sd");
             break;
@@ -644,7 +644,7 @@ extern "C" void HardFault_Handler(void)
 {
     Board_LED_Set(0, true);
     Board_LED_Set(1, true);
-    Board_LED_Set(2, false);
+    Board_LED_Set(2, true);
     Board_LED_Set(3, false);
     __asm("bkpt #0");
     for( ;; );

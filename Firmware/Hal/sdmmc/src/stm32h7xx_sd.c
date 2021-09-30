@@ -89,7 +89,7 @@ int32_t BSP_SD_Init(uint32_t Instance)
     if(Instance >= SD_INSTANCES_NBR) {
         ret = BSP_ERROR_WRONG_PARAM;
     } else {
-#ifndef BOARD_DEVEBOX
+#ifndef NO_SD_DET
         // setup sd detect pin
         SD_DETECT_GPIO_CLK_ENABLE();
         GPIO_InitTypeDef gpio_init_structure;
@@ -270,7 +270,7 @@ int32_t BSP_SD_RegisterMspCallbacks(uint32_t Instance, BSP_SD_Cb_t *CallBacks)
   */
 int32_t BSP_SD_IsDetected(uint32_t Instance)
 {
-#ifndef BOARD_DEVEBOX
+#ifndef NO_SD_DET
     int32_t ret = BSP_ERROR_UNKNOWN_FAILURE;
 
     if(Instance >= SD_INSTANCES_NBR) {
