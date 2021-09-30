@@ -79,7 +79,6 @@ REGISTER_TEST(StreamsTest, OutputStream_null)
 	os.printf("hello null stream\n");
     OutputStream os2(&std::cout);
     os2.printf("hello cout stream\n");
-
 }
 
 REGISTER_TEST(StreamsTest, OutputStream_sstream)

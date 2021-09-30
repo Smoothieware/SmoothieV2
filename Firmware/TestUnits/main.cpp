@@ -508,6 +508,9 @@ int main()   //int argc, char *argv[])
     printf("MCU clock rate= %lu Hz\n", SystemCoreClock);
     print_clocks();
 
+    // allows cout to work again (not sure why)
+    std::ios_base::sync_with_stdio(false);
+
     xTaskCreate(vRunTestsTask, "CommandThread", 1024, /* *4 as 32bit words */
                 NULL, (tskIDLE_PRIORITY + 2UL), (TaskHandle_t *) NULL);
 

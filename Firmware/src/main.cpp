@@ -536,6 +536,9 @@ int main(int argc, char *argv[])
     printf("%s on %s\n", get_mcu().c_str(), BUILD_TARGET);
     printf("MCU clock rate= %lu Hz\n", SystemCoreClock);
 
+    // allows cout to work again (not sure why)
+    std::ios_base::sync_with_stdio(false);
+
     // led 4 indicates boot phase 1 complete
     Board_LED_Set(3, true);
 
