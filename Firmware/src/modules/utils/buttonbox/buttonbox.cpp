@@ -46,7 +46,7 @@ bool ButtonBox::configure(ConfigReader& cr)
 {
     ConfigReader::sub_section_map_t ssmap;
     if(!cr.get_sub_sections("button box", ssmap)) {
-        printf("configure-buttonbox: no button box section found\n");
+        printf("INFO: configure-buttonbox: no button box section found\n");
         return false;
     }
 

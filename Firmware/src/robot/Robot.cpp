@@ -152,7 +152,7 @@ bool Robot::configure(ConfigReader& cr)
 {
     ConfigReader::section_map_t m;
     if(!cr.get_section("motion control", m)) {
-        printf("WARNING:configure-robot: no 'motion control' section found, defaults used\n");
+        printf("WARNING: configure-robot: no 'motion control' section found, defaults used\n");
     }
 
     // Arm solutions are used to convert machine positions in millimeters into actuator positions in millimeters.
@@ -217,14 +217,14 @@ bool Robot::configure(ConfigReader& cr)
         if(t.size() == 3) {
             g92_offset = wcs_t(t[0], t[1], t[2]);
         } else {
-            printf("Warning:configure-robot: g92_offset config is bad\n");
+            printf("Warning: configure-robot: g92_offset config is bad\n");
         }
     }
 
     // configure the actuators
     ConfigReader::sub_section_map_t ssm;
     if(!cr.get_sub_sections("actuator", ssm)) {
-        printf("ERROR:configure-robot-actuator: no actuator section found\n");
+        printf("ERROR: configure-robot-actuator: no actuator section found\n");
         return false;
     }
 
@@ -238,15 +238,15 @@ bool Robot::configure(ConfigReader& cr)
         Pin dir_pin( cr.get_string(mm, dir_pin_key,  DEFAULT_DIR_PIN(a)), Pin::AS_OUTPUT);
         Pin en_pin(  cr.get_string(mm, en_pin_key,   DEFAULT_EN_PIN(a)), Pin::AS_OUTPUT);
 
-        printf("DEBUG:configure-robot: for actuator %s pins: %s, %s, %s\n", s->first.c_str(), step_pin.to_string().c_str(), dir_pin.to_string().c_str(), en_pin.to_string().c_str());
+        printf("DEBUG: configure-robot: for actuator %s pins: %s, %s, %s\n", s->first.c_str(), step_pin.to_string().c_str(), dir_pin.to_string().c_str(), en_pin.to_string().c_str());
 
         if(!step_pin.connected() || !dir_pin.connected()) { // step and dir must be defined, but enable is optional
             if(a <= Z_AXIS) {
-                printf("FATAL:configure-robot: motor %c - %s is not defined in config\n", 'X' + a, s->first.c_str());
+                printf("FATAL: configure-robot: motor %c - %s is not defined in config\n", 'X' + a, s->first.c_str());
                 n_motors = a; // we only have this number of motors
                 return false;
             }
-            printf("WARNING:configure-robot: motor %c has no step or dir pin defined\n", 'X' + a);
+            printf("WARNING: configure-robot: motor %c has no step or dir pin defined\n", 'X' + a);
             break; // if any pin is not defined then the axis is not defined (and axis need to be defined in contiguous order)
         }
 
@@ -257,7 +257,7 @@ bool Robot::configure(ConfigReader& cr)
         uint8_t n = register_actuator(sm);
         if(n != a) {
             // this is a fatal error as they must be contiguous
-            printf("FATAL:configure-robot: motor %d does not match index %d\n", n, a);
+            printf("FATAL: configure-robot: motor %d does not match index %d\n", n, a);
             return false;
         }
 
@@ -269,7 +269,7 @@ bool Robot::configure(ConfigReader& cr)
         Pin ms3_pin(cr.get_string(mm, ms3_pin_key, "nc"), Pin::AS_OUTPUT);
         if(ms1_pin.connected() && ms2_pin.connected() && !ms3_pin.connected()) {
             // A4982
-            printf("DEBUG:configure-robot: for actuator %s ms-pins: %s, %s\n", s->first.c_str(), ms1_pin.to_string().c_str(), ms2_pin.to_string().c_str());
+            printf("DEBUG: configure-robot: for actuator %s ms-pins: %s, %s\n", s->first.c_str(), ms1_pin.to_string().c_str(), ms2_pin.to_string().c_str());
             std::string ms = cr.get_string(mm, ms_key, "");
             if(ms.empty()) {
                 // set default
@@ -282,17 +282,17 @@ bool Robot::configure(ConfigReader& cr)
                     ms1_pin.set(v[0] > 0.001F);
                     ms2_pin.set(v[1] > 0.001F);
                 } else {
-                    printf("WARNING:configure-robot: %s.microstepping settings needs two numbers 1,1 - SET to default\n", s->first.c_str());
+                    printf("WARNING: configure-robot: %s.microstepping settings needs two numbers 1,1 - SET to default\n", s->first.c_str());
                     ms1_pin.set(true);
                     ms2_pin.set(true);
                 }
             }
-            printf("DEBUG:configure-robot: microstepping for %s set to %d,%d\n",
+            printf("DEBUG: configure-robot: microstepping for %s set to %d,%d\n",
                    s->first.c_str(), ms1_pin.get(), ms2_pin.get());
 
         } else if(ms1_pin.connected() && ms2_pin.connected() && ms3_pin.connected()) {
             // A5984 1/32 default
-            printf("DEBUG:configure-robot: for actuator %s ms-pins: %s, %s, %s\n", s->first.c_str(), ms1_pin.to_string().c_str(), ms2_pin.to_string().c_str(), ms3_pin.to_string().c_str());
+            printf("DEBUG: configure-robot: for actuator %s ms-pins: %s, %s, %s\n", s->first.c_str(), ms1_pin.to_string().c_str(), ms2_pin.to_string().c_str(), ms3_pin.to_string().c_str());
             std::string ms = cr.get_string(mm, ms_key, "");
             if(ms.empty()) {
                 // set default
@@ -307,13 +307,13 @@ bool Robot::configure(ConfigReader& cr)
                     ms2_pin.set(v[1] > 0.001F);
                     ms3_pin.set(v[2] > 0.001F);
                 } else {
-                    printf("WARNING:configure-robot: %s.microstepping settings needs three numbers 1,1,1 - SET to default\n", s->first.c_str());
+                    printf("WARNING: configure-robot: %s.microstepping settings needs three numbers 1,1,1 - SET to default\n", s->first.c_str());
                     ms1_pin.set(true);
                     ms2_pin.set(true);
                     ms3_pin.set(false);
                 }
             }
-            printf("DEBUG:configure-robot: microstepping for %s set to %d,%d,%d\n",
+            printf("DEBUG: configure-robot: microstepping for %s set to %d,%d,%d\n",
                    s->first.c_str(), ms1_pin.get(), ms2_pin.get(), ms3_pin.get());
         }
 #elif defined(DRIVER_TMC2590)
@@ -322,25 +322,25 @@ bool Robot::configure(ConfigReader& cr)
         if(type == "tmc2590") {
             // setup the TMC2590 driver for this motor
             if(!actuators[a]->setup_tmc2590(cr, s->first.c_str())) {
-                printf("FATAL:configure-robot: setup_tmc2590 failed for %s\n", s->first.c_str());
+                printf("FATAL: configure-robot: setup_tmc2590 failed for %s\n", s->first.c_str());
                 return false;
             }
 
             //set microsteps here which will override the raw register setting if any
             uint16_t microstep= cr.get_int(mm, microsteps_key, 32);
             actuators[a]->set_microsteps(microstep);
-            printf("DEBUG:configure-robot: microsteps for %s set to %d\n", s->first.c_str(), microstep);
+            printf("DEBUG: configure-robot: microsteps for %s set to %d\n", s->first.c_str(), microstep);
 
         } else if(type == "external") {
-            printf("DEBUG:configure-robot: %s is set as an external driver\n", s->first.c_str());
+            printf("DEBUG: configure-robot: %s is set as an external driver\n", s->first.c_str());
 
         } else {
-            printf("FATAL:configure-robot: unknown driver type %s\n", type.c_str());
+            printf("FATAL: configure-robot: unknown driver type %s\n", type.c_str());
             n_motors = a;
             return false;
         }
 #else
-        printf("DEBUG:configure-robot: %s is set as an external driver\n", s->first.c_str());
+        printf("DEBUG: configure-robot: %s is set as an external driver\n", s->first.c_str());
 #endif
 
         actuators[a]->change_steps_per_mm(cr.get_float(mm, steps_per_mm_key, a == Z_AXIS ? 2560.0F : 80.0F));
@@ -369,7 +369,7 @@ bool Robot::configure(ConfigReader& cr)
             motors_enable_pin= nullptr;
         }else{
             motors_enable_pin->set(false); // it is a not enable
-            printf("DEBUG:configure-robot: Motor ENN is on pin %s\n", motors_enable_pin->to_string().c_str());
+            printf("DEBUG: configure-robot: Motor ENN is on pin %s\n", motors_enable_pin->to_string().c_str());
         }
     }
 
@@ -391,7 +391,7 @@ bool Robot::configure(ConfigReader& cr)
                 fets_enable_pin= nullptr;
             }else{
                 fets_enable_pin->set(false); // it is a not enable
-                printf("DEBUG:configure-robot: FET NEnable is on pin %s\n", fets_enable_pin->to_string().c_str());
+                printf("DEBUG: configure-robot: FET NEnable is on pin %s\n", fets_enable_pin->to_string().c_str());
             }
 
             fets_power_enable_pin= new Pin(cr.get_string(sm, fets_power_enable_pin_key, default_fets_power), Pin::AS_OUTPUT);
@@ -400,11 +400,11 @@ bool Robot::configure(ConfigReader& cr)
                 fets_power_enable_pin= nullptr;
             }else{
                 fets_power_enable_pin->set(false); // it is a not enable
-                printf("DEBUG:configure-robot: FET Power NEnable is on pin %s\n", fets_power_enable_pin->to_string().c_str());
+                printf("DEBUG: configure-robot: FET Power NEnable is on pin %s\n", fets_power_enable_pin->to_string().c_str());
             }
 
         }else{
-            printf("WARNING:configure-robot: no [system] section found, FET NEnable and Power NEnable are disabled\n");
+            printf("WARNING: configure-robot: no [system] section found, FET NEnable and Power NEnable are disabled\n");
         }
     }
 

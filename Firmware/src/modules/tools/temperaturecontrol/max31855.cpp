@@ -57,11 +57,11 @@ bool MAX31855::configure(ConfigReader& cr, ConfigReader::section_map_t& m)
     cs = new Pin(cs_pin.c_str(), Pin::AS_OUTPUT);
     if(!cs->connected()) {
         delete cs;
-        printf("ERROR:config_MAX31855: spi cs pin is invalid: %s\n", cs_pin.c_str());
+        printf("ERROR: config_MAX31855: spi cs pin is invalid: %s\n", cs_pin.c_str());
         return false;
     }
     cs->set(true);
-    printf("DEBUG:configure-MAX31855: spi cs pin: %s\n", cs->to_string().c_str());
+    printf("DEBUG: configure-MAX31855: spi cs pin: %s\n", cs->to_string().c_str());
 
     // start timer to read temperature from SPI
     int readings_per_second = cr.get_int(m, readings_per_second_key, 20);

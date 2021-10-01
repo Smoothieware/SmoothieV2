@@ -54,7 +54,7 @@ bool Extruder::configure(ConfigReader& cr)
 {
     ConfigReader::sub_section_map_t ssmap;
     if(!cr.get_sub_sections("extruder", ssmap)) {
-        printf("configure-extruder: no extuder section found\n");
+        printf("INFO: configure-extruder: no extuder section found\n");
         return false;
     }
 
@@ -78,11 +78,11 @@ bool Extruder::configure(ConfigReader& cr)
     if(cnt == 0) return false;
 
     if(cnt > 1) {
-        printf("configure-extruder: NOTE: %d extruders configured and enabled\n", cnt);
+        printf("INFO: configure-extruder: NOTE: %d extruders configured and enabled\n", cnt);
 
     } else {
         // only one extruder so select it
-        printf("configure-extruder: NOTE: One extruder configured and enabled\n");
+        printf("INFO: configure-extruder: NOTE: One extruder configured and enabled\n");
     }
 
     return true;
