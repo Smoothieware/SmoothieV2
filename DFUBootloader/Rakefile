@@ -29,8 +29,8 @@ puts "Target is #{TARGET}"
 target_defines= []
 # configure main DEBUG UART port to use
 if TARGET == 'Prime'
-  target_defines << '-DUSE_UART0'
-  target_defines << "-DUART0_PINSET=15"
+  target_defines << '-DUSE_UART2'
+  target_defines << "-DUART2_PINSET=6"
 elsif TARGET == 'Nucleo'
   target_defines << '-DUSE_UART3'
   target_defines << '-DUART3_PINSET=8'

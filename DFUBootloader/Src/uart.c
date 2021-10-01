@@ -45,13 +45,12 @@
 #define USARTx_RX_GPIO_PORT           GPIOB
 #define USARTx_SET_RX_GPIO_AF()       LL_GPIO_SetAFPin_8_15(GPIOB, LL_GPIO_PIN_8, LL_GPIO_AF_8)
 
-#elif defined(USE_UART2) && UART4_PINSET == 6
-// UART2 on Prime is PD5 PD6
-#define USARTx_INSTANCE               UART2
-#define USARTx_CLK_ENABLE()           LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_UART2)
+#elif defined(USE_UART2) && UART2_PINSET == 6
+#define USARTx_INSTANCE               USART2
+#define USARTx_CLK_ENABLE()           LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART2)
 #define USARTx_CLK_SOURCE()           LL_RCC_SetUSARTClockSource(LL_RCC_USART234578_CLKSOURCE_PCLK1)
-#define USARTx_IRQn                   UART2_IRQn
-#define USARTx_IRQHandler             UART2_IRQHandler
+#define USARTx_IRQn                   USART2_IRQn
+#define USARTx_IRQHandler             USART2_IRQHandler
 
 #define USARTx_GPIO_CLK_ENABLE()      LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOD)
 #define USARTx_TX_PIN                 LL_GPIO_PIN_5
