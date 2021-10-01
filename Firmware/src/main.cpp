@@ -31,6 +31,7 @@
 #include "Switch.h"
 #include "TemperatureControl.h"
 #include "ZProbe.h"
+#include "version.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -193,7 +194,11 @@ extern bool config_override;
 
 static void smoothie_startup(void *)
 {
-    printf("INFO: Smoothie V2.alpha Build for %s - starting up\n", BUILD_TARGET);
+    printf("INFO: Smoothie V2 Build for %s - starting up\n", BUILD_TARGET);
+    {
+        Version vers;
+        printf("INFO: Build version: %s, Build date: %s\n", vers.get_build(), vers.get_build_date());
+    }
 
     // led 4 indicates boot phase 2 starts
     Board_LED_Set(3, true);
@@ -525,6 +530,9 @@ int main(int argc, char *argv[])
     // setup clock and caches etc (in HAL)
     main_system_setup();
 
+    // allows cout to work again (not sure why)
+    std::ios_base::sync_with_stdio(false);
+
     benchmark_timer_init();
 
     setup_xprintf();
@@ -533,11 +541,8 @@ int main(int argc, char *argv[])
         printf("FATAL: UART setup failed\n");
     }
 
-    printf("%s on %s\n", get_mcu().c_str(), BUILD_TARGET);
-    printf("MCU clock rate= %lu Hz\n", SystemCoreClock);
-
-    // allows cout to work again (not sure why)
-    std::ios_base::sync_with_stdio(false);
+    printf("INFO: %s on %s\n", get_mcu().c_str(), BUILD_TARGET);
+    printf("INFO: MCU clock rate= %lu Hz\n", SystemCoreClock);
 
     // led 4 indicates boot phase 1 complete
     Board_LED_Set(3, true);

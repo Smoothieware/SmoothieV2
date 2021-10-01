@@ -490,8 +490,11 @@ extern "C" void setup_xprintf();
 extern "C" void main_system_setup();
 extern "C" void print_clocks();
 std::string get_mcu();
-int main()   //int argc, char *argv[])
+int main()
 {
+    // allows std::cout to work again (not sure why)
+    std::ios_base::sync_with_stdio(false);
+
     // setup clock and caches etc (in HAL)
     main_system_setup();
 
@@ -507,9 +510,6 @@ int main()   //int argc, char *argv[])
     printf("%s on %s\n", get_mcu().c_str(), BUILD_TARGET);
     printf("MCU clock rate= %lu Hz\n", SystemCoreClock);
     print_clocks();
-
-    // allows cout to work again (not sure why)
-    std::ios_base::sync_with_stdio(false);
 
     xTaskCreate(vRunTestsTask, "CommandThread", 1024, /* *4 as 32bit words */
                 NULL, (tskIDLE_PRIORITY + 2UL), (TaskHandle_t *) NULL);
