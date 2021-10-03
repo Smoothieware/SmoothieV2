@@ -380,7 +380,7 @@ static void smoothie_startup(void *)
             }
             // special internal ADC3 channels
             voltage_monitors["vref"] = std::make_tuple(-1, 1.0F);
-            voltage_monitors["vbat"] = std::make_tuple(-2, 1.0F);
+            voltage_monitors["vbat"] = std::make_tuple(-2, 4.0F);
             // setup board defaults if not defined
 #ifdef BOARD_NUCLEO
             std::map<std::string, std::tuple<int32_t, float>> names { {"vmotor", {1, 11.0F}},  {"vfet", {2, 11.0F}} };

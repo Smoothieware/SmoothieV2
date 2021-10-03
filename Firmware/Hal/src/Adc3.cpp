@@ -230,19 +230,24 @@ float Adc3::read_temp()
 float Adc3::read_voltage(int32_t channel)
 {
     // lookup the channel
-    if(channel == -1) channel = ADC_CHANNEL_VREFINT;
-    else if(channel == -2) channel = ADC_CHANNEL_VBAT;
+    uint32_t ch;
+    if(channel == -1) ch= ADC_CHANNEL_VREFINT;
+    else if(channel == -2) ch= ADC_CHANNEL_VBAT;
     else if(channel < 0 || channel > 5) return std::numeric_limits<float>::infinity();
     else if(allocated_channels.count(channel) == 0) return std::numeric_limits<float>::infinity();
-    else channel = adc_channel_lut[channel];
+    else ch = adc_channel_lut[channel];
 
-    select_channel(channel);
+    select_channel(ch);
     HAL_ADC_Start_IT(&AdcHandle);
     uint32_t value = ADC3_GetValue();
     HAL_ADC_Stop_IT(&AdcHandle);
     if(value == 0xFFFFFFFF) return std::numeric_limits<float>::infinity();
-    float v = 3.3F * ((float)value / get_max_value());
-    return v;
+    if(ch == ADC_CHANNEL_VREFINT) {
+        // VREF
+        return __LL_ADC_CALC_VREFANALOG_VOLTAGE(value, LL_ADC_RESOLUTION_16B)/1000.0F;
+    }else{
+        return 3.3F * ((float)value / get_max_value());
+    }
 }
 
 int32_t Adc3::from_string(const char *s, float& scale)
