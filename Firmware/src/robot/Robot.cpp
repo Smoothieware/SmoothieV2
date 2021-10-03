@@ -367,6 +367,7 @@ bool Robot::configure(ConfigReader& cr)
         if(!motors_enable_pin->connected()) {
             delete motors_enable_pin;
             motors_enable_pin= nullptr;
+            printf("DEBUG: configure-robot: No Motor ENN\n");
         }else{
             motors_enable_pin->set(false); // it is a not enable
             printf("DEBUG: configure-robot: Motor ENN is on pin %s\n", motors_enable_pin->to_string().c_str());
@@ -390,6 +391,7 @@ bool Robot::configure(ConfigReader& cr)
             if(!fets_enable_pin->connected()) {
                 delete fets_enable_pin;
                 fets_enable_pin= nullptr;
+                printf("DEBUG: configure-robot: No FET NEnable\n");
             }else{
                 fets_enable_pin->set(false); // it is a not enable
                 printf("DEBUG: configure-robot: FET NEnable is on pin %s\n", fets_enable_pin->to_string().c_str());
@@ -399,6 +401,7 @@ bool Robot::configure(ConfigReader& cr)
             if(!fets_power_enable_pin->connected()) {
                 delete fets_power_enable_pin;
                 fets_power_enable_pin= nullptr;
+                printf("DEBUG: configure-robot: No FET Power NEnable\n");
             }else{
                 fets_power_enable_pin->set(false); // it is a not enable
                 printf("DEBUG: configure-robot: FET Power NEnable is on pin %s\n", fets_power_enable_pin->to_string().c_str());
