@@ -375,16 +375,17 @@ bool Robot::configure(ConfigReader& cr)
 
     {
         // system settings
+        // global enable pin for all fets
+        #if defined(BOARD_PRIME)
+        const char *default_fets_enn= "PF14";
+        const char *default_fets_power= "PD7";
+        #else
+        const char *default_fets_enn= "nc";
+        const char *default_fets_power= "nc";
+        #endif
+
         ConfigReader::section_map_t sm;
         if(cr.get_section("system", sm)) {
-            // global enable pin for all fets
-            #if defined(BOARD_PRIME)
-            const char *default_fets_enn= "PF14";
-            const char *default_fets_power= "PD7";
-            #else
-            const char *default_fets_enn= "nc";
-            const char *default_fets_power= "nc";
-            #endif
             fets_enable_pin= new Pin(cr.get_string(sm, fets_enable_pin_key, default_fets_enn), Pin::AS_OUTPUT);
             if(!fets_enable_pin->connected()) {
                 delete fets_enable_pin;

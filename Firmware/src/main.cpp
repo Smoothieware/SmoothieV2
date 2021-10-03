@@ -308,7 +308,7 @@ static void smoothie_startup(void *)
         // configure core modules here
         {
             // Pwm needs to be initialized, there are two PWM timers and each
-            // can a frequency.
+            // can have a frequency.
             // This needs to be done before any module that could use it
             // NOTE that Pwm::post_config_setup() needs to be called after all modules have been created
             uint32_t deffreq = 10000; // default is 10KHz
@@ -653,7 +653,7 @@ extern "C" void HardFault_Handler(void)
     Board_LED_Set(0, true);
     Board_LED_Set(1, true);
     Board_LED_Set(2, true);
-    Board_LED_Set(3, false);
+    Board_LED_Set(3, true);
     __asm("bkpt #0");
     for( ;; );
 }

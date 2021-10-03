@@ -589,6 +589,7 @@ void command_handler()
                     CommandShell::getInstance()->dfu_cmd(str, stdout_os);
                     // we should not return from this, if we do it means the dfu loader is not in qspi
                     config_dfu_required  = 0; // disable it for now
+                    print_to_all_consoles("DFU is not supported or not in flash\n");
                 } else {
                     print_to_all_consoles("DFU is not allowed while printing or heaters are on\n");
                     DFU_reset_requested_detach();

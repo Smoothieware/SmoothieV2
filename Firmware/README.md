@@ -89,6 +89,10 @@ To flash use the load command in gdb, it is recommended you do a ```mon reset```
 
 Once flashed you use the c command to run.
 
+There is an optional module that can be loaded into qspi flash that will allow flashing via dfu-util, see 
+DFUBootloader/README.md for more details.
+
+
 Flashing V2 Smoothie using J-Link (Windows)
 ===========================================
 

@@ -93,6 +93,7 @@ bool ConfigReader::get_section(const char *section, section_map_t& config)
                     // we are no longer in the section we want
                     break;
                 }
+                continue;
             }
 
             if(in_section) {
@@ -108,7 +109,7 @@ bool ConfigReader::get_section(const char *section, section_map_t& config)
         }
     }
 
-    return !config.empty();
+    return in_section || !config.empty();
 }
 
 // just extract the key/values from the specified section and split them into sub sections

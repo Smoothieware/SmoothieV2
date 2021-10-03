@@ -11,7 +11,7 @@
 static std::string str("[switch]\nfan.enable = true\nfan.input_on_command = M106 # comment\nfan.input_off_command = M107\n\
 fan.output_pin = 2.6 # pin to use\nfan.output_type = pwm\nmisc.enable = true  # test comment\nmisc.input_on_command = M42\nmisc.input_off_command = M43\n\
 misc.output_pin = 2.4\nmisc.output_type = digital\nmisc.value = 123.456\nmisc.ivalue= 123\npsu.enable = false\npsu#.x = bad\n\
-[dummy]\nenable = false #set to true\ntest2 # = bad\n   #ignore comment\n #[bogus]\n[bogus2 #]\n");
+[dummy]\nenable = false #set to true\ntest2 # = bad\n   #ignore comment\n #[bogus]\n[bogus2 #]\n[empty]\n\n");
 
 REGISTER_TEST(ConfigTest, get_sections)
 {
@@ -47,6 +47,12 @@ REGISTER_TEST(ConfigTest, load_section)
     TEST_ASSERT_TRUE(m.find("enable") != m.end());
     TEST_ASSERT_EQUAL_STRING("false", m["enable"].c_str());
     TEST_ASSERT_FALSE(cr.get_bool(m, "enable", true));
+
+    // try empty section
+    m.clear();
+    b= cr.get_section("empty", m);
+    TEST_ASSERT_TRUE(b);
+    TEST_ASSERT_TRUE(m.empty());
 
     // try non existing section
     m.clear();
