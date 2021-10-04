@@ -317,6 +317,15 @@ extern "C" void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
         ADCx_CHANNEL_PIN_CLK_ENABLE();
         // For each channel, init the GPIOs
         for(uint16_t c : Adc::allocated_channels) {
+            #ifdef BOARD_PRIME
+            // check for special case of PA0_C
+            if(adcpinlut[c].port == GPIOA && adcpinlut[c].pin == GPIO_PIN_0){
+                HAL_SYSCFG_AnalogSwitchConfig(SYSCFG_SWITCH_PA0, SYSCFG_SWITCH_PA0_OPEN);
+                printf("DEBUG: PA0_C switch open\n");
+                continue;
+            }
+            #endif
+
             // lookup pin and port
             GPIO_InitStruct.Pin = adcpinlut[c].pin;
             GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;

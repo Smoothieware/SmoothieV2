@@ -387,7 +387,7 @@ static void smoothie_startup(void *)
 #elif defined(BOARD_DEVEBOX)
             std::map<std::string, std::tuple<int32_t, float>> names { {"vmotor", {0, 11.0F}},  {"vfet", {3, 11.0F}} };
 #elif defined(BOARD_PRIME)
-            std::map<std::string, std::tuple<int32_t, float>> names { {"vmotor", {0, 11.0F}},  {"vfet", {1, 11.0F}} };
+            std::map<std::string, std::tuple<int32_t, float>> names { {"vmotor", {5, 11.0F}},  {"vfet", {2, 11.0F}} };
 #endif
             for(auto& n : names) {
                 if(voltage_monitors.find(n.first) == voltage_monitors.end()) {
@@ -552,7 +552,7 @@ int main(int argc, char *argv[])
     }
 
     // launch the startup thread which will become the command thread that executes all incoming commands
-    // set to be lower priority than comms, although it maybe better to invert them as we don;t really
+    // set to be lower priority than comms, although it maybe better to invert them as we don't really
     // want the commandthread preempted by the comms thread everytime it gets data.
     // 10000 Bytes stack
     xTaskCreate(smoothie_startup, "CommandThread", 10000 / 4, NULL, (tskIDLE_PRIORITY + CMDTHRD_PRI), (TaskHandle_t *) NULL);
