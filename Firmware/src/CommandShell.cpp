@@ -1826,6 +1826,7 @@ bool CommandShell::qspi_cmd(std::string& params, OutputStream& os)
 
 #include "usb_device.h"
 extern "C" int config_msc_enable;
+extern Pin *msc_led;
 bool CommandShell::msc_cmd(std::string& params, OutputStream& os)
 {
     HELP("switch to MSC file mode");
@@ -1858,27 +1859,21 @@ bool CommandShell::msc_cmd(std::string& params, OutputStream& os)
     printf("DEBUG: MSC is now running\n");
 
     // msc led flashes when in msc mode
-#ifdef BOARD_PRIME
-    // TODO needs to be configurable
-    Pin msc_led("PF13", Pin::AS_OUTPUT);
-#elif BOARD_NUCLEO
-    Pin msc_led("PB14", Pin::AS_OUTPUT);
-#else
-    Pin msc_led("nc", Pin::AS_OUTPUT);
-#endif
     // as nothing else can happen and MSC runs under Interrupts we sit in a tight loop here waiting for it to end
     uint32_t flash_time = HAL_GetTick();
     while(true) {
         if(check_MSC()) {
             // we have been ejected so reboot
             printf("DEBUG: MSC has been safely ejected, now rebooting\n");
-            msc_led.set(true);
+            if(msc_led != nullptr) msc_led->set(true);
             HAL_Delay(250);
             NVIC_SystemReset();
         }
-        if((HAL_GetTick() - flash_time) > 300) { // 300ms flash period
-            msc_led.set(!msc_led.get());
-            flash_time = HAL_GetTick();
+        if(msc_led != nullptr) {
+            if((HAL_GetTick() - flash_time) > 300) { // 300ms flash period
+                msc_led->set(!msc_led->get());
+                flash_time = HAL_GetTick();
+            }
         }
     }
 }

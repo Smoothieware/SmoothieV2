@@ -57,6 +57,7 @@
 
 static bool system_running = false;
 static Pin *aux_play_led = nullptr;
+Pin *msc_led = nullptr;
 extern "C" int config_dfu_required;
 extern "C" int config_msc_enable;
 
@@ -273,6 +274,19 @@ static void smoothie_startup(void *)
                     aux_play_led = nullptr;
                 } else {
                     printf("INFO: auxilliary play led set to %s\n", aux_play_led->to_string().c_str());
+                }
+                #ifdef BOARD_PRIME
+                const char *default_msc_led= "PF13";
+                #else
+                const char *default_msc_led= "nc";
+                #endif
+                p = cr.get_string(sm, "msc_led", default_msc_led);
+                msc_led = new Pin(p.c_str(), Pin::AS_OUTPUT);
+                if(!msc_led->connected()) {
+                    delete msc_led;
+                    msc_led = nullptr;
+                } else {
+                    printf("INFO: MSC led set to %s\n", msc_led->to_string().c_str());
                 }
 
                 flash_on_boot = cr.get_bool(sm, "flash_on_boot", true);
