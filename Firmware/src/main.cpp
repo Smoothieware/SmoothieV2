@@ -298,7 +298,7 @@ static void smoothie_startup(void *)
         conveyor->configure(cr);
 
         printf("DEBUG: configure the robot\n");
-        Robot *robot = Robot::getInstance();
+        Robot *robot = Robot::createInstance();
         if(!robot->configure(cr)) {
             printf("ERROR: Configuring robot failed\n");
             break;

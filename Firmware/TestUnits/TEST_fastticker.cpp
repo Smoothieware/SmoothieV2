@@ -31,7 +31,7 @@ static void timer_callback10khz(void)
 REGISTER_TEST(FastTicker, test_2khz_and_10khz)
 {
     // Output HSEClk /4 on MCO1 pin(PA8)
-    HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_HSE, RCC_MCODIV_4);
+    //HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_HSE, RCC_MCODIV_4);
 
     // first test the HAL tick is still running
     uint32_t s = benchmark_timer_start();

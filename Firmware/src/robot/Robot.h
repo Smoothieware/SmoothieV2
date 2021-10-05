@@ -24,7 +24,8 @@ class Robot : public Module
 public:
     using wcs_t = std::tuple<float, float, float>;
 
-    static Robot *getInstance() { if(instance == nullptr) instance= new Robot; return instance; }
+    static Robot *createInstance() { if(instance == nullptr) instance= new Robot; return instance; }
+    static Robot *getInstance() { return instance; }
 
     // delete copy and move constructors and assign operators
     Robot(Robot const&) = delete;             // Copy construct

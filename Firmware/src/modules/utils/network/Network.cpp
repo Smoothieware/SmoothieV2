@@ -60,10 +60,12 @@ Network *Network::getInstance()
 
 Network::Network() : Module("network")
 {
+    //printf("DEBUG: network ctor\n");
 }
 
 Network::~Network()
 {
+    //printf("DEBUG: network dtor\n");
 }
 
 static TCPServer_t *pxTCPServer = NULL;
@@ -167,6 +169,11 @@ extern "C" void netstat(OutputStream&);
 bool Network::handle_net_cmd( std::string& params, OutputStream& os )
 {
     HELP("net - show network status, -n also shows netstat, -k shuts down network");
+
+    if(abort_network) {
+        os.printf("Network has been shutdown\n");
+        return true;
+    }
 
     if(FreeRTOS_IsNetworkUp() == pdTRUE) {
         uint32_t ulIPAddress, ulNetMask, ulGatewayAddress, ulDNSServerAddress;
@@ -328,6 +335,11 @@ bool Network::update_cmd( std::string& params, OutputStream& os )
 extern "C" void xNetworkDeInitialise();
 void Network::set_abort()
 {
+    if(abort_network) {
+        printf("WARNING: network has already been aborted\n");
+        return;
+    }
+
     abort_network = true;
     if(enable_ftpd || enable_httpd) {
         FreeRTOS_TCPServerSignal(pxTCPServer);

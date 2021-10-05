@@ -15,6 +15,7 @@ class TestSingleModule : public Module
 {
 public:
     TestSingleModule(const char *name) : Module(name) {};
+    virtual ~TestSingleModule() {};
     void on_halt(bool flg) { g_on_halt = flg; }
     bool request(const char *key, void *value) { strcpy(g_request_key, key); *(int *)value = 1234; return true; }
     static bool create(ConfigReader& cr) { g_create_called= true; return true; }
@@ -63,9 +64,24 @@ REGISTER_TEST(Module, single_module)
     TEST_ASSERT_EQUAL_INT(1234, ret);
 }
 
-REGISTER_TEST(Module, single_module_destructed)
+class TestDynamicModule : public Module
 {
-    TEST_ASSERT_NULL(Module::lookup("module1"));
+public:
+    static TestDynamicModule *create() { instance= new TestDynamicModule(); return instance; }
+    static void remove() { delete instance; }
+private:
+    TestDynamicModule() : Module("dynamic") { printf("TestDynamicModule ctor\n"); };
+    virtual ~TestDynamicModule() { printf("TestDynamicModule dtor\n"); };
+    static TestDynamicModule *instance;
+};
+TestDynamicModule *TestDynamicModule::instance;
+
+REGISTER_TEST(Module, single_dynamic_module_destructed)
+{
+    TestDynamicModule::create();
+    TEST_ASSERT_NOT_NULL(Module::lookup("dynamic"));
+    TestDynamicModule::remove();
+    TEST_ASSERT_NULL(Module::lookup("dynamic"));
 }
 
 static std::map<std::string, bool> g_halt_map;
