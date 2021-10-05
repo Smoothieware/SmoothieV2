@@ -339,17 +339,20 @@ void Network::set_abort()
         printf("WARNING: network has already been aborted\n");
         return;
     }
-
     abort_network = true;
-    if(enable_ftpd || enable_httpd) {
-        FreeRTOS_TCPServerSignal(pxTCPServer);
-    }
-    pxTCPServer = nullptr;
 
-    if(enable_shell) {
-        extern void shell_deinit(void);
-        shell_deinit();
+    if(FreeRTOS_IsNetworkUp() == pdTRUE) {
+        if(pxTCPServer != nullptr && (enable_ftpd || enable_httpd)) {
+            FreeRTOS_TCPServerSignal(pxTCPServer);
+        }
+        pxTCPServer = nullptr;
+
+        if(enable_shell) {
+            extern void shell_deinit(void);
+            shell_deinit();
+        }
     }
+
     // at least stop interrupts
     xNetworkDeInitialise();
 }

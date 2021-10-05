@@ -116,7 +116,7 @@ static void os_garbage_collector( TimerHandle_t xTimer )
 }
 
 static volatile bool abort_shell = false;
-static Socket_t listenfd;
+static Socket_t listenfd= FREERTOS_INVALID_SOCKET;
 static void shell_thread(void *arg)
 {
     struct freertos_sockaddr shell_saddr;
@@ -138,12 +138,16 @@ static void shell_thread(void *arg)
     BaseType_t err;
     if ((err = FreeRTOS_bind(listenfd, &shell_saddr, sizeof (shell_saddr))) != 0) {
         printf("ERROR: shell_thread: Socket bind failed: %ld\n", err);
+        FreeRTOS_closesocket(listenfd);
+        listenfd= FREERTOS_INVALID_SOCKET;
         return;
     }
 
     /* Put socket into listening mode */
     if ((err = FreeRTOS_listen(listenfd, MAX_SERV)) != 0) {
         printf("ERROR: shell_thread: Listen failed: %ld", err);
+        FreeRTOS_closesocket(listenfd);
+        listenfd= FREERTOS_INVALID_SOCKET;
         return;
     }
 
@@ -299,5 +303,5 @@ void shell_init(void)
 void shell_deinit()
 {
     abort_shell = true;
-    FreeRTOS_SignalSocket(listenfd);
+    if(listenfd != FREERTOS_INVALID_SOCKET) FreeRTOS_SignalSocket(listenfd);
 }
