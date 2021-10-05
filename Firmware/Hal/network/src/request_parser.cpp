@@ -23,7 +23,7 @@ static int handle_on_message_complete(llhttp_t  *llh)
 {
     Request_t *req = (Request_t*)llh->data;
     req->done = true;
-    printf("on_message_complete: %p - %p\n", req, llh);
+    //printf("on_message_complete: %p - %p\n", req, llh);
     return HPE_OK;
 }
 
@@ -55,12 +55,12 @@ static int handle_on_header_value_complete(llhttp_t *llh)
 
     if(!req->last_hdr.empty()) {
         req->headers[req->last_hdr] = req->hdr_value;
-        printf("on_header_value_complete: %s: %s\n", req->last_hdr.c_str(), req->hdr_value.c_str());
+        //printf("on_header_value_complete: %s: %s\n", req->last_hdr.c_str(), req->hdr_value.c_str());
         req->last_hdr.clear();
         req->hdr_value.clear();
 
     } else {
-        printf("ERROR: request_parser: got header value with no header field\n");
+        //printf("ERROR: request_parser: got header value with no header field\n");
         return HPE_INVALID_HEADER_TOKEN;
     }
     return HPE_OK;
@@ -68,7 +68,7 @@ static int handle_on_header_value_complete(llhttp_t *llh)
 
 static int handle_on_body(llhttp_t *llh, const char *at, size_t length)
 {
-    printf("on_body: at %p, len %u\n", at, length);
+    //printf("on_body: at %p, len %u\n", at, length);
     Request_t *req = (Request_t*)llh->data;
     req->body.assign(at, length);
     return HPE_OK;
@@ -77,7 +77,7 @@ static int handle_on_body(llhttp_t *llh, const char *at, size_t length)
 extern "C" void *parse_request_create()
 {
     Request_t *p_request = new Request_t;
-    printf("request_parser: create: %p\n", p_request);
+    //printf("request_parser: create: %p\n", p_request);
 
     if(p_request != nullptr) {
         llhttp_t *parser = new llhttp_t;
@@ -110,7 +110,7 @@ extern "C" void *parse_request_create()
 extern "C" int parse_request_release(Request_t *p_request)
 {
     // release
-    printf("request_parser: release: %p\n", p_request);
+    //printf("request_parser: release: %p\n", p_request);
     delete (llhttp_settings_t*)p_request->parser->settings;
     delete p_request->parser;
     delete p_request;
@@ -131,12 +131,10 @@ extern "C" int parse_request(const char *buf, uint32_t len, Request_t *p_request
         return p_request->done ? 1 : 0;
     } else if (err == HPE_PAUSED_UPGRADE) {
         uint32_t offset= p_request->parser->error_pos - buf;
-        printf("parse: UPGRADE: %d, error_pos: %p, offset: %lu\n",
-            p_request->parser->upgrade, p_request->parser->error_pos,
-            offset);
+        //printf("parse: UPGRADE: %d, error_pos: %p, offset: %lu\n", p_request->parser->upgrade, p_request->parser->error_pos,            offset);
         return (int)(2+offset);
     } else {
-        printf("Parse error: %s %s\n", llhttp_errno_name(err), p_request->parser->reason);
+        //printf("Parse error: %s %s\n", llhttp_errno_name(err), p_request->parser->reason);
         return -err;
     }
 }

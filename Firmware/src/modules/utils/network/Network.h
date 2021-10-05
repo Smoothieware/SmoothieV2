@@ -11,6 +11,7 @@ class Network : public Module {
         static Network* getInstance();
         static bool create(ConfigReader& cr);
         static void vSetupIFTask(void *pvParameters);
+        virtual ~Network();
 
         bool configure(ConfigReader& cr);
         void set_abort();
@@ -22,7 +23,6 @@ class Network : public Module {
     private:
         static Network *instance;
         Network();
-        virtual ~Network();
 
         void network_thread();
         bool start(void);

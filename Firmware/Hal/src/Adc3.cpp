@@ -159,7 +159,7 @@ static bool select_channel(uint32_t channel)
 // suspend task until we get the result
 static uint32_t ADC3_GetValue(void)
 {
-    const TickType_t xBlockTime = pdMS_TO_TICKS(20);
+    const TickType_t xBlockTime = pdMS_TO_TICKS(100);
     uint32_t value;
     size_t xReceivedBytes = xMessageBufferReceive(xMessageBuffer, (void *)&value, sizeof(value), xBlockTime);
     if(xReceivedBytes > 0) {
