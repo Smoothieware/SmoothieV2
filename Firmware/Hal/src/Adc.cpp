@@ -23,7 +23,7 @@ bool Adc::running;
 
 // make sure it is aligned on 32byte boundary for cache coherency, need to allocate potentially max size
 // num_samples (8) samples per num_channels (8) channels
-// We add 32 bytes just to make sure nothign else could share this area as we invalidate the cache after DMA
+// We add 32 bytes just to make sure nothing else could share this area as we invalidate the cache after DMA
 ALIGN_32BYTES(static __IO uint16_t aADCxConvertedData[(Adc::num_samples * Adc::num_channels) + 32]);
 
 // this will be the actual size of the data based on the number of ADC channels actually in use
@@ -82,7 +82,7 @@ Adc::~Adc()
 #define ADCx_CHANNEL_PIN_CLK_ENABLE()   __HAL_RCC_GPIOA_CLK_ENABLE(); __HAL_RCC_GPIOB_CLK_ENABLE(); __HAL_RCC_GPIOC_CLK_ENABLE();__HAL_RCC_GPIOF_CLK_ENABLE();
 
 /*
-ADC1_INP0       PA0_C (TODO In rev2 will be PA0 with switch closed)
+ADC1_INP0       PA0_C (with switch closed can read on PA0)
 ADC1_INP2       PF11
 ADC1_INP6       PF12
 ADC1_INP9       PB0
@@ -317,13 +317,21 @@ extern "C" void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
         ADCx_CHANNEL_PIN_CLK_ENABLE();
         // For each channel, init the GPIOs
         for(uint16_t c : Adc::allocated_channels) {
-            //#ifdef BOARD_PRIME
-            // check for special case of PA0_C allows both PA0 and PA0_C to be used for the same input
+            #ifdef BOARD_PRIME
+            // check for special case of PA0_C, no need to config PA0 if on PA0_C
+            if(adcpinlut[c].port == GPIOA && adcpinlut[c].pin == GPIO_PIN_0){
+                HAL_SYSCFG_AnalogSwitchConfig(SYSCFG_SWITCH_PA0, SYSCFG_SWITCH_PA0_OPEN);
+                printf("DEBUG: ADC: PA0_C switch opened\n");
+                continue;
+            }
+            #else
+            // This allows us to connect to PA0 but read channel 0 (PA0_C)
             if(adcpinlut[c].port == GPIOA && adcpinlut[c].pin == GPIO_PIN_0){
                 HAL_SYSCFG_AnalogSwitchConfig(SYSCFG_SWITCH_PA0, SYSCFG_SWITCH_PA0_CLOSE);
                 printf("DEBUG: ADC: PA0_C switch closed\n");
+                continue;
             }
-            //#endif
+            #endif
 
             // lookup pin and port
             GPIO_InitStruct.Pin = adcpinlut[c].pin;
