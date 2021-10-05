@@ -1861,6 +1861,8 @@ bool CommandShell::msc_cmd(std::string& params, OutputStream& os)
 #ifdef BOARD_PRIME
     // TODO needs to be configurable
     Pin msc_led("PF13", Pin::AS_OUTPUT);
+#elif BOARD_NUCLEO
+    Pin msc_led("PB14", Pin::AS_OUTPUT);
 #else
     Pin msc_led("nc", Pin::AS_OUTPUT);
 #endif

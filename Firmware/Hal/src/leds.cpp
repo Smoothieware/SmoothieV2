@@ -12,8 +12,8 @@ static Pin leds[] = {
 #elif defined(BOARD_NUCLEO)
 static Pin leds[] = {
 	Pin("PB0", Pin::AS_OUTPUT),
-	Pin("PE.1", Pin::AS_OUTPUT),
-	//Pin("PB_14", Pin::AS_OUTPUT),
+	Pin("PE1", Pin::AS_OUTPUT),
+	//Pin("PB14", Pin::AS_OUTPUT),
 };
 #define NLEDS 2
 
