@@ -275,20 +275,6 @@ static void smoothie_startup(void *)
                 } else {
                     printf("INFO: auxilliary play led set to %s\n", aux_play_led->to_string().c_str());
                 }
-                #ifdef BOARD_PRIME
-                const char *default_msc_led= "PF13";
-                #else
-                const char *default_msc_led= "nc";
-                #endif
-                p = cr.get_string(sm, "msc_led", default_msc_led);
-                msc_led = new Pin(p.c_str(), Pin::AS_OUTPUT);
-                if(!msc_led->connected()) {
-                    delete msc_led;
-                    msc_led = nullptr;
-                } else {
-                    printf("INFO: MSC led set to %s\n", msc_led->to_string().c_str());
-                }
-
                 flash_on_boot = cr.get_bool(sm, "flash_on_boot", true);
                 printf("INFO: flash on boot is %s\n", flash_on_boot ? "enabled" : "disabled");
                 bool enable_dfu = cr.get_bool(sm, "dfu_enable", false);
@@ -296,8 +282,24 @@ static void smoothie_startup(void *)
                 printf("INFO: dfu is %s\n", enable_dfu ? "enabled" : "disabled");
                 config_msc_enable = cr.get_bool(sm, "msc_enable", true) ? 1 : 0;
                 printf("INFO: MSC is %s\n", config_msc_enable ? "enabled" : "disabled");
+                if(config_msc_enable) {
+                    #ifdef BOARD_PRIME
+                    const char *default_msc_led= "PF13";
+                    #else
+                    const char *default_msc_led= "nc";
+                    #endif
+                    p = cr.get_string(sm, "msc_led", default_msc_led);
+                    msc_led = new Pin(p.c_str(), Pin::AS_OUTPUT);
+                    if(!msc_led->connected()) {
+                        delete msc_led;
+                        msc_led = nullptr;
+                    } else {
+                        printf("INFO: MSC led set to %s\n", msc_led->to_string().c_str());
+                    }
+                }
+
             }else{
-                printf("WARNING: no [system] section found, defaults used\n");
+                printf("WARNING: no [system] section found, some defaults used\n");
             }
         }
 
