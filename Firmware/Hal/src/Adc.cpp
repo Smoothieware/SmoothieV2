@@ -82,7 +82,7 @@ Adc::~Adc()
 #define ADCx_CHANNEL_PIN_CLK_ENABLE()   __HAL_RCC_GPIOA_CLK_ENABLE(); __HAL_RCC_GPIOB_CLK_ENABLE(); __HAL_RCC_GPIOC_CLK_ENABLE();__HAL_RCC_GPIOF_CLK_ENABLE();
 
 /*
-ADC1_INP0       PA0_C (TODO In rev2 will be ADC1_INP16 PA0)
+ADC1_INP0       PA0_C (TODO In rev2 will be PA0 with switch closed)
 ADC1_INP2       PF11
 ADC1_INP6       PF12
 ADC1_INP9       PB0
@@ -317,13 +317,13 @@ extern "C" void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
         ADCx_CHANNEL_PIN_CLK_ENABLE();
         // For each channel, init the GPIOs
         for(uint16_t c : Adc::allocated_channels) {
-            #ifdef BOARD_PRIME
-            // check for special case of PA0_C
+            //#ifdef BOARD_PRIME
+            // check for special case of PA0_C allows both PA0 and PA0_C to be used for the same input
             if(adcpinlut[c].port == GPIOA && adcpinlut[c].pin == GPIO_PIN_0){
-                HAL_SYSCFG_AnalogSwitchConfig(SYSCFG_SWITCH_PA0, SYSCFG_SWITCH_PA0_OPEN);
-                printf("DEBUG: ADC: PA0_C switch open\n");
+                HAL_SYSCFG_AnalogSwitchConfig(SYSCFG_SWITCH_PA0, SYSCFG_SWITCH_PA0_CLOSE);
+                printf("DEBUG: ADC: PA0_C switch closed\n");
             }
-            #endif
+            //#endif
 
             // lookup pin and port
             GPIO_InitStruct.Pin = adcpinlut[c].pin;
