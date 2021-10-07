@@ -32,6 +32,7 @@
 #include "TemperatureControl.h"
 #include "ZProbe.h"
 #include "version.h"
+#include "leds.h"
 
 #include "FreeRTOS.h"
 #include "task.h"

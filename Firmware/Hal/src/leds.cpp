@@ -27,25 +27,31 @@ static Pin leds[] = {
 #define NLEDS 4
 
 #else
-	#error unrecognized board
+#define NLEDS 0
+static Pin leds[];
 #endif
 
-extern "C" void Board_LED_Toggle(uint8_t led)
+void Board_LED_Toggle(uint8_t led)
 {
 	if(led >= NLEDS) return;
 	leds[led].toggle();
 }
 
-extern "C" void Board_LED_Set(uint8_t led, bool on)
+void Board_LED_Set(uint8_t led, bool on)
 {
 	if(led >= NLEDS) return;
 	leds[led].set(on);
 }
 
-extern "C" bool Board_LED_Test(uint8_t led)
+bool Board_LED_Test(uint8_t led)
 {
 	if(led >= NLEDS) return false;
 	return leds[led].get();
 }
 
-
+bool Board_LED_Assign(uint8_t led, Pin *pin)
+{
+    if(led >= NLEDS) return false;
+    // leds[led]= pin;
+    return false;
+}

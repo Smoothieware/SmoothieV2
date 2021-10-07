@@ -2325,7 +2325,7 @@ void Robot::get_query_string(std::string& str) const
             TemperatureControl::pad_temperature_t temp;
             if(c->request("get_current_temperature", &temp)) {
                 char buf[32];
-                size_t n= snprintf(buf, sizeof(buf), "|%s:%1.1f,%1.1f", temp.designator.c_str(), temp.current_temperature, temp.target_temperature);
+                size_t n= snprintf(buf, sizeof(buf), "|%s:%3.1f,%3.1f", temp.designator.c_str(), temp.current_temperature, temp.target_temperature);
                 if(n > sizeof(buf)) n= sizeof(buf);
                 str.append(buf, n);
             }

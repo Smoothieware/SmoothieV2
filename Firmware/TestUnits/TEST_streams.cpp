@@ -41,7 +41,17 @@ REGISTER_TEST(StreamsTest, xprintf)
 	TEST_ASSERT_EQUAL_INT(20, n);
 	TEST_ASSERT_STRING_S(buf, "123456789");
 
+    n= snprintf(buf, 10, "%f", 1.234567);
+    TEST_ASSERT_STRING_S(buf, "1.234567");
+    TEST_ASSERT_EQUAL_INT(8, n);
 
+    n= snprintf(buf, 10, "%3.1f", 1.234567);
+    TEST_ASSERT_STRING_S(buf, "1.2");
+    TEST_ASSERT_EQUAL_INT(3, n);
+
+    n= snprintf(buf, 10, "%f", infinityf());
+    TEST_ASSERT_STRING_S(buf, "inf");
+    TEST_ASSERT_EQUAL_INT(3, n);
 }
 
 REGISTER_TEST(StreamsTest, cout)

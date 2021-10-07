@@ -28,6 +28,7 @@
 #include "Robot.h"
 #include "StringUtils.h"
 #include "uart_debug.h"
+#include "leds.h"
 
 #include "FreeRTOS.h"
 #include "task.h"

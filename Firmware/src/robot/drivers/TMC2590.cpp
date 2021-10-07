@@ -284,7 +284,7 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
         auto c = ssm.find("common");
         if(c != ssm.end()) {
             auto& cm = c->second; // map of common tmc2590 config values
-            max_current = cr.get_int(cm, max_current_key, 4000);
+            max_current = cr.get_int(cm, max_current_key, this->resistor == 75 ? 3100 : 4600);
             if(reset_pin == nullptr) {
                 reset_pin= new Pin(cr.get_string(cm, reset_pin_key, "nc"), Pin::AS_OUTPUT);
                 if(reset_pin->connected()) {
