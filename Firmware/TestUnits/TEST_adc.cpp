@@ -45,16 +45,17 @@ REGISTER_TEST(ADCTest, adc_names)
     delete dummy;
 }
 
+extern uint32_t adc_get_time();
 REGISTER_TEST(ADCTest, two_adc_channels)
 {
-    // Use ADC2 and ADC3 on PF11 and PF12
-    Adc *adc1 = new Adc("ADC1_2");
+    // Use ADC0 and ADC3 on PA0 and PB0
+    Adc *adc1 = new Adc("ADC1_0");
     Adc *adc2 = new Adc("ADC1_3");
 
     TEST_ASSERT_TRUE(Adc::post_config_setup());
 
     TEST_ASSERT_TRUE(adc1->is_valid());
-    TEST_ASSERT_EQUAL_INT(2, adc1->get_channel());
+    TEST_ASSERT_EQUAL_INT(0, adc1->get_channel());
 
     TEST_ASSERT_TRUE(adc2->is_valid());
     TEST_ASSERT_EQUAL_INT(3, adc2->get_channel());
@@ -67,6 +68,7 @@ REGISTER_TEST(ADCTest, two_adc_channels)
     // give it time to accumulate the 32 samples
     vTaskDelay(pdMS_TO_TICKS(32 * 10 * 2 + 100));
 
+    uint16_t min=0xFFFF, max= 0;
     for (int i = 0; i < 10; ++i) {
         uint16_t v = adc2->read();
         float volts = 3.3F * (v / (float)max_adc_value);
@@ -75,8 +77,13 @@ REGISTER_TEST(ADCTest, two_adc_channels)
         v = adc1->read();
         volts = 3.3F * (v / (float)max_adc_value);
         printf("adc1= %04X, volts= %10.4f\n", v, volts);
+        if(v < min) min= v;
+        if(v > max) max= v;
         vTaskDelay(pdMS_TO_TICKS(20));
+        // takes 2461us between samples for 2 channels
+        //printf("time= %lu us\n", adc_get_time());
     }
+    printf("Min= %d, Max= %d, spread= %d (%f %%)\n", min, max, max-min, (max-min)*100.0F/(float)max_adc_value);
 
     TEST_ASSERT_TRUE(adc1->get_errors() == 0);
     TEST_ASSERT_TRUE(adc2->get_errors() == 0);

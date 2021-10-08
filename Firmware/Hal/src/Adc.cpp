@@ -81,6 +81,8 @@ Adc::~Adc()
 // Definitions for all allowed ADC channels we use
 #define ADCx_CHANNEL_PIN_CLK_ENABLE()   __HAL_RCC_GPIOA_CLK_ENABLE(); __HAL_RCC_GPIOB_CLK_ENABLE(); __HAL_RCC_GPIOC_CLK_ENABLE();__HAL_RCC_GPIOF_CLK_ENABLE();
 
+#define ADC_RESOLUTION ADC_RESOLUTION_16B
+
 /*
 ADC1_INP0       PA0_C (with switch closed can read on PA0)
 ADC1_INP2       PF11
@@ -142,9 +144,9 @@ bool Adc::post_config_setup()
     HAL_ADC_DeInit(&AdcHandle);
 
     AdcHandle.Init.ClockPrescaler           = ADC_CLOCK_ASYNC_DIV6;          /* Asynchronous clock mode, input ADC clock divided by 6*/
-    AdcHandle.Init.Resolution               = ADC_RESOLUTION_16B;            /* 16-bit resolution for converted data */
+    AdcHandle.Init.Resolution               = ADC_RESOLUTION;                /* 16-bit resolution for converted data */
     AdcHandle.Init.ScanConvMode             = ENABLE;                        // Sequencer enabled
-    AdcHandle.Init.EOCSelection             = ADC_EOC_SINGLE_CONV;           /* EOC flag picked-up to indicate conversion end */
+    AdcHandle.Init.EOCSelection             = ADC_EOC_SEQ_CONV;              /* EOC flag picked-up to indicate conversion end */
     AdcHandle.Init.LowPowerAutoWait         = DISABLE;                       /* Auto-delayed conversion feature disabled */
     AdcHandle.Init.ContinuousConvMode       = ENABLE;                        /* Continuous mode enabled (automatic conversion restart after each conversion) */
     AdcHandle.Init.NbrOfConversion          = nc;
@@ -215,6 +217,8 @@ bool Adc::stop()
     return true;
 }
 
+//#define MEDIAN
+#ifdef MEDIAN
 static void split(uint16_t data[], unsigned int n, uint16_t x, unsigned int& i, unsigned int& j)
 {
     do {
@@ -243,34 +247,68 @@ static unsigned int quick_median(uint16_t data[], unsigned int n)
     }
     return k;
 }
+#else
+static uint32_t average(uint16_t *buf, int n)
+{
+    float acc= 0.0F;
+    for (int i = 0; i < n; ++i) {
+        acc += buf[i];
+    }
+    return roundf(acc/n);
+}
+#endif
+
+//#define ADC_TIMEIT
+#ifdef ADC_TIMEIT
+#include "benchmark_timer.h"
+static uint32_t st, elt;
+uint32_t adc_get_time()
+{
+    return benchmark_timer_as_us(elt);
+}
+#endif
 
 // This will take 154 us per sample with current settings
 // for 8 samples on a channel this is 1.2ms per channel
-// with 2 channels this gets called about every 2.4ms
-void Adc::sample_isr()
+// with 2 channels this gets called about every 1.2ms (or 2.4ms for complete read)
+// If half is true then only the first half has been captured
+void Adc::sample_isr(bool half)
 {
     if(!running) return;
 
     // I think this means we have 8 samples from each channel interleaved
     int n = allocated_channels.size();
     int o = 0;
+    int ns2 = num_samples/2;
+    uint16_t dataADC[ns2];
+    int off= half ? 0 : ns2;
     for(uint16_t c : allocated_channels) {
         Adc *adc = getInstance(c);
         if(adc == nullptr || !adc->valid) continue; // not setup
-        // pick it out of the array
-        uint16_t dataADC[num_samples];
-        for(int i = 0; i < num_samples; ++i) {
-            dataADC[i] = aADCxConvertedData[(i * n) + o];
+        // pick it out of the array, only half the array is ready
+        for(int i = 0; i < ns2; ++i) {
+            dataADC[i] = aADCxConvertedData[((i+off) * n) + o];
         }
-        memcpy(adc->sample_buffer, dataADC, sizeof(dataADC));
+        memcpy(adc->sample_buffer+off, dataADC, sizeof(dataADC));
         ++o;
     }
 
-    // calculate median for each buffer, avoids having to lock the buffer
-    for(uint16_t c : allocated_channels) {
-        Adc *adc = getInstance(c);
-        if(adc == nullptr || !adc->valid) continue; // not setup
-        adc->last_sample= adc->sample_buffer[quick_median(adc->sample_buffer, num_samples)];
+    if(!half) {
+        #ifdef ADC_TIMEIT
+        // 2461us between calls
+        elt= benchmark_timer_elapsed(st);
+        st= benchmark_timer_start();
+        #endif
+        // calculate median for each buffer, avoids having to lock the buffer
+        for(uint16_t c : allocated_channels) {
+            Adc *adc = getInstance(c);
+            if(adc == nullptr || !adc->valid) continue; // not setup
+            #ifdef MEDIAN
+            adc->last_sample= adc->sample_buffer[quick_median(adc->sample_buffer, num_samples)];
+            #else
+            adc->last_sample= average(adc->sample_buffer, num_samples);
+            #endif
+        }
     }
 }
 
@@ -281,9 +319,15 @@ uint32_t Adc::read()
     return last_sample;
 }
 
-float Adc::read_raw()
+uint16_t Adc::read_raw()
 {
-    // just return the voltage on the pin
+    // just return the ADC on the pin
+    return last_sample;
+}
+
+float Adc::read_voltage()
+{
+    // just return the ADC on the pin
     uint16_t adc = last_sample;
     float v = 3.3F * ((float)adc / get_max_value());
     return v;
@@ -424,9 +468,8 @@ extern "C" void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
     if(hadc->Instance == ADCx) {
         // Invalidate Data Cache to get the updated content of the SRAM on the ADC converted data buffer
-        SCB_InvalidateDCache_by_Addr((uint32_t *) aADCxConvertedData, adc_data_size);
-        Adc::sample_isr();
-        //Adc::sample_isr(1); // copy second half while first half is being filled
+        SCB_InvalidateDCache_by_Addr((uint32_t *) aADCxConvertedData, adc_data_size*sizeof(uint16_t));
+        Adc::sample_isr(false); // copy second half while first half is being filled
 
     }else{
         HAL_ADC3_ConvCpltCallback(hadc);
@@ -443,6 +486,6 @@ extern "C" void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
     if(hadc->Instance != ADC1) return;
 
     // Invalidate Data Cache to get the updated content of the SRAM on the ADC converted data buffer
-    //SCB_InvalidateDCache_by_Addr((uint32_t *) aADCxConvertedData, adc_data_size);
-    //Adc::sample_isr(0); // copy first half while second half is being filled
+    SCB_InvalidateDCache_by_Addr((uint32_t *) aADCxConvertedData, adc_data_size*sizeof(uint16_t));
+    Adc::sample_isr(true); // copy first half while second half is being filled
 }

@@ -22,14 +22,15 @@ public:
 
     // specific to each instance
     uint32_t read();
-    float read_raw();
+    uint16_t read_raw();
+    float read_voltage();
     int get_channel() const { return channel; }
     uint32_t get_errors() const { return not_ready_error; }
     bool is_valid() const { return valid; }
 
     static int get_max_value() { return 65535;} // 16bit samples
 
-    static void sample_isr();
+    static void sample_isr(bool);
     static std::set<uint16_t> allocated_channels;
     static const int num_channels= 7;
     static const int num_samples= 8;

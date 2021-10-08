@@ -208,6 +208,7 @@ static uint8_t * pucGetRXBuffer( size_t uxSize )
 /*-----------------------------------------------------------*/
 void xNetworkDeInitialise()
 {
+	// ETH_PHY_IO_WriteReg(0, 0, 0x0800); // power down PHY
 	HAL_ETH_MspDeInit(&xEthHandle);
 }
 
