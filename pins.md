@@ -11,11 +11,11 @@ pins used on the headers when selecting a function in the Firmware
 | ADC1_5     | PC3     | G                        |
 | ADC1_6     | PA3     | G                        |
 |            |         |                          |
-| ADC3_0     | PC0     | N/C for voltage only     |
-| ADC3_1     | PF10    | B                        |
+| ADC3_0     | PC0     | N/C     |
+| ADC3_1     | PF10    | G                        |
 | ADC3_2     | PF8     | VFET                     |
-| ADC3_3     | PF6     | B                        |
-| ADC3_4     | PF4     | B                        |
+| ADC3_3     | PF6     | G                        |
+| ADC3_4     | PF4     | G                        |
 | ADC3_5     | PH5     | VMOT                     |
 |            |         |                          |
 | PWM1_1     | PE9     |                          |
@@ -61,7 +61,7 @@ pins used on the headers when selecting a function in the Firmware
 | USB1dm     | PB14    | Host Device              |
 | USB1dp     | PB15    | Host Device              |
 
-# SDCard 
+# SDCard
 
 | Name       | pin     | comment |
 | ---------- | ------- | ------- |
@@ -100,7 +100,7 @@ pins used on the headers when selecting a function in the Firmware
 | NCS        | PB6     |         |
 | CLK        | PB2     |         |
 
-# not 5v tolerant 
+# not 5v tolerant
 
 | pin     | comment   |
 | ------- | --------- |
@@ -198,10 +198,10 @@ pins used on the headers when selecting a function in the Firmware
 | 3    | PD14    |           |
 | 4    | PD12    |           |
 | 5    | PD10    |           |
-| 6    | PI5     | TIM8_CH1  |
-| 7    | PI6     | TIM8_CH2  |
-| 8    | PI7     | TIM8_CH3  |
-| 9    | PI2     | TIM8_CH4  |
+| 6    | PI5     | PWM2_1  |
+| 7    | PI6     | PWM2_2  |
+| 8    | PI7     | PWM2_3  |
+| 9    | PI2     | PWM2_4  |
 | 10   |         | gnd       |
 
 ## GD
@@ -213,10 +213,10 @@ pins used on the headers when selecting a function in the Firmware
 | 3    | PE7     |           |
 | 4    | PD8     | UART0 TX  |
 | 5    | PB11    | UART0 RX  |
-| 6    | PE9     | TIM1_CH1  |
-| 7    | PE11    | TIM1_CH2  |
-| 8    | PE13    | TIM1_CH3  |
-| 9    | PE14    | TIM1_CH4  |
+| 6    | PE9     | PWM1_1    |
+| 7    | PE11    | PWM1_2    |
+| 8    | PE13    | PWM1_3    |
+| 9    | PE14    | PWM1_4    |
 | 10   |         | gnd       |
 
 ## GE
@@ -249,7 +249,7 @@ pins used on the headers when selecting a function in the Firmware
 | 9    | PJ2     |           |
 | 10   |         | gnd       |
 
-## GG 
+## GG
 
 | hdr  | pin     | func      |
 | ---- | ------- | --------- |
@@ -270,9 +270,9 @@ pins used on the headers when selecting a function in the Firmware
 | ---- | ------- | --------- |
 | 1    |         | 3v3       |
 | 2    |         | 5v        |
-| 3    | PC3     | ADC1_CH13 |
-| 4    | PA3     | ADC1_CH15 |
-| 5    | PC2     | ADC1_CH12 |
+| 3    | PC3     | ADC1_5    |
+| 4    | PA3     | ADC1_6    |
+| 5    | PC2     | ADC1_4    |
 | 6    | PF2     |           |
 | 7    | PI10    |           |
 | 8    | PH7     |           |
@@ -285,9 +285,9 @@ pins used on the headers when selecting a function in the Firmware
 | ---- | ------- | --------- |
 | 1    |         | 3v3       |
 | 2    |         | 5v        |
-| 3    | PF10    | ADC3_CH6  |
-| 4    | PF6     | ADC3_CH8  |
-| 5    | PF4     | ADC3_CH9  |
+| 3    | PF10    | ADC3_1    |
+| 4    | PF6     | ADC3_3    |
+| 5    | PF4     | ADC3_4    |
 | 6    | PI8     |           |
 | 7    | PE4     |           |
 | 8    | PI9     |           |
