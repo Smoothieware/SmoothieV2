@@ -150,7 +150,7 @@
 //statics common to all instances
 SPI *TMC2590::spi = nullptr;
 bool TMC2590::common_setup = false;
-uint32_t TMC2590::max_current = 4000; // 4 amps
+uint32_t TMC2590::max_current = 3000; // 3 amps
 Pin *TMC2590::reset_pin = nullptr;
 
 #ifdef BOARD_DEVEBOX
