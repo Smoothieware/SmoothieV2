@@ -9,7 +9,7 @@
 | SPI0MISO         | PA6   |                        |
 | RX_DV            | PA7   | ETH                    |
 | I2C1 SCL         | PA8   | n/a on devebox         |
-| USB2vbus         | PA9   | ACM/CDC Device         |
+| ESYN	           | PA9   |                        |
 | USB2id           | PA10  | ACM/CDC Device         |
 | USB2             | PA11  | ACM/CDC Device         |
 | USB2             | PA12  | ACM/CDC Device         |
@@ -81,7 +81,7 @@
 | ADC1_2           | PF12  | T2                     |
 | MSC LED          | PF13  |                        |
 | OutputEnb        | PF14  | mosfets                |
-| ESZN             | PF15  |                        |
+| 	               | PF15  |                        |
 |                  | PG0   |                        |
 |                  | PG1   |                        |
 | DIR B            | PG2   |                        |

@@ -51,7 +51,7 @@ pins used on the headers when selecting a function in the Firmware
 # USB
 | Name       | pin     | comment                  |
 | ---------- | ------- | ------------------------ |
-| USB2vbus   | PA9     | ACM/CDC Device           |
+| USB2vbus   | PA9     | (not used Prime)         |
 | USB2id     | PA10    | ACM/CDC Device           |
 | USB2       | PA11    | ACM/CDC Device           |
 | USB2       | PA12    | ACM/CDC Device           |
@@ -147,15 +147,15 @@ pins used on the headers when selecting a function in the Firmware
 | Hotend1          | PE0   |               |
 | Hotend2          | PB8   |               |
 | Bed              | PE3   |               |
-| Fan 1            |       |               |
-| Fan 2            |       |               |
-| Endstop Xmin     |       |               |
-| Endstop Xmax     |       |               |
-| Endstop Ymin     |       |               |
-| Endstop Ymax     |       |               |
-| Endstop Zmin     |       |               |
-| Endstop Zmax     |       |               |
-| Probe            |       |               |
+| Fan 1            | PE1   |               |
+| Fan 2            | PI11  |               |
+| Endstop Xmin     | PI3   |               |
+| Endstop Xmax     | PD0   |               |
+| Endstop Ymin     | PA9   |               |
+| Endstop Ymax     | PI1   |               |
+| Endstop Zmin     | PH15  |               |
+| Endstop Zmax     | PI0   |               |
+| Probe            | PB10  |               |
 
 # Gadgeteer headers
 

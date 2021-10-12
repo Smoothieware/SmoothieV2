@@ -64,10 +64,10 @@ void HAL_USB_OTG_FS_MspInit(void* handle)
 	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 	/* Configure VBUS Pin */
-	GPIO_InitStruct.Pin = GPIO_PIN_9;
-	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+	// GPIO_InitStruct.Pin = GPIO_PIN_9;
+	// GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	// GPIO_InitStruct.Pull = GPIO_NOPULL;
+	// HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 	/* Configure ID pin */
 	GPIO_InitStruct.Pin = GPIO_PIN_10;
@@ -76,7 +76,7 @@ void HAL_USB_OTG_FS_MspInit(void* handle)
 	GPIO_InitStruct.Alternate = GPIO_AF10_OTG2_FS;
 	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-	allocate_hal_pin(GPIOA, GPIO_PIN_9);
+	// allocate_hal_pin(GPIOA, GPIO_PIN_9);
 	allocate_hal_pin(GPIOA, GPIO_PIN_10);
 	allocate_hal_pin(GPIOA, GPIO_PIN_11);
 	allocate_hal_pin(GPIOA, GPIO_PIN_12);
