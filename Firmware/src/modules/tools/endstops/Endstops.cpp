@@ -143,7 +143,7 @@ bool Endstops::load_endstops(ConfigReader& cr)
         endstop_info_t *pin_info = new endstop_info_t;
         if(!pin_info->pin.from_string(cr.get_string(mm, pin_key, "nc")) || !pin_info->pin.as_input() || !pin_info->pin.connected()) {
             // no pin defined try next
-            printf("INFO: configure-endstop: no pin defined  or illegal pin for %s\n", name.c_str());
+            printf("ERROR: configure-endstop: no pin defined or illegal pin for %s\n", name.c_str());
             delete pin_info;
             continue;
         }
@@ -151,7 +151,7 @@ bool Endstops::load_endstops(ConfigReader& cr)
         std::string axis = cr.get_string(mm, axis_key, "");
         if(axis.empty()) {
             // axis is required
-            printf("INFO: configure-endstop: no axis defined for %s\n", name.c_str());
+            printf("ERROR: configure-endstop: no axis defined for %s\n", name.c_str());
             delete pin_info;
             continue;
         }
@@ -165,7 +165,7 @@ bool Endstops::load_endstops(ConfigReader& cr)
             case 'B': a = B_AXIS; break;
             case 'C': a = C_AXIS; break;
             default: // not a recognized axis
-                printf("INFO: configure-endstop: not a known axis %c, defined for %s\n", axis[0], name.c_str());
+                printf("ERROR: configure-endstop: not a known axis %c, defined for %s\n", axis[0], name.c_str());
                 delete pin_info;
                 continue;
         }
@@ -185,7 +185,7 @@ bool Endstops::load_endstops(ConfigReader& cr)
         // check we are not going above the number of configured actuators/axis
         if(a >= Robot::getInstance()->get_number_registered_motors()) {
             // too many axis we only have configured n_motors
-            printf("INFO: configure-endstop: Too many endstops defined for the number of axis\n");
+            printf("ERROR: configure-endstop: Too many endstops defined for the number of axis\n");
             continue;
         }
 
@@ -960,6 +960,7 @@ bool Endstops::handle_mcode(GCode& gcode, OutputStream& os)
         case 119: {
             os.set_append_nl();
             for(auto& h : homing_axis) {
+                if(h.pin_info == nullptr) continue; // not a configured homing endstop
                 std::string name;
                 name.append(1, h.axis).append(h.home_direction ? "_min" : "_max");
                 os.printf("%s:%d ", name.c_str(), h.pin_info->pin.get());
