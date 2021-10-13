@@ -229,7 +229,7 @@ static void smoothie_startup(void *)
     // open the config file
     do {
         if(!setup_sdmmc()) {
-            printf("Error: setting up sdmmc\n");
+            printf("ERROR: setting up sdmmc\n");
             break;
         }
 
@@ -237,14 +237,14 @@ static void smoothie_startup(void *)
 
         int ret = f_mount(&fatfs, "sd", 1);
         if(FR_OK != ret) {
-            printf("Error: mounting: /sd: %d\n", ret);
+            printf("ERROR: mounting: /sd: %d\n", ret);
             break;
         }
 
         std::fstream fs;
         fs.open("/sd/config.ini", std::fstream::in);
         if(!fs.is_open()) {
-            printf("Error: opening file: /sd/config.ini\n");
+            printf("ERROR: opening file: /sd/config.ini\n");
             // unmount sdcard
             //f_unmount("sd");
             break;

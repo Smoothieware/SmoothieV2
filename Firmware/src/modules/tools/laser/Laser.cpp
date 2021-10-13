@@ -61,7 +61,7 @@ bool Laser::configure(ConfigReader& cr)
     pwm_pin = new Pwm(cr.get_string(m, pwm_pin_key, "nc"));
 
     if(!pwm_pin->is_valid()) {
-        printf("Error: laser-config: Specified pin is not a valid PWM pin.\n");
+        printf("ERROR: laser-config: Specified pin is not a valid PWM pin.\n");
         delete pwm_pin;
         pwm_pin = nullptr;
         return false;
@@ -108,13 +108,13 @@ bool Laser::configure(ConfigReader& cr)
     uint32_t f = std::min(1000UL, pwm_freq);
     if(f >= FastTicker::get_min_frequency()) {
         if(FastTicker::getInstance()->attach(f, std::bind(&Laser::set_proportional_power, this)) < 0) {
-            printf("configure-laser: ERROR Fast Ticker was not set (Too slow?)\n");
+            printf("ERROR: configure-laser: Fast Ticker was not set (Too slow?)\n");
             return false;
         }
 
     } else {
         if(SlowTicker::getInstance()->attach(f, std::bind(&Laser::set_proportional_power, this)) < 0) {
-            printf("configure-laser: ERROR Slow Ticker was not set (Too fast?)\n");
+            printf("ERROR: configure-laser: Slow Ticker was not set (Too fast?)\n");
             return false;
         }
     }
