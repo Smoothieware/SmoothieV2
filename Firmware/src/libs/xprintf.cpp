@@ -2,6 +2,7 @@
 
 #include <tuple>
 #include <sstream>
+#include <cstring>
 
 #include "FreeRTOS.h"
 #include "semphr.h"
@@ -9,6 +10,8 @@
 using parg_t = std::tuple<char **, size_t, size_t*>;
 using farg_t = std::tuple<std::string*, FILE*, bool*>;
 static QueueHandle_t xPrintMutex;
+
+bool config_error_detected= false;
 
 extern "C" {
 void setup_xprintf()
@@ -27,6 +30,8 @@ static void my_outchar(void *, char c)
 #include "xformatc.h"
 int __wrap_printf(const char *fmt, ...)
 {
+    if(!config_error_detected && strncmp("ERROR:", fmt, 6) == 0) config_error_detected= true;
+
     xSemaphoreTake(xPrintMutex, portMAX_DELAY);
     va_list list;
     unsigned count;

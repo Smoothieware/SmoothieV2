@@ -478,7 +478,7 @@ static void uart_console_comms(void *)
     printf("DEBUG: UART Console Comms thread running\n");
     UART *uart = UART::getInstance(uart_channel);
     if(!uart->init(uart_console_settings)) {
-        printf("ERROR: Failed it init uart 1\n");
+        printf("ERROR: Failed in init uart 1\n");
         return;
     }
 

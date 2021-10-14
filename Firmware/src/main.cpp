@@ -477,6 +477,11 @@ static void smoothie_startup(void *)
         printf(config_error_msg.c_str());
         // Module::broadcast_halt(true);
     }
+    extern bool config_error_detected;
+    if(config_error_detected) {
+        config_error_msg = "There was an error detected in the config.ini\nPlease check the uart log\n";
+        printf(config_error_msg.c_str());
+    }
 
     if(!start_consoles()) {
         printf("ERROR: consoles failed to start\n");
