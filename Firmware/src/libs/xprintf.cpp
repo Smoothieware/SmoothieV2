@@ -30,8 +30,6 @@ static void my_outchar(void *, char c)
 #include "xformatc.h"
 int __wrap_printf(const char *fmt, ...)
 {
-    if(!config_error_detected && strncmp("ERROR:", fmt, 6) == 0) config_error_detected= true;
-
     xSemaphoreTake(xPrintMutex, portMAX_DELAY);
     va_list list;
     unsigned count;
@@ -39,6 +37,7 @@ int __wrap_printf(const char *fmt, ...)
     va_start(list, fmt);
     count = xvformat(my_outchar, 0, fmt, list);
     va_end(list);
+    if(!config_error_detected && count >= 6 && strncmp("ERROR:", fmt, 6) == 0) config_error_detected= true;
     xSemaphoreGive(xPrintMutex);
     return count;
 }

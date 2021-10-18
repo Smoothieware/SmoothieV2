@@ -174,6 +174,7 @@ bool Endstops::load_endstops(ConfigReader& cr)
         pin_info->debounce = 0;
         pin_info->axis = toupper(axis[0]);
         pin_info->axis_index = a;
+        pin_info->home = false;
 
         // are limits enabled
         pin_info->limit_enable = cr.get_bool(mm, limit_key, false);
@@ -207,6 +208,7 @@ bool Endstops::load_endstops(ConfigReader& cr)
         hinfo.axis = toupper(axis[0]);
         hinfo.axis_index = a;
         hinfo.pin_info = pin_info;
+        pin_info->home = true;
 
         // rates in mm/sec
         hinfo.fast_rate = cr.get_float(mm, fast_rate_key, 100);
@@ -968,7 +970,8 @@ bool Endstops::handle_mcode(GCode& gcode, OutputStream& os)
             os.printf("pins- ");
             for(auto& p : endstops) {
                 std::string str(1, p->axis);
-                if(p->limit_enable) str.append("L");
+                if(p->home) str.append(":H");
+                if(p->limit_enable) str.append(":L");
                 os.printf("(%s)%s ", str.c_str(), p->pin.to_string().c_str());
             }
         }

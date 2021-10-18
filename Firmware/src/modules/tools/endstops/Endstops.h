@@ -54,6 +54,7 @@ class Endstops : public Module
                 uint8_t axis_index:3;
                 bool limit_enable:1;
                 bool triggered:1;
+                bool home:1;
             };
         };
 
