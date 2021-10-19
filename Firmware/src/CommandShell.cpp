@@ -1310,7 +1310,7 @@ bool CommandShell::version_cmd(std::string& params, OutputStream& os)
 
     os.printf("%s on %s\n", get_mcu().c_str(), BUILD_TARGET);
     os.printf("Build version: %s, Build date: %s, System Clock: %ldMHz\r\n", vers.get_build(), vers.get_build_date(), SystemCoreClock / 1000000);
-    os.printf("%d axis\n", MAX_ROBOT_ACTUATORS);
+    os.printf("%d axis, %d primary axis\n", MAX_ROBOT_ACTUATORS, N_PRIMARY_AXIS);
 
     os.set_no_response();
 
@@ -1321,7 +1321,7 @@ bool CommandShell::m115_cmd(GCode& gcode, OutputStream& os)
 {
     Version vers;
 
-    os.printf("FIRMWARE_NAME:Smoothieware2, FIRMWARE_URL:http%%3A//smoothieware.org, X-SOURCE_CODE_URL:https://github.com/Smoothieware/SmoothieV2, FIRMWARE_VERSION:%s, PROTOCOL_VERSION:1.0, X-FIRMWARE_BUILD_DATE:%s, X-SYSTEM_CLOCK:%ldMHz, X-AXES:%d, X-GRBL_MODE:%d, X-ARCS:1\n", vers.get_build(), vers.get_build_date(), SystemCoreClock / 1000000, MAX_ROBOT_ACTUATORS, Dispatcher::getInstance()->is_grbl_mode() ? 1 : 0);
+    os.printf("FIRMWARE_NAME:Smoothieware2, FIRMWARE_URL:http%%3A//smoothieware.org, X-SOURCE_CODE_URL:https://github.com/Smoothieware/SmoothieV2, FIRMWARE_VERSION:%s, PROTOCOL_VERSION:1.0, X-FIRMWARE_BUILD_DATE:%s, X-SYSTEM_CLOCK:%ldMHz, X-AXES:%d, X-PAXIS:%d, X-GRBL_MODE:%d, X-ARCS:1\n", vers.get_build(), vers.get_build_date(), SystemCoreClock / 1000000, MAX_ROBOT_ACTUATORS, N_PRIMARY_AXIS, Dispatcher::getInstance()->is_grbl_mode() ? 1 : 0);
 
     return true;
 }
