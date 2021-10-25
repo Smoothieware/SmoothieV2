@@ -18,6 +18,7 @@
 #include <ctype.h>
 #include <algorithm>
 #include <math.h>
+#include <bitset>
 
 // global config settings
 #define corexy_homing_key "corexy_homing"
@@ -132,6 +133,10 @@ bool Endstops::load_endstops(ConfigReader& cr)
         return false;
     }
 
+    // keep track of axis that have been defined for homing
+    std::bitset<6> home_defined;
+    home_defined.reset();
+
     for(auto& s : ssmap) {
 
         // foreach endstop
@@ -198,6 +203,14 @@ bool Endstops::load_endstops(ConfigReader& cr)
         if(direction == "none") {
             continue;
         }
+
+        // check this axis does not already have homign set (we can only have one homing direction set)
+        if(home_defined[a]) {
+            printf("ERROR: configure-endstop: axis %d already has a homing direction set\n", a);
+            continue;
+        }
+
+        home_defined.set(a);
 
         // setup the homing array
         homing_info_t hinfo;

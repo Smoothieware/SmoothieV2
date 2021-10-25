@@ -1258,6 +1258,7 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         Robot::getInstance()->reset_compensated_machine_position();
 
         // feed three blocks that allow full acceleration, full speed and full deceleration
+        // NOTE this only works if it is a primary axis, ABC by default are not primary so not planned when solo so will acc/dec every move
         Conveyor::getInstance()->set_hold(true);
         Robot::getInstance()->delta_move(delta, fr, n_motors); // accelerates upto speed
         Robot::getInstance()->delta_move(delta, fr, n_motors); // continues at full speed

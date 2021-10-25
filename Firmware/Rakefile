@@ -260,6 +260,7 @@ elsif TARGET == 'Devebox'
   defines << '-DHSE_VALUE=25000000'
   defines << '-DDRIVER_TMC2590'
   defines << '-DNO_SD_DET'
+  defines << '-DN_PRIMARY_AXIS=4'
 else
   raise("Error unhandled target")
 end
