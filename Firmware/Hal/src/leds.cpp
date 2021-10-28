@@ -38,7 +38,14 @@ bool Board_LED_Init()
     const char **pp= led_pins;
     const char *p;
     while((p=*pp++) != nullptr) {
-        leds.push_back(new Pin(p, Pin::AS_OUTPUT));
+        Pin *pin= new Pin(p, Pin::AS_OUTPUT);
+        if(pin->connected()){
+            leds.push_back(pin);
+        }else{
+            delete pin;
+            printf("ERROR: invalid pin for system LED%d: %s\n", leds.size(), p);
+            return false;
+        }
     }
 
     return true;
@@ -62,9 +69,33 @@ bool Board_LED_Test(uint8_t led)
     return leds[led]->get();
 }
 
-bool Board_LED_Assign(uint8_t led, Pin *pin)
+bool Board_LED_Assign(uint8_t led, const char *pin)
 {
-    if(led >= leds.size()) return false;
-    // leds[led]= pin;
+    if(led < leds.size()) {
+        Pin *p= new Pin(pin, Pin::AS_OUTPUT);
+        if(p->connected()){
+            delete leds[led];
+            leds[led]= p;
+        }else{
+            delete p;
+            printf("ERROR: Assigning an invalid pin for system LED%d: %s\n", led, pin);
+            return false;
+        }
+
+    }else if(led == leds.size()) {
+        Pin *p= new Pin(pin, Pin::AS_OUTPUT);
+        if(p->connected()){
+            leds.push_back(p);
+        }else{
+            delete p;
+            printf("ERROR: Assigning an invalid pin for system LED%d: %s\n", led, pin);
+            return false;
+        }
+
+    }else{
+        printf("ERROR: Assigning to invalid system LED%d\n", led);
+        return false;
+    }
+
     return false;
 }
