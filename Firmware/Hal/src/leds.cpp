@@ -1,57 +1,70 @@
 #include "Pin.h"
 
+#include <vector>
 #if defined(BOARD_PRIME)
-static Pin leds[] = {
-    Pin("PH9", Pin::AS_OUTPUT),
-    Pin("PH10", Pin::AS_OUTPUT),
-    Pin("PH11", Pin::AS_OUTPUT),
-    Pin("PH12", Pin::AS_OUTPUT),
+static const char *led_pins[] = {
+    "PH9",
+    "PH10",
+    "PH11",
+    "PH12",
+    nullptr
 };
-#define NLEDS 4
 
 #elif defined(BOARD_NUCLEO)
-static Pin leds[] = {
-	Pin("PB0", Pin::AS_OUTPUT),
-	Pin("PE1", Pin::AS_OUTPUT),
-	//Pin("PB14", Pin::AS_OUTPUT),
+static const char *led_pins[] = {
+    "PB0",
+    "PE1",
+    "PB14",
+    nullptr
 };
-#define NLEDS 2
 
 #elif defined(BOARD_DEVEBOX)
-static Pin leds[] = {
-	Pin("PA1", Pin::AS_OUTPUT),
-    Pin("PE11", Pin::AS_OUTPUT),
-    Pin("PE12", Pin::AS_OUTPUT),
-    Pin("PE13", Pin::AS_OUTPUT),
+static const char *led_pins[] = {
+    "PA1",
+    "PE11",
+    "PE12",
+    "PE13",
+    nullptr
 };
-#define NLEDS 4
 
 #else
-#define NLEDS 0
-static Pin leds[];
+static const char *led_pins[] = {nullptr};
 #endif
+
+static std::vector<Pin*> leds;
+
+bool Board_LED_Init()
+{
+    const char **pp= led_pins;
+    const char *p;
+    while((p=*pp++) != nullptr) {
+        leds.push_back(new Pin(p, Pin::AS_OUTPUT));
+    }
+
+    return true;
+}
 
 void Board_LED_Toggle(uint8_t led)
 {
-	if(led >= NLEDS) return;
-	leds[led].toggle();
+    if(led >= leds.size()) return;
+    leds[led]->toggle();
 }
 
 void Board_LED_Set(uint8_t led, bool on)
 {
-	if(led >= NLEDS) return;
-	leds[led].set(on);
+    if(led >= leds.size()) return;
+    leds[led]->set(on);
 }
 
 bool Board_LED_Test(uint8_t led)
 {
-	if(led >= NLEDS) return false;
-	return leds[led].get();
+    if(led >= leds.size()) return false;
+    return leds[led]->get();
 }
 
 bool Board_LED_Assign(uint8_t led, Pin *pin)
 {
-    if(led >= NLEDS) return false;
+    if(led >= leds.size()) return false;
     // leds[led]= pin;
     return false;
 }

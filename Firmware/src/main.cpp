@@ -202,8 +202,8 @@ static void smoothie_startup(void *)
         printf("INFO: Build version: %s, Build date: %s\n", vers.get_build(), vers.get_build_date());
     }
 
-    // led 4 indicates boot phase 2 starts
-    Board_LED_Set(3, true);
+    // led 3 indicates boot phase 2 starts
+    Board_LED_Set(3, false); Board_LED_Set(2, true);
 
     // create the FastTicker here as it is used by some modules
     FastTicker *fast_ticker = FastTicker::getInstance();
@@ -252,6 +252,9 @@ static void smoothie_startup(void *)
 
         ConfigReader cr(fs);
         printf("DEBUG: Starting configuration of modules from sdcard...\n");
+
+        // led 2 indicates boot phase 3 starts
+        Board_LED_Set(2, false); Board_LED_Set(1, true);
 
         {
             // get general settings
@@ -454,6 +457,9 @@ static void smoothie_startup(void *)
     // create the command shell, it is dependent on some of the above
     CommandShell *commandshell= CommandShell::getInstance();
 
+    // led 1 indicates boot phase 4 starts
+    Board_LED_Set(1, false); Board_LED_Set(0, true);
+
     if(ok) {
         if(!fast_ticker->start()) {
             printf("WARNING: failed to start FastTicker (maybe nothing is using it?)\n");
@@ -512,9 +518,8 @@ static void smoothie_startup(void *)
     }
 
     if(ok) {
-        // led 3,4 off indicates boot phase 2 complete
-        Board_LED_Set(2, false);
-        Board_LED_Set(3, false);
+        // led 1 off indicates boot complete
+        Board_LED_Set(0, false);
     }
 
     if(flash_on_boot) {
@@ -552,6 +557,10 @@ int main(int argc, char *argv[])
     // setup clock and caches etc (in HAL)
     main_system_setup();
 
+    Board_LED_Init();
+    // led 4 indicates start of boot phase 1
+    Board_LED_Set(3, true);
+
     // allows cout to work again (not sure why)
     std::ios_base::sync_with_stdio(false);
 
@@ -565,9 +574,6 @@ int main(int argc, char *argv[])
 
     printf("INFO: %s on %s\n", get_mcu().c_str(), BUILD_TARGET);
     printf("INFO: MCU clock rate= %lu Hz\n", SystemCoreClock);
-
-    // led 4 indicates boot phase 1 complete
-    Board_LED_Set(3, true);
 
     if(rtc_init() != 1) {
         printf("ERROR: Failed to init RTC\n");
