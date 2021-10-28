@@ -204,7 +204,7 @@ bool Endstops::load_endstops(ConfigReader& cr)
             continue;
         }
 
-        // check this axis does not already have homign set (we can only have one homing direction set)
+        // check this axis does not already have homing set (we can only have one homing direction set)
         if(home_defined[a]) {
             printf("ERROR: configure-endstop: axis %d already has a homing direction set\n", a);
             continue;
