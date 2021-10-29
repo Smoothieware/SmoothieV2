@@ -293,12 +293,15 @@ static void smoothie_startup(void *)
                     const char *default_msc_led= "nc";
                     #endif
                     p = cr.get_string(sm, "msc_led", default_msc_led);
-                    msc_led = new Pin(p.c_str(), Pin::AS_OUTPUT);
-                    if(!msc_led->connected()) {
-                        delete msc_led;
-                        msc_led = nullptr;
-                    } else {
-                        printf("INFO: MSC led set to %s\n", msc_led->to_string().c_str());
+                    if(p != "nc") {
+                        msc_led = new Pin(p.c_str(), Pin::AS_OUTPUT);
+                        if(!msc_led->connected()) {
+                            delete msc_led;
+                            msc_led = nullptr;
+                            printf("ERROR: MSC led set to an invalid pin: %s\n", p.c_str());
+                        } else {
+                            printf("INFO: MSC led set to %s\n", msc_led->to_string().c_str());
+                        }
                     }
                 }
 
