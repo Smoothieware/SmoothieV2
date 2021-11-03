@@ -407,6 +407,7 @@ void Player::in_command_ctx(bool idle)
         // clear out the block queue, will wait until queue is empty
         // MUST be called in command thread context when idle to make sure there are no blocked messages waiting to put something on the queue
         Conveyor::getInstance()->flush_queue();
+        Conveyor::getInstance()->wait_for_idle(true);
 
         // now the position will think it is at the last received pos, so we need to do FK to get the actuator position and reset the current position
         Robot::getInstance()->reset_position_from_current_actuator_position();
@@ -452,6 +453,7 @@ void Player::player_thread()
 
         int len = strlen(buf);
         if(len == 0) continue; // empty line? should not be possible
+        // TODO remove \r\n
         if(buf[len - 1] == '\n' || feof(this->current_file_handler)) {
             if(discard) { // we are discarding a long line
                 discard = false;
@@ -569,7 +571,7 @@ bool Player::suspend_command(std::string& params, OutputStream& os )
         return true;
     }
 
-    os.printf("Suspending print, waiting for queue to empty...\n");
+    os.printf("// Suspending print, waiting for queue to empty...\n");
 
     // override the leave_heaters_on setting
     this->override_leave_heaters_on = (params == "l" || params == "h");
@@ -609,8 +611,12 @@ void Player::suspend_part2()
 
     print_to_all_consoles("// Saving current state...\n");
 
-    // save current XYZ position
-    Robot::getInstance()->get_axis_position(this->saved_position);
+    // save current XYZ position in WCS (as suspend may have changed it)
+    Robot::wcs_t mpos= Robot::getInstance()->get_axis_position();
+    Robot::wcs_t wpos= Robot::getInstance()->mcs2wcs(mpos);
+    saved_position[0]= std::get<X_AXIS>(wpos);
+    saved_position[1]= std::get<Y_AXIS>(wpos);
+    saved_position[2]= std::get<Z_AXIS>(wpos);
 
     // save current extruder state for all extruders
     std::vector<Module*> extruders = Module::lookup_group("extruder");
@@ -670,7 +676,7 @@ bool Player::resume_command(std::string& params, OutputStream& os )
         return true;
     }
 
-    os.printf("resuming print...\n");
+    os.printf("// resuming print...\n");
 
     // wait for them to reach temp
     if(!this->saved_temperatures.empty()) {
@@ -679,7 +685,7 @@ bool Player::resume_command(std::string& params, OutputStream& os )
             float t = h.second;
             h.first->request("set_temperature", &t);
         }
-        os.printf("Waiting for heaters...\n");
+        os.printf("// Waiting for heaters...\n");
         bool wait = true;
         int cnt = 0;
         while(wait) {
@@ -724,20 +730,19 @@ bool Player::resume_command(std::string& params, OutputStream& os )
 
     // execute optional gcode if defined
     if(!before_resume_gcode.empty()) {
-        os.printf("Executing before resume gcode...\n");
+        os.printf("// Executing before resume gcode...\n");
         dispatch_line(nullos, before_resume_gcode.c_str());
         Conveyor::getInstance()->wait_for_idle();
     }
 
     // Restore position
-    os.printf("Restoring saved XYZ positions and state...\n");
+    os.printf("// Restoring saved XYZ positions and state...\n");
     Robot::getInstance()->pop_state();
     bool abs_mode = Robot::getInstance()->absolute_mode; // what mode we were in
     // force absolute mode for restoring position, then set to the saved relative/absolute mode
     Robot::getInstance()->absolute_mode = true;
 
-    // NOTE position was saved in MCS so must use G53 to restore position
-    Robot::getInstance()->next_command_is_MCS = true; // must use machine coordinates in case G92 or WCS is in effect
+    // NOTE position was saved in WCS (for tool change which may have changed WCS especially the Z)
     THEDISPATCHER->dispatch(nullos, 'G', 0, 'X', saved_position[0], 'Y', saved_position[1], 'Z', saved_position[2], 0);
     Conveyor::getInstance()->wait_for_idle();
 
@@ -755,7 +760,7 @@ bool Player::resume_command(std::string& params, OutputStream& os )
         return true;
     }
 
-    os.printf("Resuming print\n");
+    os.printf("// Resuming print\n");
 
     if(this->was_playing_file) {
         this->playing_file = true;
