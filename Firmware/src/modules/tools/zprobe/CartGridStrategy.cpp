@@ -673,8 +673,10 @@ void CartGridStrategy::doCompensation(float *target, bool inverse)
     float x_target = std::min(std::max(target[X_AXIS], min_x), max_x);
     float y_target = std::min(std::max(target[Y_AXIS], min_y), max_y);
 
-    float grid_x = std::max(0.001F, (x_target - this->x_start) / (this->x_size / (this->current_grid_x_size - 1)));
-    float grid_y = std::max(0.001F, (y_target - this->y_start) / (this->y_size / (this->current_grid_y_size - 1)));
+    // we need to make sure that floor_x and floor_y are always < grid_size-1
+    float grid_x = std::max(0.001F, std::min(this->current_grid_x_size - 1.001F, (x_target - this->x_start) / (this->x_size / (this->current_grid_x_size - 1))));
+    float grid_y = std::max(0.001F, std::min(this->current_grid_y_size - 1.001F, (y_target - this->y_start) / (this->y_size / (this->current_grid_y_size - 1))));
+
     int floor_x = floorf(grid_x);
     int floor_y = floorf(grid_y);
     float ratio_x = grid_x - floor_x;
@@ -687,10 +689,13 @@ void CartGridStrategy::doCompensation(float *target, bool inverse)
     float right = (1 - ratio_y) * z3 + ratio_y * z4;
     float offset = (1 - ratio_x) * left + ratio_x * right;
 
+    // handle case where the grid was incomplete (should never happen)
+    if(isnan(offset)) return;
+
     if (inverse) {
-        target[Z_AXIS] -= offset * scale;
+        target[Z_AXIS] -= (offset * scale);
     } else {
-        target[Z_AXIS] += offset * scale;
+        target[Z_AXIS] += (offset * scale);
     }
 
     /*THEKERNEL->streams->printf("//DEBUG: TARGET: %f, %f, %f\n", target[0], target[1], target[2]);
