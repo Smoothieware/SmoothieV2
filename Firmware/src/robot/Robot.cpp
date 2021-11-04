@@ -1039,6 +1039,7 @@ bool Robot::handle_mcodes(GCode& gcode, OutputStream& os)
             Conveyor::getInstance()->wait_for_idle();
             current_wcs = 0;
             absolute_mode = true;
+            seconds_per_minute= 60;
             break;
         case 17:
             enable_all_motors(true); // turn all enable pins on
