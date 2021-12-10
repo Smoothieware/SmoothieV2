@@ -41,6 +41,7 @@ bool Board_LED_Init()
         Pin *pin= new Pin(p, Pin::AS_OUTPUT);
         if(pin->connected()){
             leds.push_back(pin);
+            pin->set(false);
         }else{
             delete pin;
             printf("ERROR: invalid pin for system LED%d: %s\n", leds.size(), p);

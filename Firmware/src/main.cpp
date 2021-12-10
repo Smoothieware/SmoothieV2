@@ -460,10 +460,11 @@ static void smoothie_startup(void *)
     // create the command shell, it is dependent on some of the above
     CommandShell *commandshell= CommandShell::getInstance();
 
-    // led 1 indicates boot phase 4 starts
-    Board_LED_Set(1, false); Board_LED_Set(0, true);
 
     if(ok) {
+        // led 1 indicates boot phase 4 starts
+        Board_LED_Set(1, false); Board_LED_Set(0, true);
+
         if(!fast_ticker->start()) {
             printf("WARNING: failed to start FastTicker (maybe nothing is using it?)\n");
         }
@@ -483,9 +484,11 @@ static void smoothie_startup(void *)
     } else {
         printf("ERROR: Configure failed\n");
         config_error_msg = "There was a fatal error in the config.ini this must be fixed to continue\nOnly some shell commands are allowed and sdcard access\n";
-        printf(config_error_msg.c_str());
+        printf(config_error_msg.c_str());t
         // Module::broadcast_halt(true);
+        Board_LED_Set(1, false); Board_LED_Set(0, false);
     }
+
     extern bool config_error_detected;
     if(config_error_detected) {
         config_error_msg = "There was an error detected in the config.ini\nPlease check the uart log\n";
