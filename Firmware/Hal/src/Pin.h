@@ -59,6 +59,7 @@ public:
     static bool set_allocated(uint8_t, uint8_t, bool set= true);
     static bool allocate_interrupt_pin(uint8_t pin, bool set= true);
     static bool is_allocated(uint8_t port, uint8_t pin);
+    static bool parse_pin(const std::string& value, char& port, uint16_t& pin, size_t& pos);
 
 private:
     uint32_t *pport;

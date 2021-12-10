@@ -664,7 +664,20 @@ bool CommandShell::gpio_cmd(std::string& params, OutputStream& os)
         return true;
     }
 
-    // FIXME need to check if pin is already allocated and just read it if it is
+    char port = 0;
+    uint16_t pin_no = 0;
+    size_t pos;
+    if(!Pin::parse_pin(gpio, port, pin_no, pos)) {
+        os.printf("Illegal pin name: %s\n", gpio.c_str());
+        return true;
+    }
+
+    // FIXME need to handle allocated pins
+    if(Pin::is_allocated(port, pin_no)) {
+        os.printf("Pin is already allocated: %s\n", gpio.c_str());
+        return true;
+    }
+
     if(dir.empty() || dir == "in") {
         // read pin
         Pin pin(gpio.c_str(), Pin::AS_INPUT);

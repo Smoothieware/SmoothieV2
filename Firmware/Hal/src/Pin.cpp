@@ -178,6 +178,22 @@ extern "C" int allocate_hal_pin(void *port, uint16_t pin)
     return 0;
 }
 
+bool Pin::parse_pin(const std::string& value, char& port, uint16_t& pin, size_t& pos)
+{
+    if(value == "nc") return false;
+    if(value.size() < 3 || toupper(value[0]) != 'P') return false;
+
+    port = toupper(value[1]);
+    if(port < 'A' || port > 'K') return false;
+
+    pos = value.find_first_of("._", 2);
+    if(pos == std::string::npos) pos = 1;
+    pin = strtol(value.substr(pos + 1).c_str(), nullptr, 10);
+    if(pin >= 16) return false;
+
+    return true;
+}
+
 // Make a new pin object from a string
 // Pins are defined for the STM32xxxx as PA6 or PA_6 or PA.6, second letter is A-K followed by a number 0-15
 bool Pin::from_string(const std::string& value)
@@ -186,19 +202,11 @@ bool Pin::from_string(const std::string& value)
     inverting = false;
     open_drain = false;
 
-    if(value == "nc") return false;
-    if(value.size() < 3 || toupper(value[0]) != 'P') return false;
-
     char port = 0;
     uint16_t pin = 0;
+    size_t pos;
 
-    port = toupper(value[1]);
-    if(port < 'A' || port > 'K') return false;
-
-    size_t pos = value.find_first_of("._", 2);
-    if(pos == std::string::npos) pos = 1;
-    pin = strtol(value.substr(pos + 1).c_str(), nullptr, 10);
-    if(pin >= 16) return false;
+    if(!parse_pin(value, port, pin, pos)) return false;
 
     {
         std::string s("P");

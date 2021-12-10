@@ -484,7 +484,7 @@ static void smoothie_startup(void *)
     } else {
         printf("ERROR: Configure failed\n");
         config_error_msg = "There was a fatal error in the config.ini this must be fixed to continue\nOnly some shell commands are allowed and sdcard access\n";
-        printf(config_error_msg.c_str());t
+        printf(config_error_msg.c_str());
         // Module::broadcast_halt(true);
         Board_LED_Set(1, false); Board_LED_Set(0, false);
     }

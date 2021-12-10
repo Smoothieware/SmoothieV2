@@ -10,11 +10,11 @@
 
 REGISTER_TEST(PinTest, test_allocation)
 {
-	Pin p("PB2");
+	Pin p("PB1");
 	TEST_ASSERT_TRUE(allocate_hal_pin(GPIOB, GPIO_PIN_3));
-	TEST_ASSERT_FALSE(allocate_hal_pin(GPIOB, GPIO_PIN_2));
+	TEST_ASSERT_FALSE(allocate_hal_pin(GPIOB, GPIO_PIN_1));
 	TEST_ASSERT_FALSE(allocate_hal_pin(GPIOB, GPIO_PIN_3));
-	Pin::set_allocated('B', 2, false);
+	Pin::set_allocated('B', 1, false);
 	Pin::set_allocated('B', 3, false);
 
 	TEST_ASSERT_FALSE(Pin::set_allocated('A'-1, 1));
@@ -55,6 +55,15 @@ REGISTER_TEST(PinTest, flashleds)
 		Pin("PA1"),
 	};
 	Pin button("PE3^!");
+#elif defined(BOARD_PRIME)
+    Pin myleds[] = {
+        Pin("PH9"),
+        Pin("PH10"),
+        Pin("PH11"),
+        Pin("PH12"),
+    };
+    Pin button("PJ14");
+
 #else
 	#error unrecognized board
 #endif
@@ -119,6 +128,9 @@ REGISTER_TEST(PinTest, interrupt_pin)
 #elif defined(BOARD_DEVEBOX)
 	Pin button("PE3^!");
 	const char *dummypin= "PD3";
+#elif defined(BOARD_PRIME)
+    Pin button("PJ14");
+    const char *dummypin= "PA14";
 #else
 	#error unrecognized board
 #endif
