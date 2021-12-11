@@ -36,9 +36,11 @@
 #ifdef BOARD_DEVEBOX
 #define QSPI_D1_PIN                GPIO_PIN_12
 #define QSPI_D1_GPIO_PORT          GPIOD
+#define QSPI_D1_AF                 GPIO_AF9_QUADSPI
 #else
 #define QSPI_D1_PIN                GPIO_PIN_9
 #define QSPI_D1_GPIO_PORT          GPIOF
+#define QSPI_D1_AF                 GPIO_AF10_QUADSPI
 #endif
 #define QSPI_D2_PIN                GPIO_PIN_2
 #define QSPI_D2_GPIO_PORT          GPIOE
@@ -214,11 +216,7 @@ void HAL_QSPI_MspInit(QSPI_HandleTypeDef *hqspi)
 
     /* QSPI D1 GPIO pin configuration  */
     GPIO_InitStruct.Pin       = QSPI_D1_PIN;
-#ifdef BOARD_DEVEBOX
-    GPIO_InitStruct.Alternate = GPIO_AF9_QUADSPI;
-#else
-    GPIO_InitStruct.Alternate = GPIO_AF10_QUADSPI;
-#endif
+    GPIO_InitStruct.Alternate = QSPI_D1_AF;
     HAL_GPIO_Init(QSPI_D1_GPIO_PORT, &GPIO_InitStruct);
 
     /* QSPI D2 GPIO pin configuration  */
