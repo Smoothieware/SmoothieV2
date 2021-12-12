@@ -386,15 +386,24 @@ bool Switch::handle_gcode(GCode& gcode, OutputStream& os)
             // drain queue
             Conveyor::getInstance()->wait_for_idle();
             // PWM output pin set duty cycle 0 - 100
-            if(gcode.has_arg('S')) {
-                float v = gcode.get_arg('S');
-                if(v > 100) v = 100;
-                else if(v < 0) v = 0;
-                this->pwm_pin->set(v / 100.0F);
-                this->switch_state = (ROUND2DP(v) != ROUND2DP(this->switch_value));
-            } else {
+            if(gcode.has_no_args() && !(gcode.has_arg('S') || gcode.has_arg('P'))) {
                 this->pwm_pin->set(this->default_on_value/100.0F);
                 this->switch_state = true;
+
+            } else {
+                float v= 0;
+                if(gcode.has_arg('S')) { // set duty cycle to given percentage
+                    v = gcode.get_arg('S');
+                    if(v > 100) v = 100;
+                    else if(v < 0) v = 0;
+                    this->pwm_pin->set(v / 100.0F);
+
+                }else if(gcode.has_arg('P')) { // set pulse width to given microseconds
+                    v = gcode.get_arg('P');
+                    if(v < 0) v = 0;
+                    v= this->pwm_pin->set_microseconds(v) * 100;
+                }
+                this->switch_state = (ROUND2DP(v) != ROUND2DP(this->switch_value));
             }
 
         } else if (this->output_type == DIGITAL) {

@@ -73,6 +73,7 @@ Pwm::~Pwm()
     }
 }
 
+// Set the duty cycle where 0.5 is 50% duty cycle
 void Pwm::set(float v)
 {
     if(!valid) return;
@@ -93,6 +94,20 @@ void Pwm::set(float v)
     uint32_t pulse = roundf(instances[timr].period * v);
     __HAL_TIM_SET_COMPARE((TIM_HandleTypeDef*)instances[timr]._htim, tc, pulse);
     // _htim->Instance->CCR[1234] = pulse;
+}
+
+// set duty cycle such that the pulse width is the number of given microseconds
+// returns duty cycle
+float Pwm::set_microseconds(float v)
+{
+    // determine duty cycle based on frequency
+    float frequency= instances[timr].frequency; // freq in Hz
+    float p= 1E6 / frequency; // get period in microseconds
+    if(v < 0) v= 0;
+    if(p < v) v= p;
+    float dc= v / p;
+    set(dc); // set duty cycle
+    return dc;
 }
 
 // this changes the frequency of an existing, running PWM timer

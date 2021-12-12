@@ -12,6 +12,7 @@ public:
 	bool is_valid() const { return valid; }
 	// set duty cycle 0-1
 	void set(float v);
+    float set_microseconds(float v);
 	float get() const { return value; }
 	uint32_t get_frequency() const { return instances[timr].frequency; }
     void set_frequency(uint32_t freq);
