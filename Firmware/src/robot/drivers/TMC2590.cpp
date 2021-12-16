@@ -194,6 +194,7 @@ TMC2590::TMC2590(char d) : designator(d)
     stall_guard2_current_register_value = STALL_GUARD2_LOAD_MEASURE_REGISTER;
     driver_configuration_register_value = DRIVER_CONFIG_REGISTER | READ_STALL_GUARD_READING;
 #if 0
+    // setConstantOffTimeChopper(int8_t constant_off_time, int8_t blank_time, int8_t fast_decay_time_setting, int8_t sine_wave_offset, uint8_t use_current_comparator)
     //set to a conservative start value
     setConstantOffTimeChopper(7, 54, 13, 12, 1);
 #else
@@ -333,14 +334,14 @@ void TMC2590::setCurrent(unsigned int current)
     //with Rsense=resistor_value
     //for vsense = 0,3250V (VSENSE not set)
     //or vsense = 0,173V (VSENSE set)
-    current_scaling = (uint8_t)((resistor_value * mASetting * 32.0 / (0.325 * 1000.0 * 1000.0)) - 0.5); //theoretically - 1.0 for better rounding it is 0.5
+    current_scaling = (uint8_t)((((resistor_value/1000) * (mASetting/1000) * 32.0) / 0.325) - 0.5); //theoretically - 1.0 for better rounding it is 0.5
 
     //check if the current scaling is too low
     if (current_scaling < 16) {
         //set the vsense bit to get a use half the sense voltage (to support lower motor currents)
         this->driver_configuration_register_value |= VSENSE;
         //and recalculate the current setting
-        current_scaling = (uint8_t)((resistor_value * mASetting * 32.0 / (0.173 * 1000.0 * 1000.0)) - 0.5); //theoretically - 1.0 for better rounding it is 0.5
+        current_scaling = (uint8_t)((((resistor_value/1000) * (mASetting/1000) * 32.0) / 0.173) - 0.5); //theoretically - 1.0 for better rounding it is 0.5
     }
 
     //do some sanity checks

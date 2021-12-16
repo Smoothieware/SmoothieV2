@@ -1246,11 +1246,11 @@ bool Robot::handle_M909(GCode& gcode, OutputStream& os)
     M911 will dump all the registers and status of all the motors
     M911[.1] Pn will dump the registers and status of the selected motor.
               R0 will request format in processing machine readable format
-    M911.2 Pn Rxxx Vyyy sets Register xxx to value yyy for motor n,
+    M911.2 [Pn] Rxxx Vyyy sets Register xxx to value yyy for motor n,
                xxx == 255 writes the registers
                xxx == 0 shows what registers are mapped to what
 
-    M911.3 Pn will set the options for motor n based on the parameters passed as below...
+    M911.3 [Pn] will set the options for motor n based on the parameters passed as below, if Pn is not specified it sets for all motors
 
     M911.3 Onnn Qnnn setStallGuardThreshold
            O=stall_guard_threshold, Q=stall_guard_filter_enabled
@@ -1293,18 +1293,26 @@ bool Robot::handle_M911(GCode& gcode, OutputStream& os)
             return true;
         }
 
-    }else if(gcode.has_arg('P')) {
-        int p= gcode.get_int_arg('P');
+    }else{
+        int p= -1;
+        if(gcode.has_arg('P')) p= gcode.get_int_arg('P');
         if(p >= get_number_registered_motors()) return true;
+        int b, e;
+        if(p < 0) {
+            b= 0, e= get_number_registered_motors();
+        }else{
+            b= p; e= p+1;
+        }
+        for (p = b; p < e; ++p) {
+            if(gcode.get_subcode() == 2 && gcode.has_arg('R') && gcode.has_arg('V')) {
+                actuators[p]->set_raw_register(os, gcode.get_int_arg('R'), gcode.get_int_arg('V'));
 
-        if(gcode.get_subcode() == 2 && gcode.has_arg('R') && gcode.has_arg('V')) {
-            actuators[p]->set_raw_register(os, gcode.get_int_arg('R'), gcode.get_int_arg('V'));
-
-        }else if(gcode.get_subcode() == 3 ) {
-            if(!actuators[p]->set_options(gcode)) {
-                os.printf("No options were recognised\n");
-            }else{
-                os.printf("options were set temporarily\n");
+            }else if(gcode.get_subcode() == 3 ) {
+                if(!actuators[p]->set_options(gcode)) {
+                    os.printf("No options were recognised\n");
+                }else{
+                    os.printf("options were set temporarily for %d\n", p);
+                }
             }
         }
         return true;

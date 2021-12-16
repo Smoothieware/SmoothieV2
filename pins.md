@@ -149,12 +149,12 @@ pins used on the headers when selecting a function in the Firmware
 | Bed              | PE3   |               |
 | Fan 1            | PE1   |               |
 | Fan 2            | PI11  |               |
-| Endstop Xmin     | PI3   |               |
-| Endstop Xmax     | PD0   |               |
-| Endstop Ymin     | PA9   |               |
-| Endstop Ymax     | PI1   |               |
-| Endstop Zmin     | PH15  |               |
-| Endstop Zmax     | PI0   |               |
+| Endstop Xmin     | PD0   |               |
+| Endstop Xmax     | PI3   |               |
+| Endstop Ymin     | PI1   |               |
+| Endstop Ymax     | PA9   |               |
+| Endstop Zmin     | PI0   |               |
+| Endstop Zmax     | PH15  |               |
 | Probe            | PB10  |               |
 
 # Gadgeteer headers
@@ -198,10 +198,10 @@ pins used on the headers when selecting a function in the Firmware
 | 3    | PD14    |           |
 | 4    | PD12    |           |
 | 5    | PD10    |           |
-| 6    | PI5     | PWM2_1  |
-| 7    | PI6     | PWM2_2  |
-| 8    | PI7     | PWM2_3  |
-| 9    | PI2     | PWM2_4  |
+| 6    | PI5     | PWM2_1    |
+| 7    | PI6     | PWM2_2    |
+| 8    | PI7     | PWM2_3    |
+| 9    | PI2     | PWM2_4    |
 | 10   |         | gnd       |
 
 ## GD
