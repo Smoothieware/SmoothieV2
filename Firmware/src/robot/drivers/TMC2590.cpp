@@ -205,6 +205,7 @@ TMC2590::TMC2590(char d) : designator(d)
 
     // for 1.5amp kysan @ 12v
     setSpreadCycleChopper(5, 54, 5, 0, 0);
+    //setSpreadCycleChopper(4, 36, 4, 0, 0);
 
     // for 4amp Nema24 @ 12v
     //setSpreadCycleChopper(5, 54, 4, 0, 0);
@@ -670,6 +671,7 @@ void TMC2590::setSpreadCycleChopper(int8_t constant_off_time, int8_t blank_time,
     //shift the hysteresis_end
     hysteresis_end += 3;
 
+    // Fixme this should be %00: 16, %01: 32, %10: 48, %11: 64
     if (hysteresis_decrement < 0) {
         hysteresis_decrement = 0;
     } else if (hysteresis_decrement > 3) {
