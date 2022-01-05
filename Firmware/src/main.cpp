@@ -516,7 +516,7 @@ static void smoothie_startup(void *)
     if(ok && config_override) {
         OutputStream os(&std::cout);
         if(load_config_override(os)) {
-            os.printf("INFO: configuration override loaded\n");
+            os.printf("INFO: configuration override %s loaded\n", DEFAULT_OVERRIDE_FILE);
 
         } else {
             os.printf("INFO: No saved configuration override\n");

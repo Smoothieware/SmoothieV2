@@ -3,12 +3,14 @@
 class OutputStream;
 class ConfigReader;
 
+#define DEFAULT_OVERRIDE_FILE "/sd/config-override"
+
 // TODO may move to Dispatcher
 bool dispatch_line(OutputStream& os, const char *line);
 bool process_command_buffer(size_t n, char *rxBuf, OutputStream *os, char *line, size_t& cnt, bool& discard, bool wait=true);
 bool configure_consoles(ConfigReader& cr);
 bool start_consoles();
-bool load_config_override(OutputStream& os);
+bool load_config_override(OutputStream& os, const char *fn=DEFAULT_OVERRIDE_FILE);
 void command_handler();
 
 // print string to all connected consoles

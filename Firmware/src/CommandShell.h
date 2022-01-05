@@ -58,6 +58,7 @@ private:
     bool jog_cmd(std::string& params, OutputStream& os);
     bool edit_cmd(std::string& params, OutputStream& os);
     bool msc_cmd(std::string& params, OutputStream& os);
+    bool load_cmd(std::string& params, OutputStream& os);
 
     bool mounted;
 };

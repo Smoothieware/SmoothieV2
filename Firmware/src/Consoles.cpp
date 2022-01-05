@@ -51,10 +51,9 @@ static bool loaded_configuration = false;
 bool config_override = false;
 
 // load configuration from override file
-static const char *OVERRIDE_FILE = "/sd/config-override";
-bool load_config_override(OutputStream& os)
+bool load_config_override(OutputStream& os, const char *fn)
 {
-    std::fstream fsin(OVERRIDE_FILE, std::fstream::in);
+    std::fstream fsin(fn, std::fstream::in);
     if(fsin.is_open()) {
         std::string s;
         OutputStream nullos;
@@ -202,9 +201,9 @@ bool dispatch_line(OutputStream& os, const char *ln)
             if(i.has_m() && (i.get_code() >= 500 && i.get_code() <= 503)) {
                 if(i.get_code() == 500) {
                     // we have M500 so redirect os to a config-override file
-                    fsout = new std::fstream(OVERRIDE_FILE, std::fstream::out | std::fstream::trunc);
+                    fsout = new std::fstream(DEFAULT_OVERRIDE_FILE, std::fstream::out | std::fstream::trunc);
                     if(!fsout->is_open()) {
-                        os.printf("ERROR: opening file: %s\n", OVERRIDE_FILE);
+                        os.printf("ERROR: opening file: %s\n", DEFAULT_OVERRIDE_FILE);
                         delete fsout;
                         return true;
                     }
@@ -213,14 +212,14 @@ bool dispatch_line(OutputStream& os, const char *ln)
 
                 } else if(i.get_code() == 501) {
                     if(load_config_override(os)) {
-                        os.printf("configuration override loaded\nok\n");
+                        os.printf("configuration override %s loaded\nok\n", DEFAULT_OVERRIDE_FILE);
                     } else {
-                        os.printf("failed to load configuration override\nok\n");
+                        os.printf("failed to load configuration override %s\nok\n", DEFAULT_OVERRIDE_FILE);
                     }
                     return true;
 
                 } else if(i.get_code() == 502) {
-                    remove(OVERRIDE_FILE);
+                    remove(DEFAULT_OVERRIDE_FILE);
                     os.printf("configuration override file deleted\nok\n");
                     return true;
 
@@ -247,9 +246,9 @@ bool dispatch_line(OutputStream& os, const char *ln)
                 delete fsout;
                 delete pos; // this would be the file output stream
                 if(!config_override) {
-                    os.printf("WARNING: override will NOT be loaded on boot\n", OVERRIDE_FILE);
+                    os.printf("WARNING: override will NOT be loaded on boot\n", DEFAULT_OVERRIDE_FILE);
                 }
-                os.printf("Settings Stored to %s\nok\n", OVERRIDE_FILE);
+                os.printf("Settings Stored to %s\nok\n", DEFAULT_OVERRIDE_FILE);
             }
 
         } else {

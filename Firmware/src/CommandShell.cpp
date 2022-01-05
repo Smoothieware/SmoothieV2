@@ -65,6 +65,7 @@ bool CommandShell::initialize()
     THEDISPATCHER->add_handler( "mkdir", std::bind( &CommandShell::mkdir_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "cat", std::bind( &CommandShell::cat_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "md5sum", std::bind( &CommandShell::md5sum_cmd, this, _1, _2) );
+    THEDISPATCHER->add_handler( "load", std::bind( &CommandShell::load_cmd, this, _1, _2) );
 
     THEDISPATCHER->add_handler( "config-set", std::bind( &CommandShell::config_set_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "config-get", std::bind( &CommandShell::config_get_cmd, this, _1, _2) );
@@ -253,6 +254,23 @@ bool CommandShell::rm_cmd(std::string& params, OutputStream& os)
         fn = stringutils::shift_parameter( params );
     }
     os.set_no_response();
+    return true;
+}
+
+bool CommandShell::load_cmd(std::string& params, OutputStream& os)
+{
+    HELP("load named config override file");
+    std::string fn = stringutils::shift_parameter( params );
+    if(!fn.empty()) {
+        if(!load_config_override(os, fn.c_str())) {
+            os.printf("failed to load config override file %s\n", fn.c_str());
+        } else {
+            os.printf("loaded config override file %s\n", fn.c_str());
+        }
+    } else {
+        os.printf("filename required\n");
+    }
+
     return true;
 }
 
