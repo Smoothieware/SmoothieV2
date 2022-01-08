@@ -322,7 +322,7 @@ bool TemperatureControl::handle_mcode(GCode & gcode, OutputStream & os)
             if(sensor->get_optional(options)) {
                 for(auto &i : options) {
                     // foreach optional value
-                    os.printf("%s(S%d): %c %1.18f\n", this->designator.c_str(), this->tool_id, i.first, i.second);
+                    os.printf("%s(S%d): %c %1.12f\n", this->designator.c_str(), this->tool_id, i.first, i.second);
                 }
             }
             os.printf("\n");
@@ -381,7 +381,7 @@ bool TemperatureControl::handle_mcode(GCode & gcode, OutputStream & os)
             if(sensor->get_optional(options) && !options.empty()) {
                 os.printf(";Optional temp sensor specific settings:\nM305 S%d", this->tool_id);
                 for(auto &i : options) {
-                    os.printf(" %c%1.18f", i.first, i.second);
+                    os.printf(" %c%1.12f", i.first, i.second);
                 }
                 os.printf("\n");
             }

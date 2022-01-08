@@ -127,7 +127,7 @@ bool Thermistor::configure(ConfigReader& cr, ConfigReader::section_map_t& m)
     // specified as three comma separated floats, no spaces
     std::string coef = cr.get_string(m, coefficients_key, "");
 
-    // speficy three temp,resistance pairs, best to use 25° 150° 240° and the coefficients will be calculated
+    // specify three temp,resistance pairs, best to use 25° 150° 240° and the coefficients will be calculated
     // specified as 25.0,100000.0,150.0,1355.0,240.0,203.0 which is temp in °C,resistance in ohms
     std::string rtc = cr.get_string(m, rt_curve_key, "");
     if(!rtc.empty()) {
@@ -256,7 +256,7 @@ void Thermistor::get_raw(OutputStream& os)
 
     float t;
     if(this->use_steinhart_hart) {
-        os.printf("S/H c1= %1.18f, c2= %1.18f, c3= %1.18f\n", c1, c2, c3);
+        os.printf("S/H c1= %1.12f, c2= %1.12f, c3= %1.12f\n", c1, c2, c3);
         float l = logf(r);
         t = (1.0F / (this->c1 + this->c2 * l + this->c3 * powf(l, 3))) - 273.15F;
         os.printf("S/H temp= %f, min= %f, max= %f, delta= %f\n", t, min_temp, max_temp, max_temp - min_temp);
@@ -383,8 +383,10 @@ bool Thermistor::set_optional(const sensor_options_t& options)
     if(define_beta || change_beta) {
         if(!calc_jk()) return false;
         use_steinhart_hart = false;
+        thermistor_number= 0;
     } else if(define_shh > 0) {
         use_steinhart_hart = true;
+        thermistor_number= 0;
     } else {
         return false;
     }
