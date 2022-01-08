@@ -113,13 +113,13 @@ bool Thermistor::configure(ConfigReader& cr, ConfigReader::section_map_t& m)
     // for the dedicated ADC specify the channel
     std::string adc_channel= cr.get_string(m, thermistor_pin_key, "");
     if(adc_channel.empty()) {
-        printf("config-thermistor: no thermistor pin defined\n");
+        printf("ERROR: config-thermistor: no thermistor pin defined\n");
         return false;
     }
 
     thermistor_pin= new Adc(adc_channel.c_str());
     if(!thermistor_pin->is_valid()) {
-        printf("config-thermistor: Thermistor ADC channel is invalid: %s\n", adc_channel.c_str());
+        printf("ERROR: config-thermistor: Thermistor ADC channel is invalid: %s\n", adc_channel.c_str());
         return false;
     }
 
@@ -141,7 +141,7 @@ bool Thermistor::configure(ConfigReader& cr, ConfigReader::section_map_t& m)
         std::vector<float> trl = stringutils::parse_number_list(rtc.c_str());
         if(trl.size() != 6) {
             // punt we need 6 numbers, three pairs
-            printf("config-thermistor: Error in config need 6 numbers for Steinhart-Hart\n");
+            printf("ERROR: config-thermistor: Error in config need 6 numbers for Steinhart-Hart\n");
             return false;
         }
 
@@ -156,7 +156,7 @@ bool Thermistor::configure(ConfigReader& cr, ConfigReader::section_map_t& m)
         std::vector<float> v = stringutils::parse_number_list(coef.c_str());
         if(v.size() != 3) {
             // punt we need 6 numbers, three pairs
-            printf("config-thermistor: Error in config need 3 Steinhart-Hart coefficients\n");
+            printf("ERROR: config-thermistor: Error in config need 3 Steinhart-Hart coefficients\n");
             return false;
         }
 
@@ -170,7 +170,7 @@ bool Thermistor::configure(ConfigReader& cr, ConfigReader::section_map_t& m)
         if(!calc_jk()) return false;
 
     } else if(!found) {
-        printf("config-thermistor: Error in config need rt_curve, coefficients, beta or a valid predefined thermistor defined\n");
+        printf("ERROR: config-thermistor: Error in config need rt_curve, coefficients, beta or a valid predefined thermistor defined\n");
         return false;
     }
 
