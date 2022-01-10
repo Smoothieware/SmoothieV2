@@ -137,6 +137,8 @@ bool TemperatureSwitch::handle_arm(GCode& gcode, OutputStream& os)
 }
 
 // Called in command context quite regularly, but we only need to service on the cooldown and heatup poll intervals
+// FIXME this means temp switch is not checked if command is blocked (eg M303 pid tuning)
+// maybe run in a slowtimer? This should be safe so long as the switch only sets pins
 void TemperatureSwitch::in_command_ctx(bool idle)
 {
     uint32_t now = xTaskGetTickCount();

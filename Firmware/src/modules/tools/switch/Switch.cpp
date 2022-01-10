@@ -435,7 +435,7 @@ bool Switch::handle_gcode(GCode& gcode, OutputStream& os)
     return true;
 }
 
-// this can only be called from the command thread context
+// this can be called from a timer as it ony sets pins and does not issue commands
 bool Switch::request(const char *key, void *value)
 {
     if(strcmp(key, "state") == 0) {
