@@ -5,6 +5,7 @@
 #include "TemperatureSwitch.h"
 #include "Dispatcher.h"
 #include "OutputStream.h"
+#include "SlowTicker.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -69,8 +70,6 @@ static bool switch_set_hit= false;
 static int hitcnt= 0;
 static float return_current_temp= 0;
 
-#define TICK2MS( xTicks ) ( (uint32_t) ( (xTicks * 1000) / configTICK_RATE_HZ ) )
-
 using pad_temperature_t = struct pad_temperature {
     float current_temperature;
     float target_temperature;
@@ -81,19 +80,11 @@ using pad_temperature_t = struct pad_temperature {
 
 static void set_temp(float t)
 {
-    uint32_t last_time= xTaskGetTickCount();
-    uint32_t msec;
-
     return_current_temp= t;
-    // we need to call this for at least 2 seconds
-    do {
-        uint32_t now= xTaskGetTickCount();
-        msec= TICK2MS(now-last_time);
-        // stimulates the in_command_ctx
-        Module::broadcast_in_commmand_ctx(true);
-    } while (msec < 3000);
-
+    // We have to wait for at least 1 second
+    vTaskDelay(pdMS_TO_TICKS(2000));
 }
+
 // Mock temperature control module
 class MockTemperatureControl : public Module
 {
@@ -145,12 +136,17 @@ public:
 
 REGISTER_TEST(TemperatureSwitch,level_low_high)
 {
+    // we need to create and start the slow ticker
+    SlowTicker *slt = SlowTicker::getInstance();
+
     // load config with required settings for this test
     std::stringstream ss(level_config);
     ConfigReader cr(ss);
     TEST_ASSERT_TRUE(TemperatureSwitch::load(cr));
     Module *m= Module::lookup("temperature switch", "psu_off");
     TEST_ASSERT_NOT_NULL(m);
+
+    TEST_ASSERT_TRUE(slt->start());
 
     // so it gets destroyed when we go out of scope
     std::unique_ptr<TemperatureSwitch> nts(static_cast<TemperatureSwitch*>(m));
@@ -188,11 +184,17 @@ REGISTER_TEST(TemperatureSwitch,level_low_high)
 
     // and make sure it was turned off
     TEST_ASSERT_FALSE(switch_state);
+
+    TEST_ASSERT_TRUE(slt->stop());
+    SlowTicker::deleteInstance();
 }
 
 REGISTER_TEST(TemperatureSwitch,edge_high_low)
 {
-    Dispatcher *dispatcher= new Dispatcher;
+    // we need to create and start the slow ticker
+    SlowTicker *slt = SlowTicker::getInstance();
+
+    Dispatcher *dispatcher= Dispatcher::getInstance();
     dispatcher->clear_handlers();
 
     // load config with required settings for this test
@@ -201,6 +203,8 @@ REGISTER_TEST(TemperatureSwitch,edge_high_low)
     TEST_ASSERT_TRUE(TemperatureSwitch::load(cr));
     Module *m= Module::lookup("temperature switch", "psu_off");
     TEST_ASSERT_NOT_NULL(m);
+
+    TEST_ASSERT_TRUE(slt->start());
 
     // so it gets destroyed when we go out of scope
     std::unique_ptr<TemperatureSwitch> nts(static_cast<TemperatureSwitch*>(m));
@@ -253,5 +257,8 @@ REGISTER_TEST(TemperatureSwitch,edge_high_low)
 
     // make sure it is not armed anymore
     TEST_ASSERT_FALSE(nts->is_armed());
+
+    TEST_ASSERT_TRUE(slt->stop());
+    SlowTicker::deleteInstance();
 }
 
