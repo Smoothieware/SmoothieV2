@@ -435,7 +435,7 @@ bool Switch::handle_gcode(GCode& gcode, OutputStream& os)
     return true;
 }
 
-// this can be called from a timer as it ony sets pins and does not issue commands
+// this can be called from a timer as it only sets pins and does not issue commands
 bool Switch::request(const char *key, void *value)
 {
     if(strcmp(key, "state") == 0) {
@@ -445,6 +445,7 @@ bool Switch::request(const char *key, void *value)
         *(float *)value = switch_value;
 
     } else if(strcmp(key, "set-state") == 0) {
+        if(!is_output()) return false;
         // TODO should we check and see if we are already in this state and ignore if we are?
         switch_state = *(bool*)value;
         if(switch_state) {
@@ -466,6 +467,7 @@ bool Switch::request(const char *key, void *value)
         }
 
     } else if(strcmp(key, "set-value") == 0) {
+        if(!is_output()) return false;
         // TODO should we check and see if we already have this value and ignore if we do?
         switch_value = *(float*)value;
         if(output_type == SIGMADELTA) {
@@ -479,8 +481,8 @@ bool Switch::request(const char *key, void *value)
             digital_pin->set(switch_state);
         }
 
-    } else {
-        return false;
+    } else if(strcmp(key, "is_output") == 0) {
+        return is_output();
     }
 
     return true;

@@ -126,7 +126,6 @@ bool TemperatureSwitch::configure(ConfigReader& cr, ConfigReader::section_map_t&
     // we read the temperature in this timer. 1Hz is fast enough
     SlowTicker::getInstance()->attach(1, std::bind(&TemperatureSwitch::tick, this));
 
-
     return true;
 }
 
@@ -219,8 +218,14 @@ void TemperatureSwitch::set_switch(bool switch_state)
     // get current switch state for the named switch
     Module *m = Module::lookup("switch", this->switch_name.c_str());
     if(m != nullptr) {
-        // get switch state
         bool state;
+        // check it is an output switch
+        if(!m->request("is_output", nullptr)) {
+            printf("ERROR: TemperatureSwitch: switch %s is not an output switch\n", this->switch_name.c_str());
+            return;
+        }
+
+        // get switch state
         m->request("state", &state);
 
         if(state != switch_state) {
@@ -229,6 +234,6 @@ void TemperatureSwitch::set_switch(bool switch_state)
         }
 
     } else {
-        printf("ERROR: TemperatureSwitch: named switch %s does not exist\n", this->switch_name.c_str());
+        printf("ERROR: TemperatureSwitch: switch %s does not exist\n", this->switch_name.c_str());
     }
 }

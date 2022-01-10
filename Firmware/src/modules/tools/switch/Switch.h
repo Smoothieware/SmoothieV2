@@ -21,6 +21,7 @@ class Switch : public Module {
         void on_halt(bool);
         virtual void in_command_ctx(bool);
         bool request(const char *key, void *value) ;
+        bool is_output() const { return !is_input; }
 
         enum OUTPUT_TYPE {NONE, SIGMADELTA, DIGITAL, HWPWM};
         std::string get_info() const;
