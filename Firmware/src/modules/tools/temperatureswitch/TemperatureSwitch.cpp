@@ -12,6 +12,7 @@ Author: Michael Hackney, mhackney@eclecticangler.com
 #include "Dispatcher.h"
 #include "OutputStream.h"
 #include "SlowTicker.h"
+#include "main.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -32,6 +33,7 @@ REGISTER_MODULE(TemperatureSwitch, TemperatureSwitch::load)
 
 TemperatureSwitch::TemperatureSwitch(const char *name) : Module("temperature switch", name)
 {
+    valid= false; // set to false until we have checked it in after_load()
 }
 
 TemperatureSwitch::~TemperatureSwitch()
@@ -126,7 +128,28 @@ bool TemperatureSwitch::configure(ConfigReader& cr, ConfigReader::section_map_t&
     // we read the temperature in this timer. 1Hz is fast enough
     SlowTicker::getInstance()->attach(1, std::bind(&TemperatureSwitch::tick, this));
 
+    // register a startup function that will be called after all modules have been loaded
+    // (as this module relies on Switch module having been loaded)
+    register_startup(std::bind(&TemperatureSwitch::after_load, this));
+
     return true;
+}
+
+void TemperatureSwitch::after_load()
+{
+    // all modules have been loaded so check that the switch exists here
+    // get current switch state for the named switch
+    Module *m = Module::lookup("switch", this->switch_name.c_str());
+    if(m != nullptr) {
+        // check it is an output switch
+        if(m->request("is_output", nullptr)) {
+            valid= true;
+        }else{
+            printf("ERROR: TemperatureSwitch: switch %s is not an output switch\n", this->switch_name.c_str());
+        }
+    }else{
+        printf("ERROR: TemperatureSwitch: switch %s does not exist\n", this->switch_name.c_str());
+    }
 }
 
 bool TemperatureSwitch::handle_arm(GCode& gcode, OutputStream& os)
@@ -140,6 +163,8 @@ bool TemperatureSwitch::handle_arm(GCode& gcode, OutputStream& os)
 // if switches require commands to be executed we need to rethink this here and in switch
 void TemperatureSwitch::tick()
 {
+    if(!valid) return; // wait until it is valid
+
     ++second_counter;
 
     if (second_counter < current_delay) return;
@@ -219,11 +244,6 @@ void TemperatureSwitch::set_switch(bool switch_state)
     Module *m = Module::lookup("switch", this->switch_name.c_str());
     if(m != nullptr) {
         bool state;
-        // check it is an output switch
-        if(!m->request("is_output", nullptr)) {
-            printf("ERROR: TemperatureSwitch: switch %s is not an output switch\n", this->switch_name.c_str());
-            return;
-        }
 
         // get switch state
         m->request("state", &state);
@@ -233,7 +253,5 @@ void TemperatureSwitch::set_switch(bool switch_state)
             m->request("set-state", &switch_state);
         }
 
-    } else {
-        printf("ERROR: TemperatureSwitch: switch %s does not exist\n", this->switch_name.c_str());
     }
 }

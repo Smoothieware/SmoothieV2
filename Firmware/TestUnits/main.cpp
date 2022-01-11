@@ -577,4 +577,11 @@ void vAssertCalled( const char *pcFile, uint32_t ulLine )
     }
     taskENABLE_INTERRUPTS();
 }
+
+using StartupFunc_t = std::function<void()>;
+void register_startup(StartupFunc_t sf)
+{
+    // dummy
+}
+
 #endif

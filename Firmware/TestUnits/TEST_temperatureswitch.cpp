@@ -125,6 +125,9 @@ public:
             switch_state = *(bool*)value;
             switch_set_hit= true;
 
+        } else if(strcmp(key, "is_output") == 0) {
+            return true;
+
         } else {
             return false;
         }
@@ -150,13 +153,18 @@ REGISTER_TEST(TemperatureSwitch,level_low_high)
 
     // so it gets destroyed when we go out of scope
     std::unique_ptr<TemperatureSwitch> nts(static_cast<TemperatureSwitch*>(m));
-    TEST_ASSERT_NOT_NULL(nts.get());
-    TEST_ASSERT_TRUE(nts->is_armed());
 
     // capture temperature requests
     MockTemperatureControl mtc("temperature control", "hotend");
     // capture any call to the switch to turn it on or off
     MockSwitch ms("switch", "fan");
+
+    TEST_ASSERT_NOT_NULL(nts.get());
+    TEST_ASSERT_FALSE(nts->is_valid());
+    nts->after_load();
+    TEST_ASSERT_TRUE(nts->is_valid());
+    TEST_ASSERT_TRUE(nts->is_armed());
+
     switch_state= false;
     switch_set_hit= false;
     switch_get_hit= false;
@@ -208,14 +216,19 @@ REGISTER_TEST(TemperatureSwitch,edge_high_low)
 
     // so it gets destroyed when we go out of scope
     std::unique_ptr<TemperatureSwitch> nts(static_cast<TemperatureSwitch*>(m));
-    TEST_ASSERT_NOT_NULL(nts.get());
-    TEST_ASSERT_FALSE(nts->is_armed());
-
-
     // capture temperature requests
     MockTemperatureControl mtc("temperature control", "hotend");
     // capture any call to the switch to turn it on or off
     MockSwitch ms("switch", "fan");
+
+    TEST_ASSERT_NOT_NULL(nts.get());
+
+    TEST_ASSERT_FALSE(nts->is_valid());
+    nts->after_load();
+    TEST_ASSERT_TRUE(nts->is_valid());
+
+    TEST_ASSERT_FALSE(nts->is_armed());
+
 
     // set initial temp low
     set_temp(25);

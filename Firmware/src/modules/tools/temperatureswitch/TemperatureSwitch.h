@@ -15,6 +15,8 @@ public:
     ~TemperatureSwitch();
     static bool load(ConfigReader& cr);
     bool is_armed() const { return armed; }
+    bool is_valid() const { return valid; }
+    void after_load();
 
 private:
     enum TRIGGER_TYPE {LEVEL, RISING, FALLING};
@@ -60,6 +62,7 @@ private:
         char designator: 8;
         bool inverted: 1;
         bool armed: 1;
+        bool valid: 1;
         TRIGGER_TYPE trigger: 2;
         STATE current_state: 2;
     };
