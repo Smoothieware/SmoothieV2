@@ -783,6 +783,6 @@ void Player::on_halt(bool flg)
        saved_temperatures.clear();
        was_playing_file= false;
        suspend_loops= 0;
-       print_to_all_consoles("// Suspend cleared\n");
+       print_to_all_consoles("// NOTE Suspend cleared due to HALT\n");
     }
 }

@@ -1,11 +1,9 @@
-Currently runs on the NUCLEO-H745ZI-Q board and Devebox 743 board.
+Currently runs on the Prime Smoothoieboard, NUCLEO-H745ZI-Q board and Devebox 743 board.
 
-To build the test cases do ```rake target=Nucleo testing=1 -m```
-then flash to Nucleo, the results print out to the uart/serial found on the STLinkV3 USB serial.
+To build the test cases do ```rake target=Prime testing=1 -m```
+then flash to Prime, the results print out to the uart/serial found on the DEBUG Uart port.
 
-To make the Firmware do ```rake target=Nucleo -m```
-
-Firmware currently runs on UART at 115200 baud and on USB serial at ttyACM0.
+To make the Firmware do ```rake target=Prime -m```
 
 The config file is called config.ini on the sdcard and examples are shown in the ConfigSamples directory, config-3d.ini is for a 3d printer, and config-laser.ini is for laser, these would be renamed config.ini and copied to the sdcard.
 
@@ -27,19 +25,20 @@ Modules that have been ported so far...
 * player
 * network
 
-*NOTE* for the smooothiev2 Prime replace Nucleo above with Prime...
-
-    rake target=Prime -m
 
 On the Prime there are 4 leds..
 
 1. led1 - smoothie led, flashes slowly when idle, does not flash when busy
 2. led2 - smoothie led, on when executing moves, flashes when in HALT
 
-Both flash if there was a serious config error.
-TBD All 4 leds flash if there is no sdcard inserted.
+leds3 and 4 indicate some sort of error as below.
 
-The debug UART port is on the STLink3 ACM0 on the Nucleo,
+led1 and led2 flash if there was a serious config error.
+on,off,on,on means there was a stack overflow
+all on means there was a Hardfault detected
+(TBD All 4 leds flash if there is no sdcard inserted)
+
+The debug UART port is on the STLink3 ACM0 on the Nucleo, and on the DEBUG Uart header on the Prime
 baud rate 115200.
 
 Initial Bootstrap
@@ -81,7 +80,7 @@ Use a JLink to debug...
 
 Then run gdb:
 
-    arm-none-eabi-gdb-64bit -ex "target remote localhost:2331" smoothiev2_Nucleo/smoothiev2.elf
+    arm-none-eabi-gdb-64bit -ex "target remote localhost:2331" smoothiev2_Prime/smoothiev2.elf
 
 The ```arm-none-eabi-gdb-64bit``` binary is in the tools directory, it is a fixed version that handles Hard Faults correctly. You can also use the arm-none tools if you have it installed.
 

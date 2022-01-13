@@ -279,7 +279,7 @@ bool process_command_buffer(size_t n, char *rx_buf, OutputStream *os, char *line
         if(line[cnt] == 24) { // ^X
             if(!Module::is_halted()) {
                 Module::broadcast_halt(true);
-                os->puts("ALARM: Abort during cycle\n");
+                print_to_all_consoles("ALARM: Abort during cycle\n");
             }
             discard = false;
             cnt = 0;
