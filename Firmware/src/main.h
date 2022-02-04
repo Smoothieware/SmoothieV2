@@ -15,3 +15,4 @@ void safe_sleep(uint32_t ms);
 // get the vmotor and vfet voltages
 float get_voltage_monitor(const char* name);
 int get_voltage_monitor_names(const char *names[]);
+extern uint8_t board_id;

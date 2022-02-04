@@ -1340,7 +1340,7 @@ bool CommandShell::version_cmd(std::string& params, OutputStream& os)
 
     Version vers;
 
-    os.printf("%s on %s\n", get_mcu().c_str(), BUILD_TARGET);
+    os.printf("%s on %s. board_id: %02X\n", get_mcu().c_str(), BUILD_TARGET, board_id);
     os.printf("Build version: %s, Build date: %s, System Clock: %ldMHz\r\n", vers.get_build(), vers.get_build_date(), SystemCoreClock / 1000000);
     os.printf("%d axis, %d primary axis\n", MAX_ROBOT_ACTUATORS, N_PRIMARY_AXIS);
 

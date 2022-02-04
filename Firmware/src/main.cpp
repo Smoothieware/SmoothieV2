@@ -557,6 +557,7 @@ extern "C" void main_system_setup();
 extern "C" int rtc_init();
 
 std::string get_mcu();
+uint8_t board_id= 0;
 
 int main(int argc, char *argv[])
 {
@@ -578,7 +579,16 @@ int main(int argc, char *argv[])
         printf("FATAL: UART setup failed\n");
     }
 
-    printf("INFO: %s on %s\n", get_mcu().c_str(), BUILD_TARGET);
+    // get board id
+    // 0 is first Prime with tmc4930 drivers
+    // 1 is second Prime with tmc2660 drivers
+    Pin bid3("PE10^", Pin::AS_INPUT),
+        bid2("PF3^", Pin::AS_INPUT),
+        bid1("PF5^", Pin::AS_INPUT),
+        bid0("PF7^", Pin::AS_INPUT);
+
+    board_id= 0x0F & ~(((bid3.get()?1:0)<<3) | ((bid2.get()?1:0)<<2) | ((bid1.get()?1:0)<<1) | ((bid3.get()?1:0)));
+    printf("INFO: %s on %s. board id: %02X\n", get_mcu().c_str(), BUILD_TARGET, board_id);
     printf("INFO: MCU clock rate= %lu Hz\n", SystemCoreClock);
 
     if(rtc_init() != 1) {

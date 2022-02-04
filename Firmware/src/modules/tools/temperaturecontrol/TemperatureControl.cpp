@@ -490,7 +490,7 @@ void TemperatureControl::set_desired_temperature(float desired_temperature)
         // set to whatever the output currently is See http://brettbeauregard.com/blog/2011/04/improving-the-beginner%E2%80%99s-pid-initialization/
         this->iTerm = this->o;
         if (this->iTerm > this->i_max) this->iTerm = this->i_max;
-        else if (this->iTerm < 0.0) this->iTerm = 0.0;
+        else if (this->iTerm < 0.0F) this->iTerm = 0.0F;
     }
 
     // reset the runaway state, even if it was a temp change
