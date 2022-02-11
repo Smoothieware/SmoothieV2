@@ -580,7 +580,7 @@ int main(int argc, char *argv[])
     }
 
     // get board id
-    // 0 is first Prime with tmc4930 drivers
+    // 0 is first Prime with tmc2590 drivers
     // 1 is second Prime with tmc2660 drivers
     Pin bid3("PE10^", Pin::AS_INPUT),
         bid2("PF3^", Pin::AS_INPUT),
