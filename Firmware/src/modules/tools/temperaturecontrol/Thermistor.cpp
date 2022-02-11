@@ -247,22 +247,30 @@ void Thermistor::get_raw(OutputStream& os)
 {
     int adc_value = new_thermistor_reading();
     const uint32_t max_adc_value = Adc::get_max_value();
-
-    // resistance of the thermistor in ohms
-    float r = r2 / (((float)max_adc_value / adc_value) - 1.0F);
-    if (r1 > 0.0F) r = (r1 * r) / (r1 - r);
+    float r;
+    if(adc_value > 0) {
+        // resistance of the thermistor in ohms
+        r = r2 / (((float)max_adc_value / adc_value) - 1.0F);
+        if (r1 > 0.0F) r = (r1 * r) / (r1 - r);
+    }else{
+        r= std::numeric_limits<float>::infinity();
+    }
     float v = 3.3F * ((float)adc_value / max_adc_value);
     os.printf("adc= %d, resistance= %f, voltage= %f, errors: %d\n", adc_value, r, v, thermistor_pin->get_errors());
 
     float t;
-    if(this->use_steinhart_hart) {
-        os.printf("S/H c1= %1.12f, c2= %1.12f, c3= %1.12f\n", c1, c2, c3);
-        float l = logf(r);
-        t = (1.0F / (this->c1 + this->c2 * l + this->c3 * powf(l, 3))) - 273.15F;
-        os.printf("S/H temp= %f, min= %f, max= %f, delta= %f\n", t, min_temp, max_temp, max_temp - min_temp);
-    } else {
-        t = (1.0F / (k + (j * logf(r / r0)))) - 273.15F;
-        os.printf("beta temp= %f, min= %f, max= %f, delta= %f\n", t, min_temp, max_temp, max_temp - min_temp);
+    if(!isinf(r)) {
+        if(this->use_steinhart_hart) {
+            os.printf("S/H c1= %1.12f, c2= %1.12f, c3= %1.12f\n", c1, c2, c3);
+            float l = logf(r);
+            t = (1.0F / (this->c1 + this->c2 * l + this->c3 * powf(l, 3))) - 273.15F;
+            os.printf("S/H temp= %f, min= %f, max= %f, delta= %f\n", t, min_temp, max_temp, max_temp - min_temp);
+        } else {
+            t = (1.0F / (k + (j * logf(r / r0)))) - 273.15F;
+            os.printf("beta temp= %f, min= %f, max= %f, delta= %f\n", t, min_temp, max_temp, max_temp - min_temp);
+        }
+    }else{
+        t= std::numeric_limits<float>::infinity();
     }
 
     // if using a predefined thermistor show its name and which table it is from
