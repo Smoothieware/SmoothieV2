@@ -17,6 +17,8 @@ Author: Michael Hackney, mhackney@eclecticangler.com
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include <math.h>
+
 #define hotend_key "hotend"
 #define threshold_temp_key "threshold_temp"
 #define type_key "type"
@@ -212,14 +214,14 @@ float TemperatureSwitch::get_highest_temperature()
     float high_temp = 0.0;
 
     // TODO optimize by getting a list of valid temperature controls in config
-    //   maybe then only get caled in ctx if it is on.
+    //   maybe then only get called in ctx if it is on.
     // scan all temperature controls with the specified designator
     std::vector<Module*> controllers = Module::lookup_group("temperature control");
     for(auto m : controllers) {
         TemperatureControl::pad_temperature_t temp;
         if(m->request("get_current_temperature", &temp)) {
             // check if this controller's temp is the highest and save it if so
-            if (temp.designator[0] == this->designator && temp.current_temperature > high_temp) {
+            if (temp.designator[0] == this->designator && !isinf(temp.current_temperature) && temp.current_temperature > high_temp) {
                 high_temp = temp.current_temperature;
             }
         }
