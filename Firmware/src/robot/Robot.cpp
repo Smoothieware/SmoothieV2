@@ -319,10 +319,12 @@ bool Robot::configure(ConfigReader& cr)
 #elif defined(DRIVER_TMC2590)
         // drivers by default for XYZA are internal TMC2590, BC are by default external
         std::string type= cr.get_string(m, driver_type_key, a >= 4 ? "external" : "tmc2590");
-        if(type == "tmc2590") {
+        if(type == "tmc2590" || type == "tmc2660") {
+            uint32_t t= type=="tmc2590" ? 2590 : 2660;
+
             // setup the TMC2590 driver for this motor
-            if(!actuators[a]->setup_tmc2590(cr, s->first.c_str())) {
-                printf("FATAL: configure-robot: setup_tmc2590 failed for %s\n", s->first.c_str());
+            if(!actuators[a]->setup_tmc(cr, s->first.c_str(), t)) {
+                printf("FATAL: configure-robot: setup_tmc%lu failed for %s\n", t, s->first.c_str());
                 return false;
             }
 

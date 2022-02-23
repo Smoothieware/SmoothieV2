@@ -92,46 +92,55 @@ void StepperMotor::manual_step(bool dir)
 #ifdef DRIVER_TMC2590
 // prime has TMC2590 drivers so this handles the setup of those drivers
 #include "TMC2590.h"
+#include "TMC26X.h"
 
 bool StepperMotor::vmot= false;
-bool StepperMotor::setup_tmc2590(ConfigReader& cr, const char *actuator_name)
+bool StepperMotor::setup_tmc(ConfigReader& cr, const char *actuator_name, uint32_t type)
 {
     char axis= motor_id<3?'X'+motor_id:'A'+motor_id-3;
-    printf("DEBUG: setting up tmc2590 for %s, axis %c\n", actuator_name, axis);
-    tmc2590= new TMC2590(axis);
-    if(!tmc2590->config(cr, actuator_name)) {
-        delete tmc2590;
+    printf("DEBUG: setting up tmc%lu for %s, axis %c\n", type, actuator_name, axis);
+    if(type == 2590) {
+        tmc= new TMC2590(axis);
+    }else if(type == 2660){
+        tmc= new TMC26X(axis);
+    }else{
+        printf("ERROR: tmc%lu is not a valid option\n", type);
         return false;
     }
-    tmc2590->init();
+
+    if(!tmc->config(cr, actuator_name)) {
+        delete tmc;
+        return false;
+    }
+    tmc->init();
 
     return true;
 }
 
 bool StepperMotor::set_current(float c)
 {
-    if(tmc2590 == nullptr) return false;
+    if(tmc == nullptr) return false;
     // send current to TMC2590
-    tmc2590->setCurrent(c*1000.0F); // sets current in milliamps
+    tmc->setCurrent(c*1000.0F); // sets current in milliamps
     return true;
 }
 
 bool StepperMotor::set_microsteps(uint16_t ms)
 {
-    if(tmc2590 == nullptr) return false;
-    tmc2590->setMicrosteps(ms); // sets microsteps
+    if(tmc == nullptr) return false;
+    tmc->setMicrosteps(ms); // sets microsteps
     return true;
 }
 
 int StepperMotor::get_microsteps()
 {
-    if(tmc2590 == nullptr) return 0;
-    return tmc2590->getMicrosteps();
+    if(tmc == nullptr) return 0;
+    return tmc->getMicrosteps();
 }
 
 void StepperMotor::enable(bool state)
 {
-    if(tmc2590 == nullptr) {
+    if(tmc == nullptr) {
         if(en_pin.connected()) {
             en_pin.set(!state);
         }
@@ -141,19 +150,19 @@ void StepperMotor::enable(bool state)
     if(state && !vmot){
         //printf("WARNING: %d: trying to enable motors when vmotor is off\n", motor_id);
         if(is_enabled())
-            tmc2590->setEnabled(false);
+            tmc->setEnabled(false);
         return;
     }
 
     // if we have lost Vmotor since last time then we need to re load all the drivers configs
     if(state && vmot_lost) {
         if(vmot) {
-            tmc2590->init();
-            tmc2590->setEnabled(true);
+            tmc->init();
+            tmc->setEnabled(true);
             vmot_lost= false;
-            printf("DEBUG: tmc2590: %d inited\n", motor_id);
+            printf("DEBUG: tmc: %d inited\n", motor_id);
         }else{
-            tmc2590->setEnabled(false);
+            tmc->setEnabled(false);
         }
         return;
     }
@@ -161,44 +170,44 @@ void StepperMotor::enable(bool state)
     // we don't want to enable/disable it if it is already in that state to avoid sending SPI all the time
     bool en= is_enabled();
     if((!en && state) || (en && !state)) {
-        tmc2590->setEnabled(state);
+        tmc->setEnabled(state);
     }
 }
 
 bool StepperMotor::is_enabled() const
 {
-    if(tmc2590 == nullptr) {
+    if(tmc == nullptr) {
         if(en_pin.connected()) {
             return !en_pin.get();
         }
         // presume always enabled
         return true;
     }
-    return tmc2590->isEnabled();
+    return tmc->isEnabled();
 }
 
 void StepperMotor::dump_status(OutputStream& os, bool flag)
 {
-    if(tmc2590 == nullptr) return;
-    tmc2590->dump_status(os, flag);
+    if(tmc == nullptr) return;
+    tmc->dump_status(os, flag);
 }
 
 void StepperMotor::set_raw_register(OutputStream& os, uint32_t reg, uint32_t val)
 {
-    if(tmc2590 == nullptr) return;
-    tmc2590->set_raw_register(os, reg, val);
+    if(tmc == nullptr) return;
+    tmc->set_raw_register(os, reg, val);
 }
 
 bool StepperMotor::set_options(GCode& gcode)
 {
-    if(tmc2590 == nullptr) return false;
-    return tmc2590->set_options(gcode);
+    if(tmc == nullptr) return false;
+    return tmc->set_options(gcode);
 }
 
 bool StepperMotor::check_driver_error()
 {
-    if(tmc2590 == nullptr) return false;
-    return tmc2590->check_errors();
+    if(tmc == nullptr) return false;
+    return tmc->check_errors();
 }
 
 #else

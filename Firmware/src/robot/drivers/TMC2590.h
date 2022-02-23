@@ -34,6 +34,8 @@
 #include <map>
 #include <bitset>
 
+#include "TMCBase.h"
+
 class OutputStream;
 class SPI;
 class ConfigReader;
@@ -44,7 +46,7 @@ class GCode;
  * \class TMC2590
  * \brief Class representing a TMC2590 stepper driver
  */
-class TMC2590
+class TMC2590 : public TMCBase
 {
 public:
     /*!
@@ -69,10 +71,10 @@ public:
      * \param rms_current the maximum current to privide to the motor in mA (!). A value of 200 would send up to 200mA to the motor
      * \param resistor the current sense resistor in milli Ohm, defaults to ,15 Ohm ( or 150 milli Ohm) as in the TMC260 Arduino Shield
 
-     * This routine configures the TMC2590 stepper driver for the given values via SPI.
+     * This routine co`nfigures the TMC2590 stepper driver for the given values via SPI.
      * Most member functions are non functional if the driver has not been started.
      */
-    void init();
+    virtual void init();
 
     /*!
      * \brief Set the number of microsteps in 2^i values (rounded) up to 256
@@ -82,7 +84,7 @@ public:
      * If you give any other value it will be rounded to the next smaller number (3 would give a microstepping of 2).
      * You can always check the current microstepping with getMicrosteps().
      */
-    void setMicrosteps(int number_of_steps);
+    virtual void setMicrosteps(int number_of_steps);
 
     /*!
      * \brief returns the effective current number of microsteps selected.
@@ -92,20 +94,20 @@ public:
      *
      * \sa setMicrosteps()
      */
-    int getMicrosteps(void);
+    virtual int getMicrosteps(void);
 
     /*!
      *\brief enables or disables the motor driver bridges. If disabled the motor can run freely. If enabled not.
      *\param enabled a bool value true if the motor should be enabled, false otherwise.
      */
-    void setEnabled(bool enabled);
+    virtual void setEnabled(bool enabled);
 
     /*!
      *\brief checks if the output bridges are enabled. If the bridges are not enabled the motor can run freely
      *\return true if the bridges and by that the motor driver are enabled, false if not.
      *\sa setEnabled()
      */
-    bool isEnabled();
+    virtual bool isEnabled();
 
     /*!
      * \brief set the maximum motor current in mA (1000 is 1 Amp)
@@ -114,14 +116,14 @@ public:
      * \param current the maximum motor current in mA
      * \sa getCurrent(), getCurrentCurrent()
      */
-    void setCurrent(unsigned int current);
+    virtual void setCurrent(unsigned int current);
 
-    bool set_raw_register(OutputStream& stream, uint32_t reg, uint32_t val);
-    bool check_errors();
+    virtual bool set_raw_register(OutputStream& stream, uint32_t reg, uint32_t val);
+    virtual bool check_errors();
 
-    bool config(ConfigReader& cr, const char *actuator_name);
-    void dump_status(OutputStream& stream, bool readable= true);
-    bool set_options(const GCode& gcode);
+    virtual bool config(ConfigReader& cr, const char *actuator_name);
+    virtual void dump_status(OutputStream& stream, bool readable= true);
+    virtual bool set_options(const GCode& gcode);
 
 private:
 
