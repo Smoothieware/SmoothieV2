@@ -77,7 +77,7 @@ class StepperMotor
             bool extruder:1;
         };
 
-#ifdef DRIVER_TMC2590
+#ifdef DRIVER_TMC
     public:
         bool set_current(float c);
         bool set_microsteps(uint16_t ms);

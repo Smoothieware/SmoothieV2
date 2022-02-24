@@ -89,8 +89,8 @@ void StepperMotor::manual_step(bool dir)
 }
 
 
-#ifdef DRIVER_TMC2590
-// prime has TMC2590 drivers so this handles the setup of those drivers
+#ifdef DRIVER_TMC
+// prime has TMC2590 or TMC2660 drivers so this handles the setup of those drivers
 #include "TMC2590.h"
 #include "TMC26X.h"
 

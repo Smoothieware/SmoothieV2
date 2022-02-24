@@ -26,7 +26,7 @@
  THE SOFTWARE.
 
  */
-
+#ifdef DRIVER_TMC
 #include "TMC26X.h"
 #include "main.h"
 #include "OutputStream.h"
@@ -1243,3 +1243,4 @@ bool TMC26X::set_options(const GCode& gcode)
 
     return set;
 }
+#endif

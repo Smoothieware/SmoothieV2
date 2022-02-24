@@ -122,7 +122,7 @@ private:
     bool handle_G92(GCode&, OutputStream&);
     bool handle_M500(GCode&, OutputStream&);
     bool handle_M665(GCode&, OutputStream&);
-    #ifdef DRIVER_TMC2590
+    #ifdef DRIVER_TMC
     bool handle_M909(GCode&, OutputStream&);
     bool handle_M911(GCode&, OutputStream&);
     bool handle_setregs_cmd( std::string& params, OutputStream& os );

@@ -96,7 +96,7 @@ bool CurrentControl::configure(ConfigReader& cr)
         pins[name] = pwm;
         bool ok = set_current(name, c);
 
-#elif defined(DRIVER_TMC2590)
+#elif defined(DRIVER_TMC)
         // SPI defined current control, we ask actuator to deal with it
         bool ok = set_current(name, c);
 #else
@@ -136,7 +136,7 @@ bool CurrentControl::set_current(const std::string& name, float current)
     x->second->set(current_to_pwm(current));
     bool ok = true;
 
-#elif defined(DRIVER_TMC2590)
+#elif defined(DRIVER_TMC)
     // ask Actuator to set its current
     char axis = lookup_name(name.c_str());
     if(axis == 0) return false;

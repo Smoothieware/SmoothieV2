@@ -1,4 +1,4 @@
-#if defined(DRIVER_TMC2590)
+#ifdef DRIVER_TMC
 #include "TMC2590.h"
 #include "main.h"
 #include "Consoles.h"

@@ -316,13 +316,15 @@ bool Robot::configure(ConfigReader& cr)
             printf("DEBUG: configure-robot: microstepping for %s set to %d,%d,%d\n",
                    s->first.c_str(), ms1_pin.get(), ms2_pin.get(), ms3_pin.get());
         }
-#elif defined(DRIVER_TMC2590)
-        // drivers by default for XYZA are internal TMC2590, BC are by default external
-        std::string type= cr.get_string(m, driver_type_key, a >= 4 ? "external" : "tmc2590");
+#elif defined(DRIVER_TMC)
+        // drivers by default for XYZA are internal, BC are by default external
+        // check board ID and select default tmc driver accordingly
+        const char *def_driver= board_id == 1 ? "tmc2660" : "tmc2590";
+        std::string type= cr.get_string(m, driver_type_key, a >= 4 ? "external" : def_driver);
         if(type == "tmc2590" || type == "tmc2660") {
             uint32_t t= type=="tmc2590" ? 2590 : 2660;
 
-            // setup the TMC2590 driver for this motor
+            // setup the TMC driver for this motor
             if(!actuators[a]->setup_tmc(cr, s->first.c_str(), t)) {
                 printf("FATAL: configure-robot: setup_tmc%lu failed for %s\n", t, s->first.c_str());
                 return false;
@@ -357,7 +359,7 @@ bool Robot::configure(ConfigReader& cr)
     if(s != ssm.end()) {
         auto& mm = s->second; // map of general actuator config settings
 
-#if defined(DRIVER_TMC2590)
+#if defined(DRIVER_TMC)
         check_driver_errors= cr.get_bool(mm, check_driver_errors_key, false);
         halt_on_driver_alarm= cr.get_bool(mm, halt_on_driver_alarm_key, false);
         const char *default_motor_enn= "PH13";
@@ -430,7 +432,7 @@ bool Robot::configure(ConfigReader& cr)
     #endif
 
     //this->clearToolOffset();
-#ifdef DRIVER_TMC2590
+#ifdef DRIVER_TMC
     // setup a timer to periodically check VMOT and if it is off we need to tell all motors to reset when it comes on again
     // also will check driver errors if enabled
     periodic_checks();
@@ -504,7 +506,7 @@ bool Robot::configure(ConfigReader& cr)
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 500, std::bind(&Robot::handle_M500, this, _1, _2));
 
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 665, std::bind(&Robot::handle_M665, this, _1, _2));
-#ifdef DRIVER_TMC2590
+#ifdef DRIVER_TMC
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 909, std::bind(&Robot::handle_M909, this, _1, _2));
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 911, std::bind(&Robot::handle_M911, this, _1, _2));
     THEDISPATCHER->add_handler( "setregs", std::bind( &Robot::handle_setregs_cmd, this, _1, _2) );
@@ -512,7 +514,7 @@ bool Robot::configure(ConfigReader& cr)
     return true;
 }
 
-#ifdef DRIVER_TMC2590
+#ifdef DRIVER_TMC
 void Robot::periodic_checks()
 {
     // check vmot
@@ -1222,7 +1224,7 @@ bool Robot::handle_mcodes(GCode& gcode, OutputStream& os)
     return handled;
 }
 
-#ifdef DRIVER_TMC2590
+#ifdef DRIVER_TMC
 bool Robot::handle_M909(GCode& gcode, OutputStream& os)
 {
     for (int i = 0; i < get_number_registered_motors(); i++) {
@@ -1356,7 +1358,7 @@ bool Robot::handle_setregs_cmd( std::string& params, OutputStream& os )
     return true;
 }
 
-#endif // ifdef DRIVER_TMC2590
+#endif // ifdef DRIVER_TMC
 
 bool Robot::handle_M500(GCode& gcode, OutputStream& os)
 {
