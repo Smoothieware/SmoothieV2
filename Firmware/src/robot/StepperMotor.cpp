@@ -104,7 +104,7 @@ bool StepperMotor::setup_tmc(ConfigReader& cr, const char *actuator_name, uint32
     }else if(type == 2660){
         tmc= new TMC26X(axis);
     }else{
-        printf("ERROR: tmc%lu is not a valid option\n", type);
+        printf("ERROR: tmc%lu is not a valid driver\n", type);
         return false;
     }
 
@@ -120,7 +120,7 @@ bool StepperMotor::setup_tmc(ConfigReader& cr, const char *actuator_name, uint32
 bool StepperMotor::set_current(float c)
 {
     if(tmc == nullptr) return false;
-    // send current to TMC2590
+    // send current to TMC
     tmc->setCurrent(c*1000.0F); // sets current in milliamps
     return true;
 }

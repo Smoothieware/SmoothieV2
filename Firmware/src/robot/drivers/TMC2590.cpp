@@ -146,18 +146,20 @@
 #define step_interpolation_key          "step_interpolation"
 #define passive_fast_decay_key          "passive_fast_decay"
 #define reset_pin_key                   "reset_pin"
+#define spi_channel_key                 "spi_channel"
+
+#ifdef BOARD_DEVEBOX
+constexpr static int def_spi_channel= 0;
+#else
+constexpr static int def_spi_channel= 1;
+#endif
 
 //statics common to all instances
 SPI *TMC2590::spi = nullptr;
+uint8_t TMC2590::spi_channel= def_spi_channel;
 bool TMC2590::common_setup = false;
 uint32_t TMC2590::max_current = 3000; // 3 amps
 Pin *TMC2590::reset_pin = nullptr;
-
-#ifdef BOARD_DEVEBOX
-constexpr static int spichannel= 0;
-#else
-constexpr static int spichannel= 1;
-#endif
 
 /*
  * Constructor
@@ -171,56 +173,12 @@ TMC2590::TMC2590(char d) : designator(d)
     error_reported.reset();
     error_detected.reset();
 
-    // setup singleton spi instance
-    // TODO move to config and make channel configurable
-    if(spi == nullptr) {
-        bool ok = false;
-        spi = SPI::getInstance(spichannel);
-        if(spi != nullptr) {
-            if(spi->init(8, 3, 500000)) { // 8bit, mode3, 500KHz
-                ok = true;
-            }
-        }
-        if(!ok) {
-            printf("ERROR: TMC2590 failed to get SPI channel %d\n", spichannel);
-            return;
-        }
-    }
-
     // setting the default register values
     driver_control_register_value = DRIVER_CONTROL_REGISTER;
     chopper_config_register_value = CHOPPER_CONFIG_REGISTER;
     cool_step_register_value = COOL_STEP_REGISTER;
     stall_guard2_current_register_value = STALL_GUARD2_LOAD_MEASURE_REGISTER;
     driver_configuration_register_value = DRIVER_CONFIG_REGISTER | READ_STALL_GUARD_READING;
-#if 0
-    // setConstantOffTimeChopper(int8_t constant_off_time, int8_t blank_time, int8_t fast_decay_time_setting, int8_t sine_wave_offset, uint8_t use_current_comparator)
-    //set to a conservative start value
-    setConstantOffTimeChopper(7, 54, 13, 12, 1);
-#else
-    //void TMC2590::setSpreadCycleChopper( constant_off_time,  blank_time,  hysteresis_start,  hysteresis_end,  hysteresis_decrement);
-
-    // openbuilds high torque nema23 3amps (2.8)
-    //setSpreadCycleChopper(5, 36, 6, 0, 0);
-
-    // for 1.5amp kysan @ 12v
-    setSpreadCycleChopper(5, 54, 5, 0, 0);
-    //setSpreadCycleChopper(4, 36, 4, 0, 0);
-
-    // for 4amp Nema24 @ 12v
-    //setSpreadCycleChopper(5, 54, 4, 0, 0);
-
-    // set medium gate driver strength high= 3, low= 3 (0x0F000)
-    driver_configuration_register_value |= (SLPH | SLPL);
-    driver_configuration_register_value &= ~(SLPHL2);
-#endif
-    setEnabled(false);
-
-    // set a nice microstepping value
-    setMicrosteps(DEFAULT_MICROSTEPPING_VALUE);
-
-    // set stallguard to a conservative value so it doesn't trigger immediately
-    setStallGuardThreshold(10, 1);
 }
 
 bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
@@ -250,6 +208,74 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
     spi_cs->set(true);
     printf("DEBUG:configure-tmc2590: %s - spi cs pin: %s\n", actuator_name, spi_cs->to_string().c_str());
 
+    // if this is the first instance then get any common settings
+    if(!common_setup) {
+        auto c = ssm.find("common");
+        if(c != ssm.end()) {
+            auto& cm = c->second; // map of common tmc2590 config values
+            spi_channel = cr.get_int(cm, spi_channel_key, def_spi_channel);
+            max_current = cr.get_int(cm, max_current_key, this->resistor == 75 ? 3100 : 4600);
+            if(reset_pin == nullptr) {
+                reset_pin= new Pin(cr.get_string(cm, reset_pin_key, "nc"), Pin::AS_OUTPUT);
+                if(reset_pin->connected()) {
+                    printf("DEBUG:configure-tmc2590: reset pin set to: %s\n", reset_pin->to_string().c_str());
+                    reset_pin->set(true); // turns on all drivers
+                }else{
+                    delete reset_pin;
+                    reset_pin= nullptr;
+                }
+            }
+        }
+        common_setup = true;
+    }
+
+    // setup singleton spi instance
+    if(spi == nullptr) {
+        bool ok = false;
+        spi = SPI::getInstance(spi_channel);
+        if(spi != nullptr) {
+            if(spi->init(8, 3, 500000)) { // 8bit, mode3, 500KHz
+                ok = true;
+            }
+        }
+        if(!ok) {
+            printf("ERROR: TMC2590 failed to get SPI channel %d\n", spi_channel);
+            return false;
+        }
+    }
+
+    // setup default values
+#if 0
+    // setConstantOffTimeChopper(int8_t constant_off_time, int8_t blank_time, int8_t fast_decay_time_setting, int8_t sine_wave_offset, uint8_t use_current_comparator)
+    //set to a conservative start value
+    setConstantOffTimeChopper(7, 54, 13, 12, 1);
+#else
+    //void TMC2590::setSpreadCycleChopper( constant_off_time,  blank_time,  hysteresis_start,  hysteresis_end,  hysteresis_decrement);
+
+    // openbuilds high torque nema23 3amps (2.8)
+    //setSpreadCycleChopper(5, 36, 6, 0, 0);
+
+    // for 1.5amp kysan @ 12v
+    setSpreadCycleChopper(5, 54, 5, 0, 0);
+    //setSpreadCycleChopper(4, 36, 4, 0, 0);
+
+    // for 4amp Nema24 @ 12v
+    //setSpreadCycleChopper(5, 54, 4, 0, 0);
+
+    // set medium gate driver strength high= 3, low= 3 (0x0F000)
+    driver_configuration_register_value |= (SLPH | SLPL);
+    driver_configuration_register_value &= ~(SLPHL2);
+#endif
+
+    setEnabled(false);
+
+    // set a nice microstepping value
+    setMicrosteps(DEFAULT_MICROSTEPPING_VALUE);
+
+    // set stallguard to a conservative value so it doesn't trigger immediately
+    setStallGuardThreshold(10, 1);
+
+    // get rest of instance specific configs
     this->resistor = cr.get_int(mm, resistor_key, 75); // in milliohms
     printf("DEBUG:configure-tmc2590: %s - sense resistor: %d milliohms\n", actuator_name, resistor);
 
@@ -281,25 +307,6 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
         printf("DEBUG:configure-tmc2590: %s - passive fast decay is on\n", actuator_name);
     }
 
-    // if this is the first instance then get any common settings
-    if(!common_setup) {
-        auto c = ssm.find("common");
-        if(c != ssm.end()) {
-            auto& cm = c->second; // map of common tmc2590 config values
-            max_current = cr.get_int(cm, max_current_key, this->resistor == 75 ? 3100 : 4600);
-            if(reset_pin == nullptr) {
-                reset_pin= new Pin(cr.get_string(cm, reset_pin_key, "nc"), Pin::AS_OUTPUT);
-                if(reset_pin->connected()) {
-                    printf("DEBUG:configure-tmc2590: reset pin set to: %s\n", reset_pin->to_string().c_str());
-                    reset_pin->set(true); // turns on all drivers
-                }else{
-                    delete reset_pin;
-                    reset_pin= nullptr;
-                }
-            }
-        }
-        common_setup = true;
-    }
     return true;
 }
 

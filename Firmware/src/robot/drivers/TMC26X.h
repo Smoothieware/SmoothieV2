@@ -427,6 +427,7 @@ private:
     static bool common_setup;
 
     // one instance of SPI is shared
+    static uint8_t spi_channel;
     static SPI *spi;
     Pin *spi_cs;
     std::string name;
