@@ -171,6 +171,16 @@ uint8_t TMC26X::spi_channel= def_spi_channel;
 bool TMC26X::common_setup= false;
 uint32_t TMC26X::max_current= 2800; // 2.8 amps
 
+#ifdef BOARD_PRIME
+// setup default SPI CS pin for Prime
+static std::map<std::string, const char*> def_cs_pins = {
+    {"alpha", "PJ13"},
+    {"beta", "PG8"},
+    {"gamma", "PG7"},
+    {"delta", "PG6"}
+};
+#endif
+
 /*
  * Constructor
  */
@@ -207,12 +217,22 @@ bool TMC26X::config(ConfigReader& cr, const char *actuator_name)
     }
 
     auto& mm = s->second; // map of tmc2660 config values for this actuator
+    const char *def_cs= "nc";
 
-    std::string cs_pin = cr.get_string(mm, spi_cs_pin_key, "nc");
+#ifdef BOARD_PRIME
+    {
+        auto dcss= def_cs_pins.find(actuator_name);
+        if(dcss != def_cs_pins.end()) {
+            def_cs= dcss->second;
+        }
+    }
+#endif
+
+    std::string cs_pin = cr.get_string(mm, spi_cs_pin_key, def_cs);
     spi_cs = new Pin(cs_pin.c_str(), Pin::AS_OUTPUT);
     if(!spi_cs->connected()) {
         delete spi_cs;
-        printf("ERROR:config_tmc2660: spi cs pin is invalid for: %s\n", actuator_name);
+        printf("ERROR:config_tmc2660: spi cs pin %s is invalid for: %s\n", cs_pin.c_str(), actuator_name);
         return false;
     }
     spi_cs->set(true);

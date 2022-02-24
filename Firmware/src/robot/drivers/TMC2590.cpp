@@ -161,6 +161,16 @@ bool TMC2590::common_setup = false;
 uint32_t TMC2590::max_current = 3000; // 3 amps
 Pin *TMC2590::reset_pin = nullptr;
 
+#ifdef BOARD_PRIME
+// setup default SPI CS pin for Prime
+static std::map<std::string, const char*> def_cs_pins = {
+    {"alpha", "PJ13"},
+    {"beta", "PG8"},
+    {"gamma", "PG7"},
+    {"delta", "PG6"}
+};
+#endif
+
 /*
  * Constructor
  */
@@ -197,12 +207,21 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
     }
 
     auto& mm = s->second; // map of tmc2590 config values for this actuator
+    const char *def_cs= "nc";
+#ifdef BOARD_PRIME
+    {
+        auto dcss= def_cs_pins.find(actuator_name);
+        if(dcss != def_cs_pins.end()) {
+            def_cs= dcss->second;
+        }
+    }
+#endif
 
-    std::string cs_pin = cr.get_string(mm, spi_cs_pin_key, "nc");
+    std::string cs_pin = cr.get_string(mm, spi_cs_pin_key, def_cs);
     spi_cs = new Pin(cs_pin.c_str(), Pin::AS_OUTPUT);
     if(!spi_cs->connected()) {
         delete spi_cs;
-        printf("ERROR:config_tmc2590: %s - spi cs pin is invalid\n", actuator_name);
+        printf("ERROR:config_tmc2590: %s - spi cs pin %s is invalid\n", actuator_name, cs_pin.c_str());
         return false;
     }
     spi_cs->set(true);
