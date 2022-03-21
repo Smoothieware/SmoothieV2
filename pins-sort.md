@@ -9,7 +9,7 @@
 | SPI0MISO         | PA6   |                        |
 | RX_DV            | PA7   | ETH                    |
 | I2C1 SCL         | PA8   | n/a on devebox         |
-| ESYN	           | PA9   |                        |
+| ESYN             | PA9   |                        |
 | USB2id           | PA10  | ACM/CDC Device         |
 | USB2             | PA11  | ACM/CDC Device         |
 | USB2             | PA12  | ACM/CDC Device         |
@@ -65,6 +65,7 @@
 |                  | PE7   |                        |
 |                  | PE8   |                        |
 | PWM1_1           | PE9   |                        |
+| board id #3      | PE10  |                        |
 | PWM1_2           | PE11  |                        |
 | SPI1CK           | PE12  | Motor                  |
 | PWM1_3           | PE13  |                        |
@@ -72,8 +73,11 @@
 | I2C0 SDA         | PF0   |                        |
 | I2C0 SCL         | PF1   |                        |
 |                  | PF2   |                        |
+| board id #2      | PF3   |                        |
 | ADC3_4           | PF4   |                        |
+| board id #1      | PF5   |                        |
 | ADC3_3           | PF6   |                        |
+| board id # 0     | PF7   |                        |
 | ADC3_2           | PF8   | fet sense              |
 | IO1              | PF9   | QSPI                   |
 | ADC3_1           | PF10  |                        |
@@ -81,7 +85,7 @@
 | ADC1_2           | PF12  | T2                     |
 | MSC LED          | PF13  |                        |
 | OutputEnb        | PF14  | mosfets                |
-| 	               | PF15  |                        |
+|                  | PF15  |                        |
 |                  | PG0   |                        |
 |                  | PG1   |                        |
 | DIR B            | PG2   |                        |

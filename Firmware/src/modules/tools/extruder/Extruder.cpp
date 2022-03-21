@@ -104,7 +104,7 @@ bool Extruder::configure(ConfigReader& cr, ConfigReader::section_map_t& m)
     this->retract_length           = cr.get_float(m, retract_length_key, 3);
     this->retract_feedrate         = cr.get_float(m, retract_feedrate_key, 45);
     this->retract_recover_length   = cr.get_float(m, retract_recover_length_key, 0);
-    this->retract_recover_feedrate = cr.get_float(m, retract_recover_feedrate_key, 8);
+    this->retract_recover_feedrate = cr.get_float(m, retract_recover_feedrate_key, 30);
     this->retract_zlift_length     = cr.get_float(m, retract_zlift_length_key, 0);
     this->retract_zlift_feedrate   = cr.get_float(m, retract_zlift_feedrate_key, 100 * 60) / 60.0F; // mm/min
 

@@ -365,7 +365,7 @@ bool TemperatureControl::handle_mcode(GCode & gcode, OutputStream & os)
                 this->heater_pin->max_pwm(gcode.get_arg('Y'));
 
         } else if(!gcode.has_arg('S')) {
-            os.printf("%s(S%d): Pf:%g If:%g Df:%g X(I_max):%g max pwm: %d O:%d\n", this->designator.c_str(), this->tool_id, this->p_factor, this->i_factor / this->PIDdt, this->d_factor * this->PIDdt, this->i_max, this->heater_pin->max_pwm(), o);
+            os.printf("%s(S%d): P: %g I: %g D: %g X(I_max):%g max pwm: %d O:%d\n", this->designator.c_str(), this->tool_id, this->p_factor, this->i_factor / this->PIDdt, this->d_factor * this->PIDdt, this->i_max, this->heater_pin->max_pwm(), o);
         }
 
         return true;
@@ -650,6 +650,7 @@ void TemperatureControl::check_runaway()
                             char error_msg[132];
                             snprintf(error_msg, sizeof(error_msg), "ERROR: Temperature runaway on %s (delta temp %f), HALT asserted, TURN POWER OFF IMMEDIATELY - reset or M999 required\n", designator.c_str(), delta);
                             print_to_all_consoles(error_msg);
+                            print_to_all_consoles("WARNING: All mosfets have been turned off until HALT is cleared\n");
 
                             broadcast_halt(true);
                             this->runaway_state = NOT_HEATING;

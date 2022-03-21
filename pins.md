@@ -156,6 +156,10 @@ pins used on the headers when selecting a function in the Firmware
 | Endstop Zmin     | PI0   |               |
 | Endstop Zmax     | PH15  |               |
 | Probe            | PB10  |               |
+| board id #3      | PE10  |               |
+| board id #2      | PF3   |               |
+| board id #1      | PF5   |               |
+| board id #0      | PF7   |               |
 
 # Gadgeteer headers
 
