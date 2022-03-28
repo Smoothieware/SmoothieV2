@@ -590,6 +590,8 @@ int main(int argc, char *argv[])
     board_id= 0x0F & ~(((bid3.get()?1:0)<<3) | ((bid2.get()?1:0)<<2) | ((bid1.get()?1:0)<<1) | ((bid0.get()?1:0)));
     printf("INFO: %s on %s. board id: %02X\n", get_mcu().c_str(), BUILD_TARGET, board_id);
     printf("INFO: MCU clock rate= %lu Hz\n", SystemCoreClock);
+    // de init them
+    bid0.deinit(); bid1.deinit(); bid2.deinit(); bid3.deinit();
 
     if(rtc_init() != 1) {
         printf("ERROR: Failed to init RTC\n");

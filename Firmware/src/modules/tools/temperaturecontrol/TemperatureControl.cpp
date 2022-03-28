@@ -40,6 +40,7 @@
 #define p_factor_key "p_factor"
 #define i_factor_key "i_factor"
 #define d_factor_key "d_factor"
+#define ponm_key "use_ponm"
 
 #define i_max_key "i_max"
 #define windup_key "windup"
@@ -177,7 +178,7 @@ bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t
     if(!sensor->configure(cr, m)) {
         printf("INFO: configure-temperature: %s sensor %s failed to configure\n", get_instance_name(), sensor_type.c_str());
         delete sensor;
-        sensor= nullptr;
+        sensor = nullptr;
         return false;
     }
 
@@ -209,6 +210,8 @@ bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t
     setPIDp( cr.get_float(m, p_factor_key, 10 ) );
     setPIDi( cr.get_float(m, i_factor_key, 0.3f) );
     setPIDd( cr.get_float(m, d_factor_key, 200) );
+    // use Proportional on measurement otherwise Proportional on Error (legacy)
+    ponm = cr.get_bool(m, ponm_key, false);
 
     if(!this->readonly) {
         // set to the same as max_pwm by default
@@ -363,6 +366,8 @@ bool TemperatureControl::handle_mcode(GCode & gcode, OutputStream & os)
                 this->i_max = gcode.get_arg('X');
             if (gcode.has_arg('Y'))
                 this->heater_pin->max_pwm(gcode.get_arg('Y'));
+            if (gcode.has_arg('Z'))
+                this->ponm = gcode.get_arg('Z') == 1;
 
         } else if(!gcode.has_arg('S')) {
             os.printf("%s(S%d): P: %g I: %g D: %g X(I_max):%g max pwm: %d O:%d\n", this->designator.c_str(), this->tool_id, this->p_factor, this->i_factor / this->PIDdt, this->d_factor * this->PIDdt, this->i_max, this->heater_pin->max_pwm(), o);
@@ -371,7 +376,7 @@ bool TemperatureControl::handle_mcode(GCode & gcode, OutputStream & os)
         return true;
 
     } else if (gcode.get_code() == 500) { // M500 saves some volatile settings to config override file
-        os.printf(";PID settings, i_max, max_pwm:\nM301 S%d P%1.4f I%1.4f D%1.4f X%1.4f Y%d\n", this->tool_id, this->p_factor, this->i_factor / this->PIDdt, this->d_factor * this->PIDdt, this->i_max, this->heater_pin->max_pwm());
+        os.printf(";PID settings, i_max, max_pwm:\nM301 S%d P%1.4f I%1.4f D%1.4f X%1.4f Y%d Z%d\n", this->tool_id, this->p_factor, this->i_factor / this->PIDdt, this->d_factor * this->PIDdt, this->i_max, this->heater_pin->max_pwm(), this->ponm);
 
         os.printf(";Max temperature setting:\nM143 S%d P%1.4f\n", this->tool_id, this->max_temp);
 
@@ -550,29 +555,54 @@ void TemperatureControl::pid_process(float temperature)
         return;
     }
 
-    // regular PID control
-    float error = target_temperature - temperature;
+    // PID control
+    if(ponm) {
+        // Proportional on Measurement from http://brettbeauregard.com/blog/2017/06/introducing-proportional-on-measurement/
+        float input = temperature;
+        float error = target_temperature - input;
+        float dInput = (input - lastInput);
+        iTerm += (i_factor * error);
 
-    float new_I = this->iTerm + (error * this->i_factor);
-    if (new_I > this->i_max) new_I = this->i_max;
-    else if (new_I < 0.0) new_I = 0.0;
-    if(!this->windup) this->iTerm = new_I;
+        // Add Proportional on Measurement
+        iTerm -= p_factor * dInput;
 
-    float d = (temperature - this->lastInput);
+        if(iTerm > heater_pin->max_pwm()) iTerm = heater_pin->max_pwm();
+        else if(iTerm < 0) iTerm = 0;
 
-    // calculate the PID output
-    // TODO does this need to be scaled by max_pwm/256? I think not as p_factor already does that
-    this->o = (this->p_factor * error) + new_I - (this->d_factor * d);
+        // Compute Rest of PID Output
+        float output = iTerm - d_factor * dInput;
 
-    if (this->o >= heater_pin->max_pwm())
-        this->o = heater_pin->max_pwm();
-    else if (this->o < 0)
-        this->o = 0;
-    else if(this->windup)
-        this->iTerm = new_I; // Only update I term when output is not saturated.
+        if(output > heater_pin->max_pwm()) output = heater_pin->max_pwm();
+        else if(output < 0) output = 0;
+        this->o = output;
+        heater_pin->pwm(output);
+        lastInput = input;
 
-    this->heater_pin->pwm(this->o);
-    this->lastInput = temperature;
+    } else {
+        // regular P on Error PID control
+        float error = target_temperature - temperature;
+
+        float new_I = this->iTerm + (error * this->i_factor);
+        if (new_I > this->i_max) new_I = this->i_max;
+        else if (new_I < 0.0) new_I = 0.0;
+        if(!this->windup) this->iTerm = new_I;
+
+        float d = (temperature - this->lastInput);
+
+        // calculate the PID output
+        // TODO does this need to be scaled by max_pwm/256? I think not as p_factor already does that
+        this->o = (this->p_factor * error) + new_I - (this->d_factor * d);
+
+        if (this->o >= heater_pin->max_pwm())
+            this->o = heater_pin->max_pwm();
+        else if (this->o < 0)
+            this->o = 0;
+        else if(this->windup)
+            this->iTerm = new_I; // Only update I term when output is not saturated.
+
+        this->heater_pin->pwm(this->o);
+        this->lastInput = temperature;
+    }
 }
 
 // called every second
@@ -586,7 +616,7 @@ void TemperatureControl::check_runaway()
         print_to_all_consoles(error_msg);
         // force into ALARM state
         broadcast_halt(true);
-        temp_violated= false;
+        temp_violated = false;
         return;
     }
 

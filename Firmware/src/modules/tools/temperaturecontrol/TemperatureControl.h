@@ -102,6 +102,7 @@ private:
         bool readonly: 1;
         bool windup: 1;
         bool sensor_settings: 1;
+        bool ponm:1;
     };
 };
 
