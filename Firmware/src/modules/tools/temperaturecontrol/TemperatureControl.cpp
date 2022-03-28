@@ -132,7 +132,7 @@ bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t
     n = cr.get_int(m, runaway_heating_timeout_key, 900);
     if(n > 4088) n = 4088;
     this->runaway_heating_timeout = n / 8; // we have 8 second ticks
-    n = cr.get_int(m, runaway_cooling_timeout_key, 0); // disable by default
+    n = cr.get_int(m, runaway_cooling_timeout_key, n); // same as heating timeout by default
     if(n > 4088) n = 4088;
     this->runaway_cooling_timeout = n / 8;
 
