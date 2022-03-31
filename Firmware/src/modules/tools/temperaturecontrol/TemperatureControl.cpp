@@ -328,7 +328,12 @@ bool TemperatureControl::handle_mcode(GCode & gcode, OutputStream & os)
             return true;
 
         } else if(!gcode.has_arg('S')) {
-            os.printf("%s(S%d): using %s - active: %d\n", this->designator.c_str(), this->tool_id, this->readonly ? "Readonly" : this->use_bangbang ? "Bangbang" : "PID", active);
+            os.printf("%s(S%d): using %s - active: %d", this->designator.c_str(), this->tool_id, this->readonly ? "Readonly" : this->use_bangbang ? "Bangbang" : "PID", active);
+            if(!readonly) {
+                os.printf(", %s\n", heater_pin->to_string().c_str());
+            }else{
+                os.printf("\n");
+            }
             sensor->get_raw(os);
             TempSensor::sensor_options_t options;
             if(sensor->get_optional(options)) {
