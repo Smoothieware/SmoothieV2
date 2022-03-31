@@ -58,7 +58,6 @@ TemperatureControl::TemperatureControl(const char *name) : Module("temperature c
     temp_violated = false;
     sensor = nullptr;
     readonly = false;
-    tick = 0;
     active = false;
 }
 
@@ -123,18 +122,10 @@ bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t
     this->designator          = cr.get_string(m, designator_key, "T");
 
     // Runaway parameters
-    uint32_t n = cr.get_int(m, runaway_range_key, 20);
-    if(n > 63) n = 63;
-    this->runaway_range = n;
+    this->runaway_range = cr.get_int(m, runaway_range_key, 20);
 
-    // TODO probably do not need to pack these anymore
-    // these need to fit in 9 bits after dividing by 8 so max is 4088 secs or 68 minutes
-    n = cr.get_int(m, runaway_heating_timeout_key, 900);
-    if(n > 4088) n = 4088;
-    this->runaway_heating_timeout = n / 8; // we have 8 second ticks
-    n = cr.get_int(m, runaway_cooling_timeout_key, n); // same as heating timeout by default
-    if(n > 4088) n = 4088;
-    this->runaway_cooling_timeout = n / 8;
+    this->runaway_heating_timeout = cr.get_int(m, runaway_heating_timeout_key, 60*5); // default timeout is 5 mins
+    this->runaway_cooling_timeout = cr.get_int(m, runaway_cooling_timeout_key, this->runaway_heating_timeout); // same as heating timeout by default
 
     this->runaway_error_range = cr.get_float(m, runaway_error_range_key, 1.0F);
 
@@ -624,9 +615,6 @@ void TemperatureControl::check_runaway()
     // see if runaway detection is enabled
     if(this->runaway_heating_timeout == 0 && this->runaway_range == 0) return;
 
-    // check every 8 seconds, depends on tick being 3 bits
-    if(++tick != 0) return;
-
     // Check whether or not there is a temperature runaway issue, if so stop everything and report it
 
     if(this->target_temperature <= 0) { // If we are not trying to heat, state is NOT_HEATING
@@ -641,7 +629,6 @@ void TemperatureControl::check_runaway()
             case NOT_HEATING: // If we were previously not trying to heat, but we are now, change to state WAITING_FOR_TEMP_TO_BE_REACHED
                 this->runaway_state = (this->target_temperature >= current_temperature || this->runaway_cooling_timeout == 0) ? HEATING_UP : COOLING_DOWN;
                 this->runaway_timer = 0;
-                tick = 0;
                 break;
 
             case HEATING_UP:
@@ -651,7 +638,6 @@ void TemperatureControl::check_runaway()
                     (runaway_state == COOLING_DOWN && current_temperature <= (this->target_temperature + this->runaway_error_range)) ) {
                     this->runaway_state = TARGET_TEMPERATURE_REACHED;
                     this->runaway_timer = 0;
-                    tick = 0;
 
                 } else {
                     uint16_t t = (runaway_state == HEATING_UP) ? this->runaway_heating_timeout : this->runaway_cooling_timeout;
@@ -674,9 +660,9 @@ void TemperatureControl::check_runaway()
                     // we are in state TARGET_TEMPERATURE_REACHED, check for thermal runaway
                     float delta = current_temperature - this->target_temperature;
 
-                    // If the temperature is outside the acceptable range for 8 seconds, this allows for some noise spikes without halting
+                    // If the temperature is outside the acceptable range for 5 seconds, this allows for some noise spikes without halting
                     if(fabsf(delta) > this->runaway_range) {
-                        if(this->runaway_timer++ >= 1) { // this being 8 seconds
+                        if(this->runaway_timer++ >= 5) {
                             char error_msg[132];
                             snprintf(error_msg, sizeof(error_msg), "ERROR: Temperature runaway on %s (delta temp %f), HALT asserted, TURN POWER OFF IMMEDIATELY - reset or M999 required\n", designator.c_str(), delta);
                             print_to_all_consoles(error_msg);
