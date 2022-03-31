@@ -112,7 +112,7 @@ bool Thermistor::configure(ConfigReader& cr, ConfigReader::section_map_t& m, con
 
     // for the dedicated ADC specify the channel
     std::string adc_channel= cr.get_string(m, thermistor_pin_key, defadc);
-    if(adc_channel.empty()) {
+    if(adc_channel.empty() || adc_channel == "nc") {
         printf("ERROR: config-thermistor: no thermistor pin defined\n");
         return false;
     }
@@ -256,7 +256,7 @@ void Thermistor::get_raw(OutputStream& os)
         r= std::numeric_limits<float>::infinity();
     }
     float v = 3.3F * ((float)adc_value / max_adc_value);
-    os.printf("adc= %d, resistance= %f, voltage= %f, errors: %d\n", adc_value, r, v, thermistor_pin->get_errors());
+    os.printf("%s: adc= %d, resistance= %f, voltage= %f, errors: %d\n", thermistor_pin->to_string().c_str(), adc_value, r, v, thermistor_pin->get_errors());
 
     float t;
     if(!isinf(r)) {

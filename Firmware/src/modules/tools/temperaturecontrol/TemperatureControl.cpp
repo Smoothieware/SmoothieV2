@@ -160,7 +160,7 @@ bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t
             this->readonly = false;
 
         } else {
-            printf("ERROR: configure-temperature control: heater pin is invalid %s\n", hp.c_str());
+            printf("ERROR: configure-temperature: %s heater pin is invalid %s\n", name, hp.c_str());
             this->readonly = true;
             delete heater_pin;
             heater_pin = nullptr;
@@ -186,7 +186,7 @@ bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t
 
     // allow sensor to read the config
     if(!sensor->configure(cr, m, def.adc)) {
-        printf("INFO: configure-temperature: %s sensor %s failed to configure\n", get_instance_name(), sensor_type.c_str());
+        printf("ERROR: configure-temperature: %s sensor %s failed to configure\n", name, sensor_type.c_str());
         delete sensor;
         sensor = nullptr;
         return false;
@@ -194,7 +194,6 @@ bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t
 
     this->preset1 = cr.get_float(m, preset1_key, 0);
     this->preset2 = cr.get_float(m, preset2_key, 0);
-
 
     // sigma-delta output modulation
     this->o = 0;

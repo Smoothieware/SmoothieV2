@@ -27,6 +27,7 @@ public:
     int get_channel() const { return channel; }
     uint32_t get_errors() const { return not_ready_error; }
     bool is_valid() const { return valid; }
+    std::string to_string() const;
 
     static int get_max_value() { return 65535;} // 16bit samples
 

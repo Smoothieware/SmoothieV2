@@ -69,6 +69,11 @@ Adc::~Adc()
     taskEXIT_CRITICAL();
 }
 
+std::string Adc::to_string() const
+{
+    return this->name;
+}
+
 #define ADCx                            ADC1
 #define ADCx_CLK_ENABLE()               __HAL_RCC_ADC12_CLK_ENABLE()
 #define ADCx_CHANNEL_GPIO_CLK_ENABLE()  __HAL_RCC_GPIOA_CLK_ENABLE()
