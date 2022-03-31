@@ -42,7 +42,7 @@ Thermistor::~Thermistor()
 }
 
 // Get configuration from the config file
-bool Thermistor::configure(ConfigReader& cr, ConfigReader::section_map_t& m)
+bool Thermistor::configure(ConfigReader& cr, ConfigReader::section_map_t& m, const char *defadc)
 {
     // Values are here : http://reprap.org/wiki/Thermistor
     this->r0   = 100000;
@@ -111,7 +111,7 @@ bool Thermistor::configure(ConfigReader& cr, ConfigReader::section_map_t& m)
     this->r2 = cr.get_float(m, r2_key, this->r2);
 
     // for the dedicated ADC specify the channel
-    std::string adc_channel= cr.get_string(m, thermistor_pin_key, "");
+    std::string adc_channel= cr.get_string(m, thermistor_pin_key, defadc);
     if(adc_channel.empty()) {
         printf("ERROR: config-thermistor: no thermistor pin defined\n");
         return false;

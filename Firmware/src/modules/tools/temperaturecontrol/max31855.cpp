@@ -22,7 +22,7 @@
 SPI *MAX31855::spi = nullptr;
 
 // Get configuration from the config file
-bool MAX31855::configure(ConfigReader& cr, ConfigReader::section_map_t& m)
+bool MAX31855::configure(ConfigReader& cr, ConfigReader::section_map_t& m, const char *def)
 {
     int spi_channel = cr.get_int(m, spi_channel_key, -1);
     if(spi == nullptr) {

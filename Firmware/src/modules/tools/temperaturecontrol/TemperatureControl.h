@@ -38,7 +38,7 @@ public:
     friend class PID_Autotuner;
 
 private:
-    bool configure(ConfigReader& cr, ConfigReader::section_map_t& m);
+    bool configure(ConfigReader& cr, ConfigReader::section_map_t& m, const char *name);
 
     void thermistor_read_tick(void);
     void pid_process(float);
@@ -88,12 +88,12 @@ private:
 
     uint8_t tool_id{0};
 
+    uint16_t set_m_code;
+    uint16_t set_and_wait_m_code;
+    uint16_t get_m_code;
+
     // pack these to save memory
     struct {
-        uint16_t name_checksum;
-        uint16_t set_m_code: 10;
-        uint16_t set_and_wait_m_code: 10;
-        uint16_t get_m_code: 10;
         RUNAWAY_TYPE runaway_state: 2;
         bool use_bangbang: 1;
         bool temp_violated: 1;

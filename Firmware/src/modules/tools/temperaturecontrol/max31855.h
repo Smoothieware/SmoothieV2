@@ -13,7 +13,7 @@ class MAX31855 : public TempSensor
         virtual ~MAX31855() {};
 
         // TempSensor interface.
-        bool configure(ConfigReader& cr, ConfigReader::section_map_t&);
+        bool configure(ConfigReader& cr, ConfigReader::section_map_t&, const char *defadc);
         float get_temperature();
         void get_raw(OutputStream& os);
 

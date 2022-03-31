@@ -16,7 +16,7 @@ class Thermistor : public TempSensor
         virtual ~Thermistor();
 
         // TempSensor interface.
-        bool configure(ConfigReader& cr, ConfigReader::section_map_t&);
+        bool configure(ConfigReader& cr, ConfigReader::section_map_t&, const char *defadc);
         float get_temperature();
         bool set_optional(const sensor_options_t& options);
         bool get_optional(sensor_options_t& options);

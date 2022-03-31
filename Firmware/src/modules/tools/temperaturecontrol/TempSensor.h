@@ -13,7 +13,7 @@ public:
     virtual ~TempSensor() {}
 
     // Load config parameters using provided "base" names.
-    virtual bool configure(ConfigReader& cr, ConfigReader::section_map_t& m) { return true; }
+    virtual bool configure(ConfigReader& cr, ConfigReader::section_map_t& m, const char *defpin= "") { return true; }
 
     // Return temperature in degrees Celsius.
     virtual float get_temperature() { return -1.0F; }

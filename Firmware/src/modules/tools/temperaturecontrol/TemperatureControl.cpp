@@ -82,12 +82,12 @@ bool TemperatureControl::load_controls(ConfigReader& cr)
         auto& m = i.second;
         if(cr.get_bool(m, "enable", false)) {
             TemperatureControl *tc = new TemperatureControl(name.c_str());
-            if(tc->configure(cr, m)) {
+            if(tc->configure(cr, m, name.c_str())) {
                 // make sure the first (or only) heater is selected
                 if(tc->tool_id == 0) tc->active = true;
                 if(tc->tool_id == 255) {
-                    // config did not set a tool id (eg bed) but we need a unique one so...
-                    tc->tool_id = 254 - cnt;
+                    // config did not set a tool id but we need a unique one so...
+                    tc->tool_id = 253 - cnt;
                     tc->active = true; // and they are always active
                 }
                 ++cnt;
@@ -107,26 +107,45 @@ bool TemperatureControl::load_controls(ConfigReader& cr)
     return cnt > 0;
 }
 
-bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t& m)
+// setup defaults for known boards
+using def_t = struct {const char *heater; const char *adc; const char *desig; int id;};
+#ifdef BOARD_PRIME
+// setup default pins for Prime
+static std::map<std::string, def_t> default_config = {
+    {"hotend", {"PE0", "ADC1_0", "T", 0}},
+    {"hotend2", {"PB8", "ADC1_2", "T2", 1}},
+    {"bed", {"PE3", "ADC1_3", "B", 254}},
+    {"board", {"nc", "ADC1_1", "P", 253}}
+};
+
+#else
+static std::map<std::string, def_t> default_config;
+#endif
+
+bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t& m, const char *name)
 {
     // We start not desiring any temp
     this->target_temperature = UNDEFINED;
     this->sensor_settings = false; // set to true if sensor settings have been overriden
 
+    def_t def= {"nc", "", "?", 255};
+    auto defs= default_config.find(name);
+    if(defs != default_config.end()) {
+        def= defs->second;
+    }
+
     // General config
-    this->tool_id             = cr.get_int(m, tool_id_key, 255); // set to 255 by default which is a bed and not controlled by Tx, other extruders should be 0 or 1 etc
+    this->tool_id             = cr.get_int(m, tool_id_key, def.id); // set to 255 by default which is not an extruder and not controlled by Tx, etruders should be 0 or 1 etc
     this->set_m_code          = cr.get_int(m, set_m_code_key, tool_id < 100 ? 104 : 140); // hotend vs bed
     this->set_and_wait_m_code = cr.get_int(m, set_and_wait_m_code_key, tool_id < 100 ? 109 : 190); // hotend vs bed
     this->get_m_code          = cr.get_int(m, get_m_code_key, 105);
     this->readings_per_second = cr.get_int(m, readings_per_second_key, 20);
-    this->designator          = cr.get_string(m, designator_key, "T");
+    this->designator          = cr.get_string(m, designator_key, def.desig);
 
     // Runaway parameters
     this->runaway_range = cr.get_int(m, runaway_range_key, 20);
-
     this->runaway_heating_timeout = cr.get_int(m, runaway_heating_timeout_key, 60*5); // default timeout is 5 mins
     this->runaway_cooling_timeout = cr.get_int(m, runaway_cooling_timeout_key, this->runaway_heating_timeout); // same as heating timeout by default
-
     this->runaway_error_range = cr.get_float(m, runaway_error_range_key, 1.0F);
 
     // Max and min temperatures we are not allowed to get over (Safety)
@@ -134,7 +153,7 @@ bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t
     this->min_temp = cr.get_float(m, min_temp_key, 0);
 
     // Heater pin
-    std::string hp = cr.get_string(m, heater_pin_key, "nc");
+    std::string hp = cr.get_string(m, heater_pin_key, def.heater);
     if(hp != "nc" && !hp.empty()) {
         this->heater_pin = new SigmaDeltaPwm(hp.c_str());
         if(this->heater_pin->connected()) {
@@ -166,7 +185,7 @@ bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t
     }
 
     // allow sensor to read the config
-    if(!sensor->configure(cr, m)) {
+    if(!sensor->configure(cr, m, def.adc)) {
         printf("INFO: configure-temperature: %s sensor %s failed to configure\n", get_instance_name(), sensor_type.c_str());
         delete sensor;
         sensor = nullptr;
