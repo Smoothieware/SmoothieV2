@@ -705,12 +705,14 @@ bool Player::resume_command(std::string& params, OutputStream& os )
             }
             if(timeup) os.printf("\n");
 
-            if(Module::is_halted() && suspended) { // check we have not already cleaned up the suspend
-                // abort temp wait and rest of resume
-                os.printf("Resume aborted by kill\n");
-                Robot::getInstance()->pop_state();
-                this->saved_temperatures.clear();
-                suspended = false;
+            if(Module::is_halted()) { // check we have not already cleaned up the suspend
+                if(suspended) {
+                    // abort temp wait and rest of resume
+                    os.printf("Resume aborted by kill\n");
+                    Robot::getInstance()->pop_state();
+                    this->saved_temperatures.clear();
+                    suspended = false;
+                }
                 return true;
             }
         }
