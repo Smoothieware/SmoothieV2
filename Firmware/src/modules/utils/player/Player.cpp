@@ -58,7 +58,7 @@ Player::Player() : Module("player")
     this->suspended = false;
     this->suspend_loops = 0;
     abort_thread = false;
-    abort_flg= false;
+    abort_flg = false;
     play_thread_exited = false;
     instance = this;
 }
@@ -307,7 +307,7 @@ bool Player::play_command( std::string& params, OutputStream& os )
     play_thread_exited = false;
 
     // Note this is lower priority than command thread and the comms thread
-    BaseType_t status = xTaskCreate(play_thread, "PlayThread", 4000/4, NULL, (tskIDLE_PRIORITY + 1UL), (TaskHandle_t *) NULL);
+    BaseType_t status = xTaskCreate(play_thread, "PlayThread", 4000 / 4, NULL, (tskIDLE_PRIORITY + 1UL), (TaskHandle_t *) NULL);
     if (status != pdPASS) {
         printf("Player: xTaskCreate failed, status=%ld\n", status);
     }
@@ -331,7 +331,11 @@ bool Player::progress_command( std::string& params, OutputStream& os )
         return true;
 
     } else if(!playing_file) {
-        os.printf("Not currently playing\n");
+        if(suspended) {
+            os.printf("Suspended\n");
+        }else{
+            os.printf("Not currently playing\n");
+        }
         return true;
     }
 
@@ -368,14 +372,32 @@ bool Player::abort_command( std::string& params, OutputStream& os )
     HELP("abort playing file");
 
     if(!playing_file && current_file_handler == nullptr) {
-        os.printf("Not currently playing\n");
+        if(suspended) {
+            // clean up from suspend
+            suspended = false;
+            Robot::getInstance()->pop_state();
+            saved_temperatures.clear();
+            was_playing_file = false;
+            suspend_loops = 0;
+            os.printf("Suspend cleared\n");
+        } else {
+            os.printf("Not currently playing\n");
+        }
         return true;
     }
 
     printf("DEBUG: aborting play, waiting for thread to exit..\n");
 
     abort_thread = true;
-    suspended = false;
+    if(suspended) {
+        // clean up from suspend
+        suspended = false;
+        Robot::getInstance()->pop_state();
+        saved_temperatures.clear();
+        was_playing_file = false;
+        suspend_loops = 0;
+        os.printf("Suspend cleared\n");
+    }
 
     // there could be several gcodes queued after thread exits, we need to flush the message queue as well
     // so we need to complete this in command thread context when it is idle
@@ -403,7 +425,7 @@ void Player::in_command_ctx(bool idle)
 
     if(abort_flg && idle) {
         // we need to abort but there will be gcodes in the message queue so wait until idle then clean up
-        abort_flg= false;
+        abort_flg = false;
         // clear out the block queue, will wait until queue is empty
         // MUST be called in command thread context when idle to make sure there are no blocked messages waiting to put something on the queue
         Conveyor::getInstance()->flush_queue();
@@ -437,7 +459,7 @@ void Player::player_thread()
     start_ticks = xTaskGetTickCount();
     char buf[130]; // lines upto 128 characters are allowed, anything longer is discarded
     bool discard = false;
-    uint32_t linecnt= 0;
+    uint32_t linecnt = 0;
 
     while(fgets(buf, sizeof(buf), this->current_file_handler) != NULL) {
         while(!playing_file && !abort_thread && !Module::is_halted()) {
@@ -513,14 +535,14 @@ void Player::player_thread()
 bool Player::request(const char *key, void *value)
 {
     if(strcmp("is_playing", key) == 0) {
-        unsigned long elapsed_secs= 0;
-        unsigned char pcnt= 0;
-        bool playing= (this->playing_file || this->current_file_handler);
+        unsigned long elapsed_secs = 0;
+        unsigned char pcnt = 0;
+        bool playing = (this->playing_file || this->current_file_handler);
         if(playing) {
-            elapsed_secs= ((xTaskGetTickCount() - start_ticks) * 1000 / configTICK_RATE_HZ) / 1000;
+            elapsed_secs = ((xTaskGetTickCount() - start_ticks) * 1000 / configTICK_RATE_HZ) / 1000;
             pcnt = roundf(((float)file_size - (file_size - played_cnt)) * 100.0F / file_size);
         }
-        std::tuple<bool, unsigned long, unsigned char> r= std::make_tuple(playing, elapsed_secs, pcnt);
+        std::tuple<bool, unsigned long, unsigned char> r = std::make_tuple(playing, elapsed_secs, pcnt);
         memcpy(value, &r, sizeof(r));
         return true;
 
@@ -605,18 +627,18 @@ void Player::suspend_part2()
 
     if(Module::is_halted()) {
         print_to_all_consoles("Suspend aborted by kill\n");
-        suspended= false;
+        suspended = false;
         return;
     }
 
     print_to_all_consoles("// Saving current state...\n");
 
     // save current XYZ position in WCS (as suspend may have changed it)
-    Robot::wcs_t mpos= Robot::getInstance()->get_axis_position();
-    Robot::wcs_t wpos= Robot::getInstance()->mcs2wcs(mpos);
-    saved_position[0]= std::get<X_AXIS>(wpos);
-    saved_position[1]= std::get<Y_AXIS>(wpos);
-    saved_position[2]= std::get<Z_AXIS>(wpos);
+    Robot::wcs_t mpos = Robot::getInstance()->get_axis_position();
+    Robot::wcs_t wpos = Robot::getInstance()->mcs2wcs(mpos);
+    saved_position[0] = std::get<X_AXIS>(wpos);
+    saved_position[1] = std::get<Y_AXIS>(wpos);
+    saved_position[2] = std::get<Z_AXIS>(wpos);
 
     // save current extruder state for all extruders
     std::vector<Module*> extruders = Module::lookup_group("extruder");
@@ -779,12 +801,12 @@ bool Player::resume_command(std::string& params, OutputStream& os )
 void Player::on_halt(bool flg)
 {
     if(flg && suspended) {
-       // clean up from suspend
-       suspended= false;
-       Robot::getInstance()->pop_state();
-       saved_temperatures.clear();
-       was_playing_file= false;
-       suspend_loops= 0;
-       print_to_all_consoles("// NOTE Suspend cleared due to HALT\n");
+        // clean up from suspend
+        suspended = false;
+        Robot::getInstance()->pop_state();
+        saved_temperatures.clear();
+        was_playing_file = false;
+        suspend_loops = 0;
+        print_to_all_consoles("// NOTE Suspend cleared due to HALT\n");
     }
 }
