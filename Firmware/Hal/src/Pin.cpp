@@ -314,9 +314,8 @@ bool Pin::as_output()
     GPIO_InitStruct.Pin = ppin;
 
     pullup = pulldown = false;
-
+    is_input= false;
     HAL_GPIO_Init((GPIO_TypeDef *)pport, &GPIO_InitStruct);
-
     return true;
 }
 
@@ -330,6 +329,7 @@ bool Pin::as_input()
     GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
     GPIO_InitStruct.Pin = ppin;
 
+    is_input= true;
     HAL_GPIO_Init((GPIO_TypeDef *)pport, &GPIO_InitStruct);
 
     return true;

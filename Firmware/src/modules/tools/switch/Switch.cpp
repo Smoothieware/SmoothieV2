@@ -168,6 +168,7 @@ bool Switch::configure(ConfigReader& cr, ConfigReader::section_map_t& m)
             } else {
                 //set_low_on_debug(digital_pin->port_number, digital_pin->pin);
             }
+            // printf("DEBUG: Initial output state: %s\n", digital_pin->to_string().c_str());
         }
 
     } else if(type == "hwpwm") {

@@ -59,6 +59,9 @@
 static bool system_running = false;
 static Pin *aux_play_led = nullptr;
 Pin *msc_led = nullptr;
+Pin *fets_enable_pin = nullptr;       // global enable pin
+Pin *fets_power_enable_pin = nullptr; // global enable pin
+
 extern "C" int config_dfu_required;
 extern "C" int config_msc_enable;
 
@@ -435,6 +438,44 @@ static void smoothie_startup(void *)
         // setup PWM
         if(!Pwm::post_config_setup()) {
             printf("ERROR: Pwm::post_config_setup failed\n");
+        }
+
+        {
+            // setup fet enable
+            // global enable pin for all fets
+            #if defined(BOARD_PRIME)
+            const char *default_fets_enn= "PF14!";  // it is a not enable
+            const char *default_fets_power= "PD7!"; // it is a not enable
+            #else
+            const char *default_fets_enn= "nc";
+            const char *default_fets_power= "nc";
+            #endif
+
+            ConfigReader::section_map_t sm;
+            if(cr.get_section("system", sm)) {
+                fets_enable_pin= new Pin(cr.get_string(sm, "fets_enable_pin", default_fets_enn), Pin::AS_OUTPUT);
+                if(!fets_enable_pin->connected()) {
+                    delete fets_enable_pin;
+                    fets_enable_pin= nullptr;
+                    printf("DEBUG: No FET NEnable\n");
+                }else{
+                    fets_enable_pin->set(true);
+                    printf("DEBUG: FET NEnable is on pin %s\n", fets_enable_pin->to_string().c_str());
+                }
+
+                fets_power_enable_pin= new Pin(cr.get_string(sm, "fets_power_enable_pin", default_fets_power), Pin::AS_OUTPUT);
+                if(!fets_power_enable_pin->connected()) {
+                    delete fets_power_enable_pin;
+                    fets_power_enable_pin= nullptr;
+                    printf("DEBUG: No FET Power NEnable\n");
+                }else{
+                    fets_power_enable_pin->set(true);
+                    printf("DEBUG: FET Power NEnable is on pin %s\n", fets_power_enable_pin->to_string().c_str());
+                }
+
+            }else{
+                printf("WARNING: no [system] section found, FET NEnable and Power NEnable are disabled\n");
+            }
         }
 
         // close the file stream

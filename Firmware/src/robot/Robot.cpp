@@ -67,8 +67,6 @@
 // only one of these for all the drivers
 #define common_key                      "common"
 #define motors_enable_pin_key           "motors_enable_pin"
-#define fets_enable_pin_key             "fets_enable_pin"
-#define fets_power_enable_pin_key       "fets_power_enable_pin"
 #define check_driver_errors_key         "check_driver_errors"
 #define halt_on_driver_alarm_key        "halt_on_driver_alarm"
 
@@ -378,44 +376,6 @@ bool Robot::configure(ConfigReader& cr)
         }
     }
 
-    {
-        // system settings
-        // global enable pin for all fets
-        #if defined(BOARD_PRIME)
-        const char *default_fets_enn= "PF14";
-        const char *default_fets_power= "PD7";
-        #else
-        const char *default_fets_enn= "nc";
-        const char *default_fets_power= "nc";
-        #endif
-
-        ConfigReader::section_map_t sm;
-        if(cr.get_section("system", sm)) {
-            fets_enable_pin= new Pin(cr.get_string(sm, fets_enable_pin_key, default_fets_enn), Pin::AS_OUTPUT);
-            if(!fets_enable_pin->connected()) {
-                delete fets_enable_pin;
-                fets_enable_pin= nullptr;
-                printf("DEBUG: configure-robot: No FET NEnable\n");
-            }else{
-                fets_enable_pin->set(false); // it is a not enable
-                printf("DEBUG: configure-robot: FET NEnable is on pin %s\n", fets_enable_pin->to_string().c_str());
-            }
-
-            fets_power_enable_pin= new Pin(cr.get_string(sm, fets_power_enable_pin_key, default_fets_power), Pin::AS_OUTPUT);
-            if(!fets_power_enable_pin->connected()) {
-                delete fets_power_enable_pin;
-                fets_power_enable_pin= nullptr;
-                printf("DEBUG: configure-robot: No FET Power NEnable\n");
-            }else{
-                fets_power_enable_pin->set(false); // it is a not enable
-                printf("DEBUG: configure-robot: FET Power NEnable is on pin %s\n", fets_power_enable_pin->to_string().c_str());
-            }
-
-        }else{
-            printf("WARNING: configure-robot: no [system] section found, FET NEnable and Power NEnable are disabled\n");
-        }
-    }
-
     // initialise actuator positions to current cartesian position (X0 Y0 Z0)
     // so the first move can be correct if homing is not performed
     ActuatorCoordinates actuator_pos;
@@ -553,6 +513,9 @@ void Robot::periodic_checks()
 }
 #endif
 
+extern Pin *fets_enable_pin; // in main.cpp
+extern Pin *fets_power_enable_pin;
+
 // This may be called in a Timer context, but we can send SPI
 void Robot::on_halt(bool flg)
 {
@@ -563,12 +526,12 @@ void Robot::on_halt(bool flg)
         motors_enable_pin->set(flg);
     }
     if(fets_enable_pin != nullptr) {
-        // global not enable pin for fets
-        fets_enable_pin->set(flg);
+        // global enable pin for fets, disable fets
+        fets_enable_pin->set(!flg);
     }
     if(fets_power_enable_pin != nullptr) {
-        // global not power enable pin for fets
-        fets_power_enable_pin->set(flg);
+        // global power enable pin for fets, disable fets power
+        fets_power_enable_pin->set(!flg);
     }
 
     if(flg) {

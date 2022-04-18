@@ -175,8 +175,6 @@ private:
     float park_position[2];
 
     Pin *motors_enable_pin{nullptr};                      // global enable pin
-    Pin *fets_enable_pin{nullptr};                       // global enable pin
-    Pin *fets_power_enable_pin{nullptr};                 // global enable pin
     uint8_t n_motors;                                    //count of the motors/axis registered
 
     volatile bool halted{false};

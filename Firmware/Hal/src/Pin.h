@@ -31,8 +31,13 @@ public:
     inline bool get() const
     {
         if (!this->valid) return false;
-        // IDR
-        return ((this->pport[4] & this->ppin) != 0x00U) ^ this->inverting;
+        if(is_input) {
+            // IDR
+            return ((this->pport[4] & this->ppin) != 0x00U) ^ this->inverting;
+        }else{
+            // ODR
+            return ((this->pport[5] & this->ppin) != 0x00U) ^ this->inverting;
+        }
     }
 
     // we need to do this inline
@@ -73,6 +78,7 @@ private:
         bool pulldown:1;
         bool valid: 1;
         bool interrupt: 1;
+        bool is_input:1;
     };
 };
 
