@@ -453,17 +453,18 @@ static void smoothie_startup(void *)
 
             ConfigReader::section_map_t sm;
             if(cr.get_section("system", sm)) {
-                fets_enable_pin= new Pin(cr.get_string(sm, "fets_enable_pin", default_fets_enn), Pin::AS_OUTPUT);
+                fets_enable_pin= new Pin(cr.get_string(sm, "fets_enable_pin", default_fets_enn), Pin::AS_OUTPUT_OFF);
                 if(!fets_enable_pin->connected()) {
                     delete fets_enable_pin;
                     fets_enable_pin= nullptr;
                     printf("DEBUG: No FET NEnable\n");
                 }else{
+                    // turn on makes pin go low as it is inverted
                     fets_enable_pin->set(true);
                     printf("DEBUG: FET NEnable is on pin %s\n", fets_enable_pin->to_string().c_str());
                 }
 
-                fets_power_enable_pin= new Pin(cr.get_string(sm, "fets_power_enable_pin", default_fets_power), Pin::AS_OUTPUT);
+                fets_power_enable_pin= new Pin(cr.get_string(sm, "fets_power_enable_pin", default_fets_power), Pin::AS_OUTPUT_OFF);
                 if(!fets_power_enable_pin->connected()) {
                     delete fets_power_enable_pin;
                     fets_power_enable_pin= nullptr;

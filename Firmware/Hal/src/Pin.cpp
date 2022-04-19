@@ -70,6 +70,9 @@ Pin::Pin(const char *s, TYPE_T t)
         switch(t) {
             case AS_INPUT: as_input(); break;
             case AS_OUTPUT: as_output(); break;
+            // these set the initial output state of the pin before it is set as an output
+            case AS_OUTPUT_OFF: set(false); as_output(); break;
+            case AS_OUTPUT_ON: set(true); as_output(); break;
         }
     }
 }

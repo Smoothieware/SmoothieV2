@@ -360,18 +360,18 @@ bool Robot::configure(ConfigReader& cr)
 #if defined(DRIVER_TMC)
         check_driver_errors= cr.get_bool(mm, check_driver_errors_key, false);
         halt_on_driver_alarm= cr.get_bool(mm, halt_on_driver_alarm_key, false);
-        const char *default_motor_enn= "PH13";
+        const char *default_motor_enn= "PH13!";  // inverted as it is a not enable pin, but we want to set true to enable
 #else
         const char *default_motor_enn= "nc";
 #endif
         // global enable pin for all motors
-        motors_enable_pin= new Pin(cr.get_string(mm, motors_enable_pin_key, default_motor_enn), Pin::AS_OUTPUT);
+        motors_enable_pin= new Pin(cr.get_string(mm, motors_enable_pin_key, default_motor_enn), Pin::AS_OUTPUT_OFF);
         if(!motors_enable_pin->connected()) {
             delete motors_enable_pin;
             motors_enable_pin= nullptr;
             printf("DEBUG: configure-robot: No Motor ENN\n");
         }else{
-            motors_enable_pin->set(false); // it is a not enable
+            motors_enable_pin->set(true); // globally enable motors
             printf("DEBUG: configure-robot: Motor ENN is on pin %s\n", motors_enable_pin->to_string().c_str());
         }
     }
@@ -522,8 +522,8 @@ void Robot::on_halt(bool flg)
     halted = flg;
 
     if(motors_enable_pin != nullptr) {
-        // global not enable pin for motors
-        motors_enable_pin->set(flg);
+        // global enable pin for motors, disable on HALT
+        motors_enable_pin->set(!flg);
     }
     if(fets_enable_pin != nullptr) {
         // global enable pin for fets, disable fets
@@ -548,8 +548,8 @@ void Robot::enable_all_motors(bool flg)
     if(flg && halted) return;
 
     if(flg && motors_enable_pin != nullptr) {
-        // global not enable pin
-        motors_enable_pin->set(false);
+        // global motor enable pin
+        motors_enable_pin->set(true);
     }
     for(auto a : actuators) {
         a->enable(flg);

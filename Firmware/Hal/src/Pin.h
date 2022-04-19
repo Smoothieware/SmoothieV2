@@ -13,7 +13,7 @@ public:
     Pin(const char *s);
     virtual ~Pin();
 
-    enum TYPE_T {AS_INPUT, AS_OUTPUT};
+    enum TYPE_T {AS_INPUT, AS_OUTPUT, AS_OUTPUT_ON, AS_OUTPUT_OFF};
     Pin(const char *s, Pin::TYPE_T);
 
     bool from_string(const std::string& value);
