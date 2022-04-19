@@ -142,7 +142,8 @@ void StepperMotor::enable(bool state)
 {
     if(tmc == nullptr) {
         if(en_pin.connected()) {
-            en_pin.set(!state);
+            // set to true to enable the chip (en may need to be inverted)
+            en_pin.set(state);
         }
         return;
     }
@@ -178,7 +179,7 @@ bool StepperMotor::is_enabled() const
 {
     if(tmc == nullptr) {
         if(en_pin.connected()) {
-            return !en_pin.get();
+            return en_pin.get();
         }
         // presume always enabled
         return true;
@@ -216,12 +217,12 @@ bool StepperMotor::check_driver_error()
 
 void StepperMotor::enable(bool state)
 {
-    en_pin.set(!state);
+    en_pin.set(state);
 }
 
 bool StepperMotor::is_enabled() const
 {
-    return !en_pin.get();
+    return en_pin.get();
 }
 
 #endif

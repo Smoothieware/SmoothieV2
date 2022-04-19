@@ -217,8 +217,9 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
     }
 #endif
 
+    // Note CS pins go low to select the chip, we do not invert the pin to avoid confusion here
     std::string cs_pin = cr.get_string(mm, spi_cs_pin_key, def_cs);
-    spi_cs = new Pin(cs_pin.c_str(), Pin::AS_OUTPUT);
+    spi_cs = new Pin(cs_pin.c_str(), Pin::AS_OUTPUT_ON); // set high on creation
     if(!spi_cs->connected()) {
         delete spi_cs;
         printf("ERROR:config_tmc2590: %s - spi cs pin %s is invalid\n", actuator_name, cs_pin.c_str());
@@ -1313,9 +1314,9 @@ bool TMC2590::sendSPI(void *b, void *r)
 {
     // lock the SPI bus for this transaction
     if(!spi->begin_transaction()) return false;
-    spi_cs->set(false);
+    spi_cs->set(false); // enable chip select
     bool stat= spi->write_read(b, r, 3);
-    spi_cs->set(true);
+    spi_cs->set(true); // disable chip select
     spi->end_transaction();
     return stat;
 }

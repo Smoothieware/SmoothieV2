@@ -93,7 +93,7 @@
 #define DEFAULT_EN_PIN(a)  default_stepper_pins[a][2]
 
 static const char* const default_stepper_pins[][3] = {
-    {"PD3", "PD4",  "nc"}, // X step, dir, enb
+    {"PD3", "PD4",  "nc"}, // X step, dir, enb (en must be inverted)
     {"PK2", "PG2",  "nc"}, // Y step, dir, enb
     {"PG3", "PG4",  "nc"}, // Z step, dir, enb
     {"PC6", "PG5",  "nc"}, // A step, dir, enb
@@ -517,6 +517,7 @@ extern Pin *fets_enable_pin; // in main.cpp
 extern Pin *fets_power_enable_pin;
 
 // This may be called in a Timer context, but we can send SPI
+// flg is true on halt, false on release halt
 void Robot::on_halt(bool flg)
 {
     halted = flg;
