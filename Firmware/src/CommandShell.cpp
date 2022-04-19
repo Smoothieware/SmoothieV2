@@ -672,7 +672,7 @@ static bool get_spindle_state()
 // set or get gpio
 bool CommandShell::gpio_cmd(std::string& params, OutputStream& os)
 {
-    HELP("set and get gpio pins: use PA1 out/in [on/off]");
+    HELP("set and get gpio pins: use PA1 out/in [on/off] [timeout]");
 
     std::string gpio = stringutils::shift_parameter( params );
     std::string dir = stringutils::shift_parameter( params );
@@ -705,6 +705,7 @@ bool CommandShell::gpio_cmd(std::string& params, OutputStream& os)
         }
 
         os.printf("%s\n", pin.to_string().c_str());
+        pin.deinit();
         return true;
     }
 
@@ -722,6 +723,13 @@ bool CommandShell::gpio_cmd(std::string& params, OutputStream& os)
         bool b = (v == "on");
         pin.set(b);
         os.printf("%s: was set to %s\n", pin.to_string().c_str(), v.c_str());
+        v= stringutils::shift_parameter( params ); // get timeout
+        if(v.empty()) {
+            safe_sleep(2000);
+        }else{
+            safe_sleep(atoi(v.c_str()));
+        }
+        pin.deinit();
         return true;
     }
 
