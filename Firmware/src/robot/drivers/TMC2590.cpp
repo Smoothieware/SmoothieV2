@@ -236,10 +236,10 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
             spi_channel = cr.get_int(cm, spi_channel_key, def_spi_channel);
             max_current = cr.get_int(cm, max_current_key, this->resistor == 75 ? 3100 : 4600);
             if(reset_pin == nullptr) {
-                reset_pin= new Pin(cr.get_string(cm, reset_pin_key, "nc"), Pin::AS_OUTPUT);
+                reset_pin= new Pin(cr.get_string(cm, reset_pin_key, "nc"), Pin::AS_OUTPUT_OFF); // sets low
                 if(reset_pin->connected()) {
                     printf("DEBUG:configure-tmc2590: reset pin set to: %s\n", reset_pin->to_string().c_str());
-                    reset_pin->set(true); // turns on all drivers
+                    reset_pin->set(true); // sets high turns on all drivers
                 }else{
                     delete reset_pin;
                     reset_pin= nullptr;
