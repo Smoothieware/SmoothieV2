@@ -444,7 +444,7 @@ static void smoothie_startup(void *)
             // setup fet enable
             // global enable pin for all fets
             #if defined(BOARD_PRIME)
-            const char *default_fets_enn= "PF14!";  // it is a not enable
+            const char *default_fets_enn= "PF14!o";  // it is a not enable
             const char *default_fets_power= "PD7!"; // it is a not enable
             #else
             const char *default_fets_enn= "nc";

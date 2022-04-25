@@ -690,7 +690,8 @@ bool CommandShell::gpio_cmd(std::string& params, OutputStream& os)
         return true;
     }
 
-    // FIXME need to handle allocated pins
+    // FIXME need to handle allocated pins, but that would require a list of all allocated pins
+    // Maybe if we add a -f flag we could deinit the pin first but that would leave the pin deallocated
     if(Pin::is_allocated(port, pin_no)) {
         os.printf("Pin is already allocated: %s\n", gpio.c_str());
         return true;
