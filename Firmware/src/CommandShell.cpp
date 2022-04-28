@@ -672,7 +672,7 @@ static bool get_spindle_state()
 // set or get gpio
 bool CommandShell::gpio_cmd(std::string& params, OutputStream& os)
 {
-    HELP("set and get gpio pins: use PA1 out/in [on/off] [timeout]");
+    HELP("set and get gpio pins: use PA1 o[ut]/i[n] [on/off | 1/0] [timeout]");
 
     std::string gpio = stringutils::shift_parameter( params );
     std::string dir = stringutils::shift_parameter( params );
@@ -697,7 +697,7 @@ bool CommandShell::gpio_cmd(std::string& params, OutputStream& os)
         return true;
     }
 
-    if(dir.empty() || dir == "in") {
+    if(dir.empty() || dir == "in" || dir == "i") {
         // read pin
         Pin pin(gpio.c_str(), Pin::AS_INPUT);
         if(!pin.connected()) {
@@ -710,7 +710,7 @@ bool CommandShell::gpio_cmd(std::string& params, OutputStream& os)
         return true;
     }
 
-    if(dir == "out") {
+    if(dir == "out" || dir == "o") {
         std::string v = stringutils::shift_parameter( params );
         if(v.empty()) {
             os.printf("on|off required\n");
@@ -721,7 +721,7 @@ bool CommandShell::gpio_cmd(std::string& params, OutputStream& os)
             os.printf("Not a valid GPIO\n");
             return true;
         }
-        bool b = (v == "on");
+        bool b = (v == "on" || v == "1");
         pin.set(b);
         os.printf("%s: was set to %s\n", pin.to_string().c_str(), v.c_str());
         v= stringutils::shift_parameter( params ); // get timeout
