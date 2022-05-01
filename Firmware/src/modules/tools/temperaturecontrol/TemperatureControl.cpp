@@ -384,13 +384,13 @@ bool TemperatureControl::handle_mcode(GCode & gcode, OutputStream & os)
                 this->ponm = gcode.get_arg('Z') == 1;
 
         } else if(!gcode.has_arg('S')) {
-            os.printf("%s(S%d): P: %g I: %g D: %g X(I_max):%g max pwm: %d O:%d\n", this->designator.c_str(), this->tool_id, this->p_factor, this->i_factor / this->PIDdt, this->d_factor * this->PIDdt, this->i_max, this->heater_pin->max_pwm(), o);
+            os.printf("%s(S%d): PonM: %d P: %g I: %g D: %g X(I_max):%g max pwm: %d O:%d\n", this->designator.c_str(), this->tool_id, this->ponm, this->p_factor, this->i_factor / this->PIDdt, this->d_factor * this->PIDdt, this->i_max, this->heater_pin->max_pwm(), o);
         }
 
         return true;
 
     } else if (gcode.get_code() == 500) { // M500 saves some volatile settings to config override file
-        os.printf(";PID settings, i_max, max_pwm:\nM301 S%d P%1.4f I%1.4f D%1.4f X%1.4f Y%d Z%d\n", this->tool_id, this->p_factor, this->i_factor / this->PIDdt, this->d_factor * this->PIDdt, this->i_max, this->heater_pin->max_pwm(), this->ponm);
+        os.printf(";PID settings, i_max, max_pwm, PonM:\nM301 S%d P%1.4f I%1.4f D%1.4f X%1.4f Y%d Z%d\n", this->tool_id, this->p_factor, this->i_factor / this->PIDdt, this->d_factor * this->PIDdt, this->i_max, this->heater_pin->max_pwm(), this->ponm);
 
         os.printf(";Max temperature setting:\nM143 S%d P%1.4f\n", this->tool_id, this->max_temp);
 
