@@ -282,17 +282,20 @@ bool TemperatureControl::handle_M6(GCode& gcode, OutputStream& os)
 }
 
 // we no longer have abort auto pid so control X will abort it or kill button
-// Also the parameter to select the tool is P not E
 // if this is unacceptible then we will have to run autopid in a thread and it will get a lot more complex
+// Also the parameter to select the tool is P not E
 bool TemperatureControl::handle_autopid(GCode& gcode, OutputStream& os)
 {
     if (gcode.has_arg('P') && gcode.get_int_arg('P') == this->tool_id) {
-        //os.printf("Running autopid on toolid %d, control X to abort\n", tool_id);
+        os.printf("// Running autopid on toolid %d, control X to abort\n", tool_id);
         PID_Autotuner *autopid = new PID_Autotuner(this);
         // will not return until complete
         autopid->start(gcode, os);
         delete autopid;
         return true;
+
+    }else{
+        os.printf("To run autopid select tool id with P%d, use control X to abort\n", tool_id);
     }
 
     return false;
