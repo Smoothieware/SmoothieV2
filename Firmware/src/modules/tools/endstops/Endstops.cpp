@@ -26,7 +26,7 @@
 #define rdelta_homing_key "rdelta_homing"
 #define scara_homing_key "scara_homing"
 
-#define endstop_debounce_ms_key "endstop_debounce_ms"
+#define debounce_ms_key "debounce_ms"
 
 #define home_z_first_key "home_z_first"
 #define homing_order_key "homing_order"
@@ -282,7 +282,7 @@ bool Endstops::load_endstops(ConfigReader& cr)
     if(s != ssmap.end()) {
         auto& mm = s->second; // map of common endstop config settings
 
-        this->debounce_ms = cr.get_float(mm, endstop_debounce_ms_key, 0); // 0 means no debounce
+        this->debounce_ms = cr.get_float(mm, debounce_ms_key, 0); // 0 means no debounce
 
         this->is_corexy = cr.get_bool(mm, corexy_homing_key, false);
         this->is_delta =  cr.get_bool(mm, delta_homing_key, false);
