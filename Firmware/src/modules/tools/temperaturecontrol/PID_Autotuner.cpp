@@ -95,12 +95,18 @@ void PID_Autotuner::run_auto_pid(OutputStream& os, float target, int ncycles)
         }
 
         if(peakCount >= requested_cycles) {
-            os.printf("// WARNING: Autopid did not resolve within %d cycles, these results are probably innacurate\n", requested_cycles);
+            os.printf("WARNING: Autopid did not resolve within %d cycles, these results are probably innacurate\n", requested_cycles);
             finishUp(os);
             return;
         }
 
         float refVal = temp_control->get_temperature();
+
+        if(std::isinf(refVal) || std::isnan(refVal)) {
+            os.printf("ERROR: Bad temperature\n");
+            abort();
+            return;
+        }
 
         // oscillate the output base on the input's relation to the setpoint
         if (refVal > target_temperature + noiseBand) {

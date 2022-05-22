@@ -286,16 +286,18 @@ bool TemperatureControl::handle_M6(GCode& gcode, OutputStream& os)
 // Also the parameter to select the tool is P not E
 bool TemperatureControl::handle_autopid(GCode& gcode, OutputStream& os)
 {
-    if (gcode.has_arg('P') && gcode.get_int_arg('P') == this->tool_id) {
-        os.printf("// Running autopid on toolid %d, control X to abort\n", tool_id);
-        PID_Autotuner *autopid = new PID_Autotuner(this);
-        // will not return until complete
-        autopid->start(gcode, os);
-        delete autopid;
-        return true;
+    if (gcode.has_arg('P')) {
+        if(gcode.get_int_arg('P') == this->tool_id) {
+            os.printf("// Running autopid on (%s) %s, toolid %d, control X to abort\n", get_designator(), get_instance_name(), tool_id);
+            PID_Autotuner *autopid = new PID_Autotuner(this);
+            // will not return until complete
+            autopid->start(gcode, os);
+            delete autopid;
+            return true;
+        }
 
     }else{
-        os.printf("To run autopid select tool id with P%d, use control X to abort\n", tool_id);
+        os.printf("To run autopid for (%s) %s, select tool id with P%d, use control X to abort\n", get_designator(),get_instance_name(), tool_id);
     }
 
     return false;
