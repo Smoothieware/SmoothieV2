@@ -93,10 +93,17 @@
 #define DEFAULT_EN_PIN(a)  default_stepper_pins[a][2]
 
 static const char* const default_stepper_pins[][3] = {
+    #ifdef BOARD_PRIME
     {"PD3", "PD4",  "nc"}, // X step, dir, enb (en must be inverted)
     {"PK2", "PG2",  "nc"}, // Y step, dir, enb
     {"PG3", "PG4",  "nc"}, // Z step, dir, enb
     {"PC6", "PG5",  "nc"}, // A step, dir, enb
+    #else
+    {"nc", "nc",  "nc"}, // X step, dir, enb (en must be inverted)
+    {"nc", "nc",  "nc"}, // Y step, dir, enb
+    {"nc", "nc",  "nc"}, // Z step, dir, enb
+    {"nc", "nc",  "nc"}, // A step, dir, enb
+    #endif
     {"nc", "nc", "nc"}, // B step, dir, enb
     {"nc", "nc","nc"}, // C step, dir, enb
 };
