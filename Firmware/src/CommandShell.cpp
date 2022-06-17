@@ -1807,6 +1807,20 @@ bool CommandShell::dfu_cmd(std::string& params, OutputStream& os)
 #endif
 }
 
+/*
+    TODO
+    init flash by erasing whole thing to 0xFF.
+    create a filesystem where the first 64KB is a directory with name, flash address, size (each entry is 256 bytes?)
+    terminated by name being 0xFF (unflashed area), skip names that are 0x00.
+    when we write a file we find the next available flash address that is after the first 64k but on a 256 byte boundary
+    (flash write block size). (as we can only erase in 64KB blocks maybe files need to be on 64KB boundary).
+    flash new file to that flash address, then when done update the directory block with that new entry.
+    (copy it, erase the first block, and write the new 64kb block, or if we leave the unused blocks as 0xFF we can just write the new entry if entries are on a 256 byte boundary).
+    We can execute from QSPI at the address mapped for the file.
+    We can list files.
+    We can erase files which zeroes out the directory entry, but unless the files are stored in 64k chunks we cannot
+    erase the file, so eventually the filesystem will fill up, and we would need to erase the entire flash to start over.
+*/
 extern "C" bool qspi_flash(const char *fn);
 extern "C" bool qspi_mount();
 bool CommandShell::qspi_cmd(std::string& params, OutputStream& os)
