@@ -53,8 +53,6 @@
 #define runaway_cooling_timeout_key "runaway_cooling_timeout"
 #define runaway_error_range_key "runaway_error_range"
 
-#define HELP(m) if(params == "-h") { os.puts(m); return true; }
-
 TemperatureControl::TemperatureControl(const char *name) : Module("temperature control", name)
 {
     temp_violated = false;
