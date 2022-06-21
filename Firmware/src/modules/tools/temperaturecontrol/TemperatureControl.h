@@ -63,9 +63,6 @@ private:
     float readings_per_second;
 
     SigmaDeltaPwm *heater_pin{nullptr};
-#ifdef BOARD_PRIMEALPHA
-    static Pin *vfet_enable_pin;
-#endif
     std::string designator;
 
     float hysteresis;

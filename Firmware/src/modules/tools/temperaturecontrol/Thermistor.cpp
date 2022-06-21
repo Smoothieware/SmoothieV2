@@ -177,9 +177,12 @@ bool Thermistor::configure(ConfigReader& cr, ConfigReader::section_map_t& m, con
     return true;
 }
 
+#define HELP(m) if(params == "-h") { os.puts(m); return true; }
 // print out predefined thermistors
-void Thermistor::print_predefined_thermistors(OutputStream& os)
+bool Thermistor::print_predefined_thermistors(std::string& params, OutputStream& os)
 {
+    HELP("thermistors - prints a list of predefined thermistors\n");
+
     int cnt = 1;
     os.printf("S/H table\n");
     for (auto& i : predefined_thermistors) {
@@ -191,6 +194,7 @@ void Thermistor::print_predefined_thermistors(OutputStream& os)
     for (auto& i : predefined_thermistors_beta) {
         os.printf("%d - %s\n", cnt++, i.name);
     }
+    return true;
 }
 
 // calculate the coefficients from the supplied three Temp/Resistance pairs

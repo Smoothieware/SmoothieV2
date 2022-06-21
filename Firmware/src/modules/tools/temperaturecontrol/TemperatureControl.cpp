@@ -53,6 +53,8 @@
 #define runaway_cooling_timeout_key "runaway_cooling_timeout"
 #define runaway_error_range_key "runaway_error_range"
 
+#define HELP(m) if(params == "-h") { os.puts(m); return true; }
+
 TemperatureControl::TemperatureControl(const char *name) : Module("temperature control", name)
 {
     temp_violated = false;
@@ -100,6 +102,9 @@ bool TemperatureControl::load_controls(ConfigReader& cr)
 
     if(cnt > 0) {
         printf("INFO: configure-temperature control: NOTE: %d TemperatureControl(s) configured and enabled\n", cnt);
+        using std::placeholders::_1;
+        using std::placeholders::_2;
+        THEDISPATCHER->add_handler("thermistors", std::bind(Thermistor::print_predefined_thermistors, _1, _2));
     } else {
         printf("INFO: configure-temperature control: NOTE: no TemperatureControl(s) configured\n");
     }
@@ -128,10 +133,10 @@ bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t
     this->target_temperature = UNDEFINED;
     this->sensor_settings = false; // set to true if sensor settings have been overriden
 
-    def_t def= {"nc", "", "?", 255};
-    auto defs= default_config.find(name);
+    def_t def = {"nc", "", "?", 255};
+    auto defs = default_config.find(name);
     if(defs != default_config.end()) {
-        def= defs->second;
+        def = defs->second;
     }
 
     // General config
@@ -144,7 +149,7 @@ bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t
 
     // Runaway parameters
     this->runaway_range = cr.get_int(m, runaway_range_key, 20);
-    this->runaway_heating_timeout = cr.get_int(m, runaway_heating_timeout_key, 60*5); // default timeout is 5 mins
+    this->runaway_heating_timeout = cr.get_int(m, runaway_heating_timeout_key, 60 * 5); // default timeout is 5 mins
     this->runaway_cooling_timeout = cr.get_int(m, runaway_cooling_timeout_key, this->runaway_heating_timeout); // same as heating timeout by default
     this->runaway_error_range = cr.get_float(m, runaway_error_range_key, 1.0F);
 
@@ -296,8 +301,8 @@ bool TemperatureControl::handle_autopid(GCode& gcode, OutputStream& os)
             return true;
         }
 
-    }else{
-        os.printf("To run autopid for (%s) %s, select tool id with P%d, use control X to abort\n", get_designator(),get_instance_name(), tool_id);
+    } else {
+        os.printf("To run autopid for (%s) %s, select tool id with P%d, use control X to abort\n", get_designator(), get_instance_name(), tool_id);
     }
 
     return false;
@@ -336,7 +341,7 @@ bool TemperatureControl::handle_mcode(GCode & gcode, OutputStream & os)
             os.printf("%s(S%d): using %s - active: %d", this->designator.c_str(), this->tool_id, this->readonly ? "Readonly" : this->use_bangbang ? "Bangbang" : "PID", active);
             if(!readonly) {
                 os.printf(", %s\n", heater_pin->to_string().c_str());
-            }else{
+            } else {
                 os.printf("\n");
             }
             sensor->get_raw(os);
