@@ -5,8 +5,6 @@
 #include <tuple>
 #include <string>
 
-#define QUEUE_LEN 32
-
 class OutputStream;
 class Adc;
 

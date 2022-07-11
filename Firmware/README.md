@@ -1,4 +1,4 @@
-Currently runs on the Prime Smoothoieboard, NUCLEO-H745ZI-Q board and Devebox 743 board.
+Currently runs on the Prime Smoothieboard2, and Devebox 743 board (also a NUCLEO-H745ZI-Q board but no longer supported)
 
 To build the test cases do ```rake target=Prime testing=1 -m```
 then flash to Prime, the results print out to the uart/serial found on the DEBUG Uart port.

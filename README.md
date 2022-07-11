@@ -11,7 +11,7 @@ There is a considerable amount of work to be done to support the dual core opera
 
 The preferred and supported development environment is Linux.
 
-Currently runs on the NUCLEO-H745ZI-Q board and Devebox 743 board
+Currently runs on the NUCLEO-H745ZI-Q board (no longer supported though), a Devebox 743 board and of course a Smoothie Prime board.
 
 Currently uses the following toolchain..
 
