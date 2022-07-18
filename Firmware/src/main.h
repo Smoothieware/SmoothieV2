@@ -16,3 +16,5 @@ void safe_sleep(uint32_t ms);
 float get_voltage_monitor(const char* name);
 int get_voltage_monitor_names(const char *names[]);
 extern uint8_t board_id;
+
+#define TICKS2MS( xTicks ) ( ((xTicks) * 1000.0F) / configTICK_RATE_HZ )

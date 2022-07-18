@@ -5,6 +5,9 @@
 #include "GCode.h"
 #include "main.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 #include <cmath>        // std::abs
 
 //#define DEBUG_PRINTF s->printf
@@ -41,7 +44,7 @@ void PID_Autotuner::start(GCode& gcode, OutputStream& os)
 
             // optionally set the look back in seconds default is 10 seconds
             if (gcode.has_arg('L')) {
-                nLookBack = gcode.get_arg('L');
+                nLookBack = gcode.get_arg('L') * 20;
             }
 
             os.printf("%s: Starting PID Autotune, %d max cycles, control X aborts\n", temp_control->get_designator(), ncycles);
@@ -84,7 +87,7 @@ void PID_Autotuner::run_auto_pid(OutputStream& os, float target, int ncycles)
     // we run in a loop with a 50ms delay
     while(true) {
         safe_sleep(50);
-        // TODO may want to use clock systimer to get a more accurate time
+        // TODO may want to use fast/slow ticker to get a more accurate time
         tickCnt += 50;
 
         if(temp_control->is_halted()) {
@@ -159,7 +162,8 @@ void PID_Autotuner::run_auto_pid(OutputStream& os, float target, int ncycles)
                 justchanged = true;
                 peak2 = peak1;
             }
-            peak1 = tickCnt;
+            // use actual elapsed time in milliseconds
+            peak1 = xTaskGetTickCount();
             peaks[peakCount] = refVal;
 
         } else if (isMin) {
@@ -198,8 +202,8 @@ void PID_Autotuner::finishUp(OutputStream& os)
 {
     //we can generate tuning parameters!
     float Ku = 4 * (2 * oStep) / ((absMax - absMin) * 3.14159);
-    float Pu = (float)(peak1 - peak2) / 1000;
-    os.printf("\tKu: %g, Pu: %g\n", Ku, Pu);
+    float Pu = (float)(TICKS2MS(peak1 - peak2) / 1000.0F);
+    os.printf("\tKu: %f, Pu: %f\n", Ku, Pu);
 
     float kp = 0.6 * Ku;
     float ki = 1.2 * Ku / Pu;
