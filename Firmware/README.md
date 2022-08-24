@@ -41,15 +41,23 @@ all on means there was a Hardfault detected
 The debug UART port is on the STLink3 ACM0 on the Nucleo, and on the DEBUG Uart header on the Prime
 baud rate 115200.
 
-Initial Bootstrap
+Initial Bootstrap (Only needed one time on a virgin board)
 -----------------
+
 V2 does not have a bootloader, the firmware itself can flash itself and do updates etc.
 To bootstrap the inital firmware (or to recover from bad firmware or bricking) you can use a jlink to flash the firmware or use the STLINKV3 drag and drop, or use the BOOT0 USB flashing (press BOOT0 button and reset)...
+
+	NOTE if using an stlink on Linux make sure to add...
+
+	    ATTRS{idVendor}=="0483", MODE="0666", ENV{ID_MM_DEVICE_IGNORE}="1", ENV{ID_MM_PORT_IGNORE}="1"
+
+	to /etc/udev/rules.d/99-usb-stlink.rules, and then do ```sudo systemctl reload udev```
 
 Download STM32_Programmer_CLI from https://www.st.com/en/development-tools/stm32cubeprog.html
 
     STM32_Programmer_CLI -q -c port=usb1 -w smoothiev2_Nucleo/smoothiev2.bin 0x08000000 -rst
     (you can also use dfu-util -a 0 -D smoothiev2.bin --dfuse-address 0x08000000)
+
 
 If using the STM32H745 you must first set the option bytes to only boot the M7 core... (not needed for STM32H743)
     

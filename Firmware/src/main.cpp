@@ -445,7 +445,7 @@ static void smoothie_startup(void *)
             // global enable pin for all fets
             #if defined(BOARD_PRIME)
             const char *default_fets_enn= "PF14!o";  // it is a not enable
-            const char *default_fets_power= "PD7!"; // it is a not enable
+            const char *default_fets_power= "PD7"; // it is an enable
             #else
             const char *default_fets_enn= "nc";
             const char *default_fets_power= "nc";
@@ -468,14 +468,14 @@ static void smoothie_startup(void *)
                 if(!fets_power_enable_pin->connected()) {
                     delete fets_power_enable_pin;
                     fets_power_enable_pin= nullptr;
-                    printf("DEBUG: No FET Power NEnable\n");
+                    printf("DEBUG: No FET Power Enable\n");
                 }else{
                     fets_power_enable_pin->set(true);
-                    printf("DEBUG: FET Power NEnable is on pin %s\n", fets_power_enable_pin->to_string().c_str());
+                    printf("DEBUG: FET Power Enable is on pin %s\n", fets_power_enable_pin->to_string().c_str());
                 }
 
             }else{
-                printf("WARNING: no [system] section found, FET NEnable and Power NEnable are disabled\n");
+                printf("WARNING: no [system] section found, FET NEnable and Power Enable are disabled\n");
             }
         }
 
