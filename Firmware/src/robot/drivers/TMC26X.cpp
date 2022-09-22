@@ -169,7 +169,6 @@ constexpr static int def_spi_channel= 1;
 SPI *TMC26X::spi= nullptr;
 uint8_t TMC26X::spi_channel= def_spi_channel;
 bool TMC26X::common_setup= false;
-uint32_t TMC26X::max_current= 2800; // 2.8 amps
 
 #ifdef BOARD_PRIME
 // setup default SPI CS pin for Prime
@@ -244,7 +243,6 @@ bool TMC26X::config(ConfigReader& cr, const char *actuator_name)
         if(c != ssm.end()) {
             auto& cm = c->second; // map of common tmc2660 config values
             spi_channel= cr.get_int(cm, spi_channel_key, def_spi_channel);
-            max_current= cr.get_int(cm, max_current_key, 2800);
         }
         common_setup= true;
     }
@@ -290,6 +288,8 @@ bool TMC26X::config(ConfigReader& cr, const char *actuator_name)
     setStallGuardThreshold(10, 1);
 
     this->resistor = cr.get_int(mm, resistor_key, 75); // in milliohms
+    this->max_current= cr.get_int(mm, max_current_key, 2800); // in milliamps
+    printf("DEBUG:configure-tmc2660: %s - sense resistor: %d milliohms, max current: %ld mA\n", actuator_name, resistor, max_current);
 
     // if raw registers are defined set them 1,2,3 etc in hex
     std::string str= cr.get_string(mm, raw_register_key, "");

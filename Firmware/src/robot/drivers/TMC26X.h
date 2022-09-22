@@ -433,6 +433,7 @@ private:
     std::string name;
 
     unsigned int resistor{75}; // current sense resitor value in milliohm
+    uint32_t max_current;
 
     //driver control register copies to easily set & modify the registers
     unsigned long driver_control_register_value;
@@ -460,8 +461,6 @@ private:
         bool cool_step_enabled:1; //we need to remember this to configure the coolstep if it si enabled
         bool started:1; //if the stepper has been started yet
     };
-
-    static uint32_t max_current;
 
     uint8_t cool_step_lower_threshold; // we need to remember the threshold to enable and disable the CoolStep feature
     char designator;

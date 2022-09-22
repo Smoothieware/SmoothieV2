@@ -158,7 +158,6 @@ constexpr static int def_spi_channel= 1;
 SPI *TMC2590::spi = nullptr;
 uint8_t TMC2590::spi_channel= def_spi_channel;
 bool TMC2590::common_setup = false;
-uint32_t TMC2590::max_current = 3000; // 3 amps
 Pin *TMC2590::reset_pin = nullptr;
 
 #ifdef BOARD_PRIME
@@ -234,7 +233,6 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
         if(c != ssm.end()) {
             auto& cm = c->second; // map of common tmc2590 config values
             spi_channel = cr.get_int(cm, spi_channel_key, def_spi_channel);
-            max_current = cr.get_int(cm, max_current_key, this->resistor == 75 ? 3100 : 4600);
             if(reset_pin == nullptr) {
                 reset_pin= new Pin(cr.get_string(cm, reset_pin_key, "nc"), Pin::AS_OUTPUT_OFF); // sets low
                 if(reset_pin->connected()) {
@@ -297,7 +295,8 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
 
     // get rest of instance specific configs
     this->resistor = cr.get_int(mm, resistor_key, 75); // in milliohms
-    printf("DEBUG:configure-tmc2590: %s - sense resistor: %d milliohms\n", actuator_name, resistor);
+    this->max_current = cr.get_int(mm, max_current_key, this->resistor == 75 ? 3100 : 4600);
+    printf("DEBUG:configure-tmc2590: %s - sense resistor: %d milliohms, max current: %ld mA\n", actuator_name, resistor, max_current);
 
     // if raw registers are defined set them 1,2,3 etc in hex
     std::string str = cr.get_string(mm, raw_register_key, "");
