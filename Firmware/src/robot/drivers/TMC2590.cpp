@@ -295,7 +295,7 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
 
     // get rest of instance specific configs
     this->resistor = cr.get_int(mm, resistor_key, 75); // in milliohms
-    this->max_current = cr.get_int(mm, max_current_key, this->resistor == 75 ? 3100 : 4600);
+    this->max_current = cr.get_int(mm, max_current_key, this->resistor == 75 ? 3100 : 4600); // milliamps
     printf("DEBUG:configure-tmc2590: %s - sense resistor: %d milliohms, max current: %ld mA\n", actuator_name, resistor, max_current);
 
     // if raw registers are defined set them 1,2,3 etc in hex

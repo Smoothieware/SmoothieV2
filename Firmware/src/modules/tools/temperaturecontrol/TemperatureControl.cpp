@@ -438,7 +438,7 @@ bool TemperatureControl::handle_mcode(GCode & gcode, OutputStream & os)
                 // wait for temp to be reached, no more gcodes will be fetched until this is complete
                 if( gcode.get_code() == this->set_and_wait_m_code) {
                     if(isinf(get_temperature()) && isinf(sensor->get_temperature())) {
-                        os.printf("Temperature reading is unreliable on %s HALT asserted - reset or M999 required\n", designator.c_str());
+                        os.printf("ERROR: Temperature reading is unreliable on %s HALT asserted - reset or M999 required\n", designator.c_str());
                         broadcast_halt(true);
                         return true;
                     }
