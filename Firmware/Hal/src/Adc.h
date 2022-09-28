@@ -34,7 +34,7 @@ public:
     static void sample_isr(bool);
     static std::set<uint16_t> allocated_channels;
     static const int num_channels= 7;
-    static const int num_samples= 8;
+    static const int num_samples= 32; // was 8 but we get better filtering with 32
 
 private:
     static Adc* instances[num_channels];

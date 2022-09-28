@@ -212,6 +212,12 @@ void xNetworkDeInitialise()
 	HAL_ETH_MspDeInit(&xEthHandle);
 }
 
+void xNetworkDisablePHY()
+{
+	ETH_PHY_IO_WriteReg(0, 0, 0x0800); // power down PHY
+	HAL_ETH_MspDeInit(&xEthHandle);
+}
+
 BaseType_t xNetworkInterfaceInitialise( void )
 {
     BaseType_t xResult;

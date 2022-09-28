@@ -66,24 +66,28 @@ REGISTER_TEST(ADCTest, two_adc_channels)
     printf("Max ADC= %lu\n", max_adc_value);
 
     // give it time to accumulate the 32 samples
-    vTaskDelay(pdMS_TO_TICKS(32 * 10 * 2 + 100));
+    vTaskDelay(pdMS_TO_TICKS(32 * 10 * 2 + 1000));
 
-    uint16_t min=0xFFFF, max= 0;
+    uint16_t min1=0xFFFF, max1= 0;
+    uint16_t min2=0xFFFF, max2= 0;
     for (int i = 0; i < 10; ++i) {
-        uint16_t v = adc2->read();
-        float volts = 3.3F * (v / (float)max_adc_value);
-        printf("adc2= %04X, volts= %10.4f\n", v, volts);
+        uint16_t v2 = adc2->read();
+        float volts = 3.3F * (v2 / (float)max_adc_value);
+        printf("adc2= %04X, volts= %10.4f\n", v2, volts);
+        if(v2 < min2) min2= v2;
+        if(v2 > max2) max2= v2;
 
-        v = adc1->read();
-        volts = 3.3F * (v / (float)max_adc_value);
-        printf("adc1= %04X, volts= %10.4f\n", v, volts);
-        if(v < min) min= v;
-        if(v > max) max= v;
-        vTaskDelay(pdMS_TO_TICKS(20));
+        uint16_t v1 = adc1->read();
+        volts = 3.3F * (v1 / (float)max_adc_value);
+        printf("adc1= %04X, volts= %10.4f\n", v1, volts);
+        if(v1 < min1) min1= v1;
+        if(v1 > max1) max1= v1;
+        vTaskDelay(pdMS_TO_TICKS(50)); // 20Hz
         // takes 2461us between samples for 2 channels
         //printf("time= %lu us\n", adc_get_time());
     }
-    printf("Min= %d, Max= %d, spread= %d (%f %%)\n", min, max, max-min, (max-min)*100.0F/(float)max_adc_value);
+    printf("Min1= %d, Max1= %d, spread1= %d (%f %%)\n", min1, max1, max1-min1, (max1-min1)*100.0F/(float)max_adc_value);
+    printf("Min2= %d, Max2= %d, spread2= %d (%f %%)\n", min2, max2, max2-min2, (max2-min2)*100.0F/(float)max_adc_value);
 
     TEST_ASSERT_TRUE(adc1->get_errors() == 0);
     TEST_ASSERT_TRUE(adc2->get_errors() == 0);
@@ -96,6 +100,57 @@ REGISTER_TEST(ADCTest, two_adc_channels)
     delete adc2;
 }
 
+#if 0
+extern "C" void xNetworkDisablePHY();
+REGISTER_TEST(ADCTest, test_adc_noise)
+{
+    // Use ADC0
+    Adc *adc1 = new Adc("ADC1_0");
+
+    TEST_ASSERT_TRUE(Adc::post_config_setup());
+
+    TEST_ASSERT_TRUE(adc1->is_valid());
+    TEST_ASSERT_EQUAL_INT(0, adc1->get_channel());
+
+    TEST_ASSERT_TRUE(Adc::start());
+
+    const uint32_t max_adc_value = Adc::get_max_value();
+    printf("Max ADC= %lu\n", max_adc_value);
+
+    for (int j = 0; j < 2; ++j) {
+        if(j==1) {
+            xNetworkDisablePHY();
+            printf("Disable PHY....\n");
+        }else{
+            printf("PHY is Enabled....\n");
+        }
+
+        // give it time to accumulate the 32 samples
+        vTaskDelay(pdMS_TO_TICKS(32 * 10 * 2 + 100));
+
+        uint16_t v;
+        float volts;
+        uint16_t min=0xFFFF, max= 0;
+        for (int i = 0; i < 10; ++i) {
+            v = adc1->read();
+            volts = 3.3F * (v / (float)max_adc_value);
+            printf("adc1= %04X, volts= %10.4f\n", v, volts);
+            if(v < min) min= v;
+            if(v > max) max= v;
+            vTaskDelay(pdMS_TO_TICKS(20));
+        }
+        printf("Min= %d, Max= %d, spread= %d (%f %%)\n", min, max, max-min, (max-min)*100.0F/(float)max_adc_value);
+    }
+
+    TEST_ASSERT_TRUE(adc1->get_errors() == 0);
+
+    TEST_ASSERT_TRUE(Adc::stop());
+
+    Adc::deinit();
+
+    delete adc1;
+}
+#endif
 
 #ifdef USE_FULL_LL_DRIVER
 #include "stm32h7xx_ll_rcc.h"

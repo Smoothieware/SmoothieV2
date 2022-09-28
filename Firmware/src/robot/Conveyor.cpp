@@ -110,7 +110,7 @@ void Conveyor::wait_for_room()
     }
 }
 
-#define TICKS2MS( xTicks ) ( (uint32_t) ( (xTicks * 1000) / configTICK_RATE_HZ ) )
+// #define TICKS2MS( xTicks ) ( (uint32_t) ( (xTicks * 1000) / configTICK_RATE_HZ ) )
 // should be called when idle, it is called when the command loop runs
 void Conveyor::check_queue(bool force)
 {

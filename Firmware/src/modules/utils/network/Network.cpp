@@ -471,7 +471,7 @@ bool Network::start()
 {
     printf("DEBUG: Network: starting\n");
     if(!setup_network_hal()) {
-        printf("ERROR: setup_netork_hal() failed\n");
+        printf("ERROR: setup_network_hal() failed\n");
         return false;
     }
 

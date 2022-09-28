@@ -22,7 +22,7 @@ std::set<uint16_t> Adc::allocated_channels;
 bool Adc::running;
 
 // make sure it is aligned on 32byte boundary for cache coherency, need to allocate potentially max size
-// num_samples (8) samples per num_channels (8) channels
+// num_samples (8/32) samples per num_channels (8) channels
 // We add 32 bytes just to make sure nothing else could share this area as we invalidate the cache after DMA
 ALIGN_32BYTES(static __IO uint16_t aADCxConvertedData[(Adc::num_samples * Adc::num_channels) + 32]);
 
@@ -133,6 +133,7 @@ static uint32_t adc_rank_lut[] = {
 
 static ADC_HandleTypeDef AdcHandle;
 
+//#define ADC_OVERSAMPLE
 bool Adc::post_config_setup()
 {
     printf("DEBUG: ADC post config setup\n");
@@ -161,7 +162,14 @@ bool Adc::post_config_setup()
     AdcHandle.Init.ExternalTrigConvEdge     = ADC_EXTERNALTRIGCONVEDGE_NONE; /* Parameter discarded because software trigger chosen */
     AdcHandle.Init.ConversionDataManagement = ADC_CONVERSIONDATA_DMA_CIRCULAR; /* ADC DMA circular requested */
     AdcHandle.Init.Overrun                  = ADC_OVR_DATA_OVERWRITTEN;      /* DR register is overwritten with the last conversion result in case of overrun */
+    #ifndef ADC_OVERSAMPLE
     AdcHandle.Init.OversamplingMode         = DISABLE;                       /* No oversampling */
+    #else
+    AdcHandle.Init.OversamplingMode            = ENABLE;                    /* oversampling */
+    AdcHandle.Init.Oversampling.Ratio          = 3; // ADC3_OVERSAMPLING_RATIO_4; /* Oversampling ratio  x4*/
+    AdcHandle.Init.Oversampling.RightBitShift  = ADC_RIGHTBITSHIFT_2;       /* Right shift of the oversampled summation */
+    #endif
+
     /* Initialize ADC peripheral according to the passed parameters */
     if (HAL_ADC_Init(&AdcHandle) != HAL_OK) {
         printf("ERROR: ADC1 ADC_Init failed\n");
@@ -191,7 +199,7 @@ bool Adc::post_config_setup()
         }
     }
 
-    // num_samples (8) samples per channel
+    // num_samples (32) samples per channel
     adc_data_size = nc * num_samples; // actual data size
 
     return true;
@@ -222,6 +230,7 @@ bool Adc::stop()
     return true;
 }
 
+//#define IIF_FILTER
 //#define MEDIAN
 #ifdef MEDIAN
 static void split(uint16_t data[], unsigned int n, uint16_t x, unsigned int& i, unsigned int& j)
@@ -252,14 +261,33 @@ static unsigned int quick_median(uint16_t data[], unsigned int n)
     }
     return k;
 }
+#elif defined(IIF_FILTER)
+#define DSP_EMA_I32_ALPHA(x) ( (uint16_t)(x * 65535) )
+static int32_t dsp_ema_i32(uint16_t in, int32_t average, uint16_t alpha)
+{
+    if(alpha == 65535) return in;
+    int64_t tmp0;
+    tmp0 = (int64_t)in * (alpha + 1) + average * (65536 - alpha);
+    return (int32_t)((tmp0 + 32768) / 65536);
+}
+static uint32_t average(uint16_t *buf, int n)
+{
+    static int32_t average = 0;
+    uint16_t adc_value;
+    for (int i = 0; i < n; ++i) {
+        adc_value = buf[i];
+        average = dsp_ema_i32(adc_value, average, DSP_EMA_I32_ALPHA(0.1));
+    }
+    return average;
+}
 #else
 static uint32_t average(uint16_t *buf, int n)
 {
-    float acc= 0.0F;
+    float acc = 0.0F;
     for (int i = 0; i < n; ++i) {
         acc += buf[i];
     }
-    return roundf(acc/n);
+    return roundf(acc / n);
 }
 #endif
 
@@ -275,52 +303,53 @@ uint32_t adc_get_time()
 
 // This will take 154 us per sample with current settings
 // for 8 samples on a channel this is 1.2ms per channel
-// with 2 channels this gets called about every 1.2ms (or 2.4ms for complete read)
+// for 32 samples on a channel this is 4.8ms per channel
+// with 2 channels this gets called about every 1.2ms/4.8ms (or 2.4ms/9.6ms for complete read)
 // If half is true then only the first half has been captured
 void Adc::sample_isr(bool half)
 {
     if(!running) return;
 
-    // I think this means we have 8 samples from each channel interleaved
+    // I think this means we have 8/32 samples from each channel interleaved
     int n = allocated_channels.size();
     int o = 0;
-    int ns2 = num_samples/2;
+    int ns2 = num_samples / 2;
     uint16_t dataADC[ns2];
-    int off= half ? 0 : ns2;
+    int off = half ? 0 : ns2;
     for(uint16_t c : allocated_channels) {
         Adc *adc = getInstance(c);
         if(adc == nullptr || !adc->valid) continue; // not setup
         // pick it out of the array, only half the array is ready
         for(int i = 0; i < ns2; ++i) {
-            dataADC[i] = aADCxConvertedData[((i+off) * n) + o];
+            dataADC[i] = aADCxConvertedData[((i + off) * n) + o];
         }
-        memcpy(adc->sample_buffer+off, dataADC, sizeof(dataADC));
+        memcpy(adc->sample_buffer + off, dataADC, sizeof(dataADC));
         ++o;
     }
 
     if(!half) {
-        #ifdef ADC_TIMEIT
+#ifdef ADC_TIMEIT
         // 2461us between calls
-        elt= benchmark_timer_elapsed(st);
-        st= benchmark_timer_start();
-        #endif
-        // calculate median for each buffer, avoids having to lock the buffer
+        elt = benchmark_timer_elapsed(st);
+        st = benchmark_timer_start();
+#endif
+        // calculate average/median for each buffer, avoids having to lock the buffer
         for(uint16_t c : allocated_channels) {
             Adc *adc = getInstance(c);
             if(adc == nullptr || !adc->valid) continue; // not setup
-            #ifdef MEDIAN
-            adc->last_sample= adc->sample_buffer[quick_median(adc->sample_buffer, num_samples)];
-            #else
-            adc->last_sample= average(adc->sample_buffer, num_samples);
-            #endif
+#ifdef MEDIAN
+            adc->last_sample = adc->sample_buffer[quick_median(adc->sample_buffer, num_samples)];
+#else
+            adc->last_sample = average(adc->sample_buffer, num_samples);
+#endif
         }
     }
 }
 
-// gets called 20 times a second from an ISR or timer
+// gets called 20 times a second (every 50ms) from an ISR or timer
 uint32_t Adc::read()
 {
-    // returns the median value of the last 8 samples
+    // returns the average/median value of the last 8 samples
     return last_sample;
 }
 
@@ -366,21 +395,21 @@ extern "C" void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
         ADCx_CHANNEL_PIN_CLK_ENABLE();
         // For each channel, init the GPIOs
         for(uint16_t c : Adc::allocated_channels) {
-            #ifdef BOARD_PRIME
+#ifdef BOARD_PRIME
             // check for special case of PA0_C, no need to config PA0 if on PA0_C
-            if(adcpinlut[c].port == GPIOA && adcpinlut[c].pin == GPIO_PIN_0){
+            if(adcpinlut[c].port == GPIOA && adcpinlut[c].pin == GPIO_PIN_0) {
                 HAL_SYSCFG_AnalogSwitchConfig(SYSCFG_SWITCH_PA0, SYSCFG_SWITCH_PA0_OPEN);
                 printf("DEBUG: ADC: PA0_C switch opened\n");
                 continue;
             }
-            #else
+#else
             // This allows us to connect to PA0 but read channel 0 (PA0_C)
-            if(adcpinlut[c].port == GPIOA && adcpinlut[c].pin == GPIO_PIN_0){
+            if(adcpinlut[c].port == GPIOA && adcpinlut[c].pin == GPIO_PIN_0) {
                 HAL_SYSCFG_AnalogSwitchConfig(SYSCFG_SWITCH_PA0, SYSCFG_SWITCH_PA0_CLOSE);
                 printf("DEBUG: ADC: PA0_C switch closed\n");
                 continue;
             }
-            #endif
+#endif
 
             // lookup pin and port
             GPIO_InitStruct.Pin = adcpinlut[c].pin;
@@ -473,10 +502,10 @@ extern "C" void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
     if(hadc->Instance == ADCx) {
         // Invalidate Data Cache to get the updated content of the SRAM on the ADC converted data buffer
-        SCB_InvalidateDCache_by_Addr((uint32_t *) aADCxConvertedData, adc_data_size*sizeof(uint16_t));
+        SCB_InvalidateDCache_by_Addr((uint32_t *) aADCxConvertedData, adc_data_size * sizeof(uint16_t));
         Adc::sample_isr(false); // copy second half while first half is being filled
 
-    }else{
+    } else {
         HAL_ADC3_ConvCpltCallback(hadc);
     }
 }
@@ -491,6 +520,6 @@ extern "C" void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
     if(hadc->Instance != ADC1) return;
 
     // Invalidate Data Cache to get the updated content of the SRAM on the ADC converted data buffer
-    SCB_InvalidateDCache_by_Addr((uint32_t *) aADCxConvertedData, adc_data_size*sizeof(uint16_t));
+    SCB_InvalidateDCache_by_Addr((uint32_t *) aADCxConvertedData, adc_data_size * sizeof(uint16_t));
     Adc::sample_isr(true); // copy first half while second half is being filled
 }
