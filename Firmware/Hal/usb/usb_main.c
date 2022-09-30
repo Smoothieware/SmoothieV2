@@ -20,6 +20,7 @@
 size_t write_cdc(uint8_t i, const char *buf, size_t len)
 {
 	size_t sent = 0;
+	size_t tmo= 0;
 	while(sent < len) {
 		int n = vcom_write(i, (uint8_t *)buf + sent, len - sent);
 		if(n < 0) {
@@ -29,9 +30,14 @@ size_t write_cdc(uint8_t i, const char *buf, size_t len)
 		}
 		sent += n;
 		if(sent < len) {
-			// if(!vcom_connected()) return 0; // indicates error
-			// yield some time
-			taskYIELD();
+			vTaskDelay(pdMS_TO_TICKS(10));
+			// we need to timeout here if the port was not open anymore
+			if(n == 0) {
+				tmo += 10;
+				if(tmo > 100) return sent; // arbitrary 100 ms timeout
+			}else{
+				tmo= 0;
+			}
 		}
 	}
 

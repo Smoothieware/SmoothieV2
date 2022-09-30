@@ -35,7 +35,7 @@ public:
 	bool is_no_response() const { return no_response; }
 	int flush_prepend();
 	void clear_flags() { append_nl= prepend_ok= no_response= done= false; }
-	void set_closed() { closed= true; }
+	void set_closed(bool flg=true) { closed= flg; }
 	bool is_closed() const { return closed; }
 	void set_done() { done= true; }
 	bool is_done() const { return done; }

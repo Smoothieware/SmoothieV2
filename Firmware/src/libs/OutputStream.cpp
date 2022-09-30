@@ -111,7 +111,7 @@ int OutputStream::FdBuf::sync()
 		// fnc is expected to write everything
 		size_t n = fnc(this->str().data(), len);
 		if(n != len) {
-			::printf("OutputStream error: write fnc failed\n");
+			::printf("ERROR: OutputStream write fnc failed, closing stream\n");
 			parent->set_closed();
 			ret= -1;
 		}

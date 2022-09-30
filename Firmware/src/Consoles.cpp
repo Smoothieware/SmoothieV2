@@ -385,7 +385,7 @@ static void usb_comms(void *param)
 
         if(abort_comms) break;
 
-        //printf("DEBUG: CDC%d connected\n", inst+1);
+        printf("DEBUG: CDC%d connected\n", inst+1);
 
         // create an output stream that writes to the cdc
         OutputStream *os = new OutputStream([inst](const char *buf, size_t len) { return write_cdc(inst, buf, len); });
@@ -409,6 +409,10 @@ static void usb_comms(void *param)
             // this read will block if no data is available
             size_t n = read_cdc(inst, usb_rx_buf, usb_rx_buf_sz);
             if(n > 0) {
+                if(os->is_closed()) {
+                    printf("DEBUG: USB OutputStream was closed, reopening\n");
+                    os->set_closed(false);
+                }
                 if(os->fast_capture_fnc) {
                     if(!os->fast_capture_fnc(usb_rx_buf, n)) {
                         os->fast_capture_fnc = nullptr; // we are done ok
