@@ -13,6 +13,8 @@
 
 #include "Hal_pin.h"
 
+#define TICKS2MS( xTicks ) ( ((xTicks) * 1000.0F) / configTICK_RATE_HZ )
+
 // called externally to read/write to the USB CDC channel
 // Expects entire buffer to be fully written
 // vcom_write will copy the buffer or as much of it as it can
@@ -20,7 +22,7 @@
 size_t write_cdc(uint8_t i, const char *buf, size_t len)
 {
 	size_t sent = 0;
-	size_t tmo= 0;
+    TickType_t last_time_check = xTaskGetTickCount();
 	while(sent < len) {
 		int n = vcom_write(i, (uint8_t *)buf + sent, len - sent);
 		if(n < 0) {
@@ -30,19 +32,21 @@ size_t write_cdc(uint8_t i, const char *buf, size_t len)
 		}
 		sent += n;
 		if(sent < len) {
-			// FIXME:  this is slowing output down, go back to taskYIELD(); but keep an eye on time
-			vTaskDelay(pdMS_TO_TICKS(10));
-			// we need to timeout here if the port was not open anymore
 			if(n == 0) {
-				tmo += 10;
-				if(tmo > 100) {
+				// we need to timeout here if the port was not open anymore
+    			if(TICKS2MS(xTaskGetTickCount() - last_time_check) > 100) {
 					// reset the tx_complete flag
 					vcom_reset(i);
 					return sent; // arbitrary 100 ms timeout
 				}
+
 			}else{
-				tmo= 0;
+				// we got some data so reset timeout
+				last_time_check = xTaskGetTickCount();
 			}
+
+			// yield to other tasks but quickly
+			taskYIELD();
 		}
 	}
 

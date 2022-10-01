@@ -113,10 +113,9 @@ int OutputStream::FdBuf::sync()
 		if(n != len) {
 			::printf("ERROR: OutputStream write fnc failed, closing stream\n");
 			parent->set_closed();
-            if(parent->os != nullptr) {
-                  parent->os->clear();
-            }
-			ret= 0; // if we return -1 it sets some error and we can't write anymore
+			ret= 0;
+            // if we return -1 it sets some error and we can't write anymore
+            // we could do parent->os->clear(); upstream to clear those flags
 		}
 		this->str("");
 	}
