@@ -112,6 +112,7 @@ private:
     void setStepInterpolation(int8_t value);
     bool getStepInterpolation();
     void setDoubleEdge(int8_t value);
+    void setPassiveFastDecay(int8_t value);
 
     /*!
      * \brief Sets and configure the classical Constant Off Timer Chopper
@@ -451,7 +452,7 @@ private:
     std::bitset<8> error_detected;
     std::bitset<8> error_reported;
 
-    // only needed for the tuning app report
+    // makes remembering settings easier
     struct {
         int8_t vblank_time:8;
         int8_t vconstant_off_time:5; //we need to remember this value in order to enable and disable the motor

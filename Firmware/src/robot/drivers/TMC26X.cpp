@@ -108,8 +108,13 @@
 #define READ_MICROSTEP_POSITION        0x0000ul
 #define READ_STALL_GUARD_READING       0x0010ul
 #define READ_STALL_GUARD_AND_COOL_STEP 0x0020ul
+#define READ_ALL_FLAGS                 0x0030ul
 #define READ_SELECTION_PATTERN         0x0030ul
 #define VSENSE                         0x0040ul
+#define OTSENS                         0x0008ul
+#define SHRTSENS                       0x0004ul
+#define EN_PFD                         0x0002ul
+#define EN_S2VS                        0x0001ul
 
 //definitions for the chopper config register
 #define CHOPPER_MODE_STANDARD          0x00000ul
@@ -158,6 +163,7 @@
 #define raw_register_key                "reg"
 #define step_interpolation_key          "step_interpolation"
 #define spi_channel_key                 "spi_channel"
+#define passive_fast_decay_key          "passive_fast_decay"
 
 #ifdef BOARD_DEVEBOX
 constexpr static int def_spi_channel= 0;
@@ -312,6 +318,12 @@ bool TMC26X::config(ConfigReader& cr, const char *actuator_name)
         printf("DEBUG:configure-tmc2660: step interpolation for %s is on\n", actuator_name);
     }
 
+    bool pfd = cr.get_bool(mm, passive_fast_decay_key, true);
+    if(pfd) {
+        setPassiveFastDecay(1);
+        printf("DEBUG:configure-tmc2590: %s - passive fast decay is on\n", actuator_name);
+    }
+
     return true;
 }
 
@@ -359,7 +371,11 @@ void TMC26X::setCurrent(unsigned int current)
     //do some sanity checks
     if (current_scaling > 31) {
         current_scaling = 31;
+
+    } else if(current_scaling < 16) {
+        printf("WARNING: tmc2660: %c - suboptimal current setting %d at %umA with sense resistor value %umilliOhms\n", designator, current_scaling, current, resistor);
     }
+
     //delete the old value
     stall_guard2_current_register_value &= ~(CURRENT_SCALING_PATTERN);
     //set the new current scaling
@@ -514,6 +530,19 @@ void TMC26X::setDoubleEdge(int8_t value)
     //if started we directly send it to the motor
     if (started) {
         send262(driver_control_register_value);
+    }
+}
+
+void TMC26X::setPassiveFastDecay(int8_t value)
+{
+    if (value) {
+        driver_configuration_register_value |= EN_PFD;
+    } else {
+        driver_configuration_register_value &= ~(EN_PFD);
+    }
+    //if started we directly send it to the motor
+    if (started) {
+        send262(driver_configuration_register_value);
     }
 }
 
@@ -1019,6 +1048,9 @@ void TMC26X::dump_status(OutputStream& stream, bool readable)
 
         stream.printf("Microsteps: 1/%d\n", microsteps);
         stream.printf("Step interpolation is %s\n", getStepInterpolation() ? "on":"off");
+        stream.printf("Overtemperature sensitivity: %dC\n", (driver_configuration_register_value & OTSENS) ? 136 : 150);
+        stream.printf("Short to ground sensitivity: %s\n", (driver_configuration_register_value & SHRTSENS) ? "high" : "low");
+        stream.printf("Passive fast decay is %s\n", (driver_configuration_register_value & EN_PFD) ? "on" : "off");
 
         stream.printf("Register dump:\n");
         stream.printf(" driver control register: %05lX(%ld)\n", driver_control_register_value, driver_control_register_value);
@@ -1029,7 +1061,7 @@ void TMC26X::dump_status(OutputStream& stream, bool readable)
         stream.printf(" %s.reg = %05lX,%05lX,%05lX,%05lX,%05lX\n", name.c_str(), driver_control_register_value, chopper_config_register_value, cool_step_register_value, stall_guard2_current_register_value, driver_configuration_register_value);
 
     } else {
-        // This is the format the [rocessing app uses for tuning TMX26X chips
+        // This is the format the processing app uses for tuning TMX26X chips
         int n= designator < 'X' ? designator-'A'+3 : designator-'X';
         bool moving = Robot::getInstance()->actuators[n]->is_moving();
         // dump out in the format that the processing script needs
@@ -1248,9 +1280,15 @@ bool TMC26X::set_options(const GCode& gcode)
             setConstantOffTimeChopper(GET('U'), GET('V'), GET('W'), GET('X'), GET('Y'));
             set = true;
 
-        } else if(s == 1 && HAS('U') && HAS('V') && HAS('W') && HAS('X') && HAS('Y')) {
+        } else if(s == 1 && (HAS('U') || HAS('V') || HAS('W') || HAS('X') || HAS('Y'))) {
             //void TMC26X::setSpreadCycleChopper(int8_t constant_off_time, int8_t blank_time, int8_t hysteresis_start, int8_t hysteresis_end, int8_t hysteresis_decrement);
-            setSpreadCycleChopper(GET('U'), GET('V'), GET('W'), GET('X'), GET('Y'));
+            // get current settings
+            int8_t u= HAS('U') ? GET('U') : vconstant_off_time;
+            int8_t v= HAS('V') ? GET('V') : vblank_time;
+            int8_t w= HAS('W') ? GET('W') : h_start;
+            int8_t x= HAS('X') ? GET('X') : h_end;
+            int8_t y= HAS('Y') ? GET('Y') : h_decrement;
+            setSpreadCycleChopper(u, v, w, x, y);
             set = true;
 
         } else if(s == 2 && HAS('Z')) {
@@ -1268,7 +1306,11 @@ bool TMC26X::set_options(const GCode& gcode)
         } else if(s == 5 && HAS('Z')) {
             setCoolStepEnabled(GET('Z') == 1);
             set = true;
+        } else if(s == 6 && HAS('Z')) {
+            setPassiveFastDecay(GET('Z') == 1);
+            set = true;
         }
+
     }
 
     return set;
