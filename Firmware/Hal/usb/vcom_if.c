@@ -147,6 +147,14 @@ static void vcom_if_in_cmplt(void* itf, uint8_t * pbuf, uint16_t length)
 	vcom_states[i]->tx_complete= 1;
 }
 
+// reset the tc complete flag after a tx timeout
+void vcom_reset(uint8_t i)
+{
+	if(i < 2 && vcom_states[i] != NULL) {
+	    vcom_states[i]->tx_complete= 1;
+	}
+}
+
 // return bytes written, or -1 on error
 int vcom_write(uint8_t i, uint8_t *buf, size_t len)
 {

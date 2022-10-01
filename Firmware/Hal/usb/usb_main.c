@@ -30,11 +30,16 @@ size_t write_cdc(uint8_t i, const char *buf, size_t len)
 		}
 		sent += n;
 		if(sent < len) {
+			// FIXME:  this is slowing output down, go back to taskYIELD(); but keep an eye on time
 			vTaskDelay(pdMS_TO_TICKS(10));
 			// we need to timeout here if the port was not open anymore
 			if(n == 0) {
 				tmo += 10;
-				if(tmo > 100) return sent; // arbitrary 100 ms timeout
+				if(tmo > 100) {
+					// reset the tx_complete flag
+					vcom_reset(i);
+					return sent; // arbitrary 100 ms timeout
+				}
 			}else{
 				tmo= 0;
 			}
