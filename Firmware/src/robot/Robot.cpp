@@ -1285,9 +1285,10 @@ bool Robot::handle_M911(GCode& gcode, OutputStream& os)
             }else if(gcode.get_subcode() == 3 ) {
                 if(!actuators[p]->set_options(gcode)) {
                     os.printf("No options were recognised\n");
-                }else{
-                    os.printf("options were set temporarily for %d\n", p);
                 }
+                // else{
+                //     os.printf("options were set temporarily for %d\n", p);
+                // }
             }
         }
         return true;

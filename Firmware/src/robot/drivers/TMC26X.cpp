@@ -591,6 +591,9 @@ void TMC26X::setConstantOffTimeChopper(int8_t constant_off_time, int8_t blank_ti
         blank_value = 0;
     }
     this->vblank_time = blank_time;
+    this->vfast_decay_time_setting= fast_decay_time_setting;
+    this->vsine_wave_offset= sine_wave_offset;
+    this->vuse_current_comparator= use_current_comparator;
 
     if (fast_decay_time_setting < 0) {
         fast_decay_time_setting = 0;
@@ -744,8 +747,7 @@ void TMC26X::setRandomOffTime(int8_t value)
     }
 }
 
-void TMC26X::setCoolStepConfiguration(unsigned int lower_SG_threshold, unsigned int SG_hysteresis, uint8_t current_decrement_step_size,
-                                      uint8_t current_increment_step_size, uint8_t lower_current_limit)
+void TMC26X::setCoolStepConfiguration(unsigned int lower_SG_threshold, unsigned int SG_hysteresis, uint8_t current_decrement_step_size, uint8_t current_increment_step_size, uint8_t lower_current_limit)
 {
     //sanitize the input values
     if (lower_SG_threshold > 480) {
@@ -1051,7 +1053,7 @@ void TMC26X::dump_status(OutputStream& stream, bool readable)
         stream.printf("Overtemperature sensitivity: %dC\n", (driver_configuration_register_value & OTSENS) ? 136 : 150);
         stream.printf("Short to ground sensitivity: %s\n", (driver_configuration_register_value & SHRTSENS) ? "high" : "low");
         stream.printf("Passive fast decay is %s\n", (driver_configuration_register_value & EN_PFD) ? "on" : "off");
-
+        stream.printf("Using %s Chopper\n", ((chopper_config_register_value & CHOPPER_MODE_T_OFF_FAST_DECAY) != 0) ? "Constant Off Time":"Spread Cycle");
         stream.printf("Register dump:\n");
         stream.printf(" driver control register: %05lX(%ld)\n", driver_control_register_value, driver_control_register_value);
         stream.printf(" chopper config register: %05lX(%ld)\n", chopper_config_register_value, chopper_config_register_value);
@@ -1275,9 +1277,14 @@ bool TMC26X::set_options(const GCode& gcode)
 
     if(HAS('S')) {
         uint32_t s = GET('S');
-        if(s == 0 && HAS('U') && HAS('V') && HAS('W') && HAS('X') && HAS('Y')) {
+        if(s == 0 && (HAS('U') || HAS('V') || HAS('W') || HAS('X') || HAS('Y'))) {
             //void TMC26X::setConstantOffTimeChopper(int8_t constant_off_time, int8_t blank_time, int8_t fast_decay_time_setting, int8_t sine_wave_offset, uint8_t use_current_comparator)
-            setConstantOffTimeChopper(GET('U'), GET('V'), GET('W'), GET('X'), GET('Y'));
+            int8_t u= HAS('U') ? GET('U') : vconstant_off_time;
+            int8_t v= HAS('V') ? GET('V') : vblank_time;
+            int8_t w= HAS('W') ? GET('W') : vfast_decay_time_setting;
+            int8_t x= HAS('X') ? GET('X') : vsine_wave_offset;
+            int8_t y= HAS('Y') ? GET('Y') : vuse_current_comparator;
+            setConstantOffTimeChopper(u, v, w, x, y);
             set = true;
 
         } else if(s == 1 && (HAS('U') || HAS('V') || HAS('W') || HAS('X') || HAS('Y'))) {
