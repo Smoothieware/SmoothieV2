@@ -1045,7 +1045,7 @@ void TMC26X::dump_status(OutputStream& stream, bool readable)
         value = getCurrentStallGuardReading();
         stream.printf("Stall Guard value: %d\n", value);
 
-        stream.printf("Current setting: %dmA\n", getCurrent());
+        stream.printf("Current setting: %dmA Peak (%f Amps RMS)\n", getCurrent(), (getCurrent() * 0.707F) / 1000);
         stream.printf("Coolstep current: %dmA\n", getCoolstepCurrent());
 
         stream.printf("Microsteps: 1/%d\n", microsteps);
