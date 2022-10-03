@@ -1260,64 +1260,89 @@ int TMC26X::sendSPI(uint8_t *b, int cnt, uint8_t *r)
 #define GET(X) (gcode.get_int_arg(X))
 bool TMC26X::set_options(const GCode& gcode)
 {
+    if(!HAS('S')) return false;
+
     bool set = false;
-    if(HAS('O') || HAS('Q')) {
-        // void TMC26X::setStallGuardThreshold(int8_t stall_guard_threshold, int8_t stall_guard_filter_enabled)
-        int8_t o = HAS('O') ? GET('O') : getStallGuardThreshold();
-        int8_t q = HAS('Q') ? GET('Q') : getStallGuardFilter();
-        setStallGuardThreshold(o, q);
-        set = true;
-    }
 
-    if(HAS('H') && HAS('I') && HAS('J') && HAS('K') && HAS('L')) {
-        //void TMC26X::setCoolStepConfiguration(unsigned int lower_SG_threshold, unsigned int SG_hysteresis, uint8_t current_decrement_step_size, uint8_t current_increment_step_size, uint8_t lower_current_limit)
-        setCoolStepConfiguration(GET('H'), GET('I'), GET('J'), GET('K'), GET('L'));
-        set = true;
-    }
+    switch(GET('S')) {
+        case 0:
+            if(HAS('U') || HAS('V') || HAS('W') || HAS('X') || HAS('Y')) {
+                //void TMC26X::setConstantOffTimeChopper(int8_t constant_off_time, int8_t blank_time, int8_t fast_decay_time_setting, int8_t sine_wave_offset, uint8_t use_current_comparator)
+                int8_t u= HAS('U') ? GET('U') : vconstant_off_time;
+                int8_t v= HAS('V') ? GET('V') : vblank_time;
+                int8_t w= HAS('W') ? GET('W') : vfast_decay_time_setting;
+                int8_t x= HAS('X') ? GET('X') : vsine_wave_offset;
+                int8_t y= HAS('Y') ? GET('Y') : vuse_current_comparator;
+                setConstantOffTimeChopper(u, v, w, x, y);
+                set = true;
+            }
+            break;
 
-    if(HAS('S')) {
-        uint32_t s = GET('S');
-        if(s == 0 && (HAS('U') || HAS('V') || HAS('W') || HAS('X') || HAS('Y'))) {
-            //void TMC26X::setConstantOffTimeChopper(int8_t constant_off_time, int8_t blank_time, int8_t fast_decay_time_setting, int8_t sine_wave_offset, uint8_t use_current_comparator)
-            int8_t u= HAS('U') ? GET('U') : vconstant_off_time;
-            int8_t v= HAS('V') ? GET('V') : vblank_time;
-            int8_t w= HAS('W') ? GET('W') : vfast_decay_time_setting;
-            int8_t x= HAS('X') ? GET('X') : vsine_wave_offset;
-            int8_t y= HAS('Y') ? GET('Y') : vuse_current_comparator;
-            setConstantOffTimeChopper(u, v, w, x, y);
-            set = true;
+        case 1:
+            if(HAS('U') || HAS('V') || HAS('W') || HAS('X') || HAS('Y')) {
+                //void TMC26X::setSpreadCycleChopper(int8_t constant_off_time, int8_t blank_time, int8_t hysteresis_start, int8_t hysteresis_end, int8_t hysteresis_decrement);
+                int8_t u= HAS('U') ? GET('U') : vconstant_off_time;
+                int8_t v= HAS('V') ? GET('V') : vblank_time;
+                int8_t w= HAS('W') ? GET('W') : h_start;
+                int8_t x= HAS('X') ? GET('X') : h_end;
+                int8_t y= HAS('Y') ? GET('Y') : h_decrement;
+                setSpreadCycleChopper(u, v, w, x, y);
+                set = true;
+            }
+            break;
 
-        } else if(s == 1 && (HAS('U') || HAS('V') || HAS('W') || HAS('X') || HAS('Y'))) {
-            //void TMC26X::setSpreadCycleChopper(int8_t constant_off_time, int8_t blank_time, int8_t hysteresis_start, int8_t hysteresis_end, int8_t hysteresis_decrement);
-            // get current settings
-            int8_t u= HAS('U') ? GET('U') : vconstant_off_time;
-            int8_t v= HAS('V') ? GET('V') : vblank_time;
-            int8_t w= HAS('W') ? GET('W') : h_start;
-            int8_t x= HAS('X') ? GET('X') : h_end;
-            int8_t y= HAS('Y') ? GET('Y') : h_decrement;
-            setSpreadCycleChopper(u, v, w, x, y);
-            set = true;
+        case 2:
+            if(HAS('Z')) {
+                setRandomOffTime(GET('Z'));
+                set = true;
+            }
+            break;
 
-        } else if(s == 2 && HAS('Z')) {
-            setRandomOffTime(GET('Z'));
-            set = true;
+        case 3:
+            if(HAS('Z')) {
+                setDoubleEdge(GET('Z'));
+                set = true;
+            }
+            break;
 
-        } else if(s == 3 && HAS('Z')) {
-            setDoubleEdge(GET('Z'));
-            set = true;
+        case 4:
+            if(HAS('Z')) {
+                setStepInterpolation(GET('Z'));
+                set = true;
+            }
+            break;
 
-        } else if(s == 4 && HAS('Z')) {
-            setStepInterpolation(GET('Z'));
-            set = true;
+        case 5:
+            if(HAS('Z')) {
+                setCoolStepEnabled(GET('Z') == 1);
+                set = true;
+            }
+            break;
 
-        } else if(s == 5 && HAS('Z')) {
-            setCoolStepEnabled(GET('Z') == 1);
-            set = true;
-        } else if(s == 6 && HAS('Z')) {
-            setPassiveFastDecay(GET('Z') == 1);
-            set = true;
-        }
+        case 6:
+            if(HAS('Z')) {
+                setPassiveFastDecay(GET('Z') == 1);
+                set = true;
+            }
+            break;
 
+        case 7:
+            if(HAS('O') || HAS('Q')) {
+                // void TMC26X::setStallGuardThreshold(int8_t stall_guard_threshold, int8_t stall_guard_filter_enabled)
+                int8_t o = HAS('O') ? GET('O') : getStallGuardThreshold();
+                int8_t q = HAS('Q') ? GET('Q') : getStallGuardFilter();
+                setStallGuardThreshold(o, q);
+                set = true;
+            }
+            break;
+
+        case 8:
+            if(HAS('H') && HAS('I') && HAS('J') && HAS('K') && HAS('L')) {
+                //void TMC26X::setCoolStepConfiguration(unsigned int lower_SG_threshold, unsigned int SG_hysteresis, uint8_t current_decrement_step_size, uint8_t current_increment_step_size, uint8_t lower_current_limit)
+                setCoolStepConfiguration(GET('H'), GET('I'), GET('J'), GET('K'), GET('L'));
+                set = true;
+            }
+            break;
     }
 
     return set;

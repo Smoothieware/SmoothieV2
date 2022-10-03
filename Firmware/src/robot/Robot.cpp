@@ -1227,10 +1227,6 @@ bool Robot::handle_M909(GCode& gcode, OutputStream& os)
 
     M911.3 [Pn] will set the options for motor n based on the parameters passed as below, if Pn is not specified it sets for all motors
 
-    M911.3 Onnn Qnnn setStallGuardThreshold
-           O=stall_guard_threshold, Q=stall_guard_filter_enabled
-    M911.3 Hnnn Innn Jnnn Knnn Lnnn setCoolStepConfiguration
-           H=lower_SG_threshold, I=SG_hysteresis, J=current_decrement_step_size, K=current_increment_step_size, L=lower_current_limit
     M911.3 S0 Unnn Vnnn Wnnn Xnnn Ynnn setConstantOffTimeChopper
               U=constant_off_time, V=blank_time, W=fast_decay_time_setting, X=sine_wave_offset, Y=use_current_comparator
     M911.3 S1 Unnn Vnnn Wnnn Xnnn Ynnn setSpreadCycleChopper
@@ -1245,6 +1241,10 @@ bool Robot::handle_M909(GCode& gcode, OutputStream& os)
               Z=on|off Z1 is on Z0 is off
     M911.3 S6 Zn setPassiveFastDecay
               Z=on|off Z1 is on Z0 is off
+    M911.3 S7 Onnn Qnnn setStallGuardThreshold
+              O=stall_guard_threshold, Q=stall_guard_filter_enabled
+    M911.3 S8 Hnnn Innn Jnnn Knnn Lnnn setCoolStepConfiguration
+              H=lower_SG_threshold, I=SG_hysteresis, J=current_decrement_step_size, K=current_increment_step_size, L=lower_current_limit
 */
 bool Robot::handle_M911(GCode& gcode, OutputStream& os)
 {
