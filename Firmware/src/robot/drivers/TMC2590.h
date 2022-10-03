@@ -455,15 +455,16 @@ private:
     std::bitset<8> error_reported;
 
     // only needed for the tuning app report
-    struct {
-        int8_t vblank_time:8;
-        int8_t vconstant_off_time:5; //we need to remember this value in order to enable and disable the motor
-        int8_t h_start:4;
-        int8_t h_end:4;
-        int8_t h_decrement:3;
-        bool cool_step_enabled:1; //we need to remember this to configure the coolstep if it si enabled
-        bool started:1; //if the stepper has been started yet
-    };
+    int8_t vblank_time;
+    int8_t vconstant_off_time; //we need to remember this value in order to enable and disable the motor
+    int8_t h_start;
+    int8_t h_end;
+    int8_t h_decrement;
+    int8_t vfast_decay_time_setting{13};
+    int8_t vsine_wave_offset{12};
+    uint8_t vuse_current_comparator{1};
+    bool cool_step_enabled; //we need to remember this to configure the coolstep if it si enabled
+    bool started; //if the stepper has been started yet
 
 
     uint8_t cool_step_lower_threshold; // we need to remember the threshold to enable and disable the CoolStep feature
