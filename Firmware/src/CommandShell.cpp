@@ -1405,7 +1405,7 @@ bool CommandShell::config_get_cmd(std::string& params, OutputStream& os)
 
 bool CommandShell::config_set_cmd(std::string& params, OutputStream& os)
 {
-    HELP("config-set \"section name\" key [=] value");
+    HELP("config-set \"section name\" key [=] [value]");
     os.set_no_response();
 
     std::string sectionstr = stringutils::shift_parameter( params );
@@ -1416,8 +1416,8 @@ bool CommandShell::config_set_cmd(std::string& params, OutputStream& os)
         valuestr = stringutils::shift_parameter( params );
     }
 
-    if(sectionstr.empty() || keystr.empty() || valuestr.empty()) {
-        os.printf("Usage: config-set section key value\n");
+    if(sectionstr.empty() || keystr.empty()) {
+        os.printf("Usage: config-set section key [value]\n");
         return true;
     }
 
@@ -1440,13 +1440,24 @@ bool CommandShell::config_set_cmd(std::string& params, OutputStream& os)
 
     const char *section = sectionstr.c_str();
     const char *key = keystr.c_str();
-    const char *value = valuestr.c_str();
+    const char *value = nullptr;
+
+    // empty valuestr will delete the key
+    if(!valuestr.empty()) value= valuestr.c_str();
 
     if(cw.write(section, key, value)) {
-        os.printf("set config: [%s] %s = %s\n", section, key, value);
+        if(value == nullptr) {
+            os.printf("deleted config: [%s] %s\n", section, key);
+        }else{
+            os.printf("set config: [%s] %s = %s\n", section, key, value);
+        }
 
     } else {
-        os.printf("failed to set config: [%s] %s = %s\n", section, key, value);
+        if(value == nullptr) {
+            os.printf("failed to delete config: [%s] %s\n", section, key);
+        }else{
+            os.printf("failed to set config: [%s] %s = %s\n", section, key, value);
+        }
         return true;
     }
 
