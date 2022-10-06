@@ -55,6 +55,7 @@
 #define steps_per_mm_key                "steps_per_mm"
 #define max_rate_key                    "max_rate"
 #define acceleration_key                "acceleration"
+#define reversed_key                    "reversed"
 
 // optional pins for microstepping used on smoothiev2 boards
 #define ms1_pin_key                     "ms1_pin"
@@ -242,6 +243,16 @@ bool Robot::configure(ConfigReader& cr)
         Pin step_pin(cr.get_string(mm, step_pin_key, DEFAULT_STEP_PIN(a)), Pin::AS_OUTPUT);
         Pin dir_pin( cr.get_string(mm, dir_pin_key,  DEFAULT_DIR_PIN(a)), Pin::AS_OUTPUT);
         Pin en_pin(  cr.get_string(mm, en_pin_key,   DEFAULT_EN_PIN(a)), Pin::AS_OUTPUT);
+
+        // an handy way to reverse motor direction without redefining the pin with !
+        bool reversed= cr.get_bool(mm, reversed_key, false);
+        if(reversed) {
+            if(dir_pin.is_inverting()) {
+                printf("WARNING: configure-robot: for actuator %s, the pin is already inverting so reversed is ignored, remove the ! on pin definition and set reversed to false\n", s->first.c_str());
+            }else{
+                dir_pin.set_inverting(true);
+            }
+        }
 
         printf("DEBUG: configure-robot: for actuator %s pins: %s, %s, %s\n", s->first.c_str(), step_pin.to_string().c_str(), dir_pin.to_string().c_str(), en_pin.to_string().c_str());
 
