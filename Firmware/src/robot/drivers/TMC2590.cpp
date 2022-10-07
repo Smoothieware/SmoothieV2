@@ -1116,66 +1116,16 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
         stream.printf("config-set tmc2590 %s.reg = %05lX,%05lX,%05lX,%05lX,%05lX\n", name.c_str(), driver_control_register_value, chopper_config_register_value, cool_step_register_value, stall_guard2_current_register_value, driver_configuration_register_value);
 
     } else {
-        // This is the format the processing app uses for tuning TMX26X chips
-        int n = designator < 'X' ? designator - 'A' + 3 : designator - 'X';
-        bool moving = Robot::getInstance()->actuators[n]->is_moving();
-        // dump out in the format that the processing script needs
-        if (moving) {
-            stream.printf("#sg%d,p%lu,k%u,r,", getCurrentStallGuardReading(), Robot::getInstance()->actuators[n]->get_current_step(), getCoolstepCurrent());
-        } else {
-            readStatus(TMC2590_READOUT_POSITION); // get the status bits
-            stream.printf("#s,");
-        }
-        stream.printf("d%d,", Robot::getInstance()->actuators[n]->which_direction() ? -1 : 1);
-        stream.printf("c%u,m%d,", getCurrent(), getMicrosteps());
-        // stream.printf('S');
-        // stream.printf(TMC2590Stepper.getSpeed(), DEC);
-        stream.printf("t%d,f%d,", getStallGuardThreshold(), getStallGuardFilter());
+        // This is the format for TMC Configurator to parse current settings
+        stream.printf("%c,", designator);
 
-        //print out the general cool step config
-        if (isCoolStepEnabled()) stream.printf("Ke+,");
-        else stream.printf("Ke-,");
-
-        stream.printf("Kl%u,Ku%u,Kn%u,Ki%u,Km%u,",
-                      getCoolStepLowerSgThreshold(), getCoolStepUpperSgThreshold(), getCoolStepNumberOfSGReadings(), getCoolStepCurrentIncrementSize(), getCoolStepLowerCurrentLimit());
-
-        //detect the winding status
-        if (isOpenLoadA()) {
-            stream.printf("ao,");
-        } else if(isShortToGroundA()) {
-            stream.printf("ag,");
-        } else {
-            stream.printf("a-,");
-        }
-        //detect the winding status
-        if (isOpenLoadB()) {
-            stream.printf("bo,");
-        } else if(isShortToGroundB()) {
-            stream.printf("bg,");
-        } else {
-            stream.printf("b-,");
-        }
-
-        char temperature = getOverTemperature();
-        if (temperature == 0) {
-            stream.printf("x-,");
-        } else if (temperature == TMC2590_OVERTEMPERATURE_PREWARING) {
-            stream.printf("xw,");
-        } else {
-            stream.printf("xe,");
-        }
-
-        if (isEnabled()) {
-            stream.printf("e1,");
-        } else {
-            stream.printf("e0,");
-        }
-
-        //write out the current chopper config
-        stream.printf("Cm%d,", (chopper_config_register_value & CHOPPER_MODE_T_OFF_FAST_DECAY) != 0);
-        stream.printf("Co%d,Cb%d,", vconstant_off_time, vblank_time);
-        if ((chopper_config_register_value & CHOPPER_MODE_T_OFF_FAST_DECAY) == 0) {
-            stream.printf("Cs%d,Ce%d,Cd%d,", h_start, h_end, h_decrement);
+        // write out the current chopper config in slider units
+        bool mode= (chopper_config_register_value & CHOPPER_MODE_T_OFF_FAST_DECAY) != 0;
+        stream.printf("%d,%d,%d,", mode, vconstant_off_time, vblank_time);
+        if (!mode) {
+            stream.printf("%d,%d,%d", h_start, h_end, h_decrement);
+        }else{
+            stream.printf("%d,%d,%d", vfast_decay_time_setting, vsine_wave_offset, vuse_current_comparator);
         }
         stream.printf("\n");
     }

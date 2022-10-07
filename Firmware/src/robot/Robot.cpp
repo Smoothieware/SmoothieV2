@@ -1230,11 +1230,13 @@ bool Robot::handle_M909(GCode& gcode, OutputStream& os)
 
 /* set or get raw registers
     M911 will dump all the registers and status of all the motors
-    M911[.1] Pn will dump the registers and status of the selected motor.
-              R0 will request format in processing machine readable format
+    M911 Pn will dump the registers and status of the selected motor n
+
+    M911.1 [Pn] display current register settings for preload TMC Configurator
+
     M911.2 [Pn] Rxxx Vyyy sets Register xxx to value yyy for motor n,
-               xxx == 255 writes the registers
-               xxx == 0 shows what registers are mapped to what
+                 xxx == 255 writes the registers
+                 xxx == 0 shows what registers are mapped to what
 
     M911.3 [Pn] will set the options for motor n based on the parameters passed as below, if Pn is not specified it sets for all motors
 
@@ -1260,24 +1262,27 @@ bool Robot::handle_M909(GCode& gcode, OutputStream& os)
 bool Robot::handle_M911(GCode& gcode, OutputStream& os)
 {
     if(gcode.get_subcode() <= 1) {
-        if(!StepperMotor::get_vmot()) os.printf("WARNING: VMOT is off\n");
         if(gcode.has_no_args()) {
             // M911 no args dump status for all drivers
             for (int i = 0; i < get_number_registered_motors(); i++) {
-                char axis= i < 3 ? 'X'+i : 'A'+i-3;
-                os.printf("Motor %d (%c)...\n", i, axis);
-                actuators[i]->dump_status(os);
-                os.printf("\n");
+                if(gcode.get_subcode() != 1) {
+                    if(i == 0 && !StepperMotor::get_vmot()) os.printf("VMOT is off\n");
+                    char axis= i < 3 ? 'X'+i : 'A'+i-3;
+                    os.printf("Motor %d (%c)...\n", i, axis);
+                    actuators[i]->dump_status(os);
+                    os.printf("\n");
+                }else{
+                    actuators[i]->dump_status(os, false);
+                }
             }
-            return true;
 
         } else if(gcode.has_arg('P')) {
             // M911[.1] Pn dump for specific driver
             int p= gcode.get_int_arg('P');
-            if(p >= get_number_registered_motors()) return true;
-            actuators[p]->dump_status(os, !gcode.has_arg('R'));
-            return true;
+            if(p < 0 || p >= get_number_registered_motors()) return true;
+            actuators[p]->dump_status(os, gcode.get_subcode() != 1);
         }
+        return true;
 
     }else{
         int p= -1;

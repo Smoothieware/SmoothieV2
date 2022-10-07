@@ -1063,10 +1063,11 @@ void TMC26X::dump_status(OutputStream& stream, bool readable)
         stream.printf("config-set tmc2660 %s.reg = %05lX,%05lX,%05lX,%05lX,%05lX\n", name.c_str(), driver_control_register_value, chopper_config_register_value, cool_step_register_value, stall_guard2_current_register_value, driver_configuration_register_value);
 
     } else {
-        // This is the format the processing app uses for tuning TMX26X chips
-        int n= designator < 'X' ? designator-'A'+3 : designator-'X';
-        bool moving = Robot::getInstance()->actuators[n]->is_moving();
-        // dump out in the format that the processing script needs
+        // This is the format for TMC Configurator to parse current settings
+        stream.printf("%c,", designator);
+
+        // dump out in the format that the Configurator needs
+        #if 0
         if (moving) {
             stream.printf("#sg%d,p%lu,k%u,r,", getCurrentStallGuardReading(), Robot::getInstance()->actuators[n]->get_current_step(), getCoolstepCurrent());
         } else {
@@ -1117,12 +1118,15 @@ void TMC26X::dump_status(OutputStream& stream, bool readable)
         } else {
             stream.printf("e0,");
         }
+        #endif
 
-        //write out the current chopper config
-        stream.printf("Cm%d,", (chopper_config_register_value & CHOPPER_MODE_T_OFF_FAST_DECAY) != 0);
-        stream.printf("Co%d,Cb%d,", vconstant_off_time, vblank_time);
-        if ((chopper_config_register_value & CHOPPER_MODE_T_OFF_FAST_DECAY) == 0) {
-            stream.printf("Cs%d,Ce%d,Cd%d,", h_start, h_end, h_decrement);
+        // write out the current chopper config in slider units
+        bool mode= (chopper_config_register_value & CHOPPER_MODE_T_OFF_FAST_DECAY) != 0;
+        stream.printf("%d,%d,%d,", mode, vconstant_off_time, vblank_time);
+        if (!mode) {
+            stream.printf("%d,%d,%d", h_start, h_end, h_decrement);
+        }else{
+            stream.printf("%d,%d,%d", vfast_decay_time_setting, vsine_wave_offset, vuse_current_comparator);
         }
         stream.printf("\n");
     }
