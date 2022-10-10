@@ -432,7 +432,11 @@ static void smoothie_startup(void *)
         // setup ADC
         adcok= Adc::post_config_setup();
         if(!adcok) {
-            printf("ERROR: ADC failed to setup\n");
+            if(Adc::allocated_channels.size() > 0) {
+                printf("ERROR: ADC failed to setup\n");
+            }else{
+                printf("INFO: No ADC channels defined so ADC has not been setup\n");
+            }
         }
 
         // setup PWM
