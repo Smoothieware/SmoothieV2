@@ -115,6 +115,10 @@
 #define SHRTSENS                       0x0004ul
 #define EN_PFD                         0x0002ul
 #define EN_S2VS                        0x0001ul
+#define SLPH                           0xC000ul
+#define SLPL                           0x3000ul
+#define DIS_S2G                        0x0400ul
+#define TS2G                           0x0300ul
 
 //definitions for the chopper config register
 #define CHOPPER_MODE_STANDARD          0x00000ul
@@ -283,6 +287,12 @@ bool TMC26X::config(ConfigReader& cr, const char *actuator_name)
 
         // for 4amp Nema24 @ 12v
         //setSpreadCycleChopper(5, 54, 4, 0, 0);
+
+        // slope control
+        driver_configuration_register_value &= ~(SLPH | SLPL); // clear
+        // set maximum gate driver strength high= 3, low= 3 (0x0F000) (medium is %1010 0x0A00)
+        // driver_configuration_register_value |= (SLPH | SLPL);
+        driver_configuration_register_value |= 0x0A00; // medium slope
     #endif
 
     setEnabled(false);
@@ -1052,7 +1062,22 @@ void TMC26X::dump_status(OutputStream& stream, bool readable)
         stream.printf("Step interpolation is %s\n", getStepInterpolation() ? "on":"off");
         stream.printf("Overtemperature sensitivity: %dC\n", (driver_configuration_register_value & OTSENS) ? 136 : 150);
         stream.printf("Short to ground sensitivity: %s\n", (driver_configuration_register_value & SHRTSENS) ? "high" : "low");
+        // 2660C only
         stream.printf("Passive fast decay is %s\n", (driver_configuration_register_value & EN_PFD) ? "on" : "off");
+        stream.printf("Short to VS protection is %s\n", (driver_configuration_register_value & EN_S2VS) ? "enabled" : "disabled");
+        stream.printf("Short to GND protection is %s\n", (driver_configuration_register_value & DIS_S2G) ? "disabled" : "enabled");
+        stream.printf("Short detection delay is ");
+        switch((driver_configuration_register_value & TS2G) >> 8) {
+            case 0: stream.printf("3.2us\n"); break;
+            case 1: stream.printf("1.6us\n"); break;
+            case 2: stream.printf("1.2us\n"); break;
+            case 3: stream.printf("0.8us\n"); break;
+        }
+        uint8_t slope_high = ((driver_configuration_register_value & SLPH) >> 14);
+        uint8_t slope_low = ((driver_configuration_register_value & SLPL) >> 12);
+        stream.printf("Slope control - high: %d, low: %d\n", slope_high, slope_low);
+
+
         stream.printf("Using %s Chopper\n", ((chopper_config_register_value & CHOPPER_MODE_T_OFF_FAST_DECAY) != 0) ? "Constant Off Time":"Spread Cycle");
         stream.printf("Register dump:\n");
         stream.printf(" driver control register: %05lX(%ld)\n", driver_control_register_value, driver_control_register_value);
