@@ -1681,7 +1681,9 @@ bool CommandShell::truncate_cmd(std::string& params, OutputStream& os)
 
 bool CommandShell::echo_cmd(std::string& params, OutputStream& os)
 {
-    print_to_all_consoles(params.c_str());
+    std::string s(params);
+    s.append("\n");
+    print_to_all_consoles(s.c_str());
     return true;
 }
 
