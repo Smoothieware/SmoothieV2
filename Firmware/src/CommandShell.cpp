@@ -94,6 +94,7 @@ bool CommandShell::initialize()
     THEDISPATCHER->add_handler( "qspi", std::bind( &CommandShell::qspi_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "flash", std::bind( &CommandShell::flash_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "msc", std::bind( &CommandShell::msc_cmd, this, _1, _2) );
+    THEDISPATCHER->add_handler( "echo", std::bind( &CommandShell::echo_cmd, this, _1, _2) );
 
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 20, std::bind(&CommandShell::m20_cmd, this, _1, _2));
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 115, std::bind(&CommandShell::m115_cmd, this, _1, _2));
@@ -1675,6 +1676,12 @@ bool CommandShell::truncate_cmd(std::string& params, OutputStream& os)
         os.printf("File %s truncated to %d bytes\n", fn.c_str(), size);
     }
 
+    return true;
+}
+
+bool CommandShell::echo_cmd(std::string& params, OutputStream& os)
+{
+    print_to_all_consoles(params.c_str());
     return true;
 }
 
