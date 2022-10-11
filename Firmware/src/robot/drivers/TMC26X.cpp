@@ -337,6 +337,7 @@ bool TMC26X::config(ConfigReader& cr, const char *actuator_name)
 
     // set the standstill current in mA, default is off
     standstill_current= cr.get_int(mm, standstill_current_key, 0);
+    if(standstill_current > max_current) standstill_current= max_current;
 
     return true;
 }
@@ -1233,6 +1234,7 @@ bool TMC26X::check_standstill()
             standstill_current_set= true; // so we don't gert the sub optimal current setting warning
             setCurrent(standstill_current);
             standstill_current_set= true; // must set this after setCurrent()
+            printf("DEBUG: %c standstill current set to %lu mA\n", designator, standstill_current);
             return true;
         }
     }

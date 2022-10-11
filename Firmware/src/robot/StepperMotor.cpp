@@ -176,6 +176,7 @@ void StepperMotor::enable(bool state)
         // make sure current is restored before the move if we were at standstill
         if(tmc->get_status() & TMCBase::IS_STANDSTILL_CURRENT) {
             tmc->setCurrent(current_ma); // resets current in milliamps
+            printf("DEBUG: %d standstill current reset to %lu mA\n", motor_id, current_ma);
         }
     }
 }
