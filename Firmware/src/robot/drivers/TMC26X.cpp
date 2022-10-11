@@ -169,6 +169,7 @@
 #define spi_channel_key                 "spi_channel"
 #define passive_fast_decay_key          "passive_fast_decay"
 #define standstill_current_key          "standstill_current"
+#define standstill_time_key             "standstill_time"
 
 #ifdef BOARD_DEVEBOX
 constexpr static int def_spi_channel= 0;
@@ -180,6 +181,7 @@ constexpr static int def_spi_channel= 1;
 SPI *TMC26X::spi= nullptr;
 uint8_t TMC26X::spi_channel= def_spi_channel;
 bool TMC26X::common_setup= false;
+uint32_t TMC26X::standstill_time= 10;  // default standstill check time in seconds
 
 #ifdef BOARD_PRIME
 // setup default SPI CS pin for Prime
@@ -254,7 +256,10 @@ bool TMC26X::config(ConfigReader& cr, const char *actuator_name)
         if(c != ssm.end()) {
             auto& cm = c->second; // map of common tmc2660 config values
             spi_channel= cr.get_int(cm, spi_channel_key, def_spi_channel);
+            // set the time interval to check for standstill in seconds
+            standstill_time= cr.get_int(cm, standstill_time_key, 10);
         }
+
         common_setup= true;
     }
 
@@ -1188,8 +1193,8 @@ bool TMC26X::check_error_status_bits(OutputStream& stream)
         {1, [this](void){return this->getOverTemperature()&TMC26X_OVERTEMPERATURE_SHUTDOWN;}, "Overtemperature Shutdown!"},
         {2, [this](void){return this->isShortToGroundA();}, "SHORT to ground on channel A!"},
         {3, [this](void){return this->isShortToGroundB();}, "SHORT to ground on channel B!"},
-        {4, [this](void){return this->isStandStill() && this->isOpenLoadA();}, "Channel A seems to be unconnected!"},
-        {5, [this](void){return this->isStandStill() && this->isOpenLoadB();}, "Channel B seems to be unconnected!"}
+        {4, [this](void){return this->isEnabled() && !this->isStandStill() && this->isOpenLoadA();}, "Channel A seems to be unconnected!"},
+        {5, [this](void){return this->isEnabled() && !this->isStandStill() && this->isOpenLoadB();}, "Channel B seems to be unconnected!"}
     };
 
     bool error = false;
@@ -1228,7 +1233,7 @@ bool TMC26X::check_standstill()
     if(!isEnabled() || standstill_current == 0) return false;
     if(standstill_current_set) return true; // already set
 
-    if(++idle_timer > 10) {
+    if(++idle_timer > standstill_time) {
         idle_timer= 0;
         if(isStandStill()) {
             standstill_current_set= true; // so we don't gert the sub optimal current setting warning
