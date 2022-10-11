@@ -97,6 +97,28 @@ public:
     virtual int getMicrosteps(void);
 
     /*!
+     * \brief set the maximum motor current in mA (1000 is 1 Amp)
+     * Keep in mind this is the maximum peak Current. The RMS current will be 1/sqrt(2) smaller. The actual current can also be smaller
+     * by employing CoolStep.
+     * \param current the maximum motor current in mA
+     * \sa getCurrent(), getCurrentCurrent()
+     */
+    void setCurrent(unsigned int current);
+
+    /*!
+     *\brief enables or disables the motor driver bridges. If disabled the motor can run freely. If enabled not.
+     *\param enabled a bool value true if the motor should be enabled, false otherwise.
+     */
+    void setEnabled(bool enabled);
+
+    /*!
+     *\brief checks if the output bridges are enabled. If the bridges are not enabled the motor can run freely
+     *\return true if the bridges and by that the motor driver are enabled, false if not.
+     *\sa setEnabled()
+     */
+    bool isEnabled();
+
+    /*!
      * \brief Prints out all the information that can be found in the last status read out - it does not force a status readout.
      * The result is printed via Serial
      */
@@ -106,6 +128,7 @@ public:
     virtual bool config(ConfigReader& cr, const char *actuator_name);
     virtual void dump_status(OutputStream& stream, bool readable= true);
     virtual bool set_options(const GCode& gcode);
+    virtual uint32_t get_status() const;
 
 private:
 
@@ -178,15 +201,6 @@ private:
      * reducing electromagnetic emission on single frequencies.
      */
     void setRandomOffTime(int8_t value);
-
-    /*!
-     * \brief set the maximum motor current in mA (1000 is 1 Amp)
-     * Keep in mind this is the maximum peak Current. The RMS current will be 1/sqrt(2) smaller. The actual current can also be smaller
-     * by employing CoolStep.
-     * \param current the maximum motor current in mA
-     * \sa getCurrent(), getCurrentCurrent()
-     */
-    void setCurrent(unsigned int current);
 
     /*!
      * \brief readout the motor maximum current in mA (1000 is an Amp)
@@ -393,19 +407,6 @@ private:
     bool isStallGuardReached(void);
 
     /*!
-     *\brief enables or disables the motor driver bridges. If disabled the motor can run freely. If enabled not.
-     *\param enabled a bool value true if the motor should be enabled, false otherwise.
-     */
-    void setEnabled(bool enabled);
-
-    /*!
-     *\brief checks if the output bridges are enabled. If the bridges are not enabled the motor can run freely
-     *\return true if the bridges and by that the motor driver are enabled, false if not.
-     *\sa setEnabled()
-     */
-    bool isEnabled();
-
-    /*!
      * \brief Manually read out the status register
      * This function sends a byte to the motor driver in order to get the current readout. The parameter read_value
      * seletcs which value will get returned. If the read_vlaue changes in respect to the previous readout this method
@@ -419,6 +420,7 @@ private:
     //helper routione to get the top 10 bit of the readout
     inline int getReadoutValue();
     bool check_error_status_bits(OutputStream& stream);
+    bool check_standstill();
 
     // SPI sender
     inline void send262(unsigned long datagram);
@@ -435,6 +437,7 @@ private:
 
     unsigned int resistor{75}; // current sense resitor value in milliohm
     uint32_t max_current;
+    uint32_t standstill_current{0};
 
     //driver control register copies to easily set & modify the registers
     unsigned long driver_control_register_value;
@@ -452,6 +455,8 @@ private:
     std::bitset<8> error_detected;
     std::bitset<8> error_reported;
 
+    uint32_t idle_timer{0};
+
     // makes remembering settings easier
     int8_t vblank_time;
     int8_t vconstant_off_time; //we need to remember this value in order to enable and disable the motor
@@ -463,7 +468,7 @@ private:
     uint8_t vuse_current_comparator{1};
     bool cool_step_enabled; //we need to remember this to configure the coolstep if it si enabled
     bool started; //if the stepper has been started yet
-
+    bool standstill_current_set{false};
     uint8_t cool_step_lower_threshold; // we need to remember the threshold to enable and disable the CoolStep feature
     char designator;
 };

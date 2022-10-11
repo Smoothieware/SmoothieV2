@@ -398,7 +398,7 @@ unsigned int TMC2590::getCurrent(void)
     double resistor_value = (double)this->resistor;
     double voltage = (driver_configuration_register_value & VSENSE) ? 0.173 : 0.325;
     // resistor_value is in milliohms so convert to ohms, result is mA
-    result = ((result + 1.0F) / 32.0F) * (voltage / (resistor_value / 1000.0)) * 1000.0; // mA
+    result = ((result + 1.0) / 32.0) * (voltage / (resistor_value / 1000.0)) * 1000.0; // mA
     return (unsigned int)round(result);
 }
 
@@ -842,16 +842,21 @@ uint8_t TMC2590::getCoolStepLowerCurrentLimit()
 
 void TMC2590::setEnabled(bool enabled)
 {
-    //delete the t_off in the chopper config to get sure
-    chopper_config_register_value &= ~(T_OFF_PATTERN);
-    if (enabled) {
-        // and set the t_off time
-        chopper_config_register_value |= this->vconstant_off_time;
-    }
-    // if not enabled we don't have to do anything since we already delete t_off from the register
+    // we don't want to enable/disable it if it is already in that state to avoid sending SPI all the time
+    bool state= isEnabled();
 
-    if (started) {
-        send20bits(chopper_config_register_value);
+    if((!enabled && state) || (enabled && !state)) {
+        //delete the t_off in the chopper config to get sure
+        chopper_config_register_value &= ~(T_OFF_PATTERN);
+        if (enabled) {
+            // and set the t_off time
+            chopper_config_register_value |= this->vconstant_off_time;
+        }
+        // if not enabled we don't have to do anything since we already delete t_off from the register
+
+        if (started) {
+            send20bits(chopper_config_register_value);
+        }
     }
 }
 

@@ -121,7 +121,8 @@ bool StepperMotor::set_current(float c)
 {
     if(tmc == nullptr) return false;
     // send current to TMC
-    tmc->setCurrent(c*1000.0F); // sets current in milliamps
+    current_ma= roundf(c*1000.0F);
+    tmc->setCurrent(current_ma); // sets current in milliamps
     return true;
 }
 
@@ -150,8 +151,9 @@ void StepperMotor::enable(bool state)
 
     if(state && !vmot){
         //printf("WARNING: %d: trying to enable motors when vmotor is off\n", motor_id);
-        if(is_enabled())
+        if(is_enabled()) {
             tmc->setEnabled(false);
+        }
         return;
     }
 
@@ -168,10 +170,13 @@ void StepperMotor::enable(bool state)
         return;
     }
 
-    // we don't want to enable/disable it if it is already in that state to avoid sending SPI all the time
-    bool en= is_enabled();
-    if((!en && state) || (en && !state)) {
-        tmc->setEnabled(state);
+    tmc->setEnabled(state);
+
+    if(state) {
+        // make sure current is restored before the move if we were at standstill
+        if(tmc->get_status() & TMCBase::IS_STANDSTILL_CURRENT) {
+            tmc->setCurrent(current_ma); // resets current in milliamps
+        }
     }
 }
 

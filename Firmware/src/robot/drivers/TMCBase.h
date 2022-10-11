@@ -19,6 +19,10 @@ public:
 	virtual bool set_raw_register(OutputStream& stream, uint32_t reg, uint32_t val)=0;
 	virtual bool check_errors()=0;
 	virtual bool config(ConfigReader& cr, const char *actuator_name)=0;
-	virtual void dump_status(OutputStream& stream, bool readable = true)=0;
+    virtual void dump_status(OutputStream& stream, bool readable = true)=0;
 	virtual bool set_options(const GCode& gcode)=0;
+	virtual uint32_t get_status() const { return 0; }
+
+    // bit masks for status bits returned in get_status
+    static const uint32_t IS_STANDSTILL_CURRENT = 1;
 };

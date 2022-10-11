@@ -135,7 +135,7 @@ Robot::Robot() : Module("robot")
     this->disable_arm_solution = false;
     this->n_motors = 0;
     this->halt_on_driver_alarm= false;
-    this->check_driver_errors= false;
+    this->check_driver_errors= true;
 }
 
 // Make keys for the Primary XYZ StepperMotors, and potentially A B C
@@ -376,7 +376,7 @@ bool Robot::configure(ConfigReader& cr)
         auto& mm = s->second; // map of general actuator config settings
 
 #if defined(DRIVER_TMC)
-        check_driver_errors= cr.get_bool(mm, check_driver_errors_key, false);
+        check_driver_errors= cr.get_bool(mm, check_driver_errors_key, true);
         halt_on_driver_alarm= cr.get_bool(mm, halt_on_driver_alarm_key, false);
         const char *default_motor_enn= "PH13!";  // inverted as it is a not enable pin, but we want to set true to enable
 #else

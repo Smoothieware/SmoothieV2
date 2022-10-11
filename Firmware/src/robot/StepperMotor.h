@@ -92,6 +92,7 @@ class StepperMotor
         void set_vmot_lost() { vmot_lost= true; }
 
     private:
+        uint32_t current_ma{0};
         // TMCxxxx driver
         TMCBase *tmc{nullptr};
         static bool vmot;

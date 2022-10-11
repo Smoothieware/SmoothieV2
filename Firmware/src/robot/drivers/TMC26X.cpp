@@ -168,6 +168,7 @@
 #define step_interpolation_key          "step_interpolation"
 #define spi_channel_key                 "spi_channel"
 #define passive_fast_decay_key          "passive_fast_decay"
+#define standstill_current_key          "standstill_current"
 
 #ifdef BOARD_DEVEBOX
 constexpr static int def_spi_channel= 0;
@@ -334,6 +335,9 @@ bool TMC26X::config(ConfigReader& cr, const char *actuator_name)
         printf("DEBUG:configure-tmc2590: %s - passive fast decay is on\n", actuator_name);
     }
 
+    // set the standstill current in mA, default is off
+    standstill_current= cr.get_int(mm, standstill_current_key, 0);
+
     return true;
 }
 
@@ -359,30 +363,29 @@ void TMC26X::setCurrent(unsigned int current)
 
     uint8_t current_scaling = 0;
     //calculate the current scaling from the max current setting (in mA)
-    double mASetting = (double)current;
+    double mASetting = current;
     double resistor_value = (double) this->resistor;
     // remove vesense flag
     this->driver_configuration_register_value &= ~(VSENSE);
     //this is derrived from I=(cs+1)/32*(Vsense/Rsense)
-    //leading to cs = CS = 32*R*I/V (with V = 0,31V oder 0,165V  and I = 1000*current)
-    //with Rsense=0,15
+    //leading to cs = CS = 32*R*I/V (with V = 0,31V or 0,165V  and I = 1000*current)
     //for vsense = 0,310V (VSENSE not set)
     //or vsense = 0,165V (VSENSE set)
-    current_scaling = (uint8_t)((resistor_value * mASetting * 32.0F / (0.31F * 1000.0F * 1000.0F)) - 0.5F); //theoretically - 1.0 for better rounding it is 0.5
+    current_scaling = (uint8_t)((resistor_value * mASetting * 32.0 / (0.31 * 1000.0 * 1000.0)) - 0.5); //theoretically - 1.0 for better rounding it is 0.5
 
     //check if the current scaling is too low
     if (current_scaling < 16) {
         //set the vsense bit to get a use half the sense voltage (to support lower motor currents)
         this->driver_configuration_register_value |= VSENSE;
         //and recalculate the current setting
-        current_scaling = (uint8_t)((resistor_value * mASetting * 32.0F / (0.165F * 1000.0F * 1000.0F)) - 0.5F); //theoretically - 1.0 for better rounding it is 0.5
+        current_scaling = (uint8_t)((resistor_value * mASetting * 32.0 / (0.165 * 1000.0 * 1000.0)) - 0.5); //theoretically - 1.0 for better rounding it is 0.5
     }
 
     //do some sanity checks
     if (current_scaling > 31) {
         current_scaling = 31;
 
-    } else if(current_scaling < 16) {
+    } else if(current_scaling < 16 && !standstill_current_set) {
         printf("WARNING: tmc2660: %c - suboptimal current setting %d at %umA with sense resistor value %umilliOhms\n", designator, current_scaling, current, resistor);
     }
 
@@ -395,6 +398,9 @@ void TMC26X::setCurrent(unsigned int current)
         send262(driver_configuration_register_value);
         send262(stall_guard2_current_register_value);
     }
+
+    // reset this although we may be setting that current
+    standstill_current_set= false;
 }
 
 unsigned int TMC26X::getCurrent(void)
@@ -846,17 +852,26 @@ uint8_t TMC26X::getCoolStepLowerCurrentLimit()
 
 void TMC26X::setEnabled(bool enabled)
 {
-    //delete the t_off in the chopper config to get sure
-    chopper_config_register_value &= ~(T_OFF_PATTERN);
-    if (enabled) {
-        // and set the t_off time
-        chopper_config_register_value |= this->vconstant_off_time;
-    }
-    // if not enabled we don't have to do anything since we already delete t_off from the register
+    // we don't want to enable/disable it if it is already in that state to avoid sending SPI all the time
+    bool state= isEnabled();
 
-    if (started) {
-        send262(chopper_config_register_value);
+    if((!enabled && state) || (enabled && !state)) {
+        //delete the t_off in the chopper config to get sure
+        chopper_config_register_value &= ~(T_OFF_PATTERN);
+        if (enabled) {
+            // and set the t_off time
+            chopper_config_register_value |= this->vconstant_off_time;
+            idle_timer= 0;
+        }
+        // if not enabled we don't have to do anything since we already deleted t_off from the register
+
+        if (started) {
+            send262(chopper_config_register_value);
+        }
     }
+
+    // reset idle_timer if enabling (ie when ever we get a new move)
+    if(enabled) idle_timer= 0;
 }
 
 bool TMC26X::isEnabled()
@@ -1077,8 +1092,9 @@ void TMC26X::dump_status(OutputStream& stream, bool readable)
         uint8_t slope_low = ((driver_configuration_register_value & SLPL) >> 12);
         stream.printf("Slope control - high: %d, low: %d\n", slope_high, slope_low);
 
-
+        stream.printf("Standstill current %d mA, active %d\n", standstill_current, standstill_current_set);
         stream.printf("Using %s Chopper\n", ((chopper_config_register_value & CHOPPER_MODE_T_OFF_FAST_DECAY) != 0) ? "Constant Off Time":"Spread Cycle");
+
         stream.printf("Register dump:\n");
         stream.printf(" driver control register: %05lX(%ld)\n", driver_control_register_value, driver_control_register_value);
         stream.printf(" chopper config register: %05lX(%ld)\n", chopper_config_register_value, chopper_config_register_value);
@@ -1203,6 +1219,34 @@ bool TMC26X::check_error_status_bits(OutputStream& stream)
     return error;
 }
 
+bool TMC26X::check_standstill()
+{
+    // gets called once a second from robot periodic_checks()
+    // for TMC2660 check if we have been idle for over 10 seconds, and check if we
+    // are at standstill, and reduce current if so.
+    if(!isEnabled() || standstill_current == 0) return false;
+    if(standstill_current_set) return true; // already set
+
+    if(++idle_timer > 10) {
+        idle_timer= 0;
+        if(isStandStill()) {
+            standstill_current_set= true; // so we don't gert the sub optimal current setting warning
+            setCurrent(standstill_current);
+            standstill_current_set= true; // must set this after setCurrent()
+            return true;
+        }
+    }
+    return false;
+}
+
+uint32_t TMC26X::get_status() const
+{
+    uint32_t stat= 0;
+    if(standstill_current_set) stat |= IS_STANDSTILL_CURRENT;
+
+    return stat;
+}
+
 bool TMC26X::check_errors()
 {
     std::ostringstream oss;
@@ -1211,6 +1255,9 @@ bool TMC26X::check_errors()
     if(!oss.str().empty()) {
         print_to_all_consoles(oss.str().c_str());
     }
+
+    // see if we need to set the standstill current
+    check_standstill();
     return b;
 }
 
