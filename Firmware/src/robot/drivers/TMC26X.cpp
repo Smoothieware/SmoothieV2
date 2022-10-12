@@ -1301,15 +1301,15 @@ bool TMC26X::set_raw_register(OutputStream& stream, uint32_t reg, uint32_t val)
             send262(cool_step_register_value);
             send262(stall_guard2_current_register_value);
             send262(driver_configuration_register_value);
-            stream.printf("Registers written\n");
+            stream.printf("INFO: TMC26X Registers written\n");
             break;
 
 
-        case 1: driver_control_register_value = val; stream.printf("driver control register set to %05lX\n", val); break;
-        case 2: chopper_config_register_value = val; stream.printf("chopper config register set to %05lX\n", val); break;
-        case 3: cool_step_register_value = val; stream.printf("cool step register set to %05lX\n", val); break;
-        case 4: stall_guard2_current_register_value = val; stream.printf("stall guard2 current register set to %05lX\n", val); break;
-        case 5: driver_configuration_register_value = val; stream.printf("driver configuration register set to %05lX\n", val); break;
+        case 1: driver_control_register_value = val; stream.printf("INFO: TMC26X driver control register set to %05lX\n", val); break;
+        case 2: chopper_config_register_value = val; stream.printf("INFO: TMC26X chopper config register set to %05lX\n", val); break;
+        case 3: cool_step_register_value = val; stream.printf("INFO: TMC26X cool step register set to %05lX\n", val); break;
+        case 4: stall_guard2_current_register_value = val; stream.printf("INFO: TMC26X stall guard2 current register set to %05lX\n", val); break;
+        case 5: driver_configuration_register_value = val; stream.printf("INFO: TMC26X driver configuration register set to %05lX\n", val); break;
 
         default:
             stream.printf("1: driver control register\n");
@@ -1344,7 +1344,7 @@ void TMC26X::send262(unsigned long datagram)
         //printf("%c: sent: %05lX received: %05lX\n", designator, datagram, i_datagram);
 
     }else{
-        printf("ERROR: send262 failed\n");
+        printf("ERROR: TMC26X send262 failed\n");
     }
 }
 
