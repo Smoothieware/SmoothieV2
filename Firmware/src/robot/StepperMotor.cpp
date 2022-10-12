@@ -170,6 +170,8 @@ void StepperMotor::enable(bool state)
         return;
     }
 
+    // we need to make sure that this is atomic and protected against another thread setting the current
+    tmc->lock(true);
     tmc->setEnabled(state);
 
     if(state) {
@@ -179,6 +181,7 @@ void StepperMotor::enable(bool state)
             printf("DEBUG: %d standstill current reset to %lu mA\n", motor_id, current_ma);
         }
     }
+    tmc->lock(false);
 }
 
 bool StepperMotor::is_enabled() const

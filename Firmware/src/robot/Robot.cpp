@@ -412,7 +412,7 @@ bool Robot::configure(ConfigReader& cr)
     //this->clearToolOffset();
 #ifdef DRIVER_TMC
     // setup a timer to periodically check VMOT and if it is off we need to tell all motors to reset when it comes on again
-    // also will check driver errors if enabled
+    // also will check driver errors and standstill current reduction if enabled
     periodic_checks();
     SlowTicker::getInstance()->attach(1, std::bind(&Robot::periodic_checks, this));
 #endif

@@ -64,6 +64,7 @@ public:
      * \sa start(), setMicrosteps()
      */
     TMC26X(char designator);
+    virtual ~TMC26X();
 
     /*!
      * \brief configures the TMC26X stepper driver. Before you called this function the stepper driver is in nonfunctional mode.
@@ -129,6 +130,7 @@ public:
     virtual void dump_status(OutputStream& stream, bool readable= true);
     virtual bool set_options(const GCode& gcode);
     virtual uint32_t get_status() const;
+    virtual void lock(bool flg);
 
 private:
 
@@ -457,6 +459,7 @@ private:
     std::bitset<8> error_reported;
 
     uint32_t idle_timer{0};
+    void *plock{nullptr};
 
     // makes remembering settings easier
     int8_t vblank_time;

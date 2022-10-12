@@ -39,6 +39,10 @@
 #include "GCode.h"
 #include "Consoles.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+#include "semphr.h"
+
 #include <cmath>
 #include <iostream>
 
@@ -180,8 +184,8 @@ constexpr static int def_spi_channel= 1;
 //statics common to all instances
 SPI *TMC26X::spi= nullptr;
 uint8_t TMC26X::spi_channel= def_spi_channel;
-bool TMC26X::common_setup= false;
 uint32_t TMC26X::standstill_time= 10;  // default standstill check time in seconds
+bool TMC26X::common_setup= false;
 
 #ifdef BOARD_PRIME
 // setup default SPI CS pin for Prime
@@ -211,6 +215,15 @@ TMC26X::TMC26X(char d) : designator(d)
     cool_step_register_value = COOL_STEP_REGISTER;
     stall_guard2_current_register_value = STALL_GUARD2_LOAD_MEASURE_REGISTER;
     driver_configuration_register_value = DRIVER_CONFIG_REGISTER | READ_STALL_GUARD_READING;
+
+    plock= (void*)xSemaphoreCreateMutex();
+}
+
+TMC26X::~TMC26X()
+{
+    if(plock != nullptr) {
+        vSemaphoreDelete(plock);
+    }
 }
 
 bool TMC26X::config(ConfigReader& cr, const char *actuator_name)
@@ -867,7 +880,6 @@ void TMC26X::setEnabled(bool enabled)
         if (enabled) {
             // and set the t_off time
             chopper_config_register_value |= this->vconstant_off_time;
-            idle_timer= 0;
         }
         // if not enabled we don't have to do anything since we already deleted t_off from the register
 
@@ -1228,22 +1240,31 @@ bool TMC26X::check_error_status_bits(OutputStream& stream)
 bool TMC26X::check_standstill()
 {
     // gets called once a second from robot periodic_checks()
-    // for TMC2660 check if we have been idle for over 10 seconds, and check if we
+    // for TMC2660 check if we have been idle for over 10 (or standstill_time) seconds, and check if we
     // are at standstill, and reduce current if so.
     if(!isEnabled() || standstill_current == 0) return false;
     if(standstill_current_set) return true; // already set
 
+    bool ok = false;
     if(++idle_timer > standstill_time) {
-        idle_timer= 0;
-        if(isStandStill()) {
-            standstill_current_set= true; // so we don't gert the sub optimal current setting warning
-            setCurrent(standstill_current);
-            standstill_current_set= true; // must set this after setCurrent()
+        // we take a lock to avoid a race with the main thread setting the current back to normal
+        lock(true);
+        // We need to check that there was not an enable event while we were waiting for the lock
+        if(idle_timer != 0) {
+            idle_timer= 0;
+            if(isStandStill()) {
+                standstill_current_set= true; // so we don't get the sub optimal current setting warning
+                setCurrent(standstill_current);
+                standstill_current_set= true; // must set this after setCurrent()
+                ok= true;
+            }
+        }
+        lock(false);
+        if(ok) {
             printf("DEBUG: %c standstill current set to %lu mA\n", designator, standstill_current);
-            return true;
         }
     }
-    return false;
+    return ok;
 }
 
 uint32_t TMC26X::get_status() const
@@ -1338,6 +1359,25 @@ int TMC26X::sendSPI(uint8_t *b, int cnt, uint8_t *r)
     spi->end_transaction();
     return stat ? cnt : 0;
 }
+
+void TMC26X::lock(bool flg)
+{
+    // Used to protect against concurrent writes to the mainly current settings for standstill current
+    if(plock != nullptr) {
+        if(flg) {
+            // take lock
+            uint32_t t= pdMS_TO_TICKS(10000);
+            if(xSemaphoreTake(plock, t) != pdTRUE) {
+                printf("WARNING: TMC26X failed to get lock, timed out\n");
+            }
+
+        }else{
+            // release lock
+            xSemaphoreGive(plock);
+        }
+    }
+}
+
 
 #define HAS(X) (gcode.has_arg(X))
 #define GET(X) (gcode.get_int_arg(X))
