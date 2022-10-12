@@ -78,6 +78,10 @@
  *\sa readStatus(), setCurrent()
  */
 #define TMC26X_READOUT_CURRENT 3
+/*!
+ * Selects to read out all the flags.
+ */
+#define TMC2590_READOUT_ALL_FLAGS 4
 
 /*!
  * Define to set the minimum current for CoolStep operation to 1/2 of the selected CS minium.
@@ -916,8 +920,11 @@ void TMC26X::readStatus(int8_t read_value)
         driver_configuration_register_value |= READ_STALL_GUARD_READING;
     } else if (read_value == TMC26X_READOUT_CURRENT) {
         driver_configuration_register_value |= READ_STALL_GUARD_AND_COOL_STEP;
+    } else if (read_value == TMC2590_READOUT_ALL_FLAGS) {
+        // only for rev C chips
+        driver_configuration_register_value |= READ_ALL_FLAGS;
     }
-    //all other cases are ignored to prevent funny values
+
     //check if the readout is configured for the value we are interested in
     if (driver_configuration_register_value != old_driver_configuration_register_value) {
         //because then we need to write the value twice - one time for configuring, second time to get the value, see below
@@ -1089,6 +1096,7 @@ void TMC26X::dump_status(OutputStream& stream, bool readable)
         stream.printf("Stall Guard value: %d\n", value);
 
         stream.printf("Current setting: %dmA Peak (%f Amps RMS)\n", getCurrent(), (getCurrent() * 0.707F) / 1000);
+        stream.printf("Standstill current %d mA, active %d\n", standstill_current, standstill_current_set);
         stream.printf("Coolstep current: %dmA\n", getCoolstepCurrent());
 
         stream.printf("Microsteps: 1/%d\n", microsteps);
@@ -1110,8 +1118,28 @@ void TMC26X::dump_status(OutputStream& stream, bool readable)
         uint8_t slope_low = ((driver_configuration_register_value & SLPL) >> 12);
         stream.printf("Slope control - high: %d, low: %d\n", slope_high, slope_low);
 
-        stream.printf("Standstill current %d mA, active %d\n", standstill_current, standstill_current_set);
         stream.printf("Using %s Chopper\n", ((chopper_config_register_value & CHOPPER_MODE_T_OFF_FAST_DECAY) != 0) ? "Constant Off Time":"Spread Cycle");
+        stream.printf("Driver is %s\n", isEnabled() ? "Enabled" : "Disabled");
+
+        readStatus(TMC2590_READOUT_ALL_FLAGS);
+        if((driver_status_result & 0x00300) != 0x00300) {
+            stream.printf("WARNING: Read all flags appears incorrect: %05lX\n", driver_status_result);
+        }else{
+            value = driver_status_result;
+            if(value & 0xFFC00) {
+                stream.printf("Detailed Flags...\n");
+                if(value & 0x80000) stream.printf("  Low voltage detected\n");
+                if(value & 0x40000) stream.printf("  ENN enabled\n");
+                if(value & 0x20000) stream.printf("  Short to high B\n");
+                if(value & 0x10000) stream.printf("  Short to low B\n");
+                if(value & 0x08000) stream.printf("  Short to high A\n");
+                if(value & 0x04000) stream.printf("  Short to low A\n");
+                if(value & 0x02000) stream.printf("  Overtemp 150\n");
+                if(value & 0x01000) stream.printf("  Overtemp 136\n");
+                if(value & 0x00800) stream.printf("  Overtemp 120\n");
+                if(value & 0x00400) stream.printf("  Overtemp 100\n");
+            }
+        }
 
         stream.printf("Register dump:\n");
         stream.printf(" driver control register: %05lX(%ld)\n", driver_control_register_value, driver_control_register_value);
