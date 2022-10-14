@@ -12,6 +12,10 @@
 #include "GCode.h"
 #include "Lock.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+#include "semphr.h"
+
 #include <cmath>
 #include <iostream>
 
@@ -147,6 +151,8 @@
 #define passive_fast_decay_key          "passive_fast_decay"
 #define reset_pin_key                   "reset_pin"
 #define spi_channel_key                 "spi_channel"
+#define standstill_current_key          "standstill_current"
+#define standstill_time_key             "standstill_time"
 
 #ifdef BOARD_DEVEBOX
 constexpr static int def_spi_channel= 0;
@@ -159,6 +165,7 @@ SPI *TMC2590::spi = nullptr;
 uint8_t TMC2590::spi_channel= def_spi_channel;
 bool TMC2590::common_setup = false;
 Pin *TMC2590::reset_pin = nullptr;
+uint32_t TMC2590::standstill_time= 10;  // default standstill check time in seconds
 
 #ifdef BOARD_PRIME
 // setup default SPI CS pin for Prime
@@ -188,6 +195,15 @@ TMC2590::TMC2590(char d) : designator(d)
     cool_step_register_value = COOL_STEP_REGISTER;
     stall_guard2_current_register_value = STALL_GUARD2_LOAD_MEASURE_REGISTER;
     driver_configuration_register_value = DRIVER_CONFIG_REGISTER | READ_STALL_GUARD_READING;
+
+    plock= (void*)xSemaphoreCreateMutex();
+}
+
+TMC2590::~TMC2590()
+{
+    if(plock != nullptr) {
+        vSemaphoreDelete(plock);
+    }
 }
 
 bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
@@ -243,6 +259,9 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
                     reset_pin= nullptr;
                 }
             }
+
+            // set the time interval to check for standstill in seconds
+            standstill_time= cr.get_int(cm, standstill_time_key, 10);
         }
         common_setup = true;
     }
@@ -326,6 +345,10 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
         printf("DEBUG:configure-tmc2590: %s - passive fast decay is on\n", actuator_name);
     }
 
+    // set the standstill current in mA, default is off
+    standstill_current= cr.get_int(mm, standstill_current_key, 0);
+    if(standstill_current > max_current) standstill_current= max_current;
+
     return true;
 }
 
@@ -375,7 +398,7 @@ void TMC2590::setCurrent(unsigned int current)
     if (current_scaling > 31) {
         current_scaling = 31;
 
-    } else if(current_scaling < 16) {
+    } else if(current_scaling < 16 && !standstill_current_set) {
         printf("WARNING: tmc2590: %c - suboptimal current setting %d at %umA with sense resistor value %umilliOhms\n", designator, current_scaling, current, resistor);
     }
 
@@ -388,6 +411,9 @@ void TMC2590::setCurrent(unsigned int current)
         send20bits(driver_configuration_register_value);
         send20bits(stall_guard2_current_register_value);
     }
+
+    // reset this although we may be setting that current
+    standstill_current_set= false;
 }
 
 unsigned int TMC2590::getCurrent(void)
@@ -1072,6 +1098,7 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
         stream.printf("Stall Guard value: %d\n", value);
 
         stream.printf("Current setting: %dmA Peak - %f Amps RMS\n", getCurrent(), (getCurrent() * 0.707F) / 1000);
+        stream.printf("Standstill current %d mA, active %d\n", standstill_current, standstill_current_set);
         stream.printf("Coolstep current: %dmA\n", getCoolstepCurrent());
 
         stream.printf("Microsteps: 1/%d\n", microsteps);
@@ -1209,7 +1236,49 @@ bool TMC2590::check_errors()
     if(!oss.str().empty()) {
         print_to_all_consoles(oss.str().c_str());
     }
+
+    // see if we need to set the standstill current
+    check_standstill();
+
     return b;
+}
+
+bool TMC2590::check_standstill()
+{
+    // gets called once a second from robot periodic_checks()
+    // for TMC2590 check if we have been idle for over 10 (or standstill_time) seconds, and check if we
+    // are at standstill, and reduce current if so.
+    if(!isEnabled() || standstill_current == 0) return false;
+    if(standstill_current_set) return true; // already set
+
+    bool ok = false;
+    if(++idle_timer > standstill_time) {
+        // we take a lock to avoid a race with the main thread setting the current back to normal
+        lock(true);
+        // We need to check that there was not an enable event while we were waiting for the lock
+        if(idle_timer != 0) {
+            idle_timer= 0;
+            if(isStandStill()) {
+                standstill_current_set= true; // so we don't get the sub optimal current setting warning
+                setCurrent(standstill_current);
+                standstill_current_set= true; // must set this after setCurrent()
+                ok= true;
+            }
+        }
+        lock(false);
+        if(ok) {
+            printf("DEBUG: %c standstill current set to %lu mA\n", designator, standstill_current);
+        }
+    }
+    return ok;
+}
+
+uint32_t TMC2590::get_status() const
+{
+    uint32_t stat= 0;
+    if(standstill_current_set) stat |= IS_STANDSTILL_CURRENT;
+
+    return stat;
 }
 
 // sets a raw register to the value specified, for advanced settings
@@ -1276,6 +1345,24 @@ bool TMC2590::sendSPI(void *b, void *r)
     spi_cs->set(true); // disable chip select
     spi->end_transaction();
     return stat;
+}
+
+void TMC2590::lock(bool flg)
+{
+    // Used to protect against concurrent writes to the mainly current settings for standstill current
+    if(plock != nullptr) {
+        if(flg) {
+            // take lock
+            uint32_t t= pdMS_TO_TICKS(10000);
+            if(xSemaphoreTake(plock, t) != pdTRUE) {
+                printf("WARNING: TMC26X failed to get lock, timed out\n");
+            }
+
+        }else{
+            // release lock
+            xSemaphoreGive(plock);
+        }
+    }
 }
 
 #define HAS(X) (gcode.has_arg(X))

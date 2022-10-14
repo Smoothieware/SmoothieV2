@@ -64,6 +64,7 @@ public:
      * \sa start(), setMicrosteps()
      */
     TMC2590(char designator);
+    virtual ~TMC2590();
 
     /*!
      * \brief configures the TMC2590 stepper driver. Before you called this function the stepper driver is in nonfunctional mode.
@@ -120,6 +121,8 @@ public:
 
     virtual bool set_raw_register(OutputStream& stream, uint32_t reg, uint32_t val);
     virtual bool check_errors();
+    virtual uint32_t get_status() const;
+    virtual void lock(bool flg);
 
     virtual bool config(ConfigReader& cr, const char *actuator_name);
     virtual void dump_status(OutputStream& stream, bool readable= true);
@@ -419,6 +422,7 @@ private:
     //helper routione to get the top 10 bit of the readout
     inline int getReadoutValue();
     bool check_error_status_bits(OutputStream& stream);
+    bool check_standstill();
 
     // SPI sender
     inline void send20bits(uint32_t datagram);
@@ -437,6 +441,8 @@ private:
 
     unsigned int resistor{75}; // current sense resitor value in milliohm
     uint32_t max_current;
+    uint32_t standstill_current{0};
+    static uint32_t standstill_time;
 
     //driver control register copies to easily set & modify the registers
     unsigned long driver_control_register_value;
@@ -454,6 +460,9 @@ private:
     std::bitset<8> error_detected;
     std::bitset<8> error_reported;
 
+    uint32_t idle_timer{0};
+    void *plock{nullptr};
+
     // only needed for the tuning app report
     int8_t vblank_time;
     int8_t vconstant_off_time; //we need to remember this value in order to enable and disable the motor
@@ -465,6 +474,7 @@ private:
     uint8_t vuse_current_comparator{1};
     bool cool_step_enabled; //we need to remember this to configure the coolstep if it si enabled
     bool started; //if the stepper has been started yet
+    bool standstill_current_set{false};
 
 
     uint8_t cool_step_lower_threshold; // we need to remember the threshold to enable and disable the CoolStep feature

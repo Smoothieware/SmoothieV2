@@ -1082,11 +1082,11 @@ void TMC26X::dump_status(OutputStream& stream, bool readable)
         check_error_status_bits(stream);
 
         if (this->isStallGuardReached()) {
-            stream.printf("INFO: Stall Guard level reached!\n");
+            stream.printf("Stall Guard level reached!\n");
         }
 
         if (this->isStandStill()) {
-            stream.printf("INFO: Motor is standing still.\n");
+            stream.printf("Motor is standing still.\n");
         }
 
         int value = getReadoutValue();
