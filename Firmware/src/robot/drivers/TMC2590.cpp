@@ -329,6 +329,7 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
                 set_raw_register(os, ++reg, i);
             }
         }
+        setEnabled(false); // in case the enable bit was set
     }
 
     // the following override the raw register settings if set
@@ -872,7 +873,7 @@ void TMC2590::setEnabled(bool enabled)
     bool state= isEnabled();
 
     if((!enabled && state) || (enabled && !state)) {
-        //delete the t_off in the chopper config to get sure
+        //delete the t_off in the chopper config
         chopper_config_register_value &= ~(T_OFF_PATTERN);
         if (enabled) {
             // and set the t_off time
@@ -884,6 +885,9 @@ void TMC2590::setEnabled(bool enabled)
             send20bits(chopper_config_register_value);
         }
     }
+
+    // reset idle_timer
+    idle_timer= 0;
 }
 
 bool TMC2590::isEnabled()

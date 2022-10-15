@@ -342,6 +342,7 @@ bool TMC26X::config(ConfigReader& cr, const char *actuator_name)
                 set_raw_register(os, ++reg, i);
             }
         }
+        chopper_config_register_value &= ~(T_OFF_PATTERN); // in case the enable bit was set
     }
 
     // see if we want step interpolation (overrides the raw register setting if set)
@@ -879,7 +880,7 @@ void TMC26X::setEnabled(bool enabled)
     bool state= isEnabled();
 
     if((!enabled && state) || (enabled && !state)) {
-        //delete the t_off in the chopper config to get sure
+        //delete the t_off in the chopper config
         chopper_config_register_value &= ~(T_OFF_PATTERN);
         if (enabled) {
             // and set the t_off time
@@ -892,8 +893,8 @@ void TMC26X::setEnabled(bool enabled)
         }
     }
 
-    // reset idle_timer if enabling (ie when ever we get a new move)
-    if(enabled) idle_timer= 0;
+    // reset idle_timer
+    idle_timer= 0;
 }
 
 bool TMC26X::isEnabled()
