@@ -329,7 +329,7 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
                 set_raw_register(os, ++reg, i);
             }
         }
-        setEnabled(false); // in case the enable bit was set
+        chopper_config_register_value &= ~(T_OFF_PATTERN); // in case the enable bit was set
     }
 
     // the following override the raw register settings if set
