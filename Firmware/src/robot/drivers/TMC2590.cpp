@@ -1085,8 +1085,9 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
 
         check_error_status_bits(stream);
 
-        readStatus(TMC2590_READOUT_POSITION); // get the status bits
-        if((driver_status_result & 0x00300) != 0) stream.printf("WARNING: Response read appears incorrect: %05lX\n", driver_status_result);
+        // already did this in above call
+        // readStatus(TMC2590_READOUT_POSITION); // get the status bits
+        // if((driver_status_result & 0x00300) != 0) stream.printf("WARNING: Response read appears incorrect: %05lX\n", driver_status_result);
 
         if (this->isStallGuardReached()) {
             stream.printf("Stall Guard level reached\n");

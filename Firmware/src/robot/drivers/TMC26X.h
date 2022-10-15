@@ -411,13 +411,36 @@ private:
     /*!
      * \brief Manually read out the status register
      * This function sends a byte to the motor driver in order to get the current readout. The parameter read_value
-     * seletcs which value will get returned. If the read_vlaue changes in respect to the previous readout this method
+     * selects which value will get returned. If the read_vlaue changes in respect to the previous readout this method
      * automatically send two bytes to the motor: one to set the redout and one to get the actual readout. So this method
      * may take time to send and read one or two bits - depending on the previous readout.
      * \param read_value selects which value to read out (0..3). You can use the defines TMC26X_READOUT_POSITION, TMC_262_READOUT_STALLGUARD, or TMC_262_READOUT_CURRENT
      * \sa TMC26X_READOUT_POSITION, TMC_262_READOUT_STALLGUARD, TMC_262_READOUT_CURRENT
      */
-    void readStatus(int8_t read_value);
+    //which values can be read out
+    enum READOUT {
+        /*!
+         * Selects to readout the microstep position from the motor.
+         *\sa readStatus()
+         */
+        TMC26X_READOUT_POSITION=0,
+        /*!
+         * Selects to read out the StallGuard value of the motor.
+         *\sa readStatus()
+         */
+        TMC26X_READOUT_STALLGUARD=1,
+        /*!
+         * Selects to read out the current current setting (acc. to CoolStep) and the upper bits of the StallGuard value from the motor.
+         *\sa readStatus(), setCurrent()
+         */
+        TMC26X_READOUT_CURRENT=3,
+        /*!
+         * Selects to read out all the flags.
+         */
+        TMC2590_READOUT_ALL_FLAGS=4
+    };
+
+    void readStatus(enum READOUT read_value);
 
     //helper routione to get the top 10 bit of the readout
     inline int getReadoutValue();

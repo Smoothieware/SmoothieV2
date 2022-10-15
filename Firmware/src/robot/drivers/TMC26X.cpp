@@ -63,27 +63,6 @@
  */
 #define TMC26X_OVERTEMPERATURE_SHUTDOWN 2
 
-//which values can be read out
-/*!
- * Selects to readout the microstep position from the motor.
- *\sa readStatus()
- */
-#define TMC26X_READOUT_POSITION 0
-/*!
- * Selects to read out the StallGuard value of the motor.
- *\sa readStatus()
- */
-#define TMC26X_READOUT_STALLGUARD 1
-/*!
- * Selects to read out the current current setting (acc. to CoolStep) and the upper bits of the StallGuard value from the motor.
- *\sa readStatus(), setCurrent()
- */
-#define TMC26X_READOUT_CURRENT 3
-/*!
- * Selects to read out all the flags.
- */
-#define TMC2590_READOUT_ALL_FLAGS 4
-
 /*!
  * Define to set the minimum current for CoolStep operation to 1/2 of the selected CS minium.
  *\sa setCoolStepConfiguration()
@@ -912,21 +891,29 @@ bool TMC26X::isEnabled()
  * be read by the various status routines.
  *
  */
-void TMC26X::readStatus(int8_t read_value)
+void TMC26X::readStatus(enum READOUT read_value)
 {
     unsigned long old_driver_configuration_register_value = driver_configuration_register_value;
     //reset the readout configuration
     driver_configuration_register_value &= ~(READ_SELECTION_PATTERN);
     //this now equals TMC26X_READOUT_POSITION - so we just have to check the other two options
-    if (read_value == TMC26X_READOUT_STALLGUARD) {
-        driver_configuration_register_value |= READ_STALL_GUARD_READING;
-    } else if (read_value == TMC26X_READOUT_CURRENT) {
-        driver_configuration_register_value |= READ_STALL_GUARD_AND_COOL_STEP;
-    } else if (read_value == TMC2590_READOUT_ALL_FLAGS) {
-        // only for rev C chips
-        driver_configuration_register_value |= READ_ALL_FLAGS;
+    switch (read_value) {
+        case TMC26X_READOUT_POSITION:
+            // already set to 0
+            break;
+       case TMC26X_READOUT_STALLGUARD:
+            driver_configuration_register_value |= READ_STALL_GUARD_READING;
+            break;
+        case TMC26X_READOUT_CURRENT:
+            driver_configuration_register_value |= READ_STALL_GUARD_AND_COOL_STEP;
+            break;
+        case TMC2590_READOUT_ALL_FLAGS:
+            // only for rev C chips
+            driver_configuration_register_value |= READ_ALL_FLAGS;
+            break;
     }
 
+    // FIXME this needs to be atomic as a readStatus in between the two could change the results read back
     //check if the readout is configured for the value we are interested in
     if (driver_configuration_register_value != old_driver_configuration_register_value) {
         //because then we need to write the value twice - one time for configuring, second time to get the value, see below
@@ -1057,7 +1044,7 @@ bool TMC26X::isStallGuardReached(void)
 }
 
 //reads the stall guard setting from last status
-//returns -1 if stallguard inforamtion is not present
+//returns -1 if stallguard information is not present
 int TMC26X::getReadoutValue(void)
 {
     return (int)(driver_status_result >> 10);
@@ -1125,7 +1112,7 @@ void TMC26X::dump_status(OutputStream& stream, bool readable)
 
         readStatus(TMC2590_READOUT_ALL_FLAGS);
         if((driver_status_result & 0x00300) != 0x00300) {
-            stream.printf("WARNING: Read all flags appears incorrect: %05lX\n", driver_status_result);
+            stream.printf("WARNING: Read all flags appears incorrect (not C rev?): %05lX\n", driver_status_result);
         }else{
             value = driver_status_result;
             if(value & 0xFFC00) {
@@ -1241,6 +1228,12 @@ bool TMC26X::check_error_status_bits(OutputStream& stream)
 
     bool error = false;
     readStatus(TMC26X_READOUT_POSITION); // get the status bits
+
+    // test the flags are ok
+    if((driver_status_result & 0x00300) != 0){
+        stream.printf("WARNING: Response read appears incorrect: %05lX\n", driver_status_result);
+        return false;
+    }
 
     for(auto& i : tests) {
         int n= std::get<0>(i);
