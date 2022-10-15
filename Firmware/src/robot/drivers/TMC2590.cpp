@@ -1256,7 +1256,10 @@ bool TMC2590::check_standstill()
     if(!isEnabled() || standstill_current == 0) return false;
 
     // if there are moves still in the queue then we are not idle
-    if(!Conveyor::getInstance()->is_idle()) return false;
+    if(!Conveyor::getInstance()->is_idle()) {
+        idle_timer= 0;
+        return false;
+    }
 
     if(standstill_current_set) return true; // already set
 
