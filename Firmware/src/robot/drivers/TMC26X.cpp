@@ -38,6 +38,7 @@
 #include "StringUtils.h"
 #include "GCode.h"
 #include "Consoles.h"
+#include "Conveyor.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -1272,6 +1273,10 @@ bool TMC26X::check_standstill()
     // for TMC2660 check if we have been idle for over 10 (or standstill_time) seconds, and check if we
     // are at standstill, and reduce current if so.
     if(!isEnabled() || standstill_current == 0) return false;
+
+    // if there are moves still in the queue then we are not idle
+    if(!Conveyor::getInstance()->is_idle()) return false;
+
     if(standstill_current_set) return true; // already set
 
     bool ok = false;
