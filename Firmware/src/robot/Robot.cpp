@@ -1876,8 +1876,8 @@ bool Robot::append_milestone(const float target[], float rate_mm_s)
     for (size_t i = A_AXIS; i < n_motors; i++) {
         int8_t s= get_slaved_to(i);
         if(s >= 0) {
-            // we just slavishly copy the axis we are slaving to this axis
-            actuator_pos[i]= transformed_target[s];
+            // we just slavishly copy the axis we are slaving
+            actuator_pos[i]= actuator_pos[s];
             continue;
         }
 
@@ -1971,7 +1971,7 @@ bool Robot::delta_move(const float *delta, float rate_mm_s, uint8_t naxis)
 
     // add in the deltas to get new target
     for (int i = 0; i < naxis; i++) {
-        if(i >= A_AXIS && get_slaved_to(i) >= 0) continue; // can;t delta move a slaved axis either
+        if(i >= A_AXIS && get_slaved_to(i) >= 0) continue; // can't delta move a slaved axis either
         target[i] += delta[i];
     }
 
