@@ -354,6 +354,8 @@ private:
      * You may want to use getMotorPosition() or getCurrentStallGuardReading() to enforce an updated status readout.
      */
     int8_t getOverTemperature(void);
+    bool isOverTemperature_SHUTDOWN(void);
+    bool isOverTemperature_WARNING(void);
 
     /*!
      * \brief Is motor channel A shorted to ground detected in the last status readout.
@@ -437,7 +439,7 @@ private:
         /*!
          * Selects to read out all the flags.
          */
-        TMC2590_READOUT_ALL_FLAGS=4
+        TMC26X_READOUT_ALL_FLAGS=4
     };
 
     void readStatus(enum READOUT read_value);
@@ -499,5 +501,11 @@ private:
     uint8_t cool_step_lower_threshold; // we need to remember the threshold to enable and disable the CoolStep feature
     char designator;
     bool revc{false};
+
+    private:
+    using TestFun = decltype(std::mem_fn(&TMC26X::isOverTemperature_WARNING));
+    static const std::array<TestFun, 6> test_fncs;
+    using e_t = std::tuple<int, bool, const char*>;
+    static const std::array<e_t, 6> tests;
 };
 

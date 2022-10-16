@@ -335,7 +335,7 @@ bool TMC26X::config(ConfigReader& cr, const char *actuator_name)
     bool pfd = cr.get_bool(mm, passive_fast_decay_key, true);
     if(pfd) {
         setPassiveFastDecay(1);
-        printf("DEBUG:configure-tmc2590: %s - passive fast decay is on\n", actuator_name);
+        printf("DEBUG:configure-tmc26X: %s - passive fast decay is on\n", actuator_name);
     }
 
     // set the standstill current in mA, default is off
@@ -359,7 +359,7 @@ void TMC26X::init()
     send262(driver_configuration_register_value);
 
     // check if rev C
-    readStatus(TMC2590_READOUT_ALL_FLAGS);
+    readStatus(TMC26X_READOUT_ALL_FLAGS);
     if((driver_status_result & 0x00300) != 0x00300) {
         printf("INFO: %c TMC2660 in not revC\n", designator);
         revc= false;
@@ -916,7 +916,7 @@ void TMC26X::readStatus(enum READOUT read_value)
         case TMC26X_READOUT_CURRENT:
             driver_configuration_register_value |= READ_STALL_GUARD_AND_COOL_STEP;
             break;
-        case TMC2590_READOUT_ALL_FLAGS:
+        case TMC26X_READOUT_ALL_FLAGS:
             // only for rev C chips
             driver_configuration_register_value |= READ_ALL_FLAGS;
             break;
@@ -996,6 +996,16 @@ int8_t TMC26X::getOverTemperature(void)
         return TMC26X_OVERTEMPERATURE_PREWARING;
     }
     return 0;
+}
+
+bool TMC26X::isOverTemperature_SHUTDOWN(void)
+{
+    return getOverTemperature() == TMC26X_OVERTEMPERATURE_SHUTDOWN;
+}
+
+bool TMC26X::isOverTemperature_WARNING(void)
+{
+    return getOverTemperature() == TMC26X_OVERTEMPERATURE_PREWARING;
 }
 
 //is motor channel A shorted to ground
@@ -1118,7 +1128,7 @@ void TMC26X::dump_status(OutputStream& stream, bool readable)
         stream.printf("Driver is %s\n", isEnabled() ? "Enabled" : "Disabled");
 
         if(revc) {
-            readStatus(TMC2590_READOUT_ALL_FLAGS);
+            readStatus(TMC26X_READOUT_ALL_FLAGS);
             if((driver_status_result & 0x00300) != 0x00300) {
                 stream.printf("WARNING: Read all flags appears incorrect: %05lX\n", driver_status_result);
             }else{
@@ -1220,21 +1230,29 @@ void TMC26X::dump_status(OutputStream& stream, bool readable)
     error_detected.reset();
 }
 
+// static test functions
+const std::array<TMC26X::TestFun, 6> TMC26X::test_fncs {{
+    std::mem_fn(&TMC26X::isOverTemperature_WARNING),
+    std::mem_fn(&TMC26X::isOverTemperature_SHUTDOWN),
+    std::mem_fn(&TMC26X::isShortToGroundA),
+    std::mem_fn(&TMC26X::isShortToGroundB),
+    std::mem_fn(&TMC26X::isOpenLoadA),
+    std::mem_fn(&TMC26X::isOpenLoadB)
+}};
+
+// define tests here: id, fatal, message
+const std::array<TMC26X::e_t, 6> TMC26X::tests {{
+    {0, false, "Overtemperature Prewarning"},
+    {1, true, "Overtemperature Shutdown"},
+    {2, true, "SHORT to ground on channel A"},
+    {3, true, "SHORT to ground on channel B"},
+    {4, false, "Channel A seems to be unconnected"}, // unreliable
+    {5, false, "Channel B seems to be unconnected"}
+}};
 
 // check error bits and report, only report once, and debounce the test
 bool TMC26X::check_error_status_bits(OutputStream& stream)
 {
-    // define tests here
-    using e_t = std::tuple<int, std::function<bool(void)>, const char*>;
-    std::vector<e_t> tests {
-        {0, [this](void){return this->getOverTemperature()&TMC26X_OVERTEMPERATURE_PREWARING;}, "Overtemperature Prewarning!"},
-        {1, [this](void){return this->getOverTemperature()&TMC26X_OVERTEMPERATURE_SHUTDOWN;}, "Overtemperature Shutdown!"},
-        {2, [this](void){return this->isShortToGroundA();}, "SHORT to ground on channel A!"},
-        {3, [this](void){return this->isShortToGroundB();}, "SHORT to ground on channel B!"},
-        {4, [this](void){return this->isEnabled() && !this->isStandStill() && this->isOpenLoadA();}, "Channel A seems to be unconnected!"},
-        {5, [this](void){return this->isEnabled() && !this->isStandStill() && this->isOpenLoadB();}, "Channel B seems to be unconnected!"}
-    };
-
     bool error = false;
     readStatus(TMC26X_READOUT_POSITION); // get the status bits
 
@@ -1244,17 +1262,21 @@ bool TMC26X::check_error_status_bits(OutputStream& stream)
         return false;
     }
 
-    for(auto& i : tests) {
-        int n= std::get<0>(i);
-        if(std::get<1>(i)()) {
+    for(auto& i : TMC26X::tests) {
+        int n = std::get<0>(i);
+        if(TMC26X::test_fncs[n](this)) {
             if(!error_detected.test(n)) {
                 // debounce, needs to be set when checked two times in a row
                 error_detected.set(n);
-            }else{
-                if(!error_reported.test(n)){
+            } else {
+                if(!error_reported.test(n)) {
                     // only reports error once until it has been cleared
                     stream.printf("WARNING: %c: %s\n", designator, std::get<2>(i));
                     error_reported.set(n);
+                }
+                if(!error && std::get<1>(i)) {
+                    // fatal error and error not yet set
+                    error = true;
                 }
             }
         } else {
