@@ -358,6 +358,15 @@ void TMC26X::init()
     send262(stall_guard2_current_register_value);
     send262(driver_configuration_register_value);
 
+    // check if rev C
+    readStatus(TMC2590_READOUT_ALL_FLAGS);
+    if((driver_status_result & 0x00300) != 0x00300) {
+        printf("INFO: %c TMC2660 in not revC\n", designator);
+        revc= false;
+    }else{
+        revc= true;
+    }
+
     started = true;
 }
 
@@ -931,7 +940,7 @@ int TMC26X::getCurrentStallGuardReading(void)
     if (!started) {
         return -1;
     }
-    //not time optimal, but solution optiomal:
+    //not time optimal, but solution optimal:
     //first read out the stall guard value
     readStatus(TMC26X_READOUT_STALLGUARD);
     return getReadoutValue();
@@ -1043,8 +1052,6 @@ bool TMC26X::isStallGuardReached(void)
     return (driver_status_result & STATUS_STALL_GUARD_STATUS);
 }
 
-//reads the stall guard setting from last status
-//returns -1 if stallguard information is not present
 int TMC26X::getReadoutValue(void)
 {
     return (int)(driver_status_result >> 10);
@@ -1110,23 +1117,25 @@ void TMC26X::dump_status(OutputStream& stream, bool readable)
         stream.printf("Using %s Chopper\n", ((chopper_config_register_value & CHOPPER_MODE_T_OFF_FAST_DECAY) != 0) ? "Constant Off Time":"Spread Cycle");
         stream.printf("Driver is %s\n", isEnabled() ? "Enabled" : "Disabled");
 
-        readStatus(TMC2590_READOUT_ALL_FLAGS);
-        if((driver_status_result & 0x00300) != 0x00300) {
-            stream.printf("WARNING: Read all flags appears incorrect (not C rev?): %05lX\n", driver_status_result);
-        }else{
-            value = driver_status_result;
-            if(value & 0xFFC00) {
-                stream.printf("Detailed Flags...\n");
-                if(value & 0x80000) stream.printf("  Low voltage detected\n");
-                if(value & 0x40000) stream.printf("  ENN enabled\n");
-                if(value & 0x20000) stream.printf("  Short to high B\n");
-                if(value & 0x10000) stream.printf("  Short to low B\n");
-                if(value & 0x08000) stream.printf("  Short to high A\n");
-                if(value & 0x04000) stream.printf("  Short to low A\n");
-                if(value & 0x02000) stream.printf("  Overtemp 150\n");
-                if(value & 0x01000) stream.printf("  Overtemp 136\n");
-                if(value & 0x00800) stream.printf("  Overtemp 120\n");
-                if(value & 0x00400) stream.printf("  Overtemp 100\n");
+        if(revc) {
+            readStatus(TMC2590_READOUT_ALL_FLAGS);
+            if((driver_status_result & 0x00300) != 0x00300) {
+                stream.printf("WARNING: Read all flags appears incorrect: %05lX\n", driver_status_result);
+            }else{
+                value = driver_status_result;
+                if(value & 0xFFC00) {
+                    stream.printf("Detailed Flags...\n");
+                    if(value & 0x80000) stream.printf("  Low voltage detected\n");
+                    if(value & 0x40000) stream.printf("  ENN enabled\n");
+                    if(value & 0x20000) stream.printf("  Short to high B\n");
+                    if(value & 0x10000) stream.printf("  Short to low B\n");
+                    if(value & 0x08000) stream.printf("  Short to high A\n");
+                    if(value & 0x04000) stream.printf("  Short to low A\n");
+                    if(value & 0x02000) stream.printf("  Overtemp 150\n");
+                    if(value & 0x01000) stream.printf("  Overtemp 136\n");
+                    if(value & 0x00800) stream.printf("  Overtemp 120\n");
+                    if(value & 0x00400) stream.printf("  Overtemp 100\n");
+                }
             }
         }
 

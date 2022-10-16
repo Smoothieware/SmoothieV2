@@ -498,5 +498,6 @@ private:
     bool standstill_current_set{false};
     uint8_t cool_step_lower_threshold; // we need to remember the threshold to enable and disable the CoolStep feature
     char designator;
+    bool revc{false};
 };
 
