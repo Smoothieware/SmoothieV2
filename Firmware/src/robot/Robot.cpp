@@ -446,7 +446,8 @@ bool Robot::configure(ConfigReader& cr)
             printf("INFO: configure-robot: motor %d is slaved to motor %d\n", i, st);
             #if defined(DRIVER_TMC)
             if(actuators[i]->get_microsteps() != actuators[st]->get_microsteps()) {
-                printf("WARNING: configure-robot: slaved motor %d microsteps is not the same as motor %d\n", i, st);
+                slaved[i-A_AXIS]= -1; // break the slaving to avoid disaster
+                printf("WARNING: configure-robot: slaved motor %d microsteps is not the same as motor %d - UNSLAVED\n", i, st);
             }
             #endif
         }else{
@@ -1745,12 +1746,17 @@ void Robot::reset_position_from_current_actuator_position()
     // Handle extruders and/or ABC axis
 #if MAX_ROBOT_ACTUATORS > 3
     for (int i = A_AXIS; i < n_motors; i++) {
-        if(get_slaved_to(i) >= 0) continue;
-        // ABC and/or extruders just need to set machine_position and compensated_machine_position
-        float ap = actuator_pos[i];
-        if(actuators[i]->is_extruder() && get_e_scale_fnc) ap /= get_e_scale_fnc(); // inverse E scale if there is one and this is an extruder
-        machine_position[i] = compensated_machine_position[i] = ap;
-        actuators[i]->change_last_milestone(actuator_pos[i]); // this updates the last_milestone in the actuator
+        if(get_slaved_to(i) >= 0) {
+            // slaved axis are just reset to mimic there slaved counterpart
+            actuators[i]->change_last_milestone(actuator_pos[get_slaved_to(i)]);
+
+        }else{
+            // ABC and/or extruders just need to set machine_position and compensated_machine_position
+            float ap = actuator_pos[i];
+            if(actuators[i]->is_extruder() && get_e_scale_fnc) ap /= get_e_scale_fnc(); // inverse E scale if there is one and this is an extruder
+            machine_position[i] = compensated_machine_position[i] = ap;
+            actuators[i]->change_last_milestone(actuator_pos[i]); // this updates the last_milestone in the actuator
+        }
     }
 #endif
 }

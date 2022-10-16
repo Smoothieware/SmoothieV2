@@ -33,7 +33,6 @@ class StepperMotor
 
         inline bool which_direction() const { return direction; }
 
-        float get_steps_per_second()  const { return steps_per_second; }
         float get_steps_per_mm()  const { return steps_per_mm; }
         void change_steps_per_mm(float);
         void change_last_milestone(float);
@@ -60,7 +59,6 @@ class StepperMotor
         Pin dir_pin;
         Pin en_pin;
 
-        float steps_per_second;
         float steps_per_mm;
         float max_rate; // this is not really rate it is in mm/sec, misnamed used in Robot and Extruder
         float acceleration;
