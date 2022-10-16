@@ -1606,8 +1606,11 @@ void Robot::process_move(GCode& gcode, enum MOTION_MODE_T motion_mode)
 
     // process ABC axis, this is mutually exclusive to using E for an extruder, so if E is used and A then the results are undefined
     for (int i = A_AXIS; i < n_motors; ++i) {
-        // FIXME maybe able to allow this under special circumstances
-        if(get_slaved_to(i) >= 0) continue; // can't move slaved axis
+        if(get_slaved_to(i) >= 0) {
+            target[i]= 0;
+            // maybe need to report this
+            continue; // can't move slaved axis
+        }
 
         char letter = 'A' + i - A_AXIS;
         if(gcode.has_arg(letter)) {
@@ -1699,9 +1702,15 @@ void Robot::reset_axis_position(float position, int axis)
 
 #if MAX_ROBOT_ACTUATORS > 3
     } else if(axis < n_motors) {
-        // ABC and/or extruders need to be set as there is no arm solution for them
-        machine_position[axis] = compensated_machine_position[axis] = position;
-        actuators[axis]->change_last_milestone(machine_position[axis]);
+        if(get_slaved_to(axis) >= 0) {
+            // slaved axis do not have a machine position as it is that of the slaved axis
+            machine_position[axis] = compensated_machine_position[axis] = 0;
+            actuators[axis]->change_last_milestone(machine_position[get_slaved_to(axis)]);
+        }else{
+            // ABC and/or extruders need to be set as there is no arm solution for them
+            machine_position[axis] = compensated_machine_position[axis] = position;
+            actuators[axis]->change_last_milestone(machine_position[axis]);
+        }
 #endif
     }
 }
@@ -1747,7 +1756,8 @@ void Robot::reset_position_from_current_actuator_position()
 #if MAX_ROBOT_ACTUATORS > 3
     for (int i = A_AXIS; i < n_motors; i++) {
         if(get_slaved_to(i) >= 0) {
-            // slaved axis are just reset to mimic there slaved counterpart
+            // slaved axis are just reset to mimic their slaved counterpart and have no machine position
+            machine_position[i] = compensated_machine_position[i] = 0;
             actuators[i]->change_last_milestone(actuator_pos[get_slaved_to(i)]);
 
         }else{
@@ -1961,6 +1971,7 @@ bool Robot::delta_move(const float *delta, float rate_mm_s, uint8_t naxis)
 
     // add in the deltas to get new target
     for (int i = 0; i < naxis; i++) {
+        if(i >= A_AXIS && get_slaved_to(i) >= 0) continue; // can;t delta move a slaved axis either
         target[i] += delta[i];
     }
 
