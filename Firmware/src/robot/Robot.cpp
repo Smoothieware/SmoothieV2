@@ -56,6 +56,7 @@
 #define max_rate_key                    "max_rate"
 #define acceleration_key                "acceleration"
 #define reversed_key                    "reversed"
+#define slaved_to_key                   "slaved_to"
 
 // optional pins for microstepping used on smoothiev2 boards
 #define ms1_pin_key                     "ms1_pin"
@@ -154,6 +155,19 @@ static const char* const actuator_keys[] = {
 #endif
 };
 
+static int find_actuator_key(const char *k)
+{
+    int m= -1;
+    for (int i = 0; i < (int)(sizeof(actuator_keys)/sizeof(actuator_keys[0])); ++i) {
+        if(strcmp(k, actuator_keys[i]) == 0) {
+            m= i;
+            break;
+        }
+    }
+
+    return m;
+}
+
 bool Robot::configure(ConfigReader& cr)
 {
     ConfigReader::section_map_t m;
@@ -244,7 +258,7 @@ bool Robot::configure(ConfigReader& cr)
         Pin dir_pin( cr.get_string(mm, dir_pin_key,  DEFAULT_DIR_PIN(a)), Pin::AS_OUTPUT);
         Pin en_pin(  cr.get_string(mm, en_pin_key,   DEFAULT_EN_PIN(a)), Pin::AS_OUTPUT);
 
-        // an handy way to reverse motor direction without redefining the pin with !
+        // a handy way to reverse motor direction without redefining the pin with !
         bool reversed= cr.get_bool(mm, reversed_key, false);
         if(reversed) {
             if(dir_pin.is_inverting()) {
@@ -336,7 +350,7 @@ bool Robot::configure(ConfigReader& cr)
         // drivers by default for XYZA are internal, BC are by default external
         // check board ID and select default tmc driver accordingly
         const char *def_driver= board_id == 1 ? "tmc2660" : "tmc2590";
-        std::string type= cr.get_string(m, driver_type_key, a >= 4 ? "external" : def_driver);
+        std::string type= cr.get_string(mm, driver_type_key, a >= 4 ? "external" : def_driver);
         if(type == "tmc2590" || type == "tmc2660") {
             uint32_t t= type=="tmc2590" ? 2590 : 2660;
 
@@ -366,6 +380,23 @@ bool Robot::configure(ConfigReader& cr)
         actuators[a]->change_steps_per_mm(cr.get_float(mm, steps_per_mm_key, a == Z_AXIS ? 2560.0F : 80.0F));
         actuators[a]->set_max_rate(cr.get_float(mm, max_rate_key, 30000.0F) / 60.0F); // it is in mm/min and converted to mm/sec
         actuators[a]->set_acceleration(cr.get_float(mm, acceleration_key, -1)); // mm/secs² if -1 it uses the default acceleration
+
+        // see if this motor is slaved to a previous one
+        // Only A,B,C can be slaved to X,Y,Z
+        if(a >= A_AXIS) {
+            std::string slave_to= cr.get_string(mm, slaved_to_key, "");
+            if(!slave_to.empty()) {
+                int st= find_actuator_key(slave_to.c_str());
+                if(st >= A_AXIS) {
+                    // Not allowed to slave to axis other than X,Y,Z
+                    printf("ERROR: configure-robot: %s slaved to name %s is not allowed\n", s->first.c_str(), slave_to.c_str());
+                }else if(st >= 0) {
+                    slaved[a - A_AXIS]= st;
+                }else{
+                    printf("ERROR: configure-robot: %s slaved to name %s is not found\n", s->first.c_str(), slave_to.c_str());
+                }
+            }
+        }
     }
 
     check_max_actuator_speeds(nullptr); // check the configs are sane
@@ -405,7 +436,22 @@ bool Robot::configure(ConfigReader& cr)
     #if MAX_ROBOT_ACTUATORS > 3
     // initialize any extra axis to machine position
     for (size_t i = A_AXIS; i < n_motors; i++) {
-        actuators[i]->change_last_milestone(machine_position[i]);
+        if(get_slaved_to(i) >= 0) {
+            // initialize a slaved axis to exactly the same settings as the axis it is slaved to
+            int8_t st= get_slaved_to(i);
+            actuators[i]->change_steps_per_mm(actuators[st]->get_steps_per_mm());
+            actuators[i]->set_max_rate(actuators[st]->get_max_rate());
+            actuators[i]->set_acceleration(actuators[st]->get_acceleration());
+            actuators[i]->change_last_milestone(actuator_pos[st]);
+            printf("INFO: configure-robot: motor %d is slaved to motor %d\n", i, st);
+            #if defined(DRIVER_TMC)
+            if(actuators[i]->get_microsteps() != actuators[st]->get_microsteps()) {
+                printf("WARNING: configure-robot: slaved motor %d microsteps is not the same as motor %d\n", i, st);
+            }
+            #endif
+        }else{
+            actuators[i]->change_last_milestone(machine_position[i]);
+        }
     }
     #endif
 
@@ -1559,6 +1605,9 @@ void Robot::process_move(GCode& gcode, enum MOTION_MODE_T motion_mode)
 
     // process ABC axis, this is mutually exclusive to using E for an extruder, so if E is used and A then the results are undefined
     for (int i = A_AXIS; i < n_motors; ++i) {
+        // FIXME maybe able to allow this under special circumstances
+        if(get_slaved_to(i) >= 0) continue; // can't move slaved axis
+
         char letter = 'A' + i - A_AXIS;
         if(gcode.has_arg(letter)) {
             float p = gcode.get_arg(letter);
@@ -1696,6 +1745,7 @@ void Robot::reset_position_from_current_actuator_position()
     // Handle extruders and/or ABC axis
 #if MAX_ROBOT_ACTUATORS > 3
     for (int i = A_AXIS; i < n_motors; i++) {
+        if(get_slaved_to(i) >= 0) continue;
         // ABC and/or extruders just need to set machine_position and compensated_machine_position
         float ap = actuator_pos[i];
         if(actuators[i]->is_extruder() && get_e_scale_fnc) ap /= get_e_scale_fnc(); // inverse E scale if there is one and this is an extruder
@@ -1808,6 +1858,13 @@ bool Robot::append_milestone(const float target[], float rate_mm_s)
     sos = 0;
     // for the extruders just copy the position, and possibly scale it from mm³ to mm
     for (size_t i = A_AXIS; i < n_motors; i++) {
+        int8_t s= get_slaved_to(i);
+        if(s >= 0) {
+            // we just slavishly copy the axis we are slaving to this axis
+            actuator_pos[i]= transformed_target[s];
+            continue;
+        }
+
         actuator_pos[i] = transformed_target[i];
         if(actuators[i]->is_extruder() && get_e_scale_fnc) {
             // NOTE this relies on the fact only one extruder is active at a time
@@ -1834,6 +1891,8 @@ bool Robot::append_milestone(const float target[], float rate_mm_s)
 
     // check per-actuator speed limits
     for (size_t actuator = 0; actuator < n_motors; actuator++) {
+        if(actuator >= A_AXIS && get_slaved_to(actuator) >= 0) continue; // skip slaved axis
+
         float d = fabsf(actuator_pos[actuator] - actuators[actuator]->get_last_milestone());
         if(d == 0 || !actuators[actuator]->is_selected()) continue; // no movement for this actuator
 
