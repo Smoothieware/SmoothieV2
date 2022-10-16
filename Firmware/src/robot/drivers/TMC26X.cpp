@@ -1029,7 +1029,9 @@ bool TMC26X::isShortToGroundB(void)
 //is motor channel A connected
 bool TMC26X::isOpenLoadA(void)
 {
-    if (!this->started) {
+    // NOTE this will give false readings if not moving or going fast
+    // should only test when going slow
+    if (!this->started || !this->isEnabled() || this->isStandStill()) {
         return false;
     }
     return (driver_status_result & STATUS_OPEN_LOAD_A);
@@ -1038,7 +1040,9 @@ bool TMC26X::isOpenLoadA(void)
 //is motor channel B connected
 bool TMC26X::isOpenLoadB(void)
 {
-    if (!this->started) {
+    // NOTE this will give false readings if not moving or going fast
+    // should only test when going slow
+    if (!this->started || !this->isEnabled() || this->isStandStill()) {
         return false;
     }
     return (driver_status_result & STATUS_OPEN_LOAD_B);
