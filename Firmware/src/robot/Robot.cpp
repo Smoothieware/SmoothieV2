@@ -1689,8 +1689,18 @@ void Robot::reset_axis_position(float x, float y, float z)
     // now set the actuator positions based on the supplied compensated position
     ActuatorCoordinates actuator_pos;
     arm_solution->cartesian_to_actuator(this->compensated_machine_position, actuator_pos);
-    for (size_t i = X_AXIS; i <= Z_AXIS; i++)
+    for (size_t i = X_AXIS; i <= Z_AXIS; i++){
         actuators[i]->change_last_milestone(actuator_pos[i]);
+    }
+
+#if MAX_ROBOT_ACTUATORS > 3
+    // also set any slaved axis
+    for (int i = A_AXIS; i < n_motors; i++) {
+        if(get_slaved_to(i) >= 0) {
+            actuators[i]->change_last_milestone(actuator_pos[get_slaved_to(i)]);
+        }
+    }
+#endif
 }
 
 // Reset the position for an axis (used in homing, and to reset extruder after suspend)
@@ -1705,7 +1715,7 @@ void Robot::reset_axis_position(float position, int axis)
         if(get_slaved_to(axis) >= 0) {
             // slaved axis do not have a machine position as it is that of the slaved axis
             machine_position[axis] = compensated_machine_position[axis] = 0;
-            actuators[axis]->change_last_milestone(machine_position[get_slaved_to(axis)]);
+            actuators[axis]->change_last_milestone(compensated_machine_position[get_slaved_to(axis)]);
         }else{
             // ABC and/or extruders need to be set as there is no arm solution for them
             machine_position[axis] = compensated_machine_position[axis] = position;
@@ -1733,7 +1743,7 @@ void Robot::reset_position_from_current_actuator_position()
 {
     ActuatorCoordinates actuator_pos;
     for (size_t i = X_AXIS; i < n_motors; i++) {
-        // NOTE actuator::current_position is curently NOT the same as actuator::machine_position after an abrupt abort
+        // NOTE actuator::current_position is currently NOT the same as actuator::machine_position after an abrupt abort
         actuator_pos[i] = actuators[i]->get_current_position();
     }
 
