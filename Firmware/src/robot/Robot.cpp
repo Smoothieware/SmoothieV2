@@ -391,7 +391,11 @@ bool Robot::configure(ConfigReader& cr)
                     // Not allowed to slave to axis other than X,Y,Z
                     printf("ERROR: configure-robot: %s slaved to name %s is not allowed\n", s->first.c_str(), slave_to.c_str());
                 }else if(st >= 0) {
-                    slaved[a - A_AXIS]= st;
+                    if(slaved[a - A_AXIS] < 0) {
+                        slaved[a - A_AXIS]= st;
+                    }else{
+                        printf("ERROR: configure-robot: %s already slaved to another axis %d\n", s->first.c_str(), slaved[a - A_AXIS]);
+                    }
                 }else{
                     printf("ERROR: configure-robot: %s slaved to name %s is not found\n", s->first.c_str(), slave_to.c_str());
                 }
