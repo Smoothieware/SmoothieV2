@@ -1712,11 +1712,8 @@ void Robot::reset_axis_position(float position, int axis)
 
 #if MAX_ROBOT_ACTUATORS > 3
     } else if(axis < n_motors) {
-        if(get_slaved_to(axis) >= 0) {
-            // slaved axis do not have a machine position as it is that of the slaved axis
-            machine_position[axis] = compensated_machine_position[axis] = 0;
-            actuators[axis]->change_last_milestone(compensated_machine_position[get_slaved_to(axis)]);
-        }else{
+        // ignore slaved axis resets
+        if(get_slaved_to(axis) < 0) {
             // ABC and/or extruders need to be set as there is no arm solution for them
             machine_position[axis] = compensated_machine_position[axis] = position;
             actuators[axis]->change_last_milestone(machine_position[axis]);
