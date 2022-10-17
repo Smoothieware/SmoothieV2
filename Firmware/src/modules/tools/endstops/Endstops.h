@@ -70,6 +70,7 @@ class Endstops : public Module
             struct {
                 char axis:8; // one of XYZABC
                 uint8_t axis_index:3;
+                uint8_t slaved_axis_index:3;
                 bool home_direction:1; // true min or false max
                 bool homed:1;
             };

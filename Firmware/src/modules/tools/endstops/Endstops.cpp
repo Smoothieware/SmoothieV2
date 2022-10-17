@@ -115,7 +115,7 @@ bool Endstops::configure(ConfigReader& cr)
 bool Endstops::load_endstops(ConfigReader& cr)
 {
     limit_enabled = false;
-    size_t max_index = 0;
+    uint8_t max_index = 0;
 
     std::array<homing_info_t, k_max_actuators> temp_axis_array; // needs to be at least XYZ, but allow for ABC
     {
@@ -161,7 +161,7 @@ bool Endstops::load_endstops(ConfigReader& cr)
             continue;
         }
 
-        size_t a;
+        uint8_t a;
         switch(toupper(axis[0])) {
             case 'X': a = X_AXIS; break;
             case 'Y': a = Y_AXIS; break;
@@ -238,6 +238,18 @@ bool Endstops::load_endstops(ConfigReader& cr)
 
         // used to set maximum movement on homing, set by max_travel if defined
         hinfo.max_travel = cr.get_float(mm, max_travel_key, 500);
+
+        // See if this axis has a slave and set it
+        hinfo.slaved_axis_index = 0; // no slave is the default
+        #if MAX_ROBOT_ACTUATORS > 3
+        if(a >= X_AXIS && a <= Z_AXIS) {
+            for (uint8_t i = A_AXIS; i < Robot::getInstance()->get_number_registered_motors(); ++i) {
+                if(Robot::getInstance()->get_slaved_to(i) == a) {
+                    hinfo.slaved_axis_index = i; // set the slaved axis, needed to stop it when homed
+                }
+            }
+        }
+        #endif
 
         // stick into array in correct place
         temp_axis_array[hinfo.axis_index] = hinfo;
@@ -365,6 +377,11 @@ void Endstops::read_endstops()
                     } else {
                         // we signal the motor to stop, which will preempt any moves on that axis
                         STEPPER[m]->stop_moving();
+                        // also stop any slaved actuator
+                        uint8_t si= e.slaved_axis_index;
+                        if(si >= A_AXIS && si <= C_AXIS) {
+                            STEPPER[si]->stop_moving();
+                        }
                     }
                     e.pin_info->triggered = true;
                 }
