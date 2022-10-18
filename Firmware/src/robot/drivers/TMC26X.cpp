@@ -306,7 +306,7 @@ bool TMC26X::config(ConfigReader& cr, const char *actuator_name)
     // set stallguard to a conservative value so it doesn't trigger immediately
     setStallGuardThreshold(10, 1);
 
-    this->resistor = cr.get_int(mm, resistor_key, 75); // in milliohms
+    this->resistor = cr.get_int(mm, resistor_key, 100); // in milliohms
     this->max_current= cr.get_int(mm, max_current_key, 2800); // in milliamps
     printf("DEBUG:configure-tmc2660: %s - sense resistor: %d milliohms, max current: %ld mA\n", actuator_name, resistor, max_current);
 
