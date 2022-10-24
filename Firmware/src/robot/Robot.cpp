@@ -956,14 +956,16 @@ bool Robot::handle_motion_command(GCode& gcode, OutputStream& os)
 
 void Robot::do_park()
 {
-    // TODO: spec says if XYZ specified move to them first then move to MCS of specifed axis
-    push_state();
-    absolute_mode = true;
-    next_command_is_MCS = true; // must use machine coordinates in case G92 or WCS is in effect
-    OutputStream nullos;
-    THEDISPATCHER->dispatch(nullos, 'G', 0, 'X', from_millimeters(park_position[X_AXIS]), 'Y', from_millimeters(park_position[Y_AXIS]), 0);
+    if(is_homed()) {
+        // TODO: spec says if XYZ specified move to them first then move to MCS of specifed axis
+        push_state();
+        absolute_mode = true;
+        next_command_is_MCS = true; // must use machine coordinates in case G92 or WCS is in effect
+        OutputStream nullos;
+        THEDISPATCHER->dispatch(nullos, 'G', 0, 'X', from_millimeters(park_position[X_AXIS]), 'Y', from_millimeters(park_position[Y_AXIS]), 0);
 
-    pop_state();
+        pop_state();
+    }
 }
 
 // A GCode has been received
@@ -990,12 +992,17 @@ bool Robot::handle_gcodes(GCode& gcode, OutputStream& os)
                     break;
 
                 case 1: // G28.1 set pre defined park position
-                    // saves current position in absolute machine coordinates
-                    get_axis_position(park_position, 2); // Only XY are used
-                    // Note the following is only meant to be used for recovering a saved position from config-override
-                    // Not a standard Gcode and not to be relied on
-                    if (gcode.has_arg('X')) park_position[X_AXIS] = gcode.get_arg('X');
-                    if (gcode.has_arg('Y')) park_position[Y_AXIS] = gcode.get_arg('Y');
+                    if(is_homed()) {
+                        // saves current position in absolute machine coordinates
+                        get_axis_position(park_position, 2); // Only XY are used
+                        // Note the following is only meant to be used for recovering a saved position from config-override
+                        // Not a standard Gcode and not to be relied on
+                        if (gcode.has_arg('X')) park_position[X_AXIS] = gcode.get_arg('X');
+                        if (gcode.has_arg('Y')) park_position[Y_AXIS] = gcode.get_arg('Y');
+
+                    }else{
+                        os.printf("Cannot set park position unless axis are homed\n");
+                    }
                     break;
 
                 case 2: // G28.2 in grbl mode does homing (triggered by $H), otherwise it moves to the park position
@@ -2436,3 +2443,14 @@ void Robot::get_query_string(std::string& str) const
     str.append(">\n");
 }
 
+bool Robot::is_homed() const
+{
+    Module *m = Module::lookup("endstops");
+    if(m != nullptr) {
+        bool state;
+        bool ok = m->request("is_homed", &state);
+        if(ok && state) return true;
+    }
+
+    return false;
+}

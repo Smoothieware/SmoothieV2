@@ -69,6 +69,7 @@ public:
     void do_park();
     void reset_compensated_machine_position();
     int8_t get_slaved_to(uint8_t a) const { if((a-3)<3) return slaved[a-3]; else return -1; }
+    bool is_homed() const;
 
     BaseSolution* arm_solution;                           // Selected Arm solution ( millimeters to step calculation )
 
