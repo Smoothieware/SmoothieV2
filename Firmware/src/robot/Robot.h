@@ -68,6 +68,7 @@ public:
     void get_query_string(std::string&) const;
     void do_park();
     void reset_compensated_machine_position();
+    bool is_homed() const;
 
     BaseSolution* arm_solution;                           // Selected Arm solution ( millimeters to step calculation )
 
