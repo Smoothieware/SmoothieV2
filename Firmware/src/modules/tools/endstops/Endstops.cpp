@@ -1084,6 +1084,16 @@ bool Endstops::request(const char *key, void *value)
         return true;
     }
 
+    if(strcmp(key, "is_homed") == 0) {
+        bool *homed = static_cast<bool *>(value);
+        *homed= true;
+        for (auto &p : homing_axis) {
+            if(!p.homed) *homed= false;
+        }
+
+        return true;
+    }
+
     if(strcmp(key, "get_trim") == 0) {
         float *trim = static_cast<float *>(value);
         for (int i = 0; i < 3; ++i) {
