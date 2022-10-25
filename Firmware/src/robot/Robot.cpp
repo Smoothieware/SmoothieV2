@@ -1010,12 +1010,20 @@ bool Robot::handle_gcodes(GCode& gcode, OutputStream& os)
                     break;
 
                 case 1: // G28.1 set pre defined park position
-                    if(is_homed()) {
-                        // saves current position in absolute machine coordinates
-                        // If Z needs to be set it has to be set explicitly with the Z parameter
-                        get_axis_position(park_position, 2); // Only XY are set by default
+                    if(gcode.has_no_args()) {
+                        if(is_homed()) {
+                            // saves current position in absolute machine coordinates
+                            // If Z needs to be set it has to be set explicitly with the Z parameter
+                            get_axis_position(park_position, 2); // Only XY are set by default
+
+                        }else{
+                            os.printf("Cannot set park position unless axis are homed\n");
+                        }
+
+                    } else {
                         // Note the following is only meant to be used for recovering a saved position from config-override
-                        // Not a standard Gcode and not to be relied on
+                        // or setting Z Park position
+                        // This is not a standard Gcode
                         if(gcode.has_arg('X')) park_position[X_AXIS]= gcode.get_arg('X');
                         if(gcode.has_arg('Y')) park_position[Y_AXIS]= gcode.get_arg('Y');
                         if(gcode.has_arg('Z')) {
@@ -1027,10 +1035,8 @@ bool Robot::handle_gcodes(GCode& gcode, OutputStream& os)
                                 park_position[Z_AXIS]= z;
                             }
                         }
-
-                    }else{
-                        os.printf("Cannot set park position unless axis are homed\n");
                     }
+
                     break;
 
                 case 2: // G28.2 in grbl mode does homing (triggered by $H), otherwise it moves to the park position
