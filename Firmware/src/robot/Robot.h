@@ -66,7 +66,7 @@ public:
     uint8_t get_number_registered_motors() const {return n_motors; }
     void enable_all_motors(bool flg);
     void get_query_string(std::string&) const;
-    void do_park();
+    void do_park(GCode& gcode, OutputStream& os);
     void reset_compensated_machine_position();
     bool is_homed() const;
     int8_t get_slaved_to(uint8_t a) const { if((a-3)<3) return slaved[a-3]; else return -1; }
@@ -174,7 +174,7 @@ private:
     int arc_correction;                                  // Setting : how often to rectify arc computation
     float max_speeds[3];                                 // Setting : max allowable speed in mm/s for each axis
     float max_speed;                                     // Setting : max allowable speed in mm/s for any move
-    float park_position[2];
+    float park_position[3];
 
     // slaved motors, we can slave A,B,C to X,Y,Z
     // if -1, then not slaved otherwise it is the motor_id of the motor it is slaved to

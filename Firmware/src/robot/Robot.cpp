@@ -124,6 +124,7 @@ Robot::Robot() : Module("robot")
     memset(this->machine_position, 0, sizeof machine_position);
     memset(this->compensated_machine_position, 0, sizeof compensated_machine_position);
     memset(this->park_position, 0, sizeof park_position);
+    this->park_position[Z_AXIS]= NAN; // optional move
     this->arm_solution = NULL;
     seconds_per_minute = 60.0F;
     this->clearToolOffset();
@@ -954,17 +955,34 @@ bool Robot::handle_motion_command(GCode& gcode, OutputStream& os)
     return handled;
 }
 
-void Robot::do_park()
+void Robot::do_park(GCode& gcode, OutputStream& os)
 {
     if(is_homed()) {
-        // TODO: spec says if XYZ specified move to them first then move to MCS of specifed axis
+        // NIST spec says if XYZ are specified rapid move to them first then move to MCS of saved position
+        // Smoothie differs from the NIST spec in that all XYZ moves are relative if specified
+        // whereas NIST suggests using G91 instead.
+        // Smoothie also will move to the Z park position first if it was saved
         push_state();
+        float x=0, y=0, z=0;
+        if(gcode.has_arg('X')) x= to_millimeters(gcode.get_arg('X'));
+        if(gcode.has_arg('Y')) y= to_millimeters(gcode.get_arg('Y'));
+        if(gcode.has_arg('Z')) z= to_millimeters(gcode.get_arg('Z'));
+        if(x != 0 || y != 0 || z != 0) {
+            float deltas[3]= {x, y, z};
+            delta_move(deltas, this->seek_rate/60, 3);
+        }
         absolute_mode = true;
         next_command_is_MCS = true; // must use machine coordinates in case G92 or WCS is in effect
-        OutputStream nullos;
-        THEDISPATCHER->dispatch(nullos, 'G', 0, 'X', from_millimeters(park_position[X_AXIS]), 'Y', from_millimeters(park_position[Y_AXIS]), 0);
+        OutputStream nos;
+        if(!isnan(park_position[Z_AXIS])) {
+            THEDISPATCHER->dispatch(nos, 'G', 0, 'Z', from_millimeters(park_position[Z_AXIS]), 0);
+        }
+        THEDISPATCHER->dispatch(nos, 'G', 0, 'X', from_millimeters(park_position[X_AXIS]), 'Y', from_millimeters(park_position[Y_AXIS]), 0);
 
         pop_state();
+
+    }else{
+        os.printf("cannot park as axis are not homed and MCS is unknown\n");
     }
 }
 
@@ -985,7 +1003,7 @@ bool Robot::handle_gcodes(GCode& gcode, OutputStream& os)
             switch(gcode.get_subcode()) {
                 case 0: // G28 in grbl mode will do a rapid to the predefined position otherwise it is home command
                     if(is_grbl_mode()) {
-                        do_park();
+                        do_park(gcode, os);
                     } else {
                         handled = false;
                     }
@@ -994,11 +1012,21 @@ bool Robot::handle_gcodes(GCode& gcode, OutputStream& os)
                 case 1: // G28.1 set pre defined park position
                     if(is_homed()) {
                         // saves current position in absolute machine coordinates
-                        get_axis_position(park_position, 2); // Only XY are used
+                        // If Z needs to be set it has to be set explicitly with the Z parameter
+                        get_axis_position(park_position, 2); // Only XY are set by default
                         // Note the following is only meant to be used for recovering a saved position from config-override
                         // Not a standard Gcode and not to be relied on
-                        if (gcode.has_arg('X')) park_position[X_AXIS] = gcode.get_arg('X');
-                        if (gcode.has_arg('Y')) park_position[Y_AXIS] = gcode.get_arg('Y');
+                        if(gcode.has_arg('X')) park_position[X_AXIS]= gcode.get_arg('X');
+                        if(gcode.has_arg('Y')) park_position[Y_AXIS]= gcode.get_arg('Y');
+                        if(gcode.has_arg('Z')) {
+                            // setting z to zero or less will disable it (as a 0 park for Z would be a bad idea anyway)
+                            float z= gcode.get_arg('Z');
+                            if(z <= 0) {
+                                park_position[Z_AXIS]= NAN;
+                            }else{
+                                park_position[Z_AXIS]= z;
+                            }
+                        }
 
                     }else{
                         os.printf("Cannot set park position unless axis are homed\n");
@@ -1007,7 +1035,7 @@ bool Robot::handle_gcodes(GCode& gcode, OutputStream& os)
 
                 case 2: // G28.2 in grbl mode does homing (triggered by $H), otherwise it moves to the park position
                     if(!is_grbl_mode()) {
-                        do_park();
+                        do_park(gcode, os);
                     } else {
                         handled = false;
                     }
@@ -1486,8 +1514,12 @@ bool Robot::handle_M500(GCode& gcode, OutputStream& os)
         }
     }
 
-    if(park_position[X_AXIS] != 0 || park_position[Y_AXIS] != 0) {
-        os.printf(";predefined position:\nG28.1 X%1.4f Y%1.4f\n", park_position[X_AXIS], park_position[Y_AXIS]);
+    if(park_position[X_AXIS] != 0 || park_position[Y_AXIS] != 0 || (!isnan(park_position[Z_AXIS]) && park_position[Z_AXIS] != 0)) {
+        os.printf(";predefined position:\nG28.1 X%1.4f Y%1.4f", park_position[X_AXIS], park_position[Y_AXIS]);
+        if(!isnan(park_position[Z_AXIS])) {
+            os.printf(" Z%1.4f", park_position[Z_AXIS]);
+        }
+        os.printf("\n");
     }
 
     return true;
