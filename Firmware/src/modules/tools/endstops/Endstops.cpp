@@ -1088,7 +1088,7 @@ bool Endstops::request(const char *key, void *value)
         bool *homed = static_cast<bool *>(value);
         *homed= true;
         for (auto &p : homing_axis) {
-            if(!p.homed) *homed= false;
+            if(p.pin_info != nullptr && !p.homed) *homed= false;
         }
 
         return true;
