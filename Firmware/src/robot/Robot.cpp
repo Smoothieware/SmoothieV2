@@ -922,10 +922,11 @@ void Robot::do_park(GCode& gcode, OutputStream& os)
         }
         absolute_mode = true;
         next_command_is_MCS = true; // must use machine coordinates in case G92 or WCS is in effect
+        OutputStream nos;
         if(!isnan(park_position[Z_AXIS])) {
-            THEDISPATCHER->dispatch(os, 'G', 0, 'Z', from_millimeters(park_position[Z_AXIS]), 0);
+            THEDISPATCHER->dispatch(nos, 'G', 0, 'Z', from_millimeters(park_position[Z_AXIS]), 0);
         }
-        THEDISPATCHER->dispatch(os, 'G', 0, 'X', from_millimeters(park_position[X_AXIS]), 'Y', from_millimeters(park_position[Y_AXIS]), 0);
+        THEDISPATCHER->dispatch(nos, 'G', 0, 'X', from_millimeters(park_position[X_AXIS]), 'Y', from_millimeters(park_position[Y_AXIS]), 0);
 
         pop_state();
 
@@ -966,7 +967,15 @@ bool Robot::handle_gcodes(GCode& gcode, OutputStream& os)
                         // Not a standard Gcode and not to be relied on
                         if(gcode.has_arg('X')) park_position[X_AXIS]= gcode.get_arg('X');
                         if(gcode.has_arg('Y')) park_position[Y_AXIS]= gcode.get_arg('Y');
-                        if(gcode.has_arg('Z')) park_position[Z_AXIS]= gcode.get_arg('Z');
+                        if(gcode.has_arg('Z')) {
+                            // setting z to zero or less will disable it (as a 0 park for Z would be a bad idea anyway)
+                            float z= gcode.get_arg('Z');
+                            if(z <= 0) {
+                                park_position[Z_AXIS]= NAN;
+                            }else{
+                                park_position[Z_AXIS]= z;
+                            }
+                        }
 
                     }else{
                         os.printf("Cannot set park position unless axis are homed\n");
