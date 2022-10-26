@@ -384,14 +384,14 @@ void TMC26X::setCurrent(unsigned int current)
     //leading to cs = CS = 32*R*I/V (with V = 0,31V or 0,165V  and I = 1000*current)
     //for vsense = 0,310V (VSENSE not set)
     //or vsense = 0,165V (VSENSE set)
-    current_scaling = (uint8_t)((resistor_value * mASetting * 32.0 / (0.31 * 1000.0 * 1000.0)) - 0.5); //theoretically - 1.0 for better rounding it is 0.5
+    current_scaling = round((resistor_value * mASetting * 32.0 / (0.31 * 1000.0 * 1000.0)) - 1.0);
 
     //check if the current scaling is too low
     if (current_scaling < 16) {
         //set the vsense bit to get a use half the sense voltage (to support lower motor currents)
         this->driver_configuration_register_value |= VSENSE;
         //and recalculate the current setting
-        current_scaling = (uint8_t)((resistor_value * mASetting * 32.0 / (0.165 * 1000.0 * 1000.0)) - 0.5); //theoretically - 1.0 for better rounding it is 0.5
+        current_scaling = round((resistor_value * mASetting * 32.0 / (0.165 * 1000.0 * 1000.0)) - 1.0);
     }
 
     //do some sanity checks
@@ -422,8 +422,8 @@ unsigned int TMC26X::getCurrent(void)
     //this is not the fastest but the most accurate and illustrative way
     double result = (double)(stall_guard2_current_register_value & CURRENT_SCALING_PATTERN);
     double resistor_value = (double)this->resistor;
-    double voltage = (driver_configuration_register_value & VSENSE) ? 0.165F : 0.31F;
-    result = (result + 1.0F) / 32.0F * voltage / resistor_value * 1000.0F * 1000.0F;
+    double voltage = (driver_configuration_register_value & VSENSE) ? 0.165 : 0.31;
+    result = (result + 1.0) / 32.0 * voltage / resistor_value * 1000.0 * 1000.0;
     return (unsigned int)round(result);
 }
 

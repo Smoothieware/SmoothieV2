@@ -386,14 +386,14 @@ void TMC2590::setCurrent(unsigned int current)
     //with Rsense=resistor_value
     //for vsense = 0,3250V (VSENSE not set)
     //or vsense = 0,173V (VSENSE set)
-    current_scaling = (uint8_t)((((resistor_value/1000) * (mASetting/1000) * 32.0) / 0.325) - 0.5); //theoretically - 1.0 for better rounding it is 0.5
+    current_scaling = round((((resistor_value/1000) * (mASetting/1000) * 32.0) / 0.325) - 1.0);
 
     //check if the current scaling is too low
     if (current_scaling < 16) {
         //set the vsense bit to get a use half the sense voltage (to support lower motor currents)
         this->driver_configuration_register_value |= VSENSE;
         //and recalculate the current setting
-        current_scaling = (uint8_t)((((resistor_value/1000) * (mASetting/1000) * 32.0) / 0.173) - 0.5); //theoretically - 1.0 for better rounding it is 0.5
+        current_scaling = round((((resistor_value/1000) * (mASetting/1000) * 32.0) / 0.173) - 1.0);
     }
 
     //do some sanity checks
