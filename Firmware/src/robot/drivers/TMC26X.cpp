@@ -372,7 +372,10 @@ void TMC26X::init()
 
 void TMC26X::setCurrent(unsigned int current)
 {
-    if(current > max_current) current= max_current;
+    if(current > max_current) {
+        printf("WARNING: tmc2660: %c - current setting  %u too high, reset to %lu\n", designator, current, max_current);
+        current= max_current;
+    }
 
     uint8_t current_scaling = 0;
     //calculate the current scaling from the max current setting (in mA)
