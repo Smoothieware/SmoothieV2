@@ -1013,6 +1013,12 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
 {
     HELP("test [jog|circle|square|raw]");
 
+    if(Module::is_halted()) {
+        os.set_no_response(true);
+        os.printf("error:Alarm lock\n");
+        return true;
+    }
+
     AutoPushPop app; // this will save the state and restore it on exit
     std::string what = stringutils::shift_parameter( params );
     OutputStream nullos;
@@ -1246,13 +1252,11 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
     }
 
     if(Module::is_halted()) {
-        if(cont_mode) {
-            // if we are in ALARM state and cont mode we send relevant error response
-            if(THEDISPATCHER->is_grbl_mode()) {
-                os.printf("error:Alarm lock\n");
-            } else {
-                os.printf("!!\n");
-            }
+        // if we are in ALARM state and cont mode we send relevant error response
+        if(THEDISPATCHER->is_grbl_mode()) {
+            os.printf("error:Alarm lock\n");
+        } else {
+            os.printf("!!\n");
         }
         return true;
     }
