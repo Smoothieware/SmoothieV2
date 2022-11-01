@@ -7,7 +7,7 @@
 #include "main.h"
 #include "GCode.h"
 #include "Conveyor.h"
-#include "SlowTicker.h"
+#include "FastTicker.h"
 #include "Planner.h"
 #include "ZProbeStrategy.h"
 #include "StepTicker.h"
@@ -158,12 +158,13 @@ bool ZProbe::configure(ConfigReader& cr)
 
     // strategies may handle their own mcodes but we need to register them from the strategy themselves
 
-    // we read the probe in this timer
-    SlowTicker::getInstance()->attach(100, std::bind(&ZProbe::read_probe, this));
+    // we read the probe in this timer, faster makes it more accurate
+    FastTicker::getInstance()->attach(1000, std::bind(&ZProbe::read_probe, this));
 
     return true;
 }
 
+// called in an ISR context
 void ZProbe::read_probe()
 {
     if(!probing || probe_detected) return;
@@ -465,6 +466,7 @@ void ZProbe::probe_XYZ(GCode& gcode, OutputStream& os, uint8_t axismask)
     // enable the probe checking in the timer
     probing = true;
     probe_detected = false;
+    debounce = 0;
 
     // get probe feedrate in mm/min and convert to mm/sec if specified
     float rate = (gcode.has_arg('F')) ? gcode.get_arg('F') / 60 : this->slow_feedrate;
