@@ -451,7 +451,7 @@ bool ZProbe::handle_mcode(GCode& gcode, OutputStream& os)
     return true;
 }
 
-// special way to probe in the X, Y or Z direction using planned moves, should work with any kinematics
+// special way to probe in the X, Y or Z direction using planned moves
 void ZProbe::probe_XYZ(GCode& gcode, OutputStream& os, uint8_t axismask)
 {
     // first wait for all moves to finish
@@ -505,43 +505,62 @@ void ZProbe::probe_XYZ(GCode& gcode, OutputStream& os, uint8_t axismask)
 // issue a coordinated move in xy, and return when done
 void ZProbe::move_xy(float x, float y, float feedrate, bool relative)
 {
-    float d[3] = {x, y, 0};
-    if(!relative) {
-        d[0] -= Robot::getInstance()->get_axis_position(X_AXIS);
-        d[1] -= Robot::getInstance()->get_axis_position(Y_AXIS);
+    Robot::getInstance()->push_state();
+    if(relative) {
+        Robot::getInstance()->absolute_mode = false;
+    }else{
+        Robot::getInstance()->absolute_mode = true;
+        Robot::getInstance()->next_command_is_MCS = true; // must use machine coordinates
     }
-    Robot::getInstance()->delta_move(d, feedrate, 3);
+    OutputStream nullos;
+    THEDISPATCHER->dispatch(nullos, 'G', 1, 'X', x, 'Y', y, 'F', feedrate*60, 0);
     Conveyor::getInstance()->wait_for_idle();
+    Robot::getInstance()->pop_state();
 }
 
 void ZProbe::move_x(float x, float feedrate, bool relative)
 {
-    float d[3] = {x, 0, 0};
-    if(!relative) {
-        d[0] -= Robot::getInstance()->get_axis_position(X_AXIS);
+    Robot::getInstance()->push_state();
+    if(relative) {
+        Robot::getInstance()->absolute_mode = false;
+    }else{
+        Robot::getInstance()->absolute_mode = true;
+        Robot::getInstance()->next_command_is_MCS = true; // must use machine coordinates
     }
-    Robot::getInstance()->delta_move(d, feedrate, 3);
+    OutputStream nullos;
+    THEDISPATCHER->dispatch(nullos, 'G', 1, 'X', x, 'F', feedrate*60, 0);
     Conveyor::getInstance()->wait_for_idle();
+    Robot::getInstance()->pop_state();
 }
 
 void ZProbe::move_y(float y, float feedrate, bool relative)
 {
-    float d[3] = {0, y, 0};
-    if(!relative) {
-        d[1] -= Robot::getInstance()->get_axis_position(Y_AXIS);
+    Robot::getInstance()->push_state();
+    if(relative) {
+        Robot::getInstance()->absolute_mode = false;
+    }else{
+        Robot::getInstance()->absolute_mode = true;
+        Robot::getInstance()->next_command_is_MCS = true; // must use machine coordinates
     }
-    Robot::getInstance()->delta_move(d, feedrate, 3);
+    OutputStream nullos;
+    THEDISPATCHER->dispatch(nullos, 'G', 1, 'Y', y, 'F', feedrate*60, 0);
     Conveyor::getInstance()->wait_for_idle();
+    Robot::getInstance()->pop_state();
 }
 
 void ZProbe::move_z(float z, float feedrate, bool relative)
 {
-    float d[3] = {0, 0, z};
-    if(!relative) {
-        d[2] -= Robot::getInstance()->get_axis_position(Z_AXIS);
+    Robot::getInstance()->push_state();
+    if(relative) {
+        Robot::getInstance()->absolute_mode = false;
+    }else{
+        Robot::getInstance()->absolute_mode = true;
+        Robot::getInstance()->next_command_is_MCS = true; // must use machine coordinates
     }
-    Robot::getInstance()->delta_move(d, feedrate, 3);
+    OutputStream nullos;
+    THEDISPATCHER->dispatch(nullos, 'G', 1, 'Z', z, 'F', feedrate*60, 0);
     Conveyor::getInstance()->wait_for_idle();
+    Robot::getInstance()->pop_state();
 }
 
 // issue home command
