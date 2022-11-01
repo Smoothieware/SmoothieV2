@@ -1926,6 +1926,7 @@ bool Robot::append_milestone(const float target[], float rate_mm_s)
 }
 
 // Used to plan a single move used by things like endstops when homing, zprobe, extruder firmware retracts etc.
+// NOTE doesn't work for long moves on a Delta as the move is not segmented so head will dip into the bowl.
 bool Robot::delta_move(const float *delta, float rate_mm_s, uint8_t naxis)
 {
     if(halted) return false;
