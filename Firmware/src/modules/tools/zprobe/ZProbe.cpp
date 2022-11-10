@@ -324,7 +324,7 @@ bool ZProbe::handle_gcode(GCode& gcode, OutputStream& os)
                 }
 
             } else {
-                // P paramater selects which strategy to send the code to
+                // P parameter selects which strategy to send the code to
                 // 0 being the leveling, 1 being the calibration.
                 uint16_t i = gcode.get_arg('P');
                 if(i == 0) {

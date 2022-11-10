@@ -942,6 +942,12 @@ bool Robot::handle_motion_command(GCode& gcode, OutputStream& os)
     }
 
     if( motion_mode != NONE) {
+        if((motion_mode == CW_ARC || motion_mode == CCW_ARC) && gcode.has_arg('R')) {
+            // we do not support radius mode for arcs
+            gcode.set_error("Radius mode not supported by G2 or G3");
+            return false;
+        }
+
         is_g123 = motion_mode != SEEK;
         process_move(gcode, motion_mode);
 
@@ -1093,8 +1099,16 @@ bool Robot::handle_gcodes(GCode& gcode, OutputStream& os)
             }
             break;
 
-        case 90: this->absolute_mode = true; this->e_absolute_mode = true; break;
-        case 91: this->absolute_mode = false; this->e_absolute_mode = false; break;
+        case 90: if(gcode.get_subcode() == 0) {
+                this->absolute_mode = true;
+                this->e_absolute_mode = true;
+            } else return false;
+            break;
+        case 91: if(gcode.get_subcode() == 0) {
+                this->absolute_mode = false;
+                this->e_absolute_mode = false;
+            } else return false;
+            break;
         default: handled = false; break;
     }
     return handled;
