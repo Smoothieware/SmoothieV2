@@ -945,11 +945,11 @@ bool Robot::handle_motion_command(GCode& gcode, OutputStream& os)
         if((motion_mode == CW_ARC || motion_mode == CCW_ARC) && gcode.has_arg('R')) {
             // we do not support radius mode for arcs
             gcode.set_error("Radius mode not supported by G2 or G3");
-            return false;
-        }
 
-        is_g123 = motion_mode != SEEK;
-        process_move(gcode, motion_mode);
+        }else{
+            is_g123 = motion_mode != SEEK;
+            process_move(gcode, motion_mode);
+        }
 
     } else {
         is_g123 = false;
