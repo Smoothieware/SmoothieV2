@@ -36,12 +36,6 @@
 #define beta_trim_key "beta_trim_mm"
 #define gamma_trim_key "gamma_trim_mm"
 
-// new config syntax
-// endstop.xmin.enable true
-// endstop.xmin.pin 1.29
-// endstop.xmin.axis X
-// endstop.xmin.homing_direction home_to_min
-
 #define pin_key "pin"
 #define axis_key "axis"
 #define direction_key "homing_direction"
@@ -438,17 +432,17 @@ void Endstops::check_limits()
                     i->debounce += 10;
 
                 } else {
-                    char report_string[132];
                     // endstop triggered
+                    // disables heaters and motors, ignores incoming Gcode and flushes block queue
+                    broadcast_halt(true);
+                    char report_string[132];
                     // this needs to go to all connected consoles
-                    snprintf(report_string, sizeof(report_string), "ALARM: Hard limit %c%c was hit - $X or M999 needed\n", STEPPER[i->axis_index]->which_direction() ? '+' : '-', i->axis);
+                    snprintf(report_string, sizeof(report_string), "ALARM: Hard limit %c%c was hit\n", STEPPER[i->axis_index]->which_direction() ? '+' : '-', i->axis);
                     print_to_all_consoles(report_string);
-                    print_to_all_consoles("// NOTICE hard limits are disabled until all have been cleared\n");
+                    print_to_all_consoles("// WARNING hard limits are disabled until all have been cleared\n");
 
                     this->status = LIMIT_TRIGGERED;
                     i->debounce = 0;
-                    // disables heaters and motors, ignores incoming Gcode and flushes block queue
-                    broadcast_halt(true);
                     return;
                 }
             }
