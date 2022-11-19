@@ -236,7 +236,7 @@ bool dispatch_line(OutputStream& os, const char *ln)
             // if this is a multi gcode line then dispatch must not send ok unless this is the last one
             if(!THEDISPATCHER->dispatch(i, *pos, ngcodes == 1 && !m500)) {
                 // no handler processed this gcode, return ok - ignored
-                if(ngcodes == 1) os.puts("ok - ignored\n");
+                if(ngcodes == 1) os.printf("ok - %c%d ignored\n", i.has_g() ? 'G' : 'M', i.get_code());
             }
 
             // clean up after M500
