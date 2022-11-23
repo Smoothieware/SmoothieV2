@@ -702,6 +702,7 @@ void Endstops::process_home_command(GCode& gcode, OutputStream& os)
             if(p.pin_info == nullptr) continue;
             if(!axis_speced || gcode.has_arg(p.axis)) {
                 haxis.set(p.axis_index);
+                p.homed= false;
                 // now reset axis to 0 as we do not know what state we are in
                 if (!is_scara) {
                     Robot::getInstance()->reset_axis_position(0, p.axis_index);
@@ -719,12 +720,19 @@ void Endstops::process_home_command(GCode& gcode, OutputStream& os)
         for (size_t i = A_AXIS; i < homing_axis.size(); ++i) {
             auto &p = homing_axis[i];
             if(p.pin_info == nullptr) continue;
-            if(!axis_speced || gcode.has_arg(p.axis)) haxis.set(p.axis_index);
+            if(!axis_speced || gcode.has_arg(p.axis)) {
+                haxis.set(p.axis_index);
+                p.homed= false;
+            }
         }
 
         if(home_z) {
             // Only Z axis homes (even though all actuators move this is handled by arm solution)
             haxis.set(Z_AXIS);
+            homing_axis[X_AXIS].homed = false;
+            homing_axis[Y_AXIS].homed = false;
+            homing_axis[Z_AXIS].homed = false;
+
             // we also set the kinematics to a known good position, this is necessary for a rotary delta, but doesn't hurt for linear delta
             Robot::getInstance()->reset_axis_position(0, 0, 0);
         }
