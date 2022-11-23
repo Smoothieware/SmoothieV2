@@ -47,6 +47,7 @@
 #define  save_g92_key                   "save_g92"
 #define  set_g92_key                    "set_g92"
 #define  save_wcs_key                   "save_wcs"
+#define  must_be_homed_key              "must_be_homed"
 
 // actuator keys
 #define step_pin_key                    "step_pin"
@@ -234,6 +235,7 @@ bool Robot::configure(ConfigReader& cr)
     this->save_wcs            = cr.get_bool(m, save_wcs_key, false);
     this->save_g92            = cr.get_bool(m, save_g92_key, false);
     const char *g92           = cr.get_string(m, set_g92_key, "");
+    this->must_be_homed       = cr.get_bool(m, must_be_homed_key, is_rdelta || is_delta);
 
     if(strlen(g92) > 0) {
         // optional setting for a fixed G92 offset
@@ -932,6 +934,7 @@ bool Robot::handle_G92(GCode& gcode, OutputStream& os)
 
 bool Robot::handle_motion_command(GCode& gcode, OutputStream& os)
 {
+
     bool handled = true;
     enum MOTION_MODE_T motion_mode = NONE;
     if( gcode.has_g()) {
@@ -945,7 +948,10 @@ bool Robot::handle_motion_command(GCode& gcode, OutputStream& os)
     }
 
     if( motion_mode != NONE) {
-        if((motion_mode == CW_ARC || motion_mode == CCW_ARC) && gcode.has_arg('R')) {
+        if(must_be_homed && !is_homed()) {
+            gcode.set_error("Must be homed before moving");
+
+        }else if((motion_mode == CW_ARC || motion_mode == CCW_ARC) && gcode.has_arg('R')) {
             // we do not support radius mode for arcs
             gcode.set_error("Radius mode not supported by G2 or G3");
 

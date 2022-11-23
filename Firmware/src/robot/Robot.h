@@ -188,4 +188,5 @@ private:
 
     bool is_delta{false};
     bool is_rdelta{false};
+    bool must_be_homed{false};
 };
