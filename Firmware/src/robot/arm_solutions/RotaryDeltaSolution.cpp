@@ -185,7 +185,7 @@ void RotaryDeltaSolution::cartesian_to_actuator(const float cartesian_mm[], Actu
         // we need to HALT here otherwise we may cause damage
         if(halt_on_error) {
             Module::broadcast_halt(true);
-            print_to_all_consoles("ERROR: RotaryDelta illegal move.\n");
+            print_to_all_consoles("ERROR: RotaryDelta illegal move. HALTED\n");
         }
 
     } else {

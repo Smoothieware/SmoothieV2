@@ -137,7 +137,6 @@ private:
     void process_move(GCode& gcode, enum MOTION_MODE_T);
     bool is_halted() const { return halted; }
 
-    float theta(float x, float y);
     void select_plane(uint8_t axis_0, uint8_t axis_1, uint8_t axis_2);
     void clearToolOffset();
     int get_active_extruder() const;
@@ -186,4 +185,7 @@ private:
     uint8_t n_motors;                                    //count of the motors/axis registered
 
     volatile bool halted{false};
+
+    bool is_delta{false};
+    bool is_rdelta{false};
 };

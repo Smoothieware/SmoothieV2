@@ -19,7 +19,7 @@
 #include "HBotSolution.h"
 #include "CoreXZSolution.h"
 #include "MorganSCARASolution.h"
-
+#include "Consoles.h"
 #include "OutputStream.h"
 #include "ActuatorCoordinates.h"
 
@@ -182,7 +182,9 @@ bool Robot::configure(ConfigReader& cr)
     // Here we read the config to find out which arm solution to use
     if (this->arm_solution) delete this->arm_solution;
 
-    bool is_delta= false;
+    is_delta= false;
+    is_rdelta= false;
+
     std::string solution = cr.get_string(m, arm_solution_key, "cartesian");
 
     if(solution == hbot_key || solution == corexy_key) {
@@ -198,6 +200,7 @@ bool Robot::configure(ConfigReader& cr)
     } else if(solution == rotary_delta_key) {
         this->arm_solution = new RotaryDeltaSolution(cr);
         is_delta= true;
+        is_rdelta= true;
 
     } else if(solution == morgan_key) {
         this->arm_solution = new MorganSCARASolution(cr);
@@ -1932,7 +1935,16 @@ bool Robot::append_milestone(const float target[], float rate_mm_s)
     ActuatorCoordinates actuator_pos;
     if(!disable_arm_solution) {
         arm_solution->cartesian_to_actuator( transformed_target, actuator_pos );
-
+        if(is_rdelta) {
+            // check for impossible conditions
+            for (int i = 0; i < 3; ++i) {
+                if(actuator_pos[i] < 0 || actuator_pos[i] >= 180) {
+                    broadcast_halt(true);
+                    print_to_all_consoles("Error: rdelta actuator range < 0 or >= 180");
+                    return false;
+                }
+            }
+        }
     } else {
         // basically the same as cartesian, would be used for special homing situations like for scara
         for (size_t i = X_AXIS; i <= Z_AXIS; i++) {
@@ -2311,21 +2323,6 @@ bool Robot::compute_arc(GCode&  gcode, const float offset[], const float target[
 
     // Append arc
     return this->append_arc(gcode, target, offset,  radius, is_clockwise );
-}
-
-
-float Robot::theta(float x, float y)
-{
-    float t = atanf(x / fabs(y));
-    if (y > 0) {
-        return(t);
-    } else {
-        if (t > 0) {
-            return(PI - t);
-        } else {
-            return(-PI - t);
-        }
-    }
 }
 
 void Robot::select_plane(uint8_t axis_0, uint8_t axis_1, uint8_t axis_2)
