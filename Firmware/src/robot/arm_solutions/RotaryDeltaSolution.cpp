@@ -16,6 +16,8 @@
 #define tool_offset_key "delta_tool_offset"
 #define delta_mirror_xy_key "delta_mirror_xy"
 #define halt_on_error_key "halt_on_error"
+#define min_angle_key "min_angle"
+#define max_angle_key "max_angle"
 
 constexpr static double pi     = M_PI; // 3.141592653589793238463;    // PI
 constexpr static double sin120 = 0.86602540378443864676372317075294; //sqrt3/2.0
@@ -53,14 +55,14 @@ RotaryDeltaSolution::RotaryDeltaSolution(ConfigReader& cr)
     // Distance between end effector ball joint plane and tip of tool (PnP)
     tool_offset = cr.get_double(m, tool_offset_key, 30.500);
 
+    // Minimum and Maximum angle the actuator is allowed to go to before generating an error if halt_on_errors is set
+    min_angle = cr.get_float(m, min_angle_key, -45);
+    max_angle = cr.get_float(m, max_angle_key, 80);
+
     // mirror the XY axis
     mirror_xy = cr.get_bool(m, delta_mirror_xy_key, true);
 
     halt_on_error= cr.get_bool(m, halt_on_error_key, true);
-
-    // TODO make this configurable
-    min_angle= -90;
-    max_angle= 90;
 
     debug_flag = false;
     init();
