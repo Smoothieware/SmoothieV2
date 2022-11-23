@@ -56,8 +56,8 @@ RotaryDeltaSolution::RotaryDeltaSolution(ConfigReader& cr)
     tool_offset = cr.get_double(m, tool_offset_key, 30.500);
 
     // Minimum and Maximum angle the actuator is allowed to go to before generating an error if halt_on_errors is set
-    min_angle = cr.get_float(m, min_angle_key, -45);
-    max_angle = cr.get_float(m, max_angle_key, 80);
+    min_angle = cr.get_float(m, min_angle_key, -45); // all the way down
+    max_angle = cr.get_float(m, max_angle_key, 70); // all the way up
 
     // mirror the XY axis
     mirror_xy = cr.get_bool(m, delta_mirror_xy_key, true);
@@ -217,12 +217,13 @@ void RotaryDeltaSolution::cartesian_to_actuator(const float cartesian_mm[], Actu
             printf("// Offz= %f\n", z_with_offset);
         }
 
-        if(halt_on_error && is_homed()) {
+        if(halt_on_error && is_homed() && !Module::is_halted()) {
             // check for impossible conditions (like a soft endstop)
             for (int i = ALPHA_STEPPER; i <= GAMMA_STEPPER; ++i) {
                 if(actuator_mm[i] < min_angle || actuator_mm[i] > max_angle) {
                     Module::broadcast_halt(true);
-                    print_to_all_consoles("Error: rdelta actuator out of range. HALTED");
+                    print_to_all_consoles("Error: rdelta actuator out of range. HALTED\n");
+                    break;
                 }
             }
         }
