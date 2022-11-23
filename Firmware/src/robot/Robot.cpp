@@ -1936,7 +1936,7 @@ bool Robot::append_milestone(const float target[], float rate_mm_s)
     if(!disable_arm_solution) {
         arm_solution->cartesian_to_actuator( transformed_target, actuator_pos );
         if(is_rdelta) {
-            // check for impossible conditions
+            // check for impossible conditions (like a soft endstop)
             for (int i = 0; i < 3; ++i) {
                 if(actuator_pos[i] < 0 || actuator_pos[i] >= 180) {
                     broadcast_halt(true);
