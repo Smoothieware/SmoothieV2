@@ -2040,6 +2040,11 @@ bool Robot::delta_move(const float *delta, float rate_mm_s, uint8_t naxis)
 {
     if(halted) return false;
 
+    if(must_be_homed && !is_homed()) {
+        print_to_all_consoles("error:Must be homed before moving\n");
+        return false;
+    }
+
     // catch negative or zero feed rates
     if(rate_mm_s <= 0.0F) {
         return false;

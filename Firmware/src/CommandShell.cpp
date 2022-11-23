@@ -1305,7 +1305,16 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         // feed three blocks that allow full acceleration, full speed and full deceleration
         // NOTE this only works if it is a primary axis, ABC by default are not primary so not planned when solo so will acc/dec every move
         Conveyor::getInstance()->set_hold(true);
-        Robot::getInstance()->delta_move(delta, fr, n_motors); // accelerates upto speed
+
+        // accelerates upto speed
+        if(!Robot::getInstance()->delta_move(delta, fr, n_motors)) {
+            // if we got an error it can be one of two errors
+            Module::broadcast_halt(true);
+            Robot::getInstance()->compensationTransform= savect;
+            Conveyor::getInstance()->set_hold(false);
+            return true;
+        }
+
         Robot::getInstance()->delta_move(delta, fr, n_motors); // continues at full speed
         Robot::getInstance()->delta_move(delta, fr, n_motors); // decelerates to zero
 
@@ -1316,6 +1325,8 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         // then send third block to decelerate
         if(!Conveyor::getInstance()->set_continuous_mode(true)) {
             os.printf("error:unable to set continuous jog mode\n");
+            Robot::getInstance()->compensationTransform= savect;
+            Conveyor::getInstance()->set_hold(false);
             return true;
         }
 
@@ -1339,9 +1350,13 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         Robot::getInstance()->compensationTransform= savect;
 
     }else{
-        Robot::getInstance()->delta_move(delta, fr, n_motors);
-        // turn off queue delay and run it now
-        Conveyor::getInstance()->force_queue();
+        if(Robot::getInstance()->delta_move(delta, fr, n_motors)) {
+            // turn off queue delay and run it now
+            Conveyor::getInstance()->force_queue();
+
+        }else{
+            Module::broadcast_halt(true);
+        }
     }
 
     return true;
