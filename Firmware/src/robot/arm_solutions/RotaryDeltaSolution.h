@@ -29,6 +29,7 @@ class RotaryDeltaSolution : public BaseSolution {
         double tool_offset;		// Distance between end effector ball joint plane and tip of tool
         double z_calc_offset;
 
+        float min_angle, max_angle; // minimum and maximum allowed actuator angles
         struct {
             bool debug_flag:1;
             bool mirror_xy:1;

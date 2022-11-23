@@ -58,6 +58,10 @@ RotaryDeltaSolution::RotaryDeltaSolution(ConfigReader& cr)
 
     halt_on_error= cr.get_bool(m, halt_on_error_key, true);
 
+    // TODO make this configurable
+    min_angle= -90;
+    max_angle= 90;
+
     debug_flag = false;
     init();
 }
@@ -142,6 +146,18 @@ void RotaryDeltaSolution::init()
     z_calc_offset  = -(delta_z_offset - tool_offset - delta_ee_offs);
 }
 
+static bool is_homed()
+{
+    Module *m = Module::lookup("endstops");
+    if(m != nullptr) {
+        bool state;
+        bool ok = m->request("is_homed", &state);
+        if(ok && state) return true;
+    }
+
+    return false;
+}
+
 void RotaryDeltaSolution::cartesian_to_actuator(const float cartesian_mm[], ActuatorCoordinates &actuator_mm ) const
 {
     //We need to translate the Cartesian coordinates in mm to the actuator position required in mm so the stepper motor  functions
@@ -185,7 +201,7 @@ void RotaryDeltaSolution::cartesian_to_actuator(const float cartesian_mm[], Actu
         // we need to HALT here otherwise we may cause damage
         if(halt_on_error) {
             Module::broadcast_halt(true);
-            print_to_all_consoles("ERROR: RotaryDelta illegal move. HALTED\n");
+            print_to_all_consoles("Error: RotaryDelta illegal move. HALTED\n");
         }
 
     } else {
@@ -194,16 +210,21 @@ void RotaryDeltaSolution::cartesian_to_actuator(const float cartesian_mm[], Actu
         actuator_mm[GAMMA_STEPPER] = gamma_theta;
 
         if(debug_flag) {
-            printf("//cartesian x= %f\n\r", cartesian_mm[X_AXIS]);
-            printf("// y= %f\n\r", cartesian_mm[Y_AXIS]);
-            printf("// z= %f\n\r", cartesian_mm[Z_AXIS]);
-            printf("// Offz= %f\n\r", z_with_offset);
-            printf("// actuator x= %f\n\r", actuator_mm[X_AXIS]);
-            printf("// y= %f\n\r", actuator_mm[Y_AXIS]);
-            printf("// z= %f\n\r", actuator_mm[Z_AXIS]);
+            printf("// cartesian x= %f, y= %f, z= %f\n", cartesian_mm[X_AXIS], cartesian_mm[Y_AXIS], cartesian_mm[Z_AXIS]);
+            printf("// actuator x= %f, y= %f, z= %f\n", actuator_mm[X_AXIS], actuator_mm[Y_AXIS], actuator_mm[Z_AXIS]);
+            printf("// Offz= %f\n", z_with_offset);
+        }
+
+        if(halt_on_error && is_homed()) {
+            // check for impossible conditions (like a soft endstop)
+            for (int i = ALPHA_STEPPER; i <= GAMMA_STEPPER; ++i) {
+                if(actuator_mm[i] < min_angle || actuator_mm[i] > max_angle) {
+                    Module::broadcast_halt(true);
+                    print_to_all_consoles("Error: rdelta actuator out of range. HALTED");
+                }
+            }
         }
     }
-
 }
 
 void RotaryDeltaSolution::actuator_to_cartesian(const ActuatorCoordinates &actuator_mm, float cartesian_mm[] ) const

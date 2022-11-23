@@ -1935,16 +1935,7 @@ bool Robot::append_milestone(const float target[], float rate_mm_s)
     ActuatorCoordinates actuator_pos;
     if(!disable_arm_solution) {
         arm_solution->cartesian_to_actuator( transformed_target, actuator_pos );
-        if(is_rdelta && is_homed()) {
-            // check for impossible conditions (like a soft endstop)
-            for (int i = 0; i < 3; ++i) {
-                if(actuator_pos[i] < 0 || actuator_pos[i] >= 180) {
-                    broadcast_halt(true);
-                    print_to_all_consoles("Error: rdelta actuator range < 0 or >= 180");
-                    return false;
-                }
-            }
-        }
+
     } else {
         // basically the same as cartesian, would be used for special homing situations like for scara
         for (size_t i = X_AXIS; i <= Z_AXIS; i++) {
