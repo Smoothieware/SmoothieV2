@@ -2,6 +2,8 @@
 
 #include "ConfigReader.h"
 #include "AxisDefns.h"
+#include "Consoles.h"
+#include "Module.h"
 
 #include <math.h>
 
@@ -13,6 +15,7 @@
 #define delta_ee_offs_key "delta_ee_offs"
 #define tool_offset_key "delta_tool_offset"
 #define delta_mirror_xy_key "delta_mirror_xy"
+#define halt_on_error_key "halt_on_error"
 
 constexpr static double pi     = M_PI; // 3.141592653589793238463;    // PI
 constexpr static double sin120 = 0.86602540378443864676372317075294; //sqrt3/2.0
@@ -52,6 +55,8 @@ RotaryDeltaSolution::RotaryDeltaSolution(ConfigReader& cr)
 
     // mirror the XY axis
     mirror_xy = cr.get_bool(m, delta_mirror_xy_key, true);
+
+    halt_on_error= cr.get_bool(m, halt_on_error_key, true);
 
     debug_flag = false;
     init();
@@ -162,9 +167,10 @@ void RotaryDeltaSolution::cartesian_to_actuator(const float cartesian_mm[], Actu
 
     if (status == -1) { //something went wrong,
         //force to actuator FPD home position as we know this is a valid position
-        actuator_mm[ALPHA_STEPPER] = 0;
-        actuator_mm[BETA_STEPPER ] = 0;
-        actuator_mm[GAMMA_STEPPER] = 0;
+        // actuator_mm[ALPHA_STEPPER] = 0;
+        // actuator_mm[BETA_STEPPER ] = 0;
+        // actuator_mm[GAMMA_STEPPER] = 0;
+
 
         //DEBUG CODE, uncomment the following to help determine what may be happening if you are trying to adapt this to your own different rotary delta.
         if(debug_flag) {
@@ -175,6 +181,13 @@ void RotaryDeltaSolution::cartesian_to_actuator(const float cartesian_mm[], Actu
             printf("// CalcZ= %f\n", z_calc_offset);
             printf("// Offz= %f\n", z_with_offset);
         }
+
+        // we need to HALT here otherwise we may cause damage
+        if(halt_on_error) {
+            Module::broadcast_halt(true);
+            print_to_all_consoles("ERROR: RotaryDelta illegal move.\n");
+        }
+
     } else {
         actuator_mm[ALPHA_STEPPER] = alpha_theta;
         actuator_mm[BETA_STEPPER ] = beta_theta;

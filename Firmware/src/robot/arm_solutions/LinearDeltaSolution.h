@@ -31,4 +31,5 @@ class LinearDeltaSolution : public BaseSolution {
         float delta_tower3_x{0.0F};
         float delta_tower3_y{0.0F};
 
+        bool halt_on_error{true};
 };

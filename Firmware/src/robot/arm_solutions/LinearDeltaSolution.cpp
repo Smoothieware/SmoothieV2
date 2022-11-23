@@ -3,6 +3,8 @@
 #include "ConfigReader.h"
 #include "Vector3.h"
 #include "AxisDefns.h"
+#include "Consoles.h"
+#include "Module.h"
 
 #include <math.h>
 
@@ -15,6 +17,7 @@
 #define tower1_angle_key       "delta_tower1_angle"
 #define tower2_angle_key       "delta_tower2_angle"
 #define tower3_angle_key       "delta_tower3_angle"
+#define halt_on_error_key      "halt_on_error"
 
 #define SQ(x) ((x)*(x))
 #define ROUND(x, y) (roundf((x) * (float)(1e ## y)) / (float)(1e ## y))
@@ -35,6 +38,8 @@ LinearDeltaSolution::LinearDeltaSolution(ConfigReader& cr)
         tower1_offset = cr.get_float(m, tower1_offset_key, 0.0f);
         tower2_offset = cr.get_float(m, tower2_offset_key, 0.0f);
         tower3_offset = cr.get_float(m, tower3_offset_key, 0.0f);
+        halt_on_error = cr.get_bool(m, halt_on_error_key, true);
+
     }else{
         printf("WARNING:config-LinearDeltaSolution: No linear delta section found, defaults used\n");
     }
@@ -72,6 +77,15 @@ void LinearDeltaSolution::cartesian_to_actuator(const float cartesian_mm[], Actu
                                        - SQ(delta_tower3_x - cartesian_mm[X_AXIS])
                                        - SQ(delta_tower3_y - cartesian_mm[Y_AXIS])
                                       ) + cartesian_mm[Z_AXIS];
+
+    if(!halt_on_error) return;
+
+    for (int i = 0; i < 3; ++i) {
+        if(isnan(actuator_mm[i])) {
+            Module::broadcast_halt(true);
+            print_to_all_consoles("ERROR: LinearDelta illegal move. HALTED\n");
+        }
+    }
 }
 
 void LinearDeltaSolution::actuator_to_cartesian(const ActuatorCoordinates &actuator_mm, float cartesian_mm[] ) const
