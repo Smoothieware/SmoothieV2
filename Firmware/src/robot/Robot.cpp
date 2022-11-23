@@ -948,7 +948,7 @@ bool Robot::handle_motion_command(GCode& gcode, OutputStream& os)
     }
 
     if( motion_mode != NONE) {
-        if(must_be_homed && !is_homed()) {
+        if(is_must_be_homed()) {
             gcode.set_error("Must be homed before moving");
 
         }else if((motion_mode == CW_ARC || motion_mode == CCW_ARC) && gcode.has_arg('R')) {
@@ -2040,11 +2040,6 @@ bool Robot::delta_move(const float *delta, float rate_mm_s, uint8_t naxis)
 {
     if(halted) return false;
 
-    if(must_be_homed && !is_homed()) {
-        print_to_all_consoles("error:Must be homed before moving\n");
-        return false;
-    }
-
     // catch negative or zero feed rates
     if(rate_mm_s <= 0.0F) {
         return false;
@@ -2502,6 +2497,15 @@ bool Robot::is_homed() const
         bool state;
         bool ok = m->request("is_homed", &state);
         if(ok && state) return true;
+    }
+
+    return false;
+}
+
+bool Robot::is_must_be_homed() const
+{
+    if(must_be_homed && !is_homed()) {
+        return true;
     }
 
     return false;

@@ -1261,8 +1261,13 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         return true;
     }
 
-    float fr = rate_mm_s * scale;
+    if(Robot::getInstance()->is_must_be_homed()) {
+        Module::broadcast_halt(true);
+        os.printf("Error: Must be homed before moving\n");
+        return true;
+    }
 
+    float fr = rate_mm_s * scale;
 
     if(cont_mode) {
         // continuous jog mode, will move until told to stop and sends ok when stopped
@@ -1306,15 +1311,7 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         // NOTE this only works if it is a primary axis, ABC by default are not primary so not planned when solo so will acc/dec every move
         Conveyor::getInstance()->set_hold(true);
 
-        // accelerates upto speed
-        if(!Robot::getInstance()->delta_move(delta, fr, n_motors)) {
-            // if we got an error it can be one of two errors
-            Module::broadcast_halt(true);
-            Robot::getInstance()->compensationTransform= savect;
-            Conveyor::getInstance()->set_hold(false);
-            return true;
-        }
-
+        Robot::getInstance()->delta_move(delta, fr, n_motors); // accelerates upto speed
         Robot::getInstance()->delta_move(delta, fr, n_motors); // continues at full speed
         Robot::getInstance()->delta_move(delta, fr, n_motors); // decelerates to zero
 
@@ -1350,13 +1347,9 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         Robot::getInstance()->compensationTransform= savect;
 
     }else{
-        if(Robot::getInstance()->delta_move(delta, fr, n_motors)) {
-            // turn off queue delay and run it now
-            Conveyor::getInstance()->force_queue();
 
-        }else{
-            Module::broadcast_halt(true);
-        }
+        Robot::getInstance()->delta_move(delta, fr, n_motors);
+        Conveyor::getInstance()->force_queue();
     }
 
     return true;
