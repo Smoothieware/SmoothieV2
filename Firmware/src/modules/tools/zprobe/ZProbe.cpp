@@ -470,7 +470,8 @@ void ZProbe::probe_XYZ(GCode& gcode, OutputStream& os, uint8_t axismask)
 
     // get probe feedrate in mm/min and convert to mm/sec if specified
     float rate = (gcode.has_arg('F')) ? gcode.get_arg('F') / 60 : this->slow_feedrate;
-
+    // we can't have segmentation on when probing
+    Robot::getInstance()->disable_segmentation = true;
     // do a regular move which will stop as soon as the probe is triggered, or the distance is reached
     switch(axismask) {
         case 1: move_x(gcode.get_arg('X'), rate, true); break;
@@ -481,6 +482,8 @@ void ZProbe::probe_XYZ(GCode& gcode, OutputStream& os, uint8_t axismask)
     }
 
     // coordinated_move returns when the move is finished
+
+    Robot::getInstance()->disable_segmentation = false;
 
     // disable probe checking
     probing = false;
