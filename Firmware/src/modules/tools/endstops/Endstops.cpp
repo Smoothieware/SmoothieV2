@@ -594,6 +594,7 @@ void Endstops::home(axis_bitmap_t a)
 
     if(Module::is_halted()) {
         //Robot::getInstance()->disable_segmentation = false;
+        Robot::getInstance()->disable_arm_solution = false;
         this->status = NOT_HOMING;
         return;
     }
@@ -607,6 +608,7 @@ void Endstops::home(axis_bitmap_t a)
                 this->status = NOT_HOMING;
                 broadcast_halt(true);
                 //Robot::getInstance()->disable_segmentation = false;
+                Robot::getInstance()->disable_arm_solution = false;
                 return;
             }
         }
@@ -619,6 +621,7 @@ void Endstops::home(axis_bitmap_t a)
                 this->status = NOT_HOMING;
                 broadcast_halt(true);
                 //Robot::getInstance()->disable_segmentation = false;
+                Robot::getInstance()->disable_arm_solution = false;
                 return;
             }
         }
@@ -671,9 +674,7 @@ void Endstops::home(axis_bitmap_t a)
     Robot::getInstance()->reset_position_from_current_actuator_position();
 
     //Robot::getInstance()->disable_segmentation = false;
-    if (is_scara) {
-        Robot::getInstance()->disable_arm_solution = false;  // Arm solution enabled again.
-    }
+    Robot::getInstance()->disable_arm_solution = false;  // Arm solution enabled again if it was disabled
 
     this->status = NOT_HOMING;
 }
