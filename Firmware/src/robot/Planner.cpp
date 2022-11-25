@@ -218,6 +218,12 @@ bool Planner::append_block(ActuatorCoordinates& actuator_pos, uint8_t n_motors, 
 
     // block->debug();
 
+    // check for HALT here so we don't stick something on the queue after we already HALTED and cleared the queue
+    if(Module::is_halted()) {
+        block->clear();
+        return false; // if we got a halt then we are done here
+    }
+
     while(!queue->queue_head()) {
         // queue is full
         // stall the command thread until we have room in the queue
