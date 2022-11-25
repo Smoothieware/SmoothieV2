@@ -941,7 +941,7 @@ bool Endstops::handle_G28(GCode& gcode, OutputStream& os)
                     Robot::getInstance()->reset_axis_position(0, p.axis_index);
                 }
             } else {
-                // do a manual homing based on given coordinates, no endstops required
+                // do a manual homing based on given coordinates
                 if(gcode.has_arg('X')) { Robot::getInstance()->reset_axis_position(gcode.get_arg('X'), X_AXIS); homing_axis[X_AXIS].homed = true; }
                 if(gcode.has_arg('Y')) { Robot::getInstance()->reset_axis_position(gcode.get_arg('Y'), Y_AXIS); homing_axis[Y_AXIS].homed = true; }
                 if(gcode.has_arg('Z')) { Robot::getInstance()->reset_axis_position(gcode.get_arg('Z'), Z_AXIS); homing_axis[Z_AXIS].homed = true; }

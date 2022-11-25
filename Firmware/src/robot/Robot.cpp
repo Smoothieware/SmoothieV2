@@ -1941,6 +1941,7 @@ bool Robot::append_milestone(const float target[], float rate_mm_s)
     ActuatorCoordinates actuator_pos;
     if(!disable_arm_solution) {
         arm_solution->cartesian_to_actuator( transformed_target, actuator_pos );
+        if(is_halted()) return false; // some arm solutions can raise a HALT on a fatal error
 
     } else {
         // basically the same as cartesian, would be used for special homing situations like for scara

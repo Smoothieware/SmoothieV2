@@ -220,6 +220,7 @@ bool ZProbe::run_probe(float& mm, float feedrate, float max_dist, bool reverse)
 
     // wait until finished
     Conveyor::getInstance()->wait_for_idle();
+    if(Module::is_halted()) return false;
 
     // now see how far we moved, get delta in z we moved
     // NOTE this works for deltas as well as all three actuators move the same amount in Z
@@ -264,6 +265,8 @@ bool ZProbe::doProbeAt(float &mm, float x, float y)
 {
     // move to xy
     move_xy(x, y, getFastFeedrate());
+    if(Module::is_halted()) return false;
+
     return run_probe_return(mm, slow_feedrate);
 }
 
@@ -487,6 +490,8 @@ void ZProbe::probe_XYZ(GCode& gcode, OutputStream& os, uint8_t axismask)
 
     // disable probe checking
     probing = false;
+
+    if(Module::is_halted()) return;
 
     // if the probe stopped the move we need to correct the last_milestone as it did not reach where it thought
     // this also sets last_milestone to the machine coordinates it stopped at
