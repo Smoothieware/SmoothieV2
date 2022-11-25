@@ -560,7 +560,8 @@ void Endstops::home(axis_bitmap_t a)
     // Start moving the axes to the origin
     this->status = MOVING_TO_ENDSTOP_FAST;
 
-    Robot::getInstance()->disable_segmentation = true; // we must disable segmentation as this won't work with it enabled
+    // delta moves don't do segmentation so this is not needed
+    //Robot::getInstance()->disable_segmentation = true; // we must disable segmentation as this won't work with it enabled
 
     if(!home_z_first) home_xy();
 
@@ -592,7 +593,7 @@ void Endstops::home(axis_bitmap_t a)
     }
 
     if(Module::is_halted()) {
-        Robot::getInstance()->disable_segmentation = false;
+        //Robot::getInstance()->disable_segmentation = false;
         this->status = NOT_HOMING;
         return;
     }
@@ -605,7 +606,7 @@ void Endstops::home(axis_bitmap_t a)
             if((axis_to_home[i] || this->is_delta || this->is_rdelta) && !homing_axis[i].pin_info->triggered) {
                 this->status = NOT_HOMING;
                 broadcast_halt(true);
-                Robot::getInstance()->disable_segmentation = false;
+                //Robot::getInstance()->disable_segmentation = false;
                 return;
             }
         }
@@ -617,7 +618,7 @@ void Endstops::home(axis_bitmap_t a)
             if(axis_to_home[i] && !homing_axis[i].pin_info->triggered) {
                 this->status = NOT_HOMING;
                 broadcast_halt(true);
-                Robot::getInstance()->disable_segmentation = false;
+                //Robot::getInstance()->disable_segmentation = false;
                 return;
             }
         }
@@ -669,7 +670,7 @@ void Endstops::home(axis_bitmap_t a)
     // TODO Maybe only reset axis involved in the homing cycle
     Robot::getInstance()->reset_position_from_current_actuator_position();
 
-    Robot::getInstance()->disable_segmentation = false;
+    //Robot::getInstance()->disable_segmentation = false;
     if (is_scara) {
         Robot::getInstance()->disable_arm_solution = false;  // Arm solution enabled again.
     }
