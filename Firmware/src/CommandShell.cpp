@@ -1291,7 +1291,13 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         // calculate minimum distance to travel to accomodate acceleration and feedrate
         float t = fr / acc; // time to reach frame rate
         float d = 0.5F * acc * powf(t, 2); // distance required to accelerate
-        d = roundf(d + 0.5F); // round up to nearest mm
+        d = std::max(d, 0.3333F); // take minimum being 1mm overall so 0.3333mm
+        // we need to check if the feedrate is too slow, for continuous jog if it takes over 5 seconds it is too slow
+        t= d*3 / fr; // time it will take to do all three blocks
+        if(t > 5) {
+            // increase feedrate so it will not take more than 5 seconds
+            fr= (d*3)/5;
+        }
 
         // we need to move at least this distance to reach full speed
         for (int i = 0; i < n_motors; ++i) {
