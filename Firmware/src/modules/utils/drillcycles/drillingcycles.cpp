@@ -160,6 +160,10 @@ void Drillingcycles::make_hole(GCode& gcode)
         THEDISPATCHER->dispatch(nullos, 'G', 0, 'X', x, 0);
     } else if(!isnan(y)) {
         THEDISPATCHER->dispatch(nullos, 'G', 0, 'Y', y, 0);
+    } else {
+        // must have X and/or Y specified
+        gcode.set_error("X and/or Y must be defined");
+        return;
     }
 
     // rapids to retract position (R)
@@ -233,9 +237,7 @@ bool Drillingcycles::handle_gcode(GCode& gcode, OutputStream& os)
     } else if (this->cycle_started && (code == 81 || code == 82 || code == 83) ) { // in cycle
         // relative mode not supported for now...
         if (Robot::getInstance()->absolute_mode == false) {
-            os.printf("Drillingcycles: relative mode not supported.\r\n");
-            os.printf("Drillingcycles: skip hole...\r\n");
-            // exit
+            gcode.set_error("Drillingcycles: relative mode not supported.");
             return false;
         }
 

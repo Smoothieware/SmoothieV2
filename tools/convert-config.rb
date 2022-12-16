@@ -29,9 +29,17 @@ rio(ARGV[0]).each_line do |l|
       else
         puts a
       end
+
+    elsif /->has_letter/.match(l)
+    	a.sub!('->has_letter', ".has_arg")
+
+    elsif /->get_value/.match(l)
+    	a.sub!('->get_value', ".get_arg")
+
     else
       puts l
     end
+
   end
 
 end
