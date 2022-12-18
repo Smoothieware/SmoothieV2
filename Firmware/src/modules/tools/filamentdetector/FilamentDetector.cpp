@@ -246,6 +246,19 @@ void FilamentDetector::in_command_ctx(bool idle)
     }
 }
 
+void FilamentDetector::on_halt(bool flg)
+{
+    if(flg) {
+        // reset state
+        triggered= false;
+        pulses= 0;
+        e_last_moved= NAN;
+        filament_out_alarm = false;
+        bulge_detected= false;
+        was_retract= false;
+    }
+}
+
 void FilamentDetector::on_second_tick()
 {
     if(++seconds_passed >= seconds_per_check) {
@@ -263,7 +276,7 @@ void FilamentDetector::on_pin_rise()
 void FilamentDetector::check_encoder()
 {
     if(!active) return;  // not enabled
-    if(is_suspended()) return; // already suspended
+    if(triggered) return; // already triggered
 
     uint32_t pulse_cnt= this->pulses.exchange(0); // atomic load and reset
 
@@ -307,7 +320,7 @@ void FilamentDetector::button_tick()
 {
     if(bulge_pin == nullptr && detector_pin == nullptr) return;
 
-    if(!active || is_suspended()) return;
+    if(!active || triggered) return;
 
     if((bulge_pin != nullptr && bulge_pin->get()) ||
        (detector_pin != nullptr && detector_pin->get())) {

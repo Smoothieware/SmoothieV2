@@ -17,6 +17,7 @@ public:
     static bool create(ConfigReader& cr);
     bool configure(ConfigReader& cr);
     virtual void in_command_ctx(bool);
+    virtual void on_halt(bool flg);
 
 private:
     bool handle_mcode(GCode& gcode, OutputStream& os);
