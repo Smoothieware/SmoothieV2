@@ -213,15 +213,22 @@ bool Extruder::request(const char *key, void *value)
         return true;
     }
 
-    if(strcmp(key, "get_state") == 0 && this->selected) {
-        // pointer to structure to return data to is provided
-        pad_extruder_t *e = static_cast<pad_extruder_t *>(value);
-        e->steps_per_mm = stepper_motor->get_steps_per_mm();
-        e->filament_diameter = this->filament_diameter;
-        e->flow_rate = this->extruder_multiplier;
-        e->accleration = stepper_motor->get_acceleration();
-        e->retract_length = this->retract_length;
-        e->current_position = stepper_motor->get_current_position();
+    // not used anywhere
+    // if(strcmp(key, "get_state") == 0 && this->selected) {
+    //     // pointer to structure to return data to is provided
+    //     pad_extruder_t *e = static_cast<pad_extruder_t *>(value);
+    //     e->steps_per_mm = stepper_motor->get_steps_per_mm();
+    //     e->filament_diameter = this->filament_diameter;
+    //     e->flow_rate = this->extruder_multiplier;
+    //     e->accleration = stepper_motor->get_acceleration();
+    //     e->retract_length = this->retract_length;
+    //     e->current_position = stepper_motor->get_current_position();
+    //     return true;
+    // }
+
+    if(strcmp(key, "get_current_position") == 0 && this->selected) {
+        float *cp = static_cast<float *>(value);
+        *cp= stepper_motor->get_current_position();
         return true;
     }
 

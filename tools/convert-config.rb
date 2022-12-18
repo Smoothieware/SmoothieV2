@@ -31,10 +31,12 @@ rio(ARGV[0]).each_line do |l|
       end
 
     elsif /->has_letter/.match(l)
-    	a.sub!('->has_letter', ".has_arg")
+    	a= l.sub('->has_letter', ".has_arg")
+    	puts a
 
     elsif /->get_value/.match(l)
-    	a.sub!('->get_value', ".get_arg")
+    	a= l.sub('->get_value', ".get_arg")
+    	puts a
 
     else
       puts l

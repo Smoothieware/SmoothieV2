@@ -23,14 +23,14 @@ public:
     float get_e_scale(void) const { return volumetric_multiplier * extruder_multiplier; }
 
     bool request(const char *key, void *value);
-    using pad_extruder_t = struct pad_extruder {
-        float steps_per_mm;
-        float filament_diameter;
-        float flow_rate;
-        float accleration;
-        float retract_length;
-        float current_position;
-    };
+    // using pad_extruder_t = struct pad_extruder {
+    //     float steps_per_mm;
+    //     float filament_diameter;
+    //     float flow_rate;
+    //     float accleration;
+    //     float retract_length;
+    //     float current_position;
+    // };
 
 private:
     bool configure(ConfigReader& cr, ConfigReader::section_map_t& m);

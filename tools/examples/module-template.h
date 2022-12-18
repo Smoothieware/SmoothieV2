@@ -3,6 +3,9 @@
 #include "Module.h"
 #include "Pin.h"
 
+class GCode;
+class OutputStream;
+
 class TEMPLATE : public Module {
     public:
         TEMPLATE();
@@ -10,5 +13,6 @@ class TEMPLATE : public Module {
         bool configure(ConfigReader& cr);
 
     private:
+        bool handle_gcode(GCode& gcode, OutputStream& os);
         Pin template_button;
 };
