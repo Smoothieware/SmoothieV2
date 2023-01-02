@@ -3,15 +3,15 @@ pins used on the headers when selecting a function in the Firmware
 
 | Name       | pin     | comment                  |
 | ---------- | ------- | ------------------------ |
-| ADC1_0     | PA0_C   | T1 for thermistors only  |
-| ADC1_1     | PF11    | T4 board                 |
+| ADC1_0     | PA0_C   | T4 board                 |
+| ADC1_1     | PF11    | T1                       |
 | ADC1_2     | PF12    | T2                       |
 | ADC1_3     | PB0     | T3                       |
 | ADC1_4     | PC2     | G                        |
 | ADC1_5     | PC3     | G                        |
 | ADC1_6     | PA3     | G                        |
 |            |         |                          |
-| ADC3_0     | PC0     | N/C     |
+| ADC3_0     | PC0     | N/C                      |
 | ADC3_1     | PF10    | G                        |
 | ADC3_2     | PF8     | VFET                     |
 | ADC3_3     | PF6     | G                        |

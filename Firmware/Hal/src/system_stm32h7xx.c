@@ -971,6 +971,8 @@ void main_system_setup()
 	}
 	// Configure the system clock to 400 MHz
 	SystemClock_Config();
+
+	SystemCoreClockUpdate();
 }
 
 #include <stdio.h>

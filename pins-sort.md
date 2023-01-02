@@ -1,6 +1,6 @@
 | function         | pin   | comment                |
 | --               | --    | --                     |
-| ADC1_0           | PA0_C | T1                     |
+| ADC1_0           | PA0_C | T4                     |
 | RX_CLK           | PA1   | ETH                    |
 | MDIO             | PA2   | ETH                    |
 | ADC1_6           | PA3   |                        |
@@ -81,7 +81,7 @@
 | ADC3_2           | PF8   | fet sense              |
 | IO1              | PF9   | QSPI                   |
 | ADC3_1           | PF10  |                        |
-| ADC1_1           | PF11  | T4                     |
+| ADC1_1           | PF11  | T1                     |
 | ADC1_2           | PF12  | T2                     |
 | MSC LED          | PF13  |                        |
 | OutputEnb        | PF14  | mosfets                |

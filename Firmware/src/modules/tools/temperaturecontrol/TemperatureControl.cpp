@@ -115,10 +115,10 @@ using def_t = struct {const char *heater; const char *adc; const char *desig; in
 #ifdef BOARD_PRIME
 // setup default pins for Prime
 static std::map<std::string, def_t> default_config = {
-    {"hotend", {"PE0", "ADC1_0", "T", 0}},
+    {"hotend", {"PE0", "ADC1_1", "T", 0}},
     {"hotend2", {"PB8", "ADC1_2", "T2", 1}},
     {"bed", {"PE3", "ADC1_3", "B", 254}},
-    {"board", {"nc", "ADC1_1", "P", 253}}
+    {"board", {"nc", "ADC1_0", "P", 253}}
 };
 
 #else
@@ -310,7 +310,9 @@ bool TemperatureControl::handle_mcode(GCode & gcode, OutputStream & os)
 {
     if( gcode.get_code() == this->get_m_code) {
         char buf[32]; // should be big enough for any status
-        snprintf(buf, sizeof(buf), "%s:%3.1f /%3.1f @%d ", this->designator.c_str(), this->get_temperature(), ((target_temperature <= 0) ? 0.0 : target_temperature), this->o);
+        float cur_temp= this->get_temperature();
+        if(isinf(cur_temp)) cur_temp= -100; // Pronterface doesn't like inf
+        snprintf(buf, sizeof(buf), "%s:%3.1f /%3.1f @%d ", this->designator.c_str(), cur_temp, ((target_temperature <= 0) ? 0.0F : target_temperature), this->o);
         os.set_prepend_ok();
         os.set_append_nl();
         os.puts(buf);

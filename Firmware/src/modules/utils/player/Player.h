@@ -16,9 +16,9 @@ class Player : public Module {
 
         static bool create(ConfigReader& cr);
         bool configure(ConfigReader&);
-        void in_command_ctx(bool idle);
+        virtual void in_command_ctx(bool idle);
+        virtual void on_halt(bool flg);
         bool request(const char *key, void *value);
-        void on_halt(bool flg);
 
     private:
         bool handle_gcode(GCode& gcode, OutputStream& os);

@@ -949,6 +949,7 @@ bool Robot::handle_motion_command(GCode& gcode, OutputStream& os)
 
     if( motion_mode != NONE) {
         if(is_must_be_homed()) {
+            // FIXME maybe only for axis that can be homed (so an E only move would not trigger this on a delta)
             gcode.set_error("Must be homed before moving");
 
         }else if((motion_mode == CW_ARC || motion_mode == CCW_ARC) && gcode.has_arg('R')) {
