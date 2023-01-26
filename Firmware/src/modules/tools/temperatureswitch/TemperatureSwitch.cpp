@@ -119,19 +119,15 @@ bool TemperatureSwitch::configure(ConfigReader& cr, ConfigReader::section_map_t&
     this->current_state= NONE;
     this->second_counter = this->current_delay; // do test immediately on first second_tick
 
-    // if not defined then always armed, otherwise start out disarmed
-    if(this->arm_mcode != 0) {
-        this->armed= start_armed;
-    }else{
-        this->armed= true;
-    }
-
     // register gcodes and mcodes
     using std::placeholders::_1;
     using std::placeholders::_2;
 
     if(this->arm_mcode != 0) {
-       Dispatcher::getInstance()->add_handler(Dispatcher::MCODE_HANDLER, arm_mcode, std::bind(&TemperatureSwitch::handle_arm, this, _1, _2));
+        this->armed= start_armed;
+        Dispatcher::getInstance()->add_handler(Dispatcher::MCODE_HANDLER, arm_mcode, std::bind(&TemperatureSwitch::handle_arm, this, _1, _2));
+    }else{
+        this->armed= true;
     }
 
     // we read the temperature in this timer. 1Hz is fast enough
