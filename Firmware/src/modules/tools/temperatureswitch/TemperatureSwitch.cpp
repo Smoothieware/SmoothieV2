@@ -28,6 +28,7 @@ Author: Michael Hackney, mhackney@eclecticangler.com
 #define trigger_key "trigger"
 #define inverted_key "inverted"
 #define arm_command_key "arm_mcode"
+#define start_armed_key "start_armed"
 #define designator_key "designator"
 
 // register this module for creation in main
@@ -105,6 +106,7 @@ bool TemperatureSwitch::configure(ConfigReader& cr, ConfigReader::section_map_t&
 
     // the mcode used to arm the switch
     this->arm_mcode = cr.get_float(m, arm_command_key, 0);
+    bool start_armed = cr.get_bool(m, start_armed_key, false);
 
     this->threshold_temp = cr.get_float(m, threshold_temp_key, 50.0f);
 
@@ -116,8 +118,13 @@ bool TemperatureSwitch::configure(ConfigReader& cr, ConfigReader::section_map_t&
     // set initial state
     this->current_state= NONE;
     this->second_counter = this->current_delay; // do test immediately on first second_tick
+
     // if not defined then always armed, otherwise start out disarmed
-    this->armed= (this->arm_mcode == 0);
+    if(this->arm_mcode != 0) {
+        this->armed= start_armed;
+    }else{
+        this->armed= true;
+    }
 
     // register gcodes and mcodes
     using std::placeholders::_1;

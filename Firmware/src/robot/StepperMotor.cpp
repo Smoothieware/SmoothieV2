@@ -97,6 +97,7 @@ void StepperMotor::manual_step(bool dir)
 bool StepperMotor::vmot= false;
 bool StepperMotor::setup_tmc(ConfigReader& cr, const char *actuator_name, uint32_t type)
 {
+    // NOTE axis is only used by the TMC driver to identify itself in the designator field of M911
     char axis= motor_id<3?'X'+motor_id:'A'+motor_id-3;
     printf("DEBUG: setting up tmc%lu for %s, axis %c\n", type, actuator_name, axis);
     if(type == 2590) {
