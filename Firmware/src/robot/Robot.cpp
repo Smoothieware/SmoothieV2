@@ -96,19 +96,19 @@
 #define DEFAULT_EN_PIN(a)  default_stepper_pins[a][2]
 
 static const char* const default_stepper_pins[][3] = {
-    #ifdef BOARD_PRIME
+#ifdef BOARD_PRIME
     {"PD3", "PD4",  "nc"}, // X step, dir, enb (en must be inverted)
     {"PK2", "PG2",  "nc"}, // Y step, dir, enb
     {"PG3", "PG4",  "nc"}, // Z step, dir, enb
     {"PC6", "PG5",  "nc"}, // A step, dir, enb
-    #else
+#else
     {"nc", "nc",  "nc"}, // X step, dir, enb (en must be inverted)
     {"nc", "nc",  "nc"}, // Y step, dir, enb
     {"nc", "nc",  "nc"}, // Z step, dir, enb
     {"nc", "nc",  "nc"}, // A step, dir, enb
-    #endif
+#endif
     {"nc", "nc", "nc"}, // B step, dir, enb
-    {"nc", "nc","nc"}, // C step, dir, enb
+    {"nc", "nc", "nc"}, // C step, dir, enb
 };
 
 Robot *Robot::instance = nullptr;
@@ -125,7 +125,7 @@ Robot::Robot() : Module("robot")
     memset(this->machine_position, 0, sizeof machine_position);
     memset(this->compensated_machine_position, 0, sizeof compensated_machine_position);
     memset(this->park_position, 0, sizeof park_position);
-    this->park_position[Z_AXIS]= NAN; // optional move
+    this->park_position[Z_AXIS] = NAN; // optional move
     this->arm_solution = NULL;
     seconds_per_minute = 60.0F;
     this->clearToolOffset();
@@ -137,8 +137,8 @@ Robot::Robot() : Module("robot")
     this->disable_segmentation = false;
     this->disable_arm_solution = false;
     this->n_motors = 0;
-    this->halt_on_driver_alarm= false;
-    this->check_driver_errors= true;
+    this->halt_on_driver_alarm = false;
+    this->check_driver_errors = true;
 }
 
 // Make keys for the Primary XYZ StepperMotors, and potentially A B C
@@ -159,10 +159,10 @@ static const char* const actuator_keys[] = {
 
 static int find_actuator_key(const char *k)
 {
-    int m= -1;
-    for (int i = 0; i < (int)(sizeof(actuator_keys)/sizeof(actuator_keys[0])); ++i) {
+    int m = -1;
+    for (int i = 0; i < (int)(sizeof(actuator_keys) / sizeof(actuator_keys[0])); ++i) {
         if(strcmp(k, actuator_keys[i]) == 0) {
-            m= i;
+            m = i;
             break;
         }
     }
@@ -183,8 +183,8 @@ bool Robot::configure(ConfigReader& cr)
     // Here we read the config to find out which arm solution to use
     if (this->arm_solution) delete this->arm_solution;
 
-    is_delta= false;
-    is_rdelta= false;
+    is_delta = false;
+    is_rdelta = false;
 
     std::string solution = cr.get_string(m, arm_solution_key, "cartesian");
 
@@ -196,12 +196,12 @@ bool Robot::configure(ConfigReader& cr)
 
     } else if(solution == rostock_key || solution == kossel_key || solution == delta_key || solution ==  linear_delta_key) {
         this->arm_solution = new LinearDeltaSolution(cr);
-        is_delta= true;
+        is_delta = true;
 
     } else if(solution == rotary_delta_key) {
         this->arm_solution = new RotaryDeltaSolution(cr);
-        is_delta= true;
-        is_rdelta= true;
+        is_delta = true;
+        is_rdelta = true;
 
     } else if(solution == morgan_key) {
         this->arm_solution = new MorganSCARASolution(cr);
@@ -217,7 +217,7 @@ bool Robot::configure(ConfigReader& cr)
     this->seek_rate = cr.get_float(m, default_seek_rate_key, 4000.0F); // mm/min
     this->compliant_seek_rate = cr.get_bool(m, compliant_seek_rate_key, false);
     this->mm_per_line_segment = cr.get_float(m, mm_per_line_segment_key, 0.0F);
-    this->delta_segments_per_second = cr.get_float(m, delta_segments_per_second_key, is_delta?100:0);
+    this->delta_segments_per_second = cr.get_float(m, delta_segments_per_second_key, is_delta ? 100 : 0);
     this->mm_per_arc_segment = cr.get_float(m, mm_per_arc_segment_key, 0.0f);
     this->mm_max_arc_error = cr.get_float(m, mm_max_arc_error_key, 0.01f);
     this->arc_correction = cr.get_float(m, arc_correction_key, 5);
@@ -265,11 +265,11 @@ bool Robot::configure(ConfigReader& cr)
         Pin en_pin(  cr.get_string(mm, en_pin_key,   DEFAULT_EN_PIN(a)), Pin::AS_OUTPUT);
 
         // a handy way to reverse motor direction without redefining the pin with !
-        bool reversed= cr.get_bool(mm, reversed_key, false);
+        bool reversed = cr.get_bool(mm, reversed_key, false);
         if(reversed) {
             if(dir_pin.is_inverting()) {
                 printf("WARNING: configure-robot: for actuator %s, the pin is already inverting so reversed is ignored, remove the ! on pin definition and set reversed to false\n", s->first.c_str());
-            }else{
+            } else {
                 dir_pin.set_inverting(true);
             }
         }
@@ -355,10 +355,10 @@ bool Robot::configure(ConfigReader& cr)
 #elif defined(DRIVER_TMC)
         // drivers by default for XYZA are internal, BC are by default external
         // check board ID and select default tmc driver accordingly
-        const char *def_driver= board_id == 1 ? "tmc2660" : "tmc2590";
-        std::string type= cr.get_string(mm, driver_type_key, a >= 4 ? "external" : def_driver);
+        const char *def_driver = board_id == 1 ? "tmc2660" : "tmc2590";
+        std::string type = cr.get_string(mm, driver_type_key, a >= 4 ? "external" : def_driver);
         if(type == "tmc2590" || type == "tmc2660") {
-            uint32_t t= type=="tmc2590" ? 2590 : 2660;
+            uint32_t t = type == "tmc2590" ? 2590 : 2660;
 
             // setup the TMC driver for this motor
             if(!actuators[a]->setup_tmc(cr, s->first.c_str(), t)) {
@@ -367,7 +367,7 @@ bool Robot::configure(ConfigReader& cr)
             }
 
             //set microsteps here which will override the raw register setting if any
-            uint16_t microstep= cr.get_int(mm, microsteps_key, 32);
+            uint16_t microstep = cr.get_int(mm, microsteps_key, 32);
             actuators[a]->set_microsteps(microstep);
             printf("DEBUG: configure-robot: microsteps for %s set to %d\n", s->first.c_str(), microstep);
 
@@ -390,19 +390,19 @@ bool Robot::configure(ConfigReader& cr)
         // see if this motor is slaved to a previous one
         // Only A,B,C can be slaved to X,Y,Z
         if(a >= A_AXIS) {
-            std::string slave_to= cr.get_string(mm, slaved_to_key, "");
+            std::string slave_to = cr.get_string(mm, slaved_to_key, "");
             if(!slave_to.empty()) {
-                int st= find_actuator_key(slave_to.c_str());
+                int st = find_actuator_key(slave_to.c_str());
                 if(st >= A_AXIS) {
                     // Not allowed to slave to axis other than X,Y,Z
                     printf("ERROR: configure-robot: %s slaved to name %s is not allowed\n", s->first.c_str(), slave_to.c_str());
-                }else if(st >= 0) {
+                } else if(st >= 0) {
                     if(slaved[a - A_AXIS] < 0) {
-                        slaved[a - A_AXIS]= st;
-                    }else{
+                        slaved[a - A_AXIS] = st;
+                    } else {
                         printf("ERROR: configure-robot: %s already slaved to another axis %d\n", s->first.c_str(), slaved[a - A_AXIS]);
                     }
-                }else{
+                } else {
                     printf("ERROR: configure-robot: %s slaved to name %s is not found\n", s->first.c_str(), slave_to.c_str());
                 }
             }
@@ -417,19 +417,19 @@ bool Robot::configure(ConfigReader& cr)
         auto& mm = s->second; // map of general actuator config settings
 
 #if defined(DRIVER_TMC)
-        check_driver_errors= cr.get_bool(mm, check_driver_errors_key, true);
-        halt_on_driver_alarm= cr.get_bool(mm, halt_on_driver_alarm_key, false);
-        const char *default_motor_enn= "PH13!";  // inverted as it is a not enable pin, but we want to set true to enable
+        check_driver_errors = cr.get_bool(mm, check_driver_errors_key, true);
+        halt_on_driver_alarm = cr.get_bool(mm, halt_on_driver_alarm_key, false);
+        const char *default_motor_enn = "PH13!"; // inverted as it is a not enable pin, but we want to set true to enable
 #else
-        const char *default_motor_enn= "nc";
+        const char *default_motor_enn = "nc";
 #endif
         // global enable pin for all motors
-        motors_enable_pin= new Pin(cr.get_string(mm, motors_enable_pin_key, default_motor_enn), Pin::AS_OUTPUT_OFF);
+        motors_enable_pin = new Pin(cr.get_string(mm, motors_enable_pin_key, default_motor_enn), Pin::AS_OUTPUT_OFF);
         if(!motors_enable_pin->connected()) {
             delete motors_enable_pin;
-            motors_enable_pin= nullptr;
+            motors_enable_pin = nullptr;
             printf("DEBUG: configure-robot: No Motor ENN\n");
-        }else{
+        } else {
             motors_enable_pin->set(true); // globally enable motors
             printf("DEBUG: configure-robot: Motor ENN is on pin %s\n", motors_enable_pin->to_string().c_str());
         }
@@ -443,28 +443,28 @@ bool Robot::configure(ConfigReader& cr)
         actuators[i]->change_last_milestone(actuator_pos[i]);
     }
 
-    #if MAX_ROBOT_ACTUATORS > 3
+#if MAX_ROBOT_ACTUATORS > 3
     // initialize any extra axis to machine position
     for (size_t i = A_AXIS; i < n_motors; i++) {
         if(get_slaved_to(i) >= 0) {
             // initialize a slaved axis to exactly the same settings as the axis it is slaved to
-            int8_t st= get_slaved_to(i);
+            int8_t st = get_slaved_to(i);
             actuators[i]->change_steps_per_mm(actuators[st]->get_steps_per_mm());
             actuators[i]->set_max_rate(actuators[st]->get_max_rate());
             actuators[i]->set_acceleration(actuators[st]->get_acceleration());
             actuators[i]->change_last_milestone(actuator_pos[st]);
             printf("INFO: configure-robot: motor %d is slaved to motor %d\n", i, st);
-            #if defined(DRIVER_TMC)
+#if defined(DRIVER_TMC)
             if(actuators[i]->get_microsteps() != actuators[st]->get_microsteps()) {
-                slaved[i-A_AXIS]= -1; // break the slaving to avoid disaster
+                slaved[i - A_AXIS] = -1; // break the slaving to avoid disaster
                 printf("WARNING: configure-robot: slaved motor %d microsteps is not the same as motor %d - UNSLAVED\n", i, st);
             }
-            #endif
-        }else{
+#endif
+        } else {
             actuators[i]->change_last_milestone(machine_position[i]);
         }
     }
-    #endif
+#endif
 
     //this->clearToolOffset();
 #ifdef DRIVER_TMC
@@ -554,17 +554,17 @@ void Robot::periodic_checks()
 {
     // check vmot
     bool vmot;
-    float v= get_voltage_monitor("vmotor");
+    float v = get_voltage_monitor("vmotor");
     if(isinf(v) || v < 6) {
         // it is off
-        vmot= false;
-    }else{
+        vmot = false;
+    } else {
         // it is on
-        vmot= true;
+        vmot = true;
     }
 
     // get last vmot state
-    bool last= StepperMotor::set_vmot(vmot);
+    bool last = StepperMotor::set_vmot(vmot);
 
     // printf("DEBUG: periodic_checks - vmot: %d, last: %d\n", vmot, last);
 
@@ -785,7 +785,7 @@ void Robot::check_max_actuator_speeds(OutputStream* os)
             actuators[i]->set_max_rate(floorf(StepTicker::getInstance()->get_frequency() / actuators[i]->get_steps_per_mm()));
             if(os == nullptr) {
                 printf("WARNING: actuator %d rate exceeds base_stepping_frequency * ..._steps_per_mm: %f, setting to %f\n", i, step_freq, actuators[i]->get_max_rate());
-            }else{
+            } else {
                 os->printf("WARNING: actuator %d rate exceeds base_stepping_frequency * ..._steps_per_mm: %f, setting to %f\n", i, step_freq, actuators[i]->get_max_rate());
             }
         }
@@ -881,9 +881,9 @@ bool Robot::handle_G92(GCode& gcode, OutputStream& os)
 
     } else if(gcode.get_subcode() == 4) {
         // do a manual homing based on given coordinates, no endstops required (Old G92 functionality)
-        if(gcode.has_arg('X')){ Robot::getInstance()->reset_axis_position(gcode.get_arg('X'), X_AXIS); }
-        if(gcode.has_arg('Y')){ Robot::getInstance()->reset_axis_position(gcode.get_arg('Y'), Y_AXIS); }
-        if(gcode.has_arg('Z')){ Robot::getInstance()->reset_axis_position(gcode.get_arg('Z'), Z_AXIS); }
+        if(gcode.has_arg('X')) { Robot::getInstance()->reset_axis_position(gcode.get_arg('X'), X_AXIS); }
+        if(gcode.has_arg('Y')) { Robot::getInstance()->reset_axis_position(gcode.get_arg('Y'), Y_AXIS); }
+        if(gcode.has_arg('Z')) { Robot::getInstance()->reset_axis_position(gcode.get_arg('Z'), Z_AXIS); }
 
     } else {
         // standard setting of the g92 offsets, making current WCS position whatever the coordinate arguments are
@@ -952,11 +952,11 @@ bool Robot::handle_motion_command(GCode& gcode, OutputStream& os)
             // FIXME maybe only for axis that can be homed (so an E only move would not trigger this on a delta)
             gcode.set_error("Must be homed before moving");
 
-        }else if((motion_mode == CW_ARC || motion_mode == CCW_ARC) && gcode.has_arg('R')) {
+        } else if((motion_mode == CW_ARC || motion_mode == CCW_ARC) && gcode.has_arg('R')) {
             // we do not support radius mode for arcs
             gcode.set_error("Radius mode not supported by G2 or G3");
 
-        }else{
+        } else {
             is_g123 = motion_mode != SEEK;
             process_move(gcode, motion_mode);
         }
@@ -979,13 +979,13 @@ void Robot::do_park(GCode& gcode, OutputStream& os)
         // whereas NIST suggests using G91 instead.
         // Smoothie also will move to the Z park position first if it was saved
         push_state();
-        float x=0, y=0, z=0;
-        if(gcode.has_arg('X')) x= to_millimeters(gcode.get_arg('X'));
-        if(gcode.has_arg('Y')) y= to_millimeters(gcode.get_arg('Y'));
-        if(gcode.has_arg('Z')) z= to_millimeters(gcode.get_arg('Z'));
+        float x = 0, y = 0, z = 0;
+        if(gcode.has_arg('X')) x = to_millimeters(gcode.get_arg('X'));
+        if(gcode.has_arg('Y')) y = to_millimeters(gcode.get_arg('Y'));
+        if(gcode.has_arg('Z')) z = to_millimeters(gcode.get_arg('Z'));
         if(x != 0 || y != 0 || z != 0) {
-            float deltas[3]= {x, y, z};
-            delta_move(deltas, this->seek_rate/60, 3);
+            float deltas[3] = {x, y, z};
+            delta_move(deltas, this->seek_rate / 60, 3);
         }
         absolute_mode = true;
         next_command_is_MCS = true; // must use machine coordinates in case G92 or WCS is in effect
@@ -997,7 +997,7 @@ void Robot::do_park(GCode& gcode, OutputStream& os)
 
         pop_state();
 
-    }else{
+    } else {
         os.printf("cannot park as axis are not homed and MCS is unknown\n");
     }
 }
@@ -1032,7 +1032,7 @@ bool Robot::handle_gcodes(GCode& gcode, OutputStream& os)
                             // If Z needs to be set it has to be set explicitly with the Z parameter
                             get_axis_position(park_position, 2); // Only XY are set by default
 
-                        }else{
+                        } else {
                             os.printf("Cannot set park position unless axis are homed\n");
                         }
 
@@ -1040,15 +1040,15 @@ bool Robot::handle_gcodes(GCode& gcode, OutputStream& os)
                         // Note the following is only meant to be used for recovering a saved position from config-override
                         // or setting Z Park position
                         // This is not a standard Gcode
-                        if(gcode.has_arg('X')) park_position[X_AXIS]= gcode.get_arg('X');
-                        if(gcode.has_arg('Y')) park_position[Y_AXIS]= gcode.get_arg('Y');
+                        if(gcode.has_arg('X')) park_position[X_AXIS] = gcode.get_arg('X');
+                        if(gcode.has_arg('Y')) park_position[Y_AXIS] = gcode.get_arg('Y');
                         if(gcode.has_arg('Z')) {
                             // setting z to zero or less will disable it (as a 0 park for Z would be a bad idea anyway)
-                            float z= gcode.get_arg('Z');
+                            float z = gcode.get_arg('Z');
                             if(z <= 0) {
-                                park_position[Z_AXIS]= NAN;
-                            }else{
-                                park_position[Z_AXIS]= z;
+                                park_position[Z_AXIS] = NAN;
+                            } else {
+                                park_position[Z_AXIS] = z;
                             }
                         }
                     }
@@ -1067,26 +1067,26 @@ bool Robot::handle_gcodes(GCode& gcode, OutputStream& os)
             }
             break;
 
-            case 43:
-                if(gcode.get_subcode() == 1 || gcode.get_subcode() == 2) {
-                    float deltas[3]= {0, 0, 0};
-                    if(gcode.has_arg('X')) deltas[X_AXIS]= to_millimeters(gcode.get_arg('X'));
-                    if(gcode.has_arg('Y')) deltas[Y_AXIS]= to_millimeters(gcode.get_arg('Y'));
-                    if(gcode.has_arg('Z')) deltas[Z_AXIS]= to_millimeters(gcode.get_arg('Z'));
+        case 43:
+            if(gcode.get_subcode() == 1 || gcode.get_subcode() == 2) {
+                float deltas[3] = {0, 0, 0};
+                if(gcode.has_arg('X')) deltas[X_AXIS] = to_millimeters(gcode.get_arg('X'));
+                if(gcode.has_arg('Y')) deltas[Y_AXIS] = to_millimeters(gcode.get_arg('Y'));
+                if(gcode.has_arg('Z')) deltas[Z_AXIS] = to_millimeters(gcode.get_arg('Z'));
 
-                    float x, y, z;
-                    std::tie(x, y, z) = tool_offset;
-                    if(deltas[X_AXIS] != 0) x += deltas[X_AXIS];
-                    if(deltas[Y_AXIS] != 0) y += deltas[Y_AXIS];
-                    if(deltas[Z_AXIS] != 0) z += deltas[Z_AXIS];
-                    tool_offset = wcs_t(x, y, z);
+                float x, y, z;
+                std::tie(x, y, z) = tool_offset;
+                if(deltas[X_AXIS] != 0) x += deltas[X_AXIS];
+                if(deltas[Y_AXIS] != 0) y += deltas[Y_AXIS];
+                if(deltas[Z_AXIS] != 0) z += deltas[Z_AXIS];
+                tool_offset = wcs_t(x, y, z);
 
-                    if(gcode.get_subcode() == 2) {
-                        // we also move
-                        delta_move(deltas, this->seek_rate/60, 3);
-                    }
+                if(gcode.get_subcode() == 2) {
+                    // we also move
+                    delta_move(deltas, this->seek_rate / 60, 3);
                 }
-                break;
+            }
+            break;
 
         case 49:
             tool_offset = wcs_t(0, 0, 0);
@@ -1141,7 +1141,7 @@ bool Robot::handle_mcodes(GCode& gcode, OutputStream& os)
             Conveyor::getInstance()->wait_for_idle();
             current_wcs = 0;
             absolute_mode = true;
-            seconds_per_minute= 60;
+            seconds_per_minute = 60;
             break;
         case 17:
             enable_all_motors(true); // turn all enable pins on
@@ -1216,7 +1216,7 @@ bool Robot::handle_mcodes(GCode& gcode, OutputStream& os)
                     }
 
                 } else {
-                    os.printf(" S:%g P:%g ", this->seek_rate/60, this->max_speed);
+                    os.printf(" S:%g P:%g ", this->seek_rate / 60, this->max_speed);
                 }
 
                 os.set_append_nl();
@@ -1231,11 +1231,11 @@ bool Robot::handle_mcodes(GCode& gcode, OutputStream& os)
                 }
 
                 if (compliant_seek_rate && gcode.get_subcode() == 0 && gcode.has_arg('S')) {
-                    this->seek_rate = gcode.get_arg('S')*60; // is specified in mm/sec stored in mm/min
+                    this->seek_rate = gcode.get_arg('S') * 60; // is specified in mm/sec stored in mm/min
                 }
                 if (gcode.get_subcode() == 0 && gcode.has_arg('P')) {
                     this->max_speed = gcode.get_arg('P'); // is specified in mm/sec
-                    if(this->max_speed <= 0.1F) this->max_speed= 0; // disable it
+                    if(this->max_speed <= 0.1F) this->max_speed = 0; // disable it
                 }
 
                 if(gcode.get_subcode() == 1) {
@@ -1326,15 +1326,15 @@ bool Robot::handle_mcodes(GCode& gcode, OutputStream& os)
 bool Robot::handle_M909(GCode& gcode, OutputStream& os)
 {
     for (int i = 0; i < get_number_registered_motors(); i++) {
-        char axis= i < 3 ? 'X'+i : 'A'+i-3;
+        char axis = i < 3 ? 'X' + i : 'A' + i - 3;
         if (gcode.has_arg(axis)) {
-            uint32_t current_microsteps= actuators[i]->get_microsteps();
-            uint32_t microsteps= gcode.get_int_arg(axis);
+            uint32_t current_microsteps = actuators[i]->get_microsteps();
+            uint32_t microsteps = gcode.get_int_arg(axis);
             actuators[i]->set_microsteps(microsteps);
             os.printf("microsteps for %c temporarily changed to: 1/%d\n", axis, microsteps);
             if(gcode.get_subcode() == 1 && current_microsteps != microsteps) {
                 // also reset the steps/mm
-                float s= actuators[i]->get_steps_per_mm()*((float)microsteps/current_microsteps);
+                float s = actuators[i]->get_steps_per_mm() * ((float)microsteps / current_microsteps);
                 actuators[i]->change_steps_per_mm(s);
                 os.printf("steps/mm for %c temporarily changed to: %f\n", axis, s);
                 check_max_actuator_speeds(&os);
@@ -1383,38 +1383,38 @@ bool Robot::handle_M911(GCode& gcode, OutputStream& os)
             for (int i = 0; i < get_number_registered_motors(); i++) {
                 if(gcode.get_subcode() != 1) {
                     if(i == 0 && !StepperMotor::get_vmot()) os.printf("VMOT is off\n");
-                    char axis= i < 3 ? 'X'+i : 'A'+i-3;
+                    char axis = i < 3 ? 'X' + i : 'A' + i - 3;
                     os.printf("Motor %d (%c)...\n", i, axis);
                     actuators[i]->dump_status(os);
                     os.printf("\n");
-                }else{
+                } else {
                     actuators[i]->dump_status(os, false);
                 }
             }
 
         } else if(gcode.has_arg('P')) {
             // M911[.1] Pn dump for specific driver
-            int p= gcode.get_int_arg('P');
+            int p = gcode.get_int_arg('P');
             if(p < 0 || p >= get_number_registered_motors()) return true;
             actuators[p]->dump_status(os, gcode.get_subcode() != 1);
         }
         return true;
 
-    }else{
-        int p= -1;
-        if(gcode.has_arg('P')) p= gcode.get_int_arg('P');
+    } else {
+        int p = -1;
+        if(gcode.has_arg('P')) p = gcode.get_int_arg('P');
         if(p >= get_number_registered_motors()) return true;
         int b, e;
         if(p < 0) {
-            b= 0, e= get_number_registered_motors();
-        }else{
-            b= p; e= p+1;
+            b = 0, e = get_number_registered_motors();
+        } else {
+            b = p; e = p + 1;
         }
         for (p = b; p < e; ++p) {
             if(gcode.get_subcode() == 2 && gcode.has_arg('R') && gcode.has_arg('V')) {
                 actuators[p]->set_raw_register(os, gcode.get_int_arg('R'), gcode.get_int_arg('V'));
 
-            }else if(gcode.get_subcode() == 3 ) {
+            } else if(gcode.get_subcode() == 3 ) {
                 if(!actuators[p]->set_options(gcode)) {
                     os.printf("No options were recognised\n");
                 }
@@ -1433,17 +1433,17 @@ bool Robot::handle_M911(GCode& gcode, OutputStream& os)
 bool Robot::handle_setregs_cmd( std::string& params, OutputStream& os )
 {
     HELP("setregs 0 00204,981C0,A0000,C000E,E0060\n");
-    std::string str= stringutils::shift_parameter( params );
-    int m= strtol(str.c_str(), NULL, 10);
+    std::string str = stringutils::shift_parameter( params );
+    int m = strtol(str.c_str(), NULL, 10);
     if(m >= get_number_registered_motors()) {
         os.printf("invalid motor number\n");
         return true;
     }
 
     if(!params.empty()) {
-        std::vector<uint32_t> regs= stringutils::parse_number_list(params.c_str(), 16);
+        std::vector<uint32_t> regs = stringutils::parse_number_list(params.c_str(), 16);
         if(regs.size() == 5) {
-            uint32_t reg= 0;
+            uint32_t reg = 0;
             for(auto i : regs) {
                 // this just sets the local storage, it does not write to the chip
                 actuators[m]->set_raw_register(os, ++reg, i);
@@ -1452,10 +1452,10 @@ bool Robot::handle_setregs_cmd( std::string& params, OutputStream& os )
             actuators[m]->set_raw_register(os, 255, 0);
             os.printf("registers temporarily set for motor %d\n", m);
 
-        }else{
+        } else {
             os.printf("invalid - 5 registers required\n");
         }
-    }else{
+    } else {
         os.printf("invalid no registers\n");
     }
 
@@ -1485,10 +1485,10 @@ bool Robot::handle_M500(GCode& gcode, OutputStream& os)
 
     os.printf(";X- Junction Deviation, Z- Z junction deviation, S - Minimum Planner speed mm/sec:\nM205 X%1.5f Z%1.5f S%1.5f\n", Planner::getInstance()->xy_junction_deviation, Planner::getInstance()->z_junction_deviation, Planner::getInstance()->minimum_planner_speed);
 
-    os.printf(";Max cartesian feedrates in mm/sec, S - Seek rate, P - overall max speed:\nM203 X%1.5f Y%1.5f Z%1.5f S%1.5f", max_speeds[X_AXIS], max_speeds[Y_AXIS], max_speeds[Z_AXIS], seek_rate/60);
+    os.printf(";Max cartesian feedrates in mm/sec, S - Seek rate, P - overall max speed:\nM203 X%1.5f Y%1.5f Z%1.5f S%1.5f", max_speeds[X_AXIS], max_speeds[Y_AXIS], max_speeds[Z_AXIS], seek_rate / 60);
     if(max_speed > 0.1F) {
         os.printf(" P%1.5f\n", max_speed);
-    }else{
+    } else {
         os.printf("\n");
     }
 
@@ -1530,7 +1530,7 @@ bool Robot::handle_M500(GCode& gcode, OutputStream& os)
             }
             ++n;
         }
-    }else{
+    } else {
         os.printf(";WCS settings are not saved\n");
     }
 
@@ -1680,7 +1680,7 @@ void Robot::process_move(GCode& gcode, enum MOTION_MODE_T motion_mode)
     // process ABC axis, this is mutually exclusive to using E for an extruder, so if E is used and A then the results are undefined
     for (int i = A_AXIS; i < n_motors; ++i) {
         if(get_slaved_to(i) >= 0) {
-            target[i]= 0;
+            target[i] = 0;
             // maybe need to report this
             continue; // can't move slaved axis
         }
@@ -1698,15 +1698,15 @@ void Robot::process_move(GCode& gcode, enum MOTION_MODE_T motion_mode)
 #endif
 
     if( gcode.has_arg('F') ) {
-        if( motion_mode == SEEK ){
-            if(!compliant_seek_rate){
+        if( motion_mode == SEEK ) {
+            if(!compliant_seek_rate) {
                 this->seek_rate = this->to_millimeters( gcode.get_arg('F') );
-            }else{
+            } else {
                 // it seems wrong but F anywhere in compliant code sets the feed rate
                 this->feed_rate = this->to_millimeters( gcode.get_arg('F') );
             }
 
-        }else{
+        } else {
             this->feed_rate = this->to_millimeters( gcode.get_arg('F') );
         }
     }
@@ -1721,7 +1721,7 @@ void Robot::process_move(GCode& gcode, enum MOTION_MODE_T motion_mode)
         case NONE: break;
 
         case SEEK:
-            moved = this->append_line(gcode, target, this->seek_rate / (compliant_seek_rate?60:seconds_per_minute), delta_e );
+            moved = this->append_line(gcode, target, this->seek_rate / (compliant_seek_rate ? 60 : seconds_per_minute), delta_e );
             break;
 
         case LINEAR:
@@ -1762,7 +1762,7 @@ void Robot::reset_axis_position(float x, float y, float z)
     // now set the actuator positions based on the supplied compensated position
     ActuatorCoordinates actuator_pos;
     arm_solution->cartesian_to_actuator(this->compensated_machine_position, actuator_pos);
-    for (size_t i = X_AXIS; i <= Z_AXIS; i++){
+    for (size_t i = X_AXIS; i <= Z_AXIS; i++) {
         actuators[i]->change_last_milestone(actuator_pos[i]);
     }
 
@@ -1840,7 +1840,7 @@ void Robot::reset_position_from_current_actuator_position()
             machine_position[i] = compensated_machine_position[i] = 0;
             actuators[i]->change_last_milestone(actuator_pos[get_slaved_to(i)]);
 
-        }else{
+        } else {
             // ABC and/or extruders just need to set machine_position and compensated_machine_position
             float ap = actuator_pos[i];
             if(actuators[i]->is_extruder() && get_e_scale_fnc) ap /= get_e_scale_fnc(); // inverse E scale if there is one and this is an extruder
@@ -1855,11 +1855,11 @@ void Robot::reset_position_from_current_actuator_position()
 void Robot::reset_compensated_machine_position()
 {
     if(compensationTransform) {
-        compensationTransform= nullptr;
+        compensationTransform = nullptr;
         // we want to leave it where we have set Z, not where it ended up AFTER compensation so
         // this should correct the Z position to the machine_position
-        is_g123= false; // we don't want the laser to fire
-        if(!append_milestone(machine_position, this->seek_rate / 60.0F)){
+        is_g123 = false; // we don't want the laser to fire
+        if(!append_milestone(machine_position, this->seek_rate / 60.0F)) {
             // if it wasn't enough to move then just reset to get everything normalized again
             reset_axis_position(machine_position[X_AXIS], machine_position[Y_AXIS], machine_position[Z_AXIS]);
         }
@@ -1933,9 +1933,8 @@ bool Robot::append_milestone(const float target[], float rate_mm_s)
         }
 
         if(this->max_speed > 0.1F && rate_mm_s > this->max_speed) {
-            rate_mm_s= this->max_speed;
+            rate_mm_s = this->max_speed;
         }
-
     }
 
     // find actuator position given the machine position, use actual adjusted target
@@ -1953,60 +1952,90 @@ bool Robot::append_milestone(const float target[], float rate_mm_s)
 
 #if MAX_ROBOT_ACTUATORS > 3
     sos = 0;
-    // for the extruders just copy the position, and possibly scale it from mm³ to mm
+    int aux_sel = -1; // if only one auxilliary is moving we set this to the the motor id
+
     for (size_t i = A_AXIS; i < n_motors; i++) {
-        int8_t s= get_slaved_to(i);
+        int8_t s = get_slaved_to(i);
         if(s >= 0) {
             // we just slavishly copy the axis we are slaving
-            actuator_pos[i]= actuator_pos[s];
+            actuator_pos[i] = actuator_pos[s];
             continue;
         }
 
         actuator_pos[i] = transformed_target[i];
         if(actuators[i]->is_extruder() && get_e_scale_fnc) {
+            // for the extruders just copy the position, and possibly scale it from mm³ to mm
             // NOTE this relies on the fact only one extruder is active at a time
             // scale for volumetric or flow rate
             // TODO is this correct? scaling the absolute target? what if the scale changes?
             // for volumetric it basically converts mm³ to mm, but what about flow rate?
             actuator_pos[i] *= get_e_scale_fnc();
         }
+
         if(auxilliary_move) {
             // for E only moves we need to use the scaled E to calculate the distance
-            sos += powf(actuator_pos[i] - actuators[i]->get_last_milestone(), 2);
+            float d = actuator_pos[i] - actuators[i]->get_last_milestone();
+            if(d != 0) {
+                sos += powf(d, 2);
+                if(aux_sel == -1) {
+                    aux_sel = i; // so far the only auxilliary axis that is moving
+                } else {
+                    aux_sel = 0; // more than one was moving
+                }
+            }
         }
     }
+
     if(auxilliary_move) {
-        distance = sqrtf(sos); // distance in mm of the e move
+        distance = sqrtf(sos); // distance in mm of the e move or of combined ABC moves
         if(distance < 0.00001F) return false;
     }
+
 #endif
 
     // use default acceleration to start with
     float acceleration = default_acceleration;
-
     float isecs = rate_mm_s / distance;
 
-    // check per-actuator speed limits
-    for (size_t actuator = 0; actuator < n_motors; actuator++) {
-        if(actuator >= A_AXIS && get_slaved_to(actuator) >= 0) continue; // skip slaved axis
-
-        float d = fabsf(actuator_pos[actuator] - actuators[actuator]->get_last_milestone());
-        if(d == 0 || !actuators[actuator]->is_selected()) continue; // no movement for this actuator
-
-        float actuator_rate = d * isecs;
-        if (actuator_rate > actuators[actuator]->get_max_rate()) {
-            rate_mm_s *= (actuators[actuator]->get_max_rate() / actuator_rate);
-            isecs = rate_mm_s / distance;
+    // we need to check we are not exceeding any axis maximum feedrate and/or acceleration
+    if(auxilliary_move && aux_sel > 0) {
+        // if only one auxilliary axis is moving then we just use its feedrate and acceleration
+        // still checking that we are not exceeding its maximum feed rate
+        float actuator_rate = (fabsf(actuator_pos[aux_sel] - actuators[aux_sel]->get_last_milestone())) * isecs;
+        if (actuator_rate > actuators[aux_sel]->get_max_rate()) {
+            rate_mm_s = actuators[aux_sel]->get_max_rate();
         }
 
-        // adjust acceleration to lowest found, for now just primary axis unless it is an auxiliary move
-        // TODO we may need to do all of them, check E won't limit XYZ.. it does on long E moves, but not checking it could exceed the E acceleration.
-        if(auxilliary_move || actuator < N_PRIMARY_AXIS) {
-            float ma =  actuators[actuator]->get_acceleration(); // in mm/sec²
-            if(ma > 0.0001F) {  // if axis does not have acceleration set then it uses the default_acceleration
-                float ca = fabsf((d / distance) * acceleration);
-                if (ca > ma) {
-                    acceleration *= ( ma / ca );
+        // check acceleration, if the axis sets an acceleration, then use it
+        float ma =  actuators[aux_sel]->get_acceleration(); // in mm/sec²
+        if(ma > 0.0001F) {  // technically != 0 but allow for IEEE float slop
+            acceleration = ma;
+        }
+
+    } else {
+        // check per-actuator speed limits
+        for (size_t actuator = 0; actuator < n_motors; actuator++) {
+            if(actuator >= A_AXIS && get_slaved_to(actuator) >= 0) continue; // skip slaved axis
+
+            float d = fabsf(actuator_pos[actuator] - actuators[actuator]->get_last_milestone());
+            if(d == 0 || !actuators[actuator]->is_selected()) continue; // no movement for this actuator
+
+            float actuator_rate = d * isecs;
+            if (actuator_rate > actuators[actuator]->get_max_rate()) {
+                // derate the feedrate by the amount exceeded
+                rate_mm_s *= (actuators[actuator]->get_max_rate() / actuator_rate);
+                isecs = rate_mm_s / distance;
+            }
+
+            // adjust acceleration to lowest found, for now just primary axis unless it is an auxiliary move
+            // TODO we may need to do all of them, check E won't limit XYZ.. it does on long E moves, but not checking it could exceed the E acceleration.
+            if(auxilliary_move || actuator < N_PRIMARY_AXIS) {
+                float ma =  actuators[actuator]->get_acceleration(); // in mm/sec²
+                if(ma > 0.0001F) {  // if axis does not have acceleration set then it uses the default_acceleration
+                    float ca = fabsf((d / distance) * acceleration);
+                    if (ca > ma) {
+                        acceleration *= ( ma / ca );
+                    }
                 }
             }
         }
@@ -2038,7 +2067,7 @@ bool Robot::append_milestone(const float target[], float rate_mm_s)
 
 // Used to plan a single move used by things like endstops when homing, zprobe, extruder firmware retracts etc.
 // NOTE doesn't work for long moves on a Delta as the move is not segmented so head will dip into the bowl.
-bool Robot::delta_move(const float *delta, float rate_mm_s, uint8_t naxis)
+bool Robot::delta_move(const float * delta, float rate_mm_s, uint8_t naxis)
 {
     if(halted) return false;
 
@@ -2067,7 +2096,7 @@ bool Robot::delta_move(const float *delta, float rate_mm_s, uint8_t naxis)
 }
 
 // Append a move to the queue ( cutting it into segments if needed )
-bool Robot::append_line(GCode& gcode, const float target[], float rate_mm_s, float delta_e)
+bool Robot::append_line(GCode & gcode, const float target[], float rate_mm_s, float delta_e)
 {
     // catch negative or zero feed rates and return the same error as GRBL does
     if(rate_mm_s <= 0.0F) {
@@ -2085,7 +2114,7 @@ bool Robot::append_line(GCode& gcode, const float target[], float rate_mm_s, flo
 
     /*
         For extruders, we need to do some extra work to limit the volumetric rate if specified...
-        If using volumetric limts we need to be using volumetric extrusion for this to work as Ennn needs to be in mm³ not mm
+        If using volumetric limits we need to be using volumetric extrusion for this to work as Ennn needs to be in mm³ not mm
         We ask Extruder to do all the work but we need to pass in the relevant data.
         NOTE we need to do this before we segment the line (for deltas)
     */
@@ -2162,7 +2191,7 @@ bool Robot::append_line(GCode& gcode, const float target[], float rate_mm_s, flo
 
 // Append an arc to the queue ( cutting it into segments as needed )
 // TODO does not support any E parameters so cannot be used for 3D printing.
-bool Robot::append_arc(GCode&  gcode, const float target[], const float offset[], float radius, bool is_clockwise )
+bool Robot::append_arc(GCode &  gcode, const float target[], const float offset[], float radius, bool is_clockwise )
 {
     float rate_mm_s = this->feed_rate / seconds_per_minute;
     // catch negative or zero feed rates and return the same error as GRBL does
@@ -2181,12 +2210,12 @@ bool Robot::append_arc(GCode&  gcode, const float target[], const float offset[]
     float rt_axis1 = target[this->plane_axis_1] - center_axis1;
 
     // initialize linear travel for ABC
-    #if MAX_ROBOT_ACTUATORS > 3
-    float abc_travel[n_motors-3];
+#if MAX_ROBOT_ACTUATORS > 3
+    float abc_travel[n_motors - 3];
     for (int i = A_AXIS; i < n_motors; i++) {
-        abc_travel[i-3]= target[i] - this->machine_position[i];
+        abc_travel[i - 3] = target[i] - this->machine_position[i];
     }
-    #endif
+#endif
 
     // Patch from GRBL Firmware - Christoph Baumann 04072015
     // CCW angle between position and target from circle center. Only one atan2() trig computation required.
@@ -2220,12 +2249,12 @@ bool Robot::append_arc(GCode&  gcode, const float target[], const float offset[]
     //printf("Radius %f - Segment Length %f - Number of Segments %d\n",radius,arc_segment,segments);  // Testing Purposes ONLY
     float theta_per_segment = angular_travel / segments;
     float linear_per_segment = linear_travel / segments;
-    #if MAX_ROBOT_ACTUATORS > 3
-    float abc_per_segment[n_motors-3];
-    for (int i = 0; i < n_motors-3; i++) {
-        abc_per_segment[i]= abc_travel[i] / segments;
+#if MAX_ROBOT_ACTUATORS > 3
+    float abc_per_segment[n_motors - 3];
+    for (int i = 0; i < n_motors - 3; i++) {
+        abc_per_segment[i] = abc_travel[i] / segments;
     }
-    #endif
+#endif
 
     /* Vector rotation by transformation matrix: r is the original vector, r_T is the rotated vector,
     and phi is the angle of rotation. Based on the solution approach by Jens Geisler.
@@ -2291,11 +2320,11 @@ bool Robot::append_arc(GCode&  gcode, const float target[], const float offset[]
         arc_target[this->plane_axis_0] = center_axis0 + r_axis0;
         arc_target[this->plane_axis_1] = center_axis1 + r_axis1;
         arc_target[this->plane_axis_2] += linear_per_segment;
-        #if MAX_ROBOT_ACTUATORS > 3
+#if MAX_ROBOT_ACTUATORS > 3
         for (int a = A_AXIS; a < n_motors; a++) {
-            arc_target[a] += abc_per_segment[a-3];
+            arc_target[a] += abc_per_segment[a - 3];
         }
-        #endif
+#endif
         // Append this segment to the queue
         bool b = this->append_milestone(arc_target, rate_mm_s);
         moved = moved || b;
@@ -2308,7 +2337,7 @@ bool Robot::append_arc(GCode&  gcode, const float target[], const float offset[]
 }
 
 // Do the math for an arc and add it to the queue
-bool Robot::compute_arc(GCode&  gcode, const float offset[], const float target[], enum MOTION_MODE_T motion_mode)
+bool Robot::compute_arc(GCode &  gcode, const float offset[], const float target[], enum MOTION_MODE_T motion_mode)
 {
 
     // Find the radius
@@ -2346,13 +2375,13 @@ float Robot::get_feed_rate(int code) const
     if(code == -1) {
         // modal is currently in gcode processor which is a static in main.cpp
         return GCodeProcessor::get_group1_modal_code() == 0 ? seek_rate : feed_rate;
-    }else{
+    } else {
         return code == 0 ? seek_rate : feed_rate;
     }
 }
 
 // return a GRBL-like query string for ? command
-void Robot::get_query_string(std::string& str) const
+void Robot::get_query_string(std::string & str) const
 {
     bool homing = false;
     bool running = false;
@@ -2393,14 +2422,14 @@ void Robot::get_query_string(std::string& str) const
 
         str.append("|MPos:").append(buf, n);
 
-        #if MAX_ROBOT_ACTUATORS > 3
+#if MAX_ROBOT_ACTUATORS > 3
         // deal with the ABC axis (E will be A)
         for (int i = A_AXIS; i < get_number_registered_motors(); ++i) {
             // current actuator position
             n = snprintf(buf, sizeof(buf), ",%1.4f", actuators[i]->get_current_position());
             str.append(buf, n);
         }
-        #endif
+#endif
 
         // work space position
         Robot::wcs_t pos = mcs2wcs(mpos);
@@ -2409,10 +2438,10 @@ void Robot::get_query_string(std::string& str) const
 
         // current feedrate
         float fr = from_millimeters(Conveyor::getInstance()->get_current_feedrate() * 60.0F);
-        float frr= from_millimeters(get_feed_rate());
-        float fro= 6000.0F / get_seconds_per_minute();
+        float frr = from_millimeters(get_feed_rate());
+        float fro = 6000.0F / get_seconds_per_minute();
         n = snprintf(buf, sizeof(buf), "|F:%1.1f,%1.1f,%1.1f", fr, frr, fro);
-        if(n > sizeof(buf)) n= sizeof(buf);
+        if(n > sizeof(buf)) n = sizeof(buf);
         str.append(buf, n);
 
         // current Laser power
@@ -2435,19 +2464,19 @@ void Robot::get_query_string(std::string& str) const
         // uses machine position
         char buf[128];
         size_t n = snprintf(buf, sizeof(buf), "%1.4f,%1.4f,%1.4f", from_millimeters(machine_position[X_AXIS]), from_millimeters(machine_position[Y_AXIS]), from_millimeters(machine_position[Z_AXIS]));
-        if(n > sizeof(buf)) n= sizeof(buf);
+        if(n > sizeof(buf)) n = sizeof(buf);
 
         str.append("|MPos:").append(buf, n);
 
-        #if MAX_ROBOT_ACTUATORS > 3
+#if MAX_ROBOT_ACTUATORS > 3
         // deal with the ABC axis (E will be A)
         for (int i = A_AXIS; i < n_motors; ++i) {
             // machine position
             n = snprintf(buf, sizeof(buf), ",%1.4f", machine_position[i]);
-            if(n > sizeof(buf)) n= sizeof(buf);
+            if(n > sizeof(buf)) n = sizeof(buf);
             str.append(buf, n);
         }
-        #endif
+#endif
 
         // work space position
         Robot::wcs_t pos = mcs2wcs(machine_position);
@@ -2455,10 +2484,10 @@ void Robot::get_query_string(std::string& str) const
         str.append("|WPos:").append(buf, n);
 
         // requested framerate, and override
-        float fr= from_millimeters(get_feed_rate());
-        float fro= 6000.0F / get_seconds_per_minute();
+        float fr = from_millimeters(get_feed_rate());
+        float fro = 6000.0F / get_seconds_per_minute();
         n = snprintf(buf, sizeof(buf), "|F:%1.1f,%1.1f", fr, fro);
-        if(n > sizeof(buf)) n= sizeof(buf);
+        if(n > sizeof(buf)) n = sizeof(buf);
         str.append(buf, n);
     }
 
@@ -2469,8 +2498,8 @@ void Robot::get_query_string(std::string& str) const
             TemperatureControl::pad_temperature_t temp;
             if(c->request("get_current_temperature", &temp)) {
                 char buf[32];
-                size_t n= snprintf(buf, sizeof(buf), "|%s:%3.1f,%3.1f", temp.designator.c_str(), temp.current_temperature, temp.target_temperature);
-                if(n > sizeof(buf)) n= sizeof(buf);
+                size_t n = snprintf(buf, sizeof(buf), "|%s:%3.1f,%3.1f", temp.designator.c_str(), temp.current_temperature, temp.target_temperature);
+                if(n > sizeof(buf)) n = sizeof(buf);
                 str.append(buf, n);
             }
         }
@@ -2484,7 +2513,7 @@ void Robot::get_query_string(std::string& str) const
         if(ok && std::get<0>(r)) {
             char buf[32];
             size_t n = snprintf(buf, sizeof(buf), "|SD:%lu,%u", std::get<1>(r), std::get<2>(r));
-            if(n > sizeof(buf)) n= sizeof(buf);
+            if(n > sizeof(buf)) n = sizeof(buf);
             str.append(buf, n);
         }
     }
