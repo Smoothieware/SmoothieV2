@@ -1183,7 +1183,7 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
     // get axis to move and amount (X0.1)
     // may specify multiple axis
 
-    float rate_mm_s = -1;
+    float rate_mm_s = NAN;
     float scale = 1.0F;
     float fr = NAN;
     float delta[n_motors];
@@ -1244,7 +1244,7 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
     for (int i = 0; i < n_motors; ++i) {
         if(delta[i] != 0) {
             ++cnt;
-            if(rate_mm_s < 0) {
+            if(isnan(rate_mm_s)) {
                 rate_mm_s = Robot::getInstance()->actuators[i]->get_max_rate();
             } else {
                 rate_mm_s = std::min(rate_mm_s, Robot::getInstance()->actuators[i]->get_max_rate());
