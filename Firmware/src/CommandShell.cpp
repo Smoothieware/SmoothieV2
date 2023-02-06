@@ -1185,13 +1185,14 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
 
     float rate_mm_s = -1;
     float scale = 1.0F;
+    float fr = NAN;
     float delta[n_motors];
     for (int i = 0; i < n_motors; ++i) {
         delta[i] = 0;
     }
 
     if(params.empty()) {
-        os.printf("usage: $J [-c] X0.01 [Y1] [Z1] [S0.5] - axis can be XYZABC, optional speed is scale of max_rate. -c turns on continuous jog mode\n");
+        os.printf("usage: $J [-c] X0.01 [Y1] [Z1] [S0.5|Fnnn] - axis can be XYZABC, optional speed is scale of max_rate or specify Feedrate. -c turns on continuous jog mode\n");
         return true;
     }
 
@@ -1215,6 +1216,12 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         if(ax == 'S') {
             // get speed scale
             scale = strtof(p.substr(1).c_str(), NULL);
+            fr= NAN;
+            continue;
+        }else if(ax == 'F') {
+            // OR specify feedrate (last one wins)
+            scale= 1.0F;
+            fr= strtof(p.substr(1).c_str(), NULL) / 60.0F; // we want mm/sec but F is specified in mm/min
             continue;
         }
 
@@ -1267,7 +1274,14 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         return true;
     }
 
-    float fr = rate_mm_s * scale;
+    // set feedrate, either scale of max or actual feedrate
+    if(isnan(fr)) {
+        fr = rate_mm_s * scale;
+
+    }else{
+        // make sure we do not exceed maximum
+        if(fr > rate_mm_s) fr= rate_mm_s;
+    }
 
     if(cont_mode) {
         // continuous jog mode, will move until told to stop and sends ok when stopped
