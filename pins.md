@@ -171,7 +171,7 @@ pins used on the headers when selecting a function in the Firmware
 | 2    |         | 5v              |
 | 3    | PJ6     |                 |
 | 4    | PJ9     |                 |
-| 5    | PJ10    |                 |
+| 5    | PJ10    |  QE CHa         |
 | 6    | PJ11    |                 |
 | 7    | PE5     | mot spi MISO    |
 | 8    | PE6     | mot spi MOSI    |
@@ -231,7 +231,7 @@ pins used on the headers when selecting a function in the Firmware
 | 2    |         | 5v        |
 | 3    | PE8     |           |
 | 4    | PJ7     |           |
-| 5    | PJ8     |           |
+| 5    | PJ8     | QE CHb    |
 | 6    | PD15    |           |
 | 7    | PB5     | SPI1_MOSI |
 | 8    | PA6     | SPI1_MISO |
