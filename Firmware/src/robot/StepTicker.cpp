@@ -152,11 +152,11 @@ _ramfunc_  void StepTicker::step_tick (void)
         // this is a failsafe, if we get here it means we missed the unstep from a previous tick
         // so we need to unstep the pin now or it will remain high
         unstep_tick();
-        missed_unsteps++; // keep trck for diagnostics
+        missed_unsteps++; // keep track for diagnostics
     }
 
     // if nothing has been setup we ignore the ticks
-    if(!running) {
+    if(!running || check_forced_steps) {
         // check if anything new available
         if(conveyor->get_next_block(&current_block)) { // returns false if no new block is available
             running = start_next_block(); // returns true if there is at least one motor with steps to issue
@@ -170,12 +170,26 @@ _ramfunc_  void StepTicker::step_tick (void)
         running = false;
         current_tick = 0;
         current_block = nullptr;
+        check_forced_steps = false;
         return;
     }
 
     bool still_moving = false;
     // foreach motor, if it is active see if time to issue a step to that motor
     for (uint8_t m = 0; m < num_motors; m++) {
+        // first check if we have any forced steps
+        if(motor[m]->has_forced_step()) {
+            motor[m]->step();
+            motor[m]->decrement_forced_step();
+            // note this assumes only one axis can have forced steps
+            if(!motor[m]->has_forced_step()) check_forced_steps= false;
+
+            // we stepped so schedule an unstep
+            unstep |= (1<<m);
+            continue; // this will override any moves in the block queue for this motor
+        }
+
+        // normal processing
         if(current_block->tick_info[m].steps_to_move == 0) continue; // not active
 
         current_block->tick_info[m].steps_per_tick += current_block->tick_info[m].acceleration_change;
