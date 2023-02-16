@@ -4,6 +4,8 @@
 
 #include <stdio.h>
 
+#include "Hal_pin.h"
+
 // Definition for QE_TIM resources
 #define QE_TIM                TIM8
 #define QE_TIM_CLK_ENABLE     __HAL_RCC_TIM8_CLK_ENABLE
@@ -45,6 +47,9 @@ void HAL_TIM_Encoder_MspInit(TIM_HandleTypeDef* htim_encoder)
         GPIO_InitStruct.Pull = GPIO_PULLUP;
         GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
         HAL_GPIO_Init(QE_CH1_GPIO_PORT, &GPIO_InitStruct);
+
+        allocate_hal_pin(QE_CH1_GPIO_PORT, QE_CH1_GPIO_PIN);
+        allocate_hal_pin(QE_CH2_GPIO_PORT, QE_CH2_GPIO_PIN);
     }
 
 }
