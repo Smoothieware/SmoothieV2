@@ -122,8 +122,49 @@ bool setup_quadrature_encoder()
     return true;
 }
 
+int32_t get_quadrature_encoder_max_count()
+{
+    return 65535;
+}
+
 int32_t read_quadrature_encoder()
 {
-    //return (((int16_t)QE_TIM->CNT) >> 2);
-    return (((int16_t)QE_TIM->CNT));
+    static uint16_t last= 0;
+    uint16_t cnt= QE_TIM->CNT;
+    uint16_t c= cnt;
+
+    // handle wrap around as cnt is 16 bits
+    if(cnt < last) c= (65536 - last) + cnt;
+    last= cnt;
+    return (int16_t)c >> 2;
+
+/*
+        Uint16 Encoder :: getRPM(void)
+        {
+            if(ENCODER_REGS.QFLG.bit.UTO==1)       // If unit timeout (one 10Hz period)
+            {
+                Uint32 current = ENCODER_REGS.QPOSLAT;
+                Uint32 count = (current > previous) ? current - previous : previous - current;
+
+                // deal with over/underflow
+                if( count > _ENCODER_MAX_COUNT/2 ) {
+                    count = _ENCODER_MAX_COUNT - count; // just subtract from max value
+                }
+
+                rpm = count * 60 * RPM_CALC_RATE_HZ / ENCODER_RESOLUTION;
+
+                previous = current;
+                ENCODER_REGS.QCLR.bit.UTO=1;       // Clear interrupt flag
+            }
+
+            return rpm;
+        }
+
+        // if the feed or direction changed, reset sync to avoid a big step
+        if( feed != previousFeed || feedDirection != previousFeedDirection) {
+            stepperDrive->setCurrentPosition(desiredSteps);
+        }
+
+*/
+
 }

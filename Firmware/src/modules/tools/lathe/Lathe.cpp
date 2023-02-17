@@ -9,8 +9,10 @@
 #include "QuadEncoder.h"
 #include "Robot.h"
 #include "StepperMotor.h"
+#include "main.h"
 
 #define lathe_enable_key "enable"
+#define lathe_ppr_key "encoder_ppr"
 
 REGISTER_MODULE(Lathe, Lathe::create)
 
@@ -19,7 +21,7 @@ bool Lathe::create(ConfigReader& cr)
     printf("DEBUG: configure Lathe\n");
     Lathe *t = new Lathe();
     if(!t->configure(cr)) {
-        printf("INFO: No Lathe enabled\n");
+        printf("INFO: Lathe not enabled\n");
         delete t;
     }
     return true;
@@ -44,10 +46,15 @@ bool Lathe::configure(ConfigReader& cr)
         return false;
     }
 
+    // pulses per rotation (takes into consideration any gearing) ppr= encoder resolution * gear ratio
+    ppr = cr.get_float(m, lathe_ppr_key, 1000);
+
+    // Actuator that is synchronized with the spindle
+    // on a Lathe Z is the leadscrew for the carriage, X is the cross carriage
     // TODO needs to be configurable
-    stepper_motor = Robot::getInstance()->actuators[A_AXIS];
+    stepper_motor = Robot::getInstance()->actuators[Z_AXIS];
     motor_id = stepper_motor->get_motor_id();
-    if(motor_id < A_AXIS || motor_id == 255) {
+    if(motor_id != Z_AXIS) {
         // error registering, maybe too many
         printf("ERROR: configure-lathe: unable to get stepper motor\n");
         return false;
@@ -57,57 +64,136 @@ bool Lathe::configure(ConfigReader& cr)
     using std::placeholders::_1;
     using std::placeholders::_2;
 
-    //Dispatcher::getInstance()->add_handler(Dispatcher::GCODE_HANDLER, 1234, std::bind(&Lathe::handle_gcode, this, _1, _2));
+    Dispatcher::getInstance()->add_handler(Dispatcher::GCODE_HANDLER, 33, std::bind(&Lathe::handle_gcode, this, _1, _2));
 
-    FastTicker::getInstance()->attach(1000, std::bind(&Lathe::update_position, this));
+    FastTicker::getInstance()->attach(5000, std::bind(&Lathe::update_position, this));
 
     return true;
 }
 
-#if 0
 bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
 {
-    // get "G" value
     int code = gcode.get_code();
 
-    // example of handling an error when a gcode must provide an argument
-    if(gcode.has_no_args()) {
-        gcode.set_error("No arguments provided");
-        return true;
-    }
+    if(code == 33) {
+        if(gcode.has_arg('K')) {
+            dpr = gcode.get_arg('K'); // distance per revolution
+            if(dpr == 0 && running) {
+                running = false;
+                // reset the position based on current actuator position
+                Robot::getInstance()->reset_position_from_current_actuator_position();
+            } else {
+                gcode.set_error("K argument must be > 0 unless in manual mode");
+                return true;
+            }
 
-    if(code == 1234) { // not needed if only handling one gcode
-        if (gcode.has_arg('X')) {
-            float arg = gcode.get_arg('X');
-            // .....
+        } else {
+            gcode.set_error("K argument required");
+            return true;
         }
+
+        if(gcode.has_arg('Z')) {
+            distance = gcode.get_arg('Z'); // distance to move
+            start_pos = stepper_motor->get_current_position();
+            running = true;
+
+            // We have to wait for this to complete
+            while(running) {
+
+                safe_sleep(100);
+                // update DROs occasionally
+                Robot::getInstance()->reset_position_from_current_actuator_position();
+            }
+
+            // reset the position based on current actuator position
+            Robot::getInstance()->reset_position_from_current_actuator_position();
+
+        } else if(gcode.has_arg('X') || gcode.has_arg('Y')) {
+            gcode.set_error("Only (Lathe) Z axis currently supported");
+
+        } else {
+            // no Z arg means manual mode where the half nut must be engaged and disengaged, G33 K0 will stop it
+            // K sets the mm per revolution
+            distance = 0;
+            running = true;
+        }
+
         return true;
     }
 
     // if not handled
     return false;
 }
-#endif
 
 // given move in spindle, calculate where the controlled axis should be
 float Lathe::calculate_position(int32_t cnt)
 {
     // TODO calculate position given counts per rotation
-    // TODO fixed 2000 cpr needs to be set in config though
-    float mm_per_rotation= 10.0F;
-    return cnt/2000.0F * mm_per_rotation;
+    // TODO fixed 100 cpr needs to be set in config though
+    float mm_per_rotation = 1.0F;
+    return cnt / 100.0F * mm_per_rotation;
+}
+
+float Lathe::get_encoder_delta()
+{
+    float delta;
+    int32_t cnt = read_quadrature_encoder();
+    int32_t qemax = get_quadrature_encoder_max_count();
+
+    // handle encoder wrap around and get encoder pulses since last read
+    if(cnt < last_cnt && (last_cnt - cnt) > (qemax / 2)) {
+        delta = (qemax - last_cnt) + cnt + 1;
+    } else if(cnt > last_cnt && (cnt - last_cnt) > (qemax / 2)) {
+        delta = (qemax - cnt) + 1;
+    } else {
+        delta = cnt - last_cnt;
+    }
+    last_cnt = cnt;
+
+    return delta;
 }
 
 void Lathe::update_position()
 {
-    if(Module::is_halted()) return;
+    if(!running || Module::is_halted()) return;
+
+    if(distance == 0) {
+        // just run the lead screw at the given rate (mm/rev in dpr) until told to stop
+
+        float delta= get_encoder_delta();
+
+        if(delta != 0) {
+            // calculate fraction of a rotation since last time and based on dpr calculate how far to move
+            float mm = dpr * (delta / ppr); // calculate mm to move based on distance per rev
+            target_position += mm; // accumulate target move
+        }
+
+        // hopefully this runs faster then the spindle rotates so it will keep up
+        // even though we only issue one step per pass (currently 5000 steps/sec max)
+        float current_position = stepper_motor->get_current_position();
+        if(target_position > current_position) {
+            stepper_motor->manual_step(true);
+
+        } else if(target_position < current_position) {
+            stepper_motor->manual_step(false);
+        }
+        return;
+    }
+
+    // TODO this is not G33 mode, currently G33 just turns on the synchronized spindle mode
+    // which will travel for the given distance before suddenly stopping
 
     // get current spindle position
     int32_t cnt = read_quadrature_encoder();
     wanted_pos = calculate_position(cnt);
 
     // compare with current position and issue step if needed
-    float current_position= stepper_motor->get_current_position();
+    float current_position = stepper_motor->get_current_position();
+    if(current_position >= start_pos + distance) {
+        running = false;
+        return;
+    }
+
     if(wanted_pos > current_position) {
         stepper_motor->manual_step(true);
 
@@ -115,4 +201,11 @@ void Lathe::update_position()
         stepper_motor->manual_step(false);
     }
 
+}
+
+void Lathe::on_halt(bool flg)
+{
+    if(flg) {
+        running= false;
+    }
 }
