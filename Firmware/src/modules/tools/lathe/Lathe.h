@@ -28,6 +28,7 @@ class Lathe : public Module {
         uint8_t motor_id;
 
         int32_t last_cnt{0};
+        float delta_mm;
         float distance;
         float start_pos;
         float dpr; // distance per rotation set by K

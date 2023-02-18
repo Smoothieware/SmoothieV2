@@ -18,7 +18,7 @@
 #define lathe_enable_key "enable"
 #define lathe_ppr_key "encoder_ppr"
 
-#define UPDATE_HZ 1000
+#define UPDATE_HZ 5000
 #define RPM_UPDATE_HZ 2
 
 REGISTER_MODULE(Lathe, Lathe::create)
@@ -67,6 +67,9 @@ bool Lathe::configure(ConfigReader& cr)
         printf("ERROR: configure-lathe: unable to get stepper motor\n");
         return false;
     }
+
+    // what is the step accuracy in mm to 2 decimal places rounded up
+    delta_mm = roundf((1.0F / stepper_motor->get_steps_per_mm()) * 100.0F) / 100.0F;
 
     // register gcodes and mcodes
     using std::placeholders::_1;
@@ -186,7 +189,7 @@ float Lathe::calculate_position(int32_t cnt)
 int32_t Lathe::get_encoder_delta()
 {
     float delta;
-    int32_t cnt = read_quadrature_encoder()>>2;
+    int32_t cnt = read_quadrature_encoder()>>2; // we onlu use full transition so divide by 4
     int32_t qemax = get_quadrature_encoder_max_count();
 
     // handle encoder wrap around and get encoder pulses since last read
@@ -200,6 +203,15 @@ int32_t Lathe::get_encoder_delta()
     last_cnt = cnt;
 
     return delta;
+}
+
+// return true if a and b are within the delta range of each other
+static bool test_float_within(float a, float b, float delta)
+{
+    float diff = a - b;
+    if (diff < 0) diff = -diff;
+    if (delta < 0) delta = -delta;
+    return (diff <= delta);
 }
 
 void Lathe::update_position()
@@ -220,11 +232,15 @@ void Lathe::update_position()
         // hopefully this runs faster then the spindle rotates so it will keep up
         // even though we only issue one step per pass (currently 5000 steps/sec max)
         float current_position = stepper_motor->get_current_position();
-        if(target_position > current_position) {
-            stepper_motor->manual_step(false);
 
-        } else if(target_position < current_position) {
-            stepper_motor->manual_step(true);
+        // we first check if the target is equal to current within the limits of the step increment
+        if(!test_float_within(target_position, current_position, delta_mm)) {
+            if(target_position > current_position) {
+                stepper_motor->manual_step(false);
+
+            } else if(target_position < current_position) {
+                stepper_motor->manual_step(true);
+            }
         }
         return;
     }
