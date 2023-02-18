@@ -67,7 +67,7 @@ int32_t StepperMotor::steps_to_target(float target)
 // use at your own risk
 void StepperMotor::manual_step(bool dir)
 {
-    if(!is_enabled()) enable(true);
+    // if(!is_enabled()) enable(true);
 
     // set direction if needed
     if(this->direction != dir) {

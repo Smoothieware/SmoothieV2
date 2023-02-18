@@ -6,13 +6,20 @@
 #include "Dispatcher.h"
 #include "GCode.h"
 #include "FastTicker.h"
+#include "SlowTicker.h"
 #include "QuadEncoder.h"
 #include "Robot.h"
 #include "StepperMotor.h"
 #include "main.h"
+#include "OutputStream.h"
+
+#include <cmath>
 
 #define lathe_enable_key "enable"
 #define lathe_ppr_key "encoder_ppr"
+
+#define UPDATE_HZ 1000
+#define RPM_UPDATE_HZ 2
 
 REGISTER_MODULE(Lathe, Lathe::create)
 
@@ -48,6 +55,7 @@ bool Lathe::configure(ConfigReader& cr)
 
     // pulses per rotation (takes into consideration any gearing) ppr= encoder resolution * gear ratio
     ppr = cr.get_float(m, lathe_ppr_key, 1000);
+    printf("INFO: configure-lathe: encoder ppr %f\n", ppr);
 
     // Actuator that is synchronized with the spindle
     // on a Lathe Z is the leadscrew for the carriage, X is the cross carriage
@@ -65,9 +73,21 @@ bool Lathe::configure(ConfigReader& cr)
     using std::placeholders::_2;
 
     Dispatcher::getInstance()->add_handler(Dispatcher::GCODE_HANDLER, 33, std::bind(&Lathe::handle_gcode, this, _1, _2));
+    Dispatcher::getInstance()->add_handler("rpm", std::bind( &Lathe::rpm_cmd, this, _1, _2) );
 
-    FastTicker::getInstance()->attach(5000, std::bind(&Lathe::update_position, this));
+    FastTicker::getInstance()->attach(UPDATE_HZ, std::bind(&Lathe::update_position, this));
+    SlowTicker::getInstance()->attach(RPM_UPDATE_HZ, std::bind(&Lathe::handle_rpm, this));
 
+    return true;
+}
+
+#define HELP(m) if(params == "-h") { os.printf("%s\n", m); return true; }
+bool Lathe::rpm_cmd(std::string& params, OutputStream& os)
+{
+    HELP("display current rpm");
+
+    os.printf("%1.1f\n", rpm);
+    os.set_no_response();
     return true;
 }
 
@@ -78,12 +98,8 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
     if(code == 33) {
         if(gcode.has_arg('K')) {
             dpr = gcode.get_arg('K'); // distance per revolution
-            if(dpr == 0 && running) {
-                running = false;
-                // reset the position based on current actuator position
-                Robot::getInstance()->reset_position_from_current_actuator_position();
-            } else {
-                gcode.set_error("K argument must be > 0 unless in manual mode");
+            if(dpr == 0) {
+                gcode.set_error("K argument must be > 0");
                 return true;
             }
 
@@ -93,13 +109,17 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
         }
 
         if(gcode.has_arg('Z')) {
+            if(rpm == 0) {
+                gcode.set_error("Spindle must be running");
+                return true;
+            }
+
             distance = gcode.get_arg('Z'); // distance to move
             start_pos = stepper_motor->get_current_position();
             running = true;
 
             // We have to wait for this to complete
-            while(running) {
-
+            while(running && !Module::is_halted()) {
                 safe_sleep(100);
                 // update DROs occasionally
                 Robot::getInstance()->reset_position_from_current_actuator_position();
@@ -112,10 +132,22 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
             gcode.set_error("Only (Lathe) Z axis currently supported");
 
         } else {
-            // no Z arg means manual mode where the half nut must be engaged and disengaged, G33 K0 will stop it
+            // no Z arg means manual mode where the half nut must be engaged and disengaged, control Y will stop it
             // K sets the mm per revolution
-            distance = 0;
+            distance = NAN;
+            target_position = stepper_motor->get_current_position();
             running = true;
+            while(!os.get_stop_request() && !Module::is_halted()) {
+                safe_sleep(100);
+                // update DROs occasionally
+                Robot::getInstance()->reset_position_from_current_actuator_position();
+                //printf("%f %ld\n", target_position, read_quadrature_encoder());
+            }
+            running = false;
+            os.set_stop_request(false);
+            safe_sleep(100);
+            // reset the position based on current actuator position
+            Robot::getInstance()->reset_position_from_current_actuator_position();
         }
 
         return true;
@@ -123,6 +155,23 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
 
     // if not handled
     return false;
+}
+
+// called every 1/2 second to calculate current RPM
+void Lathe::handle_rpm()
+{
+    static uint32_t last= 0;
+    uint32_t qemax = get_quadrature_encoder_max_count();
+    uint32_t cnt = abs(read_quadrature_encoder())>>2;
+    uint32_t c = (cnt > last) ? cnt - last : last - cnt;
+    last = cnt;
+
+    // deal with over/underflow
+    if(c > qemax/2 ) {
+        c= qemax - c + 1;
+    }
+
+    rpm = (c * 60 * RPM_UPDATE_HZ) / ppr;
 }
 
 // given move in spindle, calculate where the controlled axis should be
@@ -134,10 +183,10 @@ float Lathe::calculate_position(int32_t cnt)
     return cnt / 100.0F * mm_per_rotation;
 }
 
-float Lathe::get_encoder_delta()
+int32_t Lathe::get_encoder_delta()
 {
     float delta;
-    int32_t cnt = read_quadrature_encoder();
+    int32_t cnt = read_quadrature_encoder()>>2;
     int32_t qemax = get_quadrature_encoder_max_count();
 
     // handle encoder wrap around and get encoder pulses since last read
@@ -157,10 +206,10 @@ void Lathe::update_position()
 {
     if(!running || Module::is_halted()) return;
 
-    if(distance == 0) {
+    if(std::isnan(distance)) {
         // just run the lead screw at the given rate (mm/rev in dpr) until told to stop
 
-        float delta= get_encoder_delta();
+        int32_t delta= get_encoder_delta();
 
         if(delta != 0) {
             // calculate fraction of a rotation since last time and based on dpr calculate how far to move
@@ -172,10 +221,10 @@ void Lathe::update_position()
         // even though we only issue one step per pass (currently 5000 steps/sec max)
         float current_position = stepper_motor->get_current_position();
         if(target_position > current_position) {
-            stepper_motor->manual_step(true);
+            stepper_motor->manual_step(false);
 
         } else if(target_position < current_position) {
-            stepper_motor->manual_step(false);
+            stepper_motor->manual_step(true);
         }
         return;
     }

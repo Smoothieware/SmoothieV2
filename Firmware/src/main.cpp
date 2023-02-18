@@ -338,14 +338,15 @@ static void smoothie_startup(void *)
             // This needs to be done before any module that could use it
             // NOTE that Pwm::post_config_setup() needs to be called after all modules have been created
             uint32_t deffreq = 10000; // default is 10KHz
-            ConfigReader::section_map_t m;
-            if(cr.get_section("pwm1", m)) {
-                uint32_t freq = cr.get_int(m, "frequency", deffreq);
+            ConfigReader::section_map_t m1;
+            if(cr.get_section("pwm1", m1)) {
+                uint32_t freq = cr.get_int(m1, "frequency", deffreq);
                 Pwm::setup(0, freq);
                 printf("INFO: PWM1 frequency set to %lu Hz\n", freq);
             }
-            if(cr.get_section("pwm2", m)) {
-                uint32_t freq = cr.get_int(m, "frequency", deffreq);
+            ConfigReader::section_map_t m2;
+            if(cr.get_section("pwm2", m2)) {
+                uint32_t freq = cr.get_int(m2, "frequency", deffreq);
                 Pwm::setup(1, freq);
                 printf("INFO: PWM2 frequency set to %lu Hz\n", freq);
             }

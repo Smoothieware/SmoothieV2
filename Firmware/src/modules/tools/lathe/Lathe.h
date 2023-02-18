@@ -13,12 +13,15 @@ class Lathe : public Module {
         static bool create(ConfigReader& cr);
         bool configure(ConfigReader& cr);
         virtual void on_halt(bool flg);
+        float get_rpm() const { return rpm; }
 
     private:
         bool handle_gcode(GCode& gcode, OutputStream& os);
+        bool rpm_cmd(std::string& params, OutputStream& os);
         void update_position();
         float calculate_position(int32_t cnt);
-        float get_encoder_delta();
+        int32_t get_encoder_delta();
+        void handle_rpm();
 
         float wanted_pos{0};
         StepperMotor *stepper_motor;
@@ -29,6 +32,7 @@ class Lathe : public Module {
         float start_pos;
         float dpr; // distance per rotation set by K
         float ppr;  // encoder pulses per rotation
-        float target_position; // position in mm we want the Z axis to move
+        float target_position{0}; // position in mm we want the Z axis to move
+        float rpm{0};
         volatile bool running{false};
 };

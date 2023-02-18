@@ -156,7 +156,7 @@ _ramfunc_  void StepTicker::step_tick (void)
     }
 
     // if nothing has been setup we ignore the ticks
-    if(!running || check_forced_steps) {
+    if(!running && !check_forced_steps) {
         // check if anything new available
         if(conveyor->get_next_block(&current_block)) { // returns false if no new block is available
             running = start_next_block(); // returns true if there is at least one motor with steps to issue
@@ -188,6 +188,9 @@ _ramfunc_  void StepTicker::step_tick (void)
             unstep |= (1<<m);
             continue; // this will override any moves in the block queue for this motor
         }
+
+        // we check again in case we had forced steps
+        if(!running) continue;
 
         // normal processing
         if(current_block->tick_info[m].steps_to_move == 0) continue; // not active
@@ -239,15 +242,19 @@ _ramfunc_  void StepTicker::step_tick (void)
         if(motor[m]->is_moving()) still_moving = true;
     }
 
-    // do this after so we start at tick 0
-    ++current_tick; // count number of ticks
-
     // We may have set a pin on in this tick, now we set the timer to set it off
     // right now it takes about 1-2us to get here which will add to the pulse width from when it was on
     // the pulse width will be 1us (or whatever it is set to) from this point on, so at least 2-3 us
     if(unstep != 0) {
         start_unstep_ticker();
     }
+
+    // again we may only have forced steps to do
+    if(!running) return;
+
+    // do this after so we start at tick 0
+    ++current_tick; // count number of ticks
+
 
     // see if any motors are still moving
     if(!still_moving) {
