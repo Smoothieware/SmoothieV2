@@ -68,8 +68,8 @@ bool Lathe::configure(ConfigReader& cr)
         return false;
     }
 
-    // what is the step accuracy in mm to 2 decimal places rounded up
-    delta_mm = roundf((1.0F / stepper_motor->get_steps_per_mm()) * 100.0F) / 100.0F;
+    // what is the step accuracy in mm to 4 decimal places rounded up
+    delta_mm = roundf((1.0F / stepper_motor->get_steps_per_mm()) * 10000.0F) / 10000.0F;
 
     // register gcodes and mcodes
     using std::placeholders::_1;

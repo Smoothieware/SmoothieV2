@@ -17,7 +17,7 @@ static float get_encoder_delta()
 {
     static int32_t last_cnt= 0;
     float delta;
-    int32_t cnt = read_quadrature_encoder();
+    int32_t cnt = read_quadrature_encoder() >> 2;
     int32_t qemax = get_quadrature_encoder_max_count();
 
     // handle encoder wrap around and get encoder pulses since last read
@@ -38,7 +38,7 @@ static float handle_rpm()
     static uint32_t last= 0;
     float rpm;
     uint32_t qemax = get_quadrature_encoder_max_count();
-    uint32_t cnt = abs(read_quadrature_encoder());
+    uint32_t cnt = abs(read_quadrature_encoder()) >> 2;
     uint32_t c = (cnt > last) ? cnt - last : last - cnt;
     last = cnt;
 
@@ -52,13 +52,35 @@ static float handle_rpm()
     return rpm;
 }
 
+// return true if a and b are within the delta range of each other
+static bool test_float_within(float a, float b, float delta)
+{
+    float diff = a - b;
+    if (diff < 0) diff = -diff;
+    if (delta < 0) delta = -delta;
+    printf("diff= %f, delta= %f\n", diff, delta);
+    return (diff <= delta);
+}
+
+REGISTER_TEST(QETest, float_within)
+{
+    float delta_mm = roundf((1.0F / 400.0F) * 10000.0F) / 10000.0F;
+    printf("delta_mm= %f\n", delta_mm);
+    TEST_ASSERT_TRUE(test_float_within(1.0F, 1.0020F, delta_mm));
+    TEST_ASSERT_TRUE(test_float_within(1.0F, 1.0024F, delta_mm));
+    TEST_ASSERT_TRUE(test_float_within(1.0F, 1.00245F, delta_mm));
+    //TEST_ASSERT_TRUE(test_float_within(1.0F, 1.0025F, delta_mm));
+    TEST_ASSERT_FALSE(test_float_within(1.0F, 1.0026F, delta_mm));
+    TEST_ASSERT_FALSE(test_float_within(1.0F, 10.0F, delta_mm));
+}
+
 REGISTER_TEST(QETest, basic_read)
 {
     TEST_ASSERT_TRUE(setup_quadrature_encoder());
 
     int32_t last= -1;
     while(1) {
-        int32_t cnt = read_quadrature_encoder();
+        int32_t cnt = read_quadrature_encoder()>>2;
         if(last != cnt) {
             printf("%ld - delta %f - rpm %f\n", cnt, get_encoder_delta(), handle_rpm());
             last= cnt;
