@@ -70,6 +70,7 @@ bool Lathe::configure(ConfigReader& cr)
 
     // what is the step accuracy in mm to 4 decimal places rounded up
     delta_mm = roundf((1.0F / stepper_motor->get_steps_per_mm()) * 10000.0F) / 10000.0F;
+    delta_mm *= 2;
 
     // register gcodes and mcodes
     using std::placeholders::_1;
@@ -163,18 +164,17 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
 // called every 1/2 second to calculate current RPM
 void Lathe::handle_rpm()
 {
-    static uint32_t last= 0;
+    static uint32_t last = 0;
     uint32_t qemax = get_quadrature_encoder_max_count();
-    uint32_t cnt = abs(read_quadrature_encoder())>>2;
+    uint32_t cnt = read_quadrature_encoder();
     uint32_t c = (cnt > last) ? cnt - last : last - cnt;
     last = cnt;
 
     // deal with over/underflow
-    if(c > qemax/2 ) {
-        c= qemax - c + 1;
+    if(c > qemax / 2 ) {
+        c = qemax - c + 1;
     }
-
-    rpm = (c * 60 * RPM_UPDATE_HZ) / ppr;
+    rpm = (c * 60 * RPM_UPDATE_HZ) / (ppr * 4.0F);
 }
 
 // given move in spindle, calculate where the controlled axis should be
@@ -186,27 +186,37 @@ float Lathe::calculate_position(int32_t cnt)
     return cnt / 100.0F * mm_per_rotation;
 }
 
-int32_t Lathe::get_encoder_delta()
+float Lathe::get_encoder_delta()
 {
-    float delta;
-    int32_t cnt = read_quadrature_encoder()>>2; // we onlu use full transition so divide by 4
-    int32_t qemax = get_quadrature_encoder_max_count();
+    static uint32_t last_cnt = 0;
+    float delta= 0;
+    uint32_t cnt = read_quadrature_encoder();
+    uint32_t qemax = get_quadrature_encoder_max_count();
+    int sign= 1;
 
     // handle encoder wrap around and get encoder pulses since last read
     if(cnt < last_cnt && (last_cnt - cnt) > (qemax / 2)) {
         delta = (qemax - last_cnt) + cnt + 1;
+        sign= 1;
     } else if(cnt > last_cnt && (cnt - last_cnt) > (qemax / 2)) {
         delta = (qemax - cnt) + 1;
+        sign= -1;
     } else {
-        delta = cnt - last_cnt;
+        if(cnt > last_cnt) {
+            delta = cnt - last_cnt;
+            sign = 1;
+        }else if(cnt < last_cnt){
+            delta = last_cnt - cnt;
+            sign = -1;
+        }
     }
     last_cnt = cnt;
 
-    return delta;
+    return (sign * delta) / 4.0F;
 }
 
 // return true if a and b are within the delta range of each other
-static bool test_float_within(float a, float b, float delta)
+static bool equal_within(float a, float b, float delta)
 {
     float diff = a - b;
     if (diff < 0) diff = -diff;
@@ -221,7 +231,7 @@ void Lathe::update_position()
     if(std::isnan(distance)) {
         // just run the lead screw at the given rate (mm/rev in dpr) until told to stop
 
-        int32_t delta= get_encoder_delta();
+        float delta= get_encoder_delta();
 
         if(delta != 0) {
             // calculate fraction of a rotation since last time and based on dpr calculate how far to move
@@ -234,7 +244,7 @@ void Lathe::update_position()
         float current_position = stepper_motor->get_current_position();
 
         // we first check if the target is equal to current within the limits of the step increment
-        if(!test_float_within(target_position, current_position, delta_mm)) {
+        if(!equal_within(target_position, current_position, delta_mm)) {
             if(target_position > current_position) {
                 stepper_motor->manual_step(false);
 
@@ -249,8 +259,8 @@ void Lathe::update_position()
     // which will travel for the given distance before suddenly stopping
 
     // get current spindle position
-    int32_t cnt = read_quadrature_encoder();
-    wanted_pos = calculate_position(cnt);
+    float delta = get_encoder_delta();
+    wanted_pos = calculate_position(delta);
 
     // compare with current position and issue step if needed
     float current_position = stepper_motor->get_current_position();
