@@ -37,10 +37,9 @@ public:
     bool start();
     bool stop();
 
-    // whatever setup the block should register this to know when it is done
-    //std::function<void()> finished_fnc{nullptr};
-
-    std::function<void()> callback_fnc{nullptr};
+    // can be set by a module to get called at stepticker frequency (currently only used by Lathe module)
+    // return the motor number that needs to be unstepped if a step was made, or -1
+    std::function<int()> callback_fnc{nullptr};
 
 private:
     static StepTicker *instance;
@@ -58,7 +57,7 @@ private:
 
     StepperMotor* motor[k_max_actuators];
 
-    uint32_t unstep{0}; // one bit set per motor to indicayte step pin needs to be unstepped
+    uint32_t unstep{0}; // one bit set per motor to indicate step pin needs to be unstepped
     uint32_t missed_unsteps{0};
 
     Block *current_block{nullptr};

@@ -69,7 +69,6 @@ bool Lathe::configure(ConfigReader& cr)
 
     // what is the step accuracy in mm to 4 decimal places rounded up
     delta_mm = roundf((1.0F / stepper_motor->get_steps_per_mm()) * 10000.0F) / 10000.0F;
-    delta_mm *= 2;
 
     // register gcodes and mcodes
     using std::placeholders::_1;
@@ -155,10 +154,10 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
                 // update DROs occasionally
                 Robot::getInstance()->reset_position_from_current_actuator_position();
                 //printf("%f %ld\n", target_position, read_quadrature_encoder());
-                if(rpm == 0) {
-                    // also stop if spindle stops
-                    break;
-                }
+                // if(rpm == 0) {
+                //     // also stop if spindle stops
+                //     break;
+                // }
             }
             running = false;
             StepTicker::getInstance()->callback_fnc= nullptr;
@@ -243,11 +242,15 @@ float Lathe::get_encoder_delta()
 }
 
 // called from stepticker every 5us
-// @2000RPM that is an encoder pulse (2000ppr) every 15us so we would issue a step every third time
+// @2000RPM that is an encoder pulse (2000ppr) every 15us.
+// Depending on steps/mm the chances are good that only one step will keep up with the spindle at this callback rate
+// if not then two or more steps maybe issued at a very fast rate
+// NOTE We could run this at a much slower rate and try to setup a block to move the distance accumulated, at a rate
+// determined by the spindle RPM. Not sure if that is practical though.
 _ramfunc_
-void Lathe::update_position()
+int Lathe::update_position()
 {
-    if(!running || Module::is_halted()) return;
+    if(!running || Module::is_halted()) return -1;
 
     if(std::isnan(distance)) {
         // just run the lead screw at the given rate (mm/rev in dpr) until told to stop
@@ -260,8 +263,6 @@ void Lathe::update_position()
             target_position += mm; // accumulate target move
         }
 
-        // hopefully this runs faster then the spindle rotates so it will keep up
-        // even though we only issue one step per pass (currently 5000 steps/sec max)
         float current_position = stepper_motor->get_current_position();
 
         // we first check if the target is equal to current within the limits of the step increment
@@ -272,39 +273,45 @@ void Lathe::update_position()
                     current_direction= false;
                 }
                 stepper_motor->step();
-
+                return motor_id;
             } else if(target_position < current_position) {
                 if(!current_direction) {
                     stepper_motor->set_direction(true);
                     current_direction= true;
                 }
                 stepper_motor->step();
+                return motor_id;
             }
         }
-        return;
+        return -1;
     }
 
-    // TODO this is not G33 mode, currently G33 just turns on the synchronized spindle mode
-    // which will travel for the given distance before suddenly stopping
+#if 0
+    else{
+        // TODO this is not G33 mode, currently G33 just turns on the synchronized spindle mode
+        // which will travel for the given distance before suddenly stopping
 
-    // get current spindle position
-    float delta = get_encoder_delta();
-    wanted_pos = calculate_position(delta);
+        // get current spindle position
+        float delta = get_encoder_delta();
+        wanted_pos = calculate_position(delta);
 
-    // compare with current position and issue step if needed
-    float current_position = stepper_motor->get_current_position();
-    if(current_position >= start_pos + distance) {
-        running = false;
-        return;
+        // compare with current position and issue step if needed
+        float current_position = stepper_motor->get_current_position();
+        if(current_position >= start_pos + distance) {
+            running = false;
+            return;
+        }
+
+        if(wanted_pos > current_position) {
+            stepper_motor->manual_step(true);
+
+        } else if(wanted_pos < current_position) {
+            stepper_motor->manual_step(false);
+        }
     }
+#endif
 
-    if(wanted_pos > current_position) {
-        stepper_motor->manual_step(true);
-
-    } else if(wanted_pos < current_position) {
-        stepper_motor->manual_step(false);
-    }
-
+    return -1;
 }
 
 void Lathe::on_halt(bool flg)

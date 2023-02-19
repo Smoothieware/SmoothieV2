@@ -81,6 +81,13 @@ REGISTER_TEST(QETest, float_within)
     //TEST_ASSERT_TRUE(test_float_within(1.0F, 1.0025F, delta_mm));
     TEST_ASSERT_FALSE(test_float_within(1.0F, 1.0026F, delta_mm));
     TEST_ASSERT_FALSE(test_float_within(1.0F, 10.0F, delta_mm));
+
+    TEST_ASSERT_TRUE(test_float_within(-1.0F, -1.0020F, delta_mm));
+    TEST_ASSERT_TRUE(test_float_within(-1.0F, -1.0024F, delta_mm));
+    TEST_ASSERT_TRUE(test_float_within(-1.0F, -1.00245F, delta_mm));
+    //TEST_ASSERT_TRUE(test_float_within(1.0F, 1.0025F, delta_mm));
+    TEST_ASSERT_FALSE(test_float_within(-1.0F, -1.0026F, delta_mm));
+    TEST_ASSERT_FALSE(test_float_within(-1.0F, -10.0F, delta_mm));
 }
 
 REGISTER_TEST(QETest, basic_read)

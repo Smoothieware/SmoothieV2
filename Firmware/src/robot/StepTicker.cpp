@@ -157,7 +157,11 @@ _ramfunc_  void StepTicker::step_tick (void)
 
     if(callback_fnc) {
         // call an external function
-        callback_fnc();
+        int m= callback_fnc();
+        if(m >= 0) {
+            // we stepped so schedule an unstep
+            unstep |= (1<<m);
+        }
     }
 
     // if nothing has been setup we ignore the ticks
@@ -165,9 +169,17 @@ _ramfunc_  void StepTicker::step_tick (void)
         // check if anything new available
         if(conveyor->get_next_block(&current_block)) { // returns false if no new block is available
             running = start_next_block(); // returns true if there is at least one motor with steps to issue
-            if(!running) return;
+            if(!running) {
+                if(unstep != 0) {
+                    start_unstep_ticker();
+                }
+                return;
+            }
         } else {
-            return;
+            if(unstep != 0) {
+                start_unstep_ticker();
+            }
+           return;
         }
     }
 

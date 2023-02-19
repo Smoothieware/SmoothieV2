@@ -18,7 +18,7 @@ class Lathe : public Module {
     private:
         bool handle_gcode(GCode& gcode, OutputStream& os);
         bool rpm_cmd(std::string& params, OutputStream& os);
-        void update_position();
+        int update_position();
         float calculate_position(int32_t cnt);
         float get_encoder_delta();
         void handle_rpm();
