@@ -15,11 +15,9 @@ using systime_t = uint32_t;
 
 #define PPR 2000
 
-static float get_encoder_delta()
+static float calc_encoder_delta(uint32_t last_cnt, uint32_t cnt)
 {
-    static uint32_t last_cnt = 0;
     float delta= 0;
-    uint32_t cnt = read_quadrature_encoder();
     uint32_t qemax = get_quadrature_encoder_max_count();
     int sign= 1;
 
@@ -28,7 +26,7 @@ static float get_encoder_delta()
         delta = (qemax - last_cnt) + cnt + 1;
         sign= 1;
     } else if(cnt > last_cnt && (cnt - last_cnt) > (qemax / 2)) {
-        delta = (qemax - cnt) + 1;
+        delta = (qemax - cnt) + last_cnt + 1;
         sign= -1;
     } else if(cnt > last_cnt) {
         delta = cnt - last_cnt;
@@ -40,6 +38,13 @@ static float get_encoder_delta()
     last_cnt = cnt;
 
     return (sign * delta) / 4.0F;
+}
+
+static float get_encoder_delta()
+{
+    static uint32_t last_cnt = 0;
+    uint32_t cnt = read_quadrature_encoder();
+    return calc_encoder_delta(last_cnt, cnt);
 }
 
 static float handle_rpm()
@@ -88,6 +93,24 @@ REGISTER_TEST(QETest, float_within)
     //TEST_ASSERT_TRUE(test_float_within(1.0F, 1.0025F, delta_mm));
     TEST_ASSERT_FALSE(test_float_within(-1.0F, -1.0026F, delta_mm));
     TEST_ASSERT_FALSE(test_float_within(-1.0F, -10.0F, delta_mm));
+}
+
+REGISTER_TEST(QETest, delta)
+{
+    TEST_ASSERT_EQUAL_FLOAT(0.25, calc_encoder_delta(0, 1));
+    TEST_ASSERT_EQUAL_FLOAT(-0.25, calc_encoder_delta(1, 0));
+    TEST_ASSERT_EQUAL_FLOAT(-0.25, calc_encoder_delta(0, 65535));
+    TEST_ASSERT_EQUAL_FLOAT(0.25, calc_encoder_delta(65535, 0));
+
+    TEST_ASSERT_EQUAL_FLOAT(0.5, calc_encoder_delta(1, 3));
+    TEST_ASSERT_EQUAL_FLOAT(-0.5, calc_encoder_delta(3, 1));
+    TEST_ASSERT_EQUAL_FLOAT(-0.5, calc_encoder_delta(1, 65535));
+    TEST_ASSERT_EQUAL_FLOAT(0.5, calc_encoder_delta(65535, 1));
+
+    TEST_ASSERT_EQUAL_FLOAT(1.0, calc_encoder_delta(1, 5));
+    TEST_ASSERT_EQUAL_FLOAT(-1.0, calc_encoder_delta(5, 1));
+    TEST_ASSERT_EQUAL_FLOAT(-1.0, calc_encoder_delta(1, 65533));
+    TEST_ASSERT_EQUAL_FLOAT(1.0, calc_encoder_delta(65533, 1));
 }
 
 REGISTER_TEST(QETest, basic_read)

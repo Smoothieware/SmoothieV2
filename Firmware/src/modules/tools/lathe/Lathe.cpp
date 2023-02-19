@@ -227,7 +227,7 @@ float Lathe::get_encoder_delta()
         delta = (qemax - last_cnt) + cnt + 1;
         sign= 1;
     } else if(cnt > last_cnt && (cnt - last_cnt) > (qemax / 2)) {
-        delta = (qemax - cnt) + 1;
+        delta = (qemax - cnt) + last_cnt + 1;
         sign= -1;
     } else if(cnt > last_cnt) {
         delta = cnt - last_cnt;
