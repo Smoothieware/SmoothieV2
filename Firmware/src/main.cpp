@@ -223,7 +223,6 @@ static void smoothie_startup(void *)
 #else
     step_ticker->set_frequency(200000); // 200KHz
 #endif
-    // TODO make this configurable
     step_ticker->set_unstep_time(1); // 1us step pulse by default
 
     bool flash_on_boot = true;
