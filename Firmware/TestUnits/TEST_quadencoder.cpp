@@ -21,7 +21,7 @@ static float get_encoder_delta()
     float delta= 0;
     uint32_t cnt = read_quadrature_encoder();
     uint32_t qemax = get_quadrature_encoder_max_count();
-    int sign;
+    int sign= 1;
 
     // handle encoder wrap around and get encoder pulses since last read
     if(cnt < last_cnt && (last_cnt - cnt) > (qemax / 2)) {
@@ -30,14 +30,12 @@ static float get_encoder_delta()
     } else if(cnt > last_cnt && (cnt - last_cnt) > (qemax / 2)) {
         delta = (qemax - cnt) + 1;
         sign= -1;
-    } else {
-        if(cnt > last_cnt) {
-            delta = cnt - last_cnt;
-            sign = 1;
-        }else{
-            delta = last_cnt - cnt;
-            sign = -1;
-        }
+    } else if(cnt > last_cnt) {
+        delta = cnt - last_cnt;
+        sign = 1;
+     }else if(cnt < last_cnt){
+        delta = last_cnt - cnt;
+        sign = -1;
     }
     last_cnt = cnt;
 

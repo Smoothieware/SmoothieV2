@@ -18,7 +18,6 @@
 #define lathe_enable_key "enable"
 #define lathe_ppr_key "encoder_ppr"
 
-#define UPDATE_HZ 5000
 #define RPM_UPDATE_HZ 2
 
 REGISTER_MODULE(Lathe, Lathe::create)
@@ -79,7 +78,15 @@ bool Lathe::configure(ConfigReader& cr)
     Dispatcher::getInstance()->add_handler(Dispatcher::GCODE_HANDLER, 33, std::bind(&Lathe::handle_gcode, this, _1, _2));
     Dispatcher::getInstance()->add_handler("rpm", std::bind( &Lathe::rpm_cmd, this, _1, _2) );
 
-    FastTicker::getInstance()->attach(UPDATE_HZ, std::bind(&Lathe::update_position, this));
+    // figure out fastest we can deliver steps to Z drive
+    float spmm= stepper_motor->get_steps_per_mm();
+    float maxfr= stepper_motor->get_max_rate();
+    float maxsteprate= spmm * maxfr; // steps/sec
+    uint32_t update_hz =  std::max(maxsteprate, 5000.0F); // max 5KHz though
+    if(update_hz < maxsteprate) {
+        printf("WARNING: configure-lathe: maximum step rate limited to %f mm/sec\n", update_hz/spmm);
+    }
+    FastTicker::getInstance()->attach(update_hz, std::bind(&Lathe::update_position, this));
     SlowTicker::getInstance()->attach(RPM_UPDATE_HZ, std::bind(&Lathe::handle_rpm, this));
 
     return true;
@@ -201,14 +208,12 @@ float Lathe::get_encoder_delta()
     } else if(cnt > last_cnt && (cnt - last_cnt) > (qemax / 2)) {
         delta = (qemax - cnt) + 1;
         sign= -1;
-    } else {
-        if(cnt > last_cnt) {
-            delta = cnt - last_cnt;
-            sign = 1;
-        }else if(cnt < last_cnt){
-            delta = last_cnt - cnt;
-            sign = -1;
-        }
+    } else if(cnt > last_cnt) {
+        delta = cnt - last_cnt;
+        sign = 1;
+    }else if(cnt < last_cnt){
+        delta = last_cnt - cnt;
+        sign = -1;
     }
     last_cnt = cnt;
 
