@@ -223,6 +223,7 @@ static void smoothie_startup(void *)
 #else
     step_ticker->set_frequency(200000); // 200KHz
 #endif
+    // TODO make this configurable
     step_ticker->set_unstep_time(1); // 1us step pulse by default
 
     bool flash_on_boot = true;
@@ -274,6 +275,12 @@ static void smoothie_startup(void *)
             // get system settings
             ConfigReader::section_map_t sm;
             if(cr.get_section("system", sm)) {
+                int unsteptime = cr.get_int(sm, "step_pulse_us", -1);
+                if(unsteptime >= 1) {
+                    step_ticker->set_unstep_time(unsteptime);
+                    printf("INFO: Step pulse set to %d us\n", unsteptime);
+                }
+
                 std::string p = cr.get_string(sm, "aux_play_led", "nc");
                 aux_play_led = new Pin(p.c_str(), Pin::AS_OUTPUT);
                 if(!aux_play_led->connected()) {
