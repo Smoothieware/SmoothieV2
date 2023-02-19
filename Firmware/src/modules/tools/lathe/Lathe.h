@@ -26,7 +26,7 @@ class Lathe : public Module {
         float wanted_pos{0};
         StepperMotor *stepper_motor;
         uint8_t motor_id;
-
+        bool current_direction;
         float delta_mm;
         float distance;
         float start_pos;

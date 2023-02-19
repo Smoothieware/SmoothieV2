@@ -5,7 +5,7 @@
 #include "Consoles.h"
 #include "Dispatcher.h"
 #include "GCode.h"
-#include "FastTicker.h"
+#include "StepTicker.h"
 #include "SlowTicker.h"
 #include "QuadEncoder.h"
 #include "Robot.h"
@@ -78,15 +78,6 @@ bool Lathe::configure(ConfigReader& cr)
     Dispatcher::getInstance()->add_handler(Dispatcher::GCODE_HANDLER, 33, std::bind(&Lathe::handle_gcode, this, _1, _2));
     Dispatcher::getInstance()->add_handler("rpm", std::bind( &Lathe::rpm_cmd, this, _1, _2) );
 
-    // figure out fastest we can deliver steps to Z drive
-    float spmm= stepper_motor->get_steps_per_mm();
-    float maxfr= stepper_motor->get_max_rate();
-    float maxsteprate= spmm * maxfr; // steps/sec
-    uint32_t update_hz = std::min(maxsteprate, 5000.0F); // max 5KHz though
-    if(update_hz < maxsteprate) {
-        printf("WARNING: configure-lathe: maximum step rate limited to %f mm/sec\n", update_hz/spmm);
-    }
-    FastTicker::getInstance()->attach(update_hz, std::bind(&Lathe::update_position, this));
     SlowTicker::getInstance()->attach(RPM_UPDATE_HZ, std::bind(&Lathe::handle_rpm, this));
 
     return true;
@@ -153,8 +144,12 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
             distance = NAN;
             target_position = stepper_motor->get_current_position();
             if(!stepper_motor->is_enabled()) stepper_motor->enable(true);
+            current_direction= stepper_motor->get_direction();
 
+            // have stepticker call us
+            StepTicker::getInstance()->callback_fnc= std::bind(&Lathe::update_position, this);
             running = true;
+
             while(!os.get_stop_request() && !Module::is_halted()) {
                 safe_sleep(100);
                 // update DROs occasionally
@@ -166,6 +161,8 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
                 }
             }
             running = false;
+            StepTicker::getInstance()->callback_fnc= nullptr;
+
             os.set_stop_request(false);
             safe_sleep(100);
             // reset the position based on current actuator position
@@ -204,6 +201,20 @@ float Lathe::calculate_position(int32_t cnt)
     return cnt / 100.0F * mm_per_rotation;
 }
 
+#define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
+
+// As these are called from the stepticker put them in RAM for faster execution
+// return true if a and b are within the delta range of each other
+_ramfunc_
+static bool equal_within(float a, float b, float delta)
+{
+    float diff = a - b;
+    if (diff < 0) diff = -diff;
+    if (delta < 0) delta = -delta;
+    return (diff <= delta);
+}
+
+_ramfunc_
 float Lathe::get_encoder_delta()
 {
     static uint32_t last_cnt = 0;
@@ -231,15 +242,9 @@ float Lathe::get_encoder_delta()
     return (sign * delta) / 4.0F;
 }
 
-// return true if a and b are within the delta range of each other
-static bool equal_within(float a, float b, float delta)
-{
-    float diff = a - b;
-    if (diff < 0) diff = -diff;
-    if (delta < 0) delta = -delta;
-    return (diff <= delta);
-}
-
+// called from stepticker every 5us
+// @2000RPM that is an encoder pulse (2000ppr) every 15us so we would issue a step every third time
+_ramfunc_
 void Lathe::update_position()
 {
     if(!running || Module::is_halted()) return;
@@ -251,7 +256,7 @@ void Lathe::update_position()
 
         if(delta != 0) {
             // calculate fraction of a rotation since last time and based on dpr calculate how far to move
-            float mm = dpr * (delta / ppr); // calculate mm to move based on distance per rev
+            float mm = dpr * (delta / ppr); // calculate mm to move based on requested distance per rev
             target_position += mm; // accumulate target move
         }
 
@@ -262,10 +267,18 @@ void Lathe::update_position()
         // we first check if the target is equal to current within the limits of the step increment
         if(!equal_within(target_position, current_position, delta_mm)) {
             if(target_position > current_position) {
-                stepper_motor->manual_step(false);
+                if(current_direction) {
+                    stepper_motor->set_direction(false);
+                    current_direction= false;
+                }
+                stepper_motor->step();
 
             } else if(target_position < current_position) {
-                stepper_motor->manual_step(true);
+                if(!current_direction) {
+                    stepper_motor->set_direction(true);
+                    current_direction= true;
+                }
+                stepper_motor->step();
             }
         }
         return;

@@ -22,6 +22,7 @@ class StepperMotor
         inline void unstep() { step_pin.set(0); }
         // called from step ticker ISR
         inline void set_direction(bool f) { dir_pin.set(f); direction= f; }
+        inline bool get_direction() const { return direction; }
 
         void enable(bool state);
         bool is_enabled() const;

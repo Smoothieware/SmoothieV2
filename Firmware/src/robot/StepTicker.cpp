@@ -155,6 +155,11 @@ _ramfunc_  void StepTicker::step_tick (void)
         missed_unsteps++; // keep track for diagnostics
     }
 
+    if(callback_fnc) {
+        // call an external function
+        callback_fnc();
+    }
+
     // if nothing has been setup we ignore the ticks
     if(!running && !check_forced_steps) {
         // check if anything new available

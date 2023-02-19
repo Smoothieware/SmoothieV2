@@ -38,8 +38,9 @@ public:
     bool stop();
 
     // whatever setup the block should register this to know when it is done
-    std::function<void()> finished_fnc{nullptr};
+    //std::function<void()> finished_fnc{nullptr};
 
+    std::function<void()> callback_fnc{nullptr};
 
 private:
     static StepTicker *instance;
