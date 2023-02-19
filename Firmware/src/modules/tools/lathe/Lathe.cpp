@@ -134,6 +134,11 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
                 safe_sleep(100);
                 // update DROs occasionally
                 Robot::getInstance()->reset_position_from_current_actuator_position();
+                if(rpm == 0) {
+                    os.printf("error: Spindle stopped running\n");
+                    broadcast_halt(true);
+                    break;
+                }
             }
 
             // reset the position based on current actuator position
@@ -155,6 +160,10 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
                 // update DROs occasionally
                 Robot::getInstance()->reset_position_from_current_actuator_position();
                 //printf("%f %ld\n", target_position, read_quadrature_encoder());
+                if(rpm == 0) {
+                    // also stop if spindle stops
+                    break;
+                }
             }
             running = false;
             os.set_stop_request(false);
