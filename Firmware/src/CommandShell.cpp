@@ -1144,6 +1144,9 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
 
         os.printf("issuing %d steps at a rate of %d steps/sec on the %c axis\n", steps, sps, ax);
 
+        // make sure motors are enabled, as manula step does not check
+        if(!Robot::getInstance()->actuators[a]->is_enabled()) Robot::getInstance()->actuators[a]->enable(true);
+
         uint32_t delayus = 1000000.0F / sps;
         for(int s = 0; s < steps; s++) {
             if(Module::is_halted()) break;

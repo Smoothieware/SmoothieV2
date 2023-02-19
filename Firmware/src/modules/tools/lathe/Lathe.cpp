@@ -82,7 +82,7 @@ bool Lathe::configure(ConfigReader& cr)
     float spmm= stepper_motor->get_steps_per_mm();
     float maxfr= stepper_motor->get_max_rate();
     float maxsteprate= spmm * maxfr; // steps/sec
-    uint32_t update_hz =  std::max(maxsteprate, 5000.0F); // max 5KHz though
+    uint32_t update_hz = std::min(maxsteprate, 5000.0F); // max 5KHz though
     if(update_hz < maxsteprate) {
         printf("WARNING: configure-lathe: maximum step rate limited to %f mm/sec\n", update_hz/spmm);
     }
@@ -147,6 +147,8 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
             // K sets the mm per revolution
             distance = NAN;
             target_position = stepper_motor->get_current_position();
+            if(!stepper_motor->is_enabled()) stepper_motor->enable(true);
+
             running = true;
             while(!os.get_stop_request() && !Module::is_halted()) {
                 safe_sleep(100);
