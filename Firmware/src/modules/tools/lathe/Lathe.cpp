@@ -180,6 +180,7 @@ void Lathe::handle_rpm()
 {
     static uint32_t last = 0;
     uint32_t qemax = get_quadrature_encoder_max_count();
+    uint32_t qediv= get_quadrature_encoder_div();
     uint32_t cnt = read_quadrature_encoder();
     uint32_t c = (cnt > last) ? cnt - last : last - cnt;
     last = cnt;
@@ -188,7 +189,7 @@ void Lathe::handle_rpm()
     if(c > qemax / 2 ) {
         c = qemax - c + 1;
     }
-    rpm = (c * 60 * RPM_UPDATE_HZ) / (ppr * 4.0F);
+    rpm = (c * 60 * RPM_UPDATE_HZ) / (ppr * qediv);
 }
 
 // given move in spindle, calculate where the controlled axis should be
@@ -220,6 +221,7 @@ float Lathe::get_encoder_delta()
     float delta= 0;
     uint32_t cnt = read_quadrature_encoder();
     uint32_t qemax = get_quadrature_encoder_max_count();
+    uint32_t qediv= get_quadrature_encoder_div();
     int sign= 1;
 
     // handle encoder wrap around and get encoder pulses since last read
@@ -238,7 +240,7 @@ float Lathe::get_encoder_delta()
     }
     last_cnt = cnt;
 
-    return (sign * delta) / 4.0F;
+    return (sign * delta) / qediv;
 }
 
 // called from stepticker every 5us

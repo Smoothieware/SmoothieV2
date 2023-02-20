@@ -361,7 +361,7 @@ static IRQn_Type getIRQ(uint16_t pin)
     return EXTI0_IRQn;
 }
 
-bool Pin::as_interrupt(std::function<void(void)> fnc, bool rising, uint32_t pri)
+bool Pin::as_interrupt(std::function<void(void)> fnc, INT_TYPE_T rising, uint32_t pri)
 {
     if(!valid) return false;
     if(!allocate_interrupt_pin(gpiopin)) {
@@ -373,7 +373,13 @@ bool Pin::as_interrupt(std::function<void(void)> fnc, bool rising, uint32_t pri)
     interrupt_fncs[gpiopin] = fnc;
 
     GPIO_InitTypeDef GPIO_InitStruct{0};
-    GPIO_InitStruct.Mode = rising ? GPIO_MODE_IT_RISING : GPIO_MODE_IT_FALLING;
+    uint32_t mode=GPIO_MODE_IT_RISING;
+    switch(rising) {
+        case RISING: mode= GPIO_MODE_IT_RISING; break;
+        case FALLING: mode= GPIO_MODE_IT_FALLING; break;
+        case CHANGE: mode= GPIO_MODE_IT_RISING_FALLING; break;
+    }
+    GPIO_InitStruct.Mode = mode;
     GPIO_InitStruct.Pin = ppin;
     GPIO_InitStruct.Pull = pullup ? GPIO_PULLUP : pulldown ? GPIO_PULLDOWN : GPIO_NOPULL;
 
@@ -382,6 +388,7 @@ bool Pin::as_interrupt(std::function<void(void)> fnc, bool rising, uint32_t pri)
     NVIC_SetPriority(getIRQ(ppin), pri);
     NVIC_EnableIRQ(getIRQ(ppin));
 
+    is_input= true;
     interrupt = true;
     return true;
 }
