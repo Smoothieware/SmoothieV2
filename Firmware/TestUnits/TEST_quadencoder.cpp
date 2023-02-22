@@ -10,6 +10,8 @@
 #include "benchmark_timer.h"
 
 #include "QuadEncoder.h"
+#include "RotaryEncoder.h"
+#include "Pin.h"
 
 using systime_t = uint32_t;
 
@@ -120,18 +122,34 @@ REGISTER_TEST(QETest, delta)
 }
 #endif
 
+// Tests both hardware encoder and S/W rotary encoder
 REGISTER_TEST(QETest, basic_read)
 {
     TEST_ASSERT_TRUE(setup_quadrature_encoder());
 
+    // pin1 and pin2 must be interrupt capable pins that have not already got interrupts assigned for that line number
+    Pin pin1("PJ6^"), pin2("PJ9^");
+    RotaryEncoder enc(pin1, pin2);
+    TEST_ASSERT_TRUE(enc.setup());
+
     uint32_t last_cnt = 0;
+    uint32_t last_rotary_cnt= 0;
+
     while(1) {
         uint32_t cnt = read_quadrature_encoder();
 
         if(last_cnt != cnt) {
-            printf("raw %ld - diff %ld - delta %f - rpm %f\n", cnt, cnt-last_cnt, get_encoder_delta(), handle_rpm());
+            printf("qe: raw %ld - diff %ld - delta %f - rpm %f\n", cnt, cnt-last_cnt, get_encoder_delta(), handle_rpm());
             last_cnt = cnt;
         }
+
+        uint32_t c= enc.get_count();
+
+        if(last_rotary_cnt != c) {
+            printf("Rotary count= %lu - diff %ld\n", c, c-last_rotary_cnt);
+            last_rotary_cnt= c;
+        }
+
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
