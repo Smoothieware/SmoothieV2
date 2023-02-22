@@ -128,7 +128,7 @@ REGISTER_TEST(QETest, basic_read)
     TEST_ASSERT_TRUE(setup_quadrature_encoder());
 
     // pin1 and pin2 must be interrupt capable pins that have not already got interrupts assigned for that line number
-    Pin pin1("PJ6^"), pin2("PJ9^");
+    Pin pin1("PA6^"), pin2("PA5^");
     RotaryEncoder enc(pin1, pin2);
     TEST_ASSERT_TRUE(enc.setup());
 
