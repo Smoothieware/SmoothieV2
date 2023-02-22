@@ -5,6 +5,13 @@
 //#define HALF_STEP
 
 #define R_START 0x0
+// Values returned by 'process'
+// No complete step yet.
+#define DIR_NONE 0x0
+// Clockwise step.
+#define DIR_CW 0x10
+// Anti-clockwise step.
+#define DIR_CCW 0x20
 
 #ifdef HALF_STEP
 // Use the half-step state table (emits a code at 00 and 11)
@@ -38,13 +45,6 @@ const unsigned char ttable[6][4] = {
 #define R_CCW_FINAL 0x5
 #define R_CCW_NEXT 0x6
 
-// Values returned by 'process'
-// No complete step yet.
-#define DIR_NONE 0x0
-// Clockwise step.
-#define DIR_CW 0x10
-// Anti-clockwise step.
-#define DIR_CCW 0x20
 
 const uint8_t ttable[7][4] = {
     // R_START
