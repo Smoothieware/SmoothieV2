@@ -1193,10 +1193,10 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
         uint32_t delayms = 5000.0F; // step every five seconds
         for(int s = 0; s < nreps; s++) {
             if(Module::is_halted()) break;
-            os.printf("// leading edge\n");
+            os.printf("// leading edge should step\n");
             Robot::getInstance()->actuators[a]->step();
             safe_sleep(delayms);
-            os.printf("// trailing edge\n");
+            os.printf("// trailing edge should not step\n");
             Robot::getInstance()->actuators[a]->unstep();
             if(Module::is_halted()) break;
             safe_sleep(delayms);
