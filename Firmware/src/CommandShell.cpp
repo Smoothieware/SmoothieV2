@@ -1144,7 +1144,7 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
 
         os.printf("issuing %d steps at a rate of %d steps/sec on the %c axis\n", steps, sps, ax);
 
-        // make sure motors are enabled, as manula step does not check
+        // make sure motors are enabled, as manual step does not check
         if(!Robot::getInstance()->actuators[a]->is_enabled()) Robot::getInstance()->actuators[a]->enable(true);
 
         uint32_t delayus = 1000000.0F / sps;
@@ -1152,8 +1152,12 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
             if(Module::is_halted()) break;
             Robot::getInstance()->actuators[a]->manual_step(dir);
             // delay
-            uint32_t st = benchmark_timer_start();
-            while(benchmark_timer_as_us(benchmark_timer_elapsed(st)) < delayus) ;
+            if(delayus >= 10000) {
+                safe_sleep(delayus/1000);
+            }else{
+                uint32_t st = benchmark_timer_start();
+                while(benchmark_timer_as_us(benchmark_timer_elapsed(st)) < delayus) ;
+            }
         }
 
         // reset the position based on current actuator position
