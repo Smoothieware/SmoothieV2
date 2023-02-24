@@ -1164,7 +1164,7 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
         Robot::getInstance()->reset_position_from_current_actuator_position();
 
     } else if (what == "pulse") {
-        // issues a step pulse then waits then unsteps, for testing when stepper moves
+        // issues a step pulse then waits then unsteps, for testing if step pin needs to be inverted
         std::string axis = stringutils::shift_parameter( params );
         std::string reps = stringutils::shift_parameter( params );
         if(axis.empty()) {
