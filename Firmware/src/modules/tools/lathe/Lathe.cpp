@@ -12,11 +12,13 @@
 #include "StepperMotor.h"
 #include "main.h"
 #include "OutputStream.h"
+#include "TM1638.h"
 
 #include <cmath>
 
-#define lathe_enable_key "enable"
-#define lathe_ppr_key "encoder_ppr"
+#define enable_key "enable"
+#define ppr_key "encoder_ppr"
+#define display_rpm_key "display_rpm"
 
 #define RPM_UPDATE_HZ 2
 
@@ -42,8 +44,8 @@ bool Lathe::configure(ConfigReader& cr)
     ConfigReader::section_map_t m;
     if(!cr.get_section("lathe", m)) return false;
 
-    bool lathe_enable = cr.get_bool(m,  lathe_enable_key , false);
-    if(!lathe_enable) {
+    bool enable = cr.get_bool(m,  enable_key , false);
+    if(!enable) {
         return false;
     }
 
@@ -53,7 +55,7 @@ bool Lathe::configure(ConfigReader& cr)
     }
 
     // pulses per rotation (takes into consideration any gearing) ppr= encoder resolution * gear ratio
-    ppr = cr.get_float(m, lathe_ppr_key, 1000);
+    ppr = cr.get_float(m, ppr_key, 1000);
     printf("INFO: configure-lathe: encoder ppr %f\n", ppr);
 
     // Actuator that is synchronized with the spindle
@@ -69,6 +71,20 @@ bool Lathe::configure(ConfigReader& cr)
 
     // what is the step accuracy in mm to 4 decimal places rounded up
     delta_mm = roundf((1.0F / stepper_motor->get_steps_per_mm()) * 10000.0F) / 10000.0F;
+    display_rpm = cr.get_bool(m,  display_rpm_key , false);
+
+    if(display_rpm) {
+        // get display if available
+        Module *v= Module::lookup("tm1638");
+        if(v != nullptr) {
+            TM1638 *tm=  static_cast<TM1638*>(v);
+            display= tm;
+            tm->displayBegin();
+        }else{
+            printf("ERROR: configure-lathe: display not available\n");
+            display_rpm= false;
+        }
+    }
 
     // register gcodes and mcodes
     using std::placeholders::_1;
@@ -190,6 +206,11 @@ void Lathe::handle_rpm()
         c = qemax - c + 1;
     }
     rpm = (c * 60 * RPM_UPDATE_HZ) / (ppr * qediv);
+
+    if(display_rpm) {
+        TM1638 *tm=  static_cast<TM1638*>(display);
+        tm->displayIntNum((int)roundf(rpm), false, TMAlignTextRight);
+    }
 }
 
 // given move in spindle, calculate where the controlled axis should be

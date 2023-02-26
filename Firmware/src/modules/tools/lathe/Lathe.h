@@ -35,4 +35,6 @@ class Lathe : public Module {
         float target_position{0}; // position in mm we want the Z axis to move
         float rpm{0};
         volatile bool running{false};
+        bool display_rpm;
+        void *display;
 };

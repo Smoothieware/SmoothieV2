@@ -1,4 +1,7 @@
 /*
+  build with...
+    rake testing=1 test=tm1638 modules=utils/display/tm1638 -m
+
   Project Name: TM1638
   File: TM1638plus_TEST_Model1.ino
   Description: ST32 demo file library for  TM1638 module(LED & KEY). Model 1
