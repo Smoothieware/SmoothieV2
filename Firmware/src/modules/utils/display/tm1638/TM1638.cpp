@@ -18,7 +18,7 @@ REGISTER_MODULE(TM1638, TM1638::create)
 
 bool TM1638::create(ConfigReader& cr)
 {
-    printf("DEBUG: configure TM1638 button\n");
+    printf("DEBUG: configure TM1638 display\n");
     TM1638 *tm = new TM1638();
     if(!tm->configure(cr)) {
         printf("INFO: TM1638 not enabled\n");

@@ -22,6 +22,7 @@ class Lathe : public Module {
         float calculate_position(int32_t cnt);
         float get_encoder_delta();
         void handle_rpm();
+        void after_load();
 
         float wanted_pos{0};
         StepperMotor *stepper_motor;

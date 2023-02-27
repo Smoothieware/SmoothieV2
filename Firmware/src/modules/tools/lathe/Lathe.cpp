@@ -37,6 +37,7 @@ bool Lathe::create(ConfigReader& cr)
 
 Lathe::Lathe() : Module("Lathe")
 {
+    distance= NAN;
 }
 
 bool Lathe::configure(ConfigReader& cr)
@@ -71,19 +72,12 @@ bool Lathe::configure(ConfigReader& cr)
 
     // what is the step accuracy in mm to 4 decimal places rounded up
     delta_mm = roundf((1.0F / stepper_motor->get_steps_per_mm()) * 10000.0F) / 10000.0F;
-    display_rpm = cr.get_bool(m,  display_rpm_key , false);
+    display_rpm = cr.get_bool(m,  display_rpm_key, false);
 
     if(display_rpm) {
-        // get display if available
-        Module *v= Module::lookup("tm1638");
-        if(v != nullptr) {
-            TM1638 *tm=  static_cast<TM1638*>(v);
-            display= tm;
-            tm->displayBegin();
-        }else{
-            printf("ERROR: configure-lathe: display not available\n");
-            display_rpm= false;
-        }
+        // register a startup function that will be called after all modules have been loaded
+        // (as this module relies on the tm1638 module having been loaded)
+        register_startup(std::bind(&Lathe::after_load, this));
     }
 
     // register gcodes and mcodes
@@ -96,6 +90,22 @@ bool Lathe::configure(ConfigReader& cr)
     SlowTicker::getInstance()->attach(RPM_UPDATE_HZ, std::bind(&Lathe::handle_rpm, this));
 
     return true;
+}
+
+void Lathe::after_load()
+{
+    // get display if available
+    Module *v= Module::lookup("tm1638");
+    if(v != nullptr) {
+        TM1638 *tm=  static_cast<TM1638*>(v);
+        display= tm;
+        tm->displayBegin();
+        tm->reset();
+        printf("DEBUG: lathe: display started\n");
+    }else{
+        printf("WARNING: lathe: display not available\n");
+        display_rpm= false;
+    }
 }
 
 #define HELP(m) if(params == "-h") { os.printf("%s\n", m); return true; }
@@ -176,6 +186,7 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
                 // }
             }
             running = false;
+
             StepTicker::getInstance()->callback_fnc= nullptr;
 
             os.set_stop_request(false);
@@ -210,6 +221,11 @@ void Lathe::handle_rpm()
     if(display_rpm) {
         TM1638 *tm=  static_cast<TM1638*>(display);
         tm->displayIntNum((int)roundf(rpm), false, TMAlignTextRight);
+        if(running) {
+            tm->setLED(std::isnan(distance)?0:1, 1);
+        }else{
+            tm->setLED(std::isnan(distance)?0:1, 0);
+        }
     }
 }
 
