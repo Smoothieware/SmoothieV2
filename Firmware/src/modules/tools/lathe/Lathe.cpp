@@ -20,7 +20,7 @@
 #define ppr_key "encoder_ppr"
 #define display_rpm_key "display_rpm"
 
-#define RPM_UPDATE_HZ 2
+#define RPM_UPDATE_HZ 10
 
 REGISTER_MODULE(Lathe, Lathe::create)
 
@@ -202,9 +202,12 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
     return false;
 }
 
-// called every 1/2 second to calculate current RPM
+// called every 100 ms to calculate current RPM
+// Note at .5 secs sample rate we would wrap the counter at 960RPM and get a false reading (with a 2000ppr encoder returning 4000ppr)
+// at 10Hz sample rate we can go upto 4500RPM without wrapping
 void Lathe::handle_rpm()
 {
+    static uint32_t iter= 0;
     static uint32_t last = 0;
     uint32_t qemax = get_quadrature_encoder_max_count();
     uint32_t qediv= get_quadrature_encoder_div();
@@ -219,12 +222,16 @@ void Lathe::handle_rpm()
     rpm = (c * 60 * RPM_UPDATE_HZ) / (ppr * qediv);
 
     if(display_rpm) {
-        TM1638 *tm=  static_cast<TM1638*>(display);
-        tm->displayIntNum((int)roundf(rpm), false, TMAlignTextRight);
-        if(running) {
-            tm->setLED(std::isnan(distance)?0:1, 1);
-        }else{
-            tm->setLED(std::isnan(distance)?0:1, 0);
+        // update display once per second
+        if(++iter >= RPM_UPDATE_HZ) {
+            TM1638 *tm=  static_cast<TM1638*>(display);
+            tm->displayIntNum((int)roundf(rpm), false, TMAlignTextRight);
+            if(running) {
+                tm->setLED(std::isnan(distance)?0:1, 1);
+            }else{
+                tm->setLED(std::isnan(distance)?0:1, 0);
+            }
+            iter= 0;
         }
     }
 }

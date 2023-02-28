@@ -84,7 +84,7 @@ static bool MX_QE_TIM_Init(void)
     htimqe.Init.Period = 65535;
     htimqe.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
     htimqe.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
-    sConfig.EncoderMode = TIM_ENCODERMODE_TI1; //TIM_ENCODERMODE_TI12;
+    sConfig.EncoderMode = TIM_ENCODERMODE_TI1; // *2 mode // *4 mode TIM_ENCODERMODE_TI12;
     sConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
     sConfig.IC1Selection = TIM_ICSELECTION_DIRECTTI;
     sConfig.IC1Prescaler = TIM_ICPSC_DIV1;
