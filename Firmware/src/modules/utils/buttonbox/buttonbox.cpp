@@ -56,19 +56,21 @@ bool ButtonBox::configure(ConfigReader& cr)
         std::string name = i.first;
         auto& m = i.second;
         if(!cr.get_bool(m, enable_key, false)) continue; // skip if not enabled
-        std::string p= cr.get_string(m, pin_key, "nc");
-        Pin *b= nullptr;
-        bool external= false;
+        std::string p = cr.get_string(m, pin_key, "nc");
+        Pin *b = nullptr;
+        bool external = false;
         if(p == "external") {
-            external= true;
+            external = true;
+            b = nullptr;
 
-        }else{
+        } else {
             b = new Pin(p.c_str(), Pin::AS_INPUT);
             if(!b->connected()) {
                 printf("ERROR: configure-buttonbox: No, or illegal, button defined\n");
                 delete b;
                 continue;
             }
+            external = false;
         }
 
         std::string press = cr.get_string(m, press_key, "");
@@ -89,7 +91,7 @@ bool ButtonBox::configure(ConfigReader& cr)
                 .state = false,
             };
             buttons.push_back(bt);
-            printf("DEBUG: external button %s - %s, press: %s, release: %s\n", name.c_str(), b->to_string().c_str(), press.c_str(), release.c_str());
+            printf("DEBUG: external button %s, press: %s, release: %s\n", name.c_str(), press.c_str(), release.c_str());
 
         } else {
             but_t bt {
@@ -124,14 +126,13 @@ bool ButtonBox::configure(ConfigReader& cr)
 bool ButtonBox::set_cb_fnc(const char *name, std::function<bool(const char *name)> fnc)
 {
     // find the named button
-    for (auto& i : buttons)
-    {
+    for (auto& i : buttons) {
         if(i.name != name) continue;
         if(i.but != nullptr) {
             printf("ERROR: buttonbox set_cb_fnc: The button %s is not an external button\n", name);
             return false;
         }
-        i.fnc= fnc;
+        i.fnc = fnc;
         return true;
     }
 
@@ -145,18 +146,18 @@ void ButtonBox::button_tick()
     static OutputStream os; // NULL output stream, but we need to keep some state between calls
 
     for(auto& i : buttons) {
-        bool state_changed= false;
+        bool state_changed = false;
         bool new_state;
-        const char *cmd= nullptr;
+        const char *cmd = nullptr;
 
         bool bs;
         if(i.but != nullptr) {
-            bs= i.but->get();
-        }else{
+            bs = i.but->get();
+        } else {
             // if not defined yet ignore it
             if(i.fnc) {
-                bs= i.fnc(i.name.c_str());
-            }else{
+                bs = i.fnc(i.name.c_str());
+            } else {
                 continue;
             }
         }
@@ -164,19 +165,19 @@ void ButtonBox::button_tick()
         if(!i.state && bs) {
             // pressed
             cmd = i.press_act.c_str();
-            state_changed= true;
-            new_state= true;
+            state_changed = true;
+            new_state = true;
 
         } else if(i.state && !bs) {
             // released
             std::string c = i.release_act;
             if(!c.empty()) {
-                state_changed= true;
-                new_state= false;
-                cmd= c.c_str();
-            }else{
+                state_changed = true;
+                new_state = false;
+                cmd = c.c_str();
+            } else {
                 // empty command for release
-                i.state= false;
+                i.state = false;
             }
         }
 

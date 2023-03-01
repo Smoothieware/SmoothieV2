@@ -145,6 +145,7 @@ class TM1638 : public Module
 public:
     // Constructor
     TM1638();
+    virtual ~TM1638();
 
     static bool create(ConfigReader& cr);
     bool configure(ConfigReader& cr);
@@ -204,6 +205,10 @@ public:
     // Set an LED, pass it LED position 0-7 and value 0 or 1 , L1-L8
     void setLED(uint8_t position, uint8_t value);
 
+    // Mutex to stop concurrent access, the caller is responsible for locking and unlocking access
+    bool lock();
+    void unlock();
+
 private:
     void sendCommand(uint8_t value);
     void sendData(uint8_t  data);
@@ -211,6 +216,7 @@ private:
     void HighFreqshiftOut(uint8_t val);
     void button_tick();
 
+    void *plock{nullptr};
     Pin clock_pin;
     Pin data_pin;
     Pin strobe_pin;

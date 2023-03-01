@@ -42,4 +42,5 @@ class Lathe : public Module {
         void *display{nullptr};
         bool use_buttons{false};
         uint8_t buttons{0};
+        bool started{false};
 };

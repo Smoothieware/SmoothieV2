@@ -15,6 +15,10 @@
 #include "TM1638.h"
 #include "buttonbox.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
+
 #include <cmath>
 
 #define enable_key "enable"
@@ -124,8 +128,11 @@ void Lathe::after_load()
     if(v != nullptr) {
         TM1638 *tm=  static_cast<TM1638*>(v);
         display= tm;
+        tm->lock();
         tm->displayBegin();
         tm->reset();
+        tm->unlock();
+
         printf("DEBUG: lathe: display started\n");
     }else{
         printf("WARNING: lathe: display is not available\n");
@@ -150,6 +157,8 @@ void Lathe::after_load()
             use_buttons= false;
         }
     }
+    // allow timers to run now
+    started= true;
 }
 
 #define HELP(m) if(params == "-h") { os.printf("%s\n", m); return true; }
@@ -284,15 +293,18 @@ void Lathe::handle_rpm()
         rpm= sum/10;
     }
 
-    if(display_rpm) {
+    if(started && display_rpm) {
         // update display once per second
         if(++iter >= RPM_UPDATE_HZ) {
             TM1638 *tm=  static_cast<TM1638*>(display);
-            tm->displayIntNum((int)roundf(rpm), false, TMAlignTextRight);
-            if(running) {
-                tm->setLED(std::isnan(distance)?0:1, 1);
-            }else{
-                tm->setLED(std::isnan(distance)?0:1, 0);
+            if(tm->lock()) {
+                tm->displayIntNum((int)roundf(rpm), false, TMAlignTextRight);
+                if(running) {
+                    tm->setLED(std::isnan(distance)?0:1, 1);
+                }else{
+                    tm->setLED(std::isnan(distance)?0:1, 0);
+                }
+                tm->unlock();
             }
             iter= 0;
         }
@@ -426,8 +438,14 @@ int Lathe::update_position()
 // called in slow timer every 100ms to scan buttons
 void Lathe::check_buttons()
 {
+    if(!started) return;
+
     TM1638 *tm=  static_cast<TM1638*>(display);
-    buttons = tm->readButtons();
+    if(tm->lock()) {
+        buttons = tm->readButtons();
+        tm->unlock();
+    }
+
     /* buttons contains a byte with values of button s8s7s6s5s4s3s2s1
      HEX  :  Switch no : Binary
      0x01 : S1 Pressed  0000 0001
@@ -443,6 +461,8 @@ void Lathe::check_buttons()
 
 bool Lathe::check_button(const char *name)
 {
+    if(!started) return false;
+
     auto bm= button_names.find(name);
     if(bm != button_names.end()) {
         return (buttons & bm->second) != 0;

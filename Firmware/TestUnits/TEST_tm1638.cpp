@@ -75,9 +75,9 @@ TM1638 tm;
 const static char tm1638_config[]= "\
 [tm1638]\n\
 enable = true \n\
-clock_pin = PJ9 \n\
-data_pin = PJ10 \n\
-strobe_pin = PJ6 \n\
+clock_pin = PJ11 \n\
+data_pin = PJ6\n\
+strobe_pin = PJ9 \n\
 ";
 
 REGISTER_TEST(TM1638Test, run_tests)
