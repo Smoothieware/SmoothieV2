@@ -13,14 +13,29 @@
 #include "main.h"
 #include "OutputStream.h"
 #include "TM1638.h"
+#include "buttonbox.h"
 
 #include <cmath>
 
 #define enable_key "enable"
 #define ppr_key "encoder_ppr"
 #define display_rpm_key "display_rpm"
+#define use_buttons_key "use_buttons"
 
 #define RPM_UPDATE_HZ 10
+
+// define a map if button names and but position
+static std::map<std::string, uint8_t> button_names = {
+    {"lathe-b1", 0x01},
+    {"lathe-b2", 0x02},
+    {"lathe-b3", 0x04},
+    {"lathe-b4", 0x08},
+    {"lathe-b5", 0x10},
+    {"lathe-b6", 0x20},
+    {"lathe-b7", 0x40},
+    {"lathe-b8", 0x80},
+};
+
 
 REGISTER_MODULE(Lathe, Lathe::create)
 
@@ -72,9 +87,14 @@ bool Lathe::configure(ConfigReader& cr)
 
     // what is the step accuracy in mm to 4 decimal places rounded up
     delta_mm = roundf((1.0F / stepper_motor->get_steps_per_mm()) * 10000.0F) / 10000.0F;
-    display_rpm = cr.get_bool(m,  display_rpm_key, false);
+
+    // use the display and buttons
+    display_rpm = cr.get_bool(m, display_rpm_key, false);
 
     if(display_rpm) {
+        // can only use buttons if the display is defined
+        use_buttons = cr.get_bool(m, use_buttons_key, false);
+
         // register a startup function that will be called after all modules have been loaded
         // (as this module relies on the tm1638 module having been loaded)
         register_startup(std::bind(&Lathe::after_load, this));
@@ -88,6 +108,10 @@ bool Lathe::configure(ConfigReader& cr)
     Dispatcher::getInstance()->add_handler("rpm", std::bind( &Lathe::rpm_cmd, this, _1, _2) );
 
     SlowTicker::getInstance()->attach(RPM_UPDATE_HZ, std::bind(&Lathe::handle_rpm, this));
+
+    if(use_buttons) {
+        SlowTicker::getInstance()->attach(100, std::bind(&Lathe::check_buttons, this));
+    }
 
     return true;
 }
@@ -103,8 +127,27 @@ void Lathe::after_load()
         tm->reset();
         printf("DEBUG: lathe: display started\n");
     }else{
-        printf("WARNING: lathe: display not available\n");
+        printf("WARNING: lathe: display is not available\n");
         display_rpm= false;
+    }
+
+    if(use_buttons) {
+        // button box is used to define button functions
+        v= Module::lookup("buttonbox");
+        if(v != nullptr) {
+            ButtonBox *bb=  static_cast<ButtonBox*>(v);
+             // assign a callback for each of the buttons
+            // we need to match button names here with what was defined in button box config
+            using std::placeholders::_1;
+            for(auto i : button_names) {
+                if(!bb->set_cb_fnc(i.first.c_str(), std::bind(&Lathe::check_button, this, _1))){
+                    printf("WARNING: lathe: button %s was not defined in button box\n", i.first.c_str());
+                }
+            }
+        }else{
+            printf("WARNING: lathe: button box is not available\n");
+            use_buttons= false;
+        }
     }
 }
 
@@ -205,8 +248,11 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
 // called every 100 ms to calculate current RPM
 // Note at .5 secs sample rate we would wrap the counter at 960RPM and get a false reading (with a 2000ppr encoder returning 4000ppr)
 // at 10Hz sample rate we can go upto 4500RPM without wrapping
+// using a moving average to steady the RPM reading
 void Lathe::handle_rpm()
 {
+    static float ave[10];
+    static int ave_cnt= 0;
     static uint32_t iter= 0;
     static uint32_t last = 0;
     uint32_t qemax = get_quadrature_encoder_max_count();
@@ -219,7 +265,23 @@ void Lathe::handle_rpm()
     if(c > qemax / 2 ) {
         c = qemax - c + 1;
     }
-    rpm = (c * 60 * RPM_UPDATE_HZ) / (ppr * qediv);
+    // get RPM
+    float r = (c * 60 * RPM_UPDATE_HZ) / (ppr * qediv);
+
+    if(ave_cnt < 10) {
+        // fill the array first
+        ave[ave_cnt++]= r;
+        rpm= r;
+    }else{
+        // use moving average
+        float sum= 0;
+        for (int i = 0; i < 10-1; ++i) {
+            sum += ave[i];
+            ave[i]= ave[i+1];
+        }
+        ave[9]= r;
+        rpm= sum/10;
+    }
 
     if(display_rpm) {
         // update display once per second
@@ -358,6 +420,34 @@ int Lathe::update_position()
 #endif
 
     return -1;
+}
+
+// called in slow timer every 100ms to scan buttons
+void Lathe::check_buttons()
+{
+    TM1638 *tm=  static_cast<TM1638*>(display);
+    buttons = tm->readButtons();
+    /* buttons contains a byte with values of button s8s7s6s5s4s3s2s1
+     HEX  :  Switch no : Binary
+     0x01 : S1 Pressed  0000 0001
+     0x02 : S2 Pressed  0000 0010
+     0x04 : S3 Pressed  0000 0100
+     0x08 : S4 Pressed  0000 1000
+     0x10 : S5 Pressed  0001 0000
+     0x20 : S6 Pressed  0010 0000
+     0x40 : S7 Pressed  0100 0000
+     0x80 : S8 Pressed  1000 0000
+    */
+}
+
+bool Lathe::check_button(const char *name)
+{
+    auto bm= button_names.find(name);
+    if(bm != button_names.end()) {
+        return (buttons & bm->second) != 0;
+    }
+
+    return false;
 }
 
 void Lathe::on_halt(bool flg)

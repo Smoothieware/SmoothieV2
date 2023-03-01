@@ -22,6 +22,8 @@ class Lathe : public Module {
         float calculate_position(int32_t cnt);
         float get_encoder_delta();
         void handle_rpm();
+        void check_buttons();
+        bool check_button(const char *name);
         void after_load();
 
         float wanted_pos{0};
@@ -36,6 +38,8 @@ class Lathe : public Module {
         float target_position{0}; // position in mm we want the Z axis to move
         float rpm{0};
         volatile bool running{false};
-        bool display_rpm;
-        void *display;
+        bool display_rpm{false};
+        void *display{nullptr};
+        bool use_buttons{false};
+        uint8_t buttons{0};
 };
