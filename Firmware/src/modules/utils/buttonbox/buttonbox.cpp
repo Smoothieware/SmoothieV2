@@ -87,7 +87,7 @@ bool ButtonBox::configure(ConfigReader& cr)
                 .but = nullptr,
                 .fnc = nullptr, // must be set by external module
                 .press_act = press,
-                .release_act =  release,
+                .release_act = release,
                 .state = false,
             };
             buttons.push_back(bt);
@@ -105,7 +105,6 @@ bool ButtonBox::configure(ConfigReader& cr)
             buttons.push_back(bt);
             printf("DEBUG: pin button %s - %s, press: %s, release: %s\n", name.c_str(), b->to_string().c_str(), press.c_str(), release.c_str());
         }
-
 
         ++cnt;
     }
@@ -170,11 +169,10 @@ void ButtonBox::button_tick()
 
         } else if(i.state && !bs) {
             // released
-            std::string c = i.release_act;
-            if(!c.empty()) {
+            if(!i.release_act.empty()) {
                 state_changed = true;
                 new_state = false;
-                cmd = c.c_str();
+                cmd = i.release_act.c_str();
             } else {
                 // empty command for release
                 i.state = false;
