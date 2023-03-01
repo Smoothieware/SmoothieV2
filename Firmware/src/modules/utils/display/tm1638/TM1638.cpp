@@ -263,6 +263,7 @@ uint8_t TM1638::readButtons()
         buttons |= v;
     }
     data_pin.as_output();
+    strobe_pin.set(true);
 
     return buttons;
 }

@@ -67,7 +67,7 @@ static void Test14(void);
 // Some vars and defines for the tests.
 #define myTestDelay  5000
 #define myTestDelay1 1000
-uint8_t  testcount = 0;
+uint8_t  testcount = 12;
 
 TM1638 tm;
 

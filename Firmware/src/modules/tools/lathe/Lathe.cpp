@@ -29,7 +29,7 @@
 #define RPM_UPDATE_HZ 10
 
 // define a map of button names and but position
-// NOTE thee buttons need to be defined in button box config as well
+// NOTE these buttons need to be defined in button box config as well
 static std::map<std::string, uint8_t> button_names = {
     {"lathe-b1", 0x01},
     {"lathe-b2", 0x02},
@@ -115,7 +115,7 @@ bool Lathe::configure(ConfigReader& cr)
     SlowTicker::getInstance()->attach(RPM_UPDATE_HZ, std::bind(&Lathe::handle_rpm, this));
 
     if(use_buttons) {
-        SlowTicker::getInstance()->attach(100, std::bind(&Lathe::check_buttons, this));
+        SlowTicker::getInstance()->attach(250, std::bind(&Lathe::check_buttons, this));
     }
 
     return true;
