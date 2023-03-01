@@ -24,7 +24,8 @@
 
 #define RPM_UPDATE_HZ 10
 
-// define a map if button names and but position
+// define a map of button names and but position
+// NOTE thee buttons need to be defined in button box config as well
 static std::map<std::string, uint8_t> button_names = {
     {"lathe-b1", 0x01},
     {"lathe-b2", 0x02},
