@@ -2473,7 +2473,7 @@ void Robot::get_query_string(std::string & str) const
         }else{
             // S is spindle RPM
             float sr = get_s_value();
-            n = snprintf(buf, sizeof(buf), "|S:%1.1f", sr);
+            n = snprintf(buf, sizeof(buf), "|S:%1.2f", sr);
             str.append(buf, n);
         }
 
@@ -2512,7 +2512,7 @@ void Robot::get_query_string(std::string & str) const
         if(m == nullptr) {
             // S is spindle RPM
             float sr = get_s_value();
-            n = snprintf(buf, sizeof(buf), "|S:%1.1f", sr);
+            n = snprintf(buf, sizeof(buf), "|S:%1.2f", sr);
             str.append(buf, n);
         }
     }
