@@ -2444,13 +2444,13 @@ void Robot::get_query_string(std::string & str) const
         if(n > sizeof(buf)) n = sizeof(buf);
         str.append(buf, n);
 
-        // current Laser power
-        float sr = get_s_value();
-        n = snprintf(buf, sizeof(buf), "|S:%1.4f", sr);
-        str.append(buf, n);
 
         m = Module::lookup("laser");
         if(m != nullptr) {
+            float sr = get_s_value();
+            n = snprintf(buf, sizeof(buf), "|S:%1.4f", sr);
+            str.append(buf, n);
+            // current Laser power
             float lp;
             bool ok = m->request("get_current_power", &lp);
             if(ok) {

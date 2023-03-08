@@ -284,10 +284,10 @@ void Lathe::handle_rpm()
         rpm= r;
     }else{
         // use moving average
-        float sum= 0;
+        float sum= r;
         for (int i = 0; i < 10-1; ++i) {
-            sum += ave[i];
             ave[i]= ave[i+1];
+            sum += ave[i];
         }
         ave[9]= r;
         rpm= sum/10;
