@@ -404,7 +404,7 @@ bool Switch::handle_gcode(GCode& gcode, OutputStream& os)
                     if(v < 0) v = 0;
                     v= this->pwm_pin->set_microseconds(v) * 100;
                 }
-                this->switch_state = (ROUND2DP(v) != ROUND2DP(this->switch_value));
+                this->switch_state = !(ROUND2DP(v) <= ROUND2DP(this->switch_value));
             }
 
         } else if (this->output_type == DIGITAL) {
