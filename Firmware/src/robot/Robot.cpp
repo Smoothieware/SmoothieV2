@@ -2458,23 +2458,20 @@ void Robot::get_query_string(std::string & str) const
         if(n > sizeof(buf)) n = sizeof(buf);
         str.append(buf, n);
 
+        // S value (either laser or spindle)
+        float sr = get_s_value();
+        n = snprintf(buf, sizeof(buf), "|S:%1.4f", sr);
+        str.append(buf, n);
+
         m = Module::lookup("laser");
         if(m != nullptr) {
-            float sr = get_s_value();
-            n = snprintf(buf, sizeof(buf), "|S:%1.4f", sr);
-            str.append(buf, n);
-            // current Laser power
+            // current Laser power if laser module is active
             float lp;
             bool ok = m->request("get_current_power", &lp);
             if(ok) {
                 n = snprintf(buf, sizeof(buf), "|L:%1.4f", lp);
                 str.append(buf, n);
             }
-        }else{
-            // S is spindle RPM
-            float sr = get_s_value();
-            n = snprintf(buf, sizeof(buf), "|S:%1.2f", sr);
-            str.append(buf, n);
         }
 
     } else {
