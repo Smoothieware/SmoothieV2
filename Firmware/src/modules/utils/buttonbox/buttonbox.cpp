@@ -184,6 +184,10 @@ void ButtonBox::button_tick()
                 os.set_stop_request(true);
                 i.state = new_state;
 
+            }else if(strcmp(cmd, "KILL") == 0) {
+                i.state = new_state;
+                Module::broadcast_halt(true);
+
             } else {
                 // Do not block and if queue was full the command is not sent
                 // so we do not change the state of the button that caused this so it tries again
