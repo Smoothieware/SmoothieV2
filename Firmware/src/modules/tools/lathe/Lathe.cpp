@@ -14,6 +14,8 @@
 #include "OutputStream.h"
 #include "TM1638.h"
 #include "buttonbox.h"
+#include "Pin.h"
+#include "benchmark_timer.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -25,6 +27,7 @@
 #define ppr_key "encoder_ppr"
 #define display_rpm_key "display_rpm"
 #define use_buttons_key "use_buttons"
+#define index_pin_key "index_pin"
 
 #define RPM_UPDATE_HZ 10
 
@@ -75,6 +78,22 @@ bool Lathe::configure(ConfigReader& cr)
         return false;
     }
 
+    // use index pin if we define one
+    index_pin=  new Pin(cr.get_string(m, index_pin_key, "nc"));
+    if(index_pin->connected()) {
+        index_pin->as_interrupt(std::bind(&Lathe::handle_index_irq, this), Pin::RISING);
+        if(!index_pin->connected()) {
+            printf("ERROR: configure-lathe: Cannot set index pin to interrupt %s\n", index_pin->to_string().c_str());
+            delete index_pin;
+            index_pin= nullptr;
+        }
+        printf("INFO: configure-lathe: using index pin: %s\n", index_pin->to_string().c_str());
+
+    }else{
+        delete index_pin;
+        index_pin= nullptr;
+    }
+
     // pulses per rotation (takes into consideration any gearing) ppr= encoder resolution * gear ratio
     ppr = cr.get_float(m, ppr_key, 1000);
     printf("INFO: configure-lathe: encoder ppr %f\n", ppr);
@@ -109,11 +128,12 @@ bool Lathe::configure(ConfigReader& cr)
     using std::placeholders::_1;
     using std::placeholders::_2;
 
+    benchmark_timer_init();
+
     Dispatcher::getInstance()->add_handler(Dispatcher::GCODE_HANDLER, 33, std::bind(&Lathe::handle_gcode, this, _1, _2));
     Dispatcher::getInstance()->add_handler("rpm", std::bind( &Lathe::rpm_cmd, this, _1, _2) );
 
     SlowTicker::getInstance()->attach(RPM_UPDATE_HZ, std::bind(&Lathe::handle_rpm, this));
-
     if(use_buttons) {
         SlowTicker::getInstance()->attach(250, std::bind(&Lathe::check_buttons, this));
     }
@@ -196,6 +216,17 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
 
             distance = gcode.get_arg('Z'); // distance to move
             start_pos = stepper_motor->get_current_position();
+
+            // if we have an index_pin then we wait to start by synchronizing to it
+            if(index_pin != nullptr) {
+                uint32_t curindex= index_pulse;
+                while(curindex == index_pulse) {
+                    // wait for index pulse to be hit
+                    // TODO may need to do safe_sleep here but that may take too long
+                    if(Module::is_halted() || rpm == 0) return true;
+                }
+            }
+
             running = true;
 
             // We have to wait for this to complete
@@ -255,42 +286,47 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
     return false;
 }
 
+void Lathe::handle_index_irq()
+{
+    // count index pulses
+    ++index_pulse;
+}
+
 // called every 100 ms to calculate current RPM
-// Note at .5 secs sample rate we would wrap the counter at 960RPM and get a false reading (with a 2000ppr encoder returning 4000ppr)
-// at 10Hz sample rate we can go upto 4500RPM without wrapping
-// using a moving average to steady the RPM reading
 void Lathe::handle_rpm()
 {
-    static float ave[10];
-    static int ave_cnt= 0;
     static uint32_t iter= 0;
-    static uint32_t last = 0;
-    uint32_t qemax = get_quadrature_encoder_max_count();
-    uint32_t qediv= get_quadrature_encoder_div();
-    uint32_t cnt = read_quadrature_encoder();
-    uint32_t c = (cnt > last) ? cnt - last : last - cnt;
-    last = cnt;
+    static uint32_t last_index_pulse= 0;
+    static uint32_t lasttime= 0;
 
-    // deal with over/underflow
-    if(c > qemax / 2 ) {
-        c = qemax - c + 1;
+    if(lasttime == 0 || benchmark_timer_wrapped(lasttime)) {
+        lasttime= benchmark_timer_start();
+        return;
     }
-    // get RPM
-    float r = (c * 60 * RPM_UPDATE_HZ) / (ppr * qediv);
 
-    if(ave_cnt < 10) {
-        // fill the array first
-        ave[ave_cnt++]= r;
-        rpm= r;
-    }else{
-        // use moving average
-        float sum= r;
-        for (int i = 0; i < 10-1; ++i) {
-            ave[i]= ave[i+1];
-            sum += ave[i];
+    // get elapsed time since last call, more accurate that relying on 100ms
+    uint32_t deltams= benchmark_timer_as_ms(benchmark_timer_elapsed(lasttime));
+
+    if(index_pin != nullptr) {
+        // use the index pin to calculate RPM
+        // sample about every second to increase pulse count captured
+        if(deltams >= 1000) {
+            lasttime= benchmark_timer_start();
+            if(last_index_pulse > index_pulse) {
+                // we wrapped so skip this one
+                last_index_pulse= index_pulse;
+                return;
+            }
+
+            uint32_t d= index_pulse - last_index_pulse;
+            last_index_pulse= index_pulse;
+            rpm = (d * 60 * (1000.0F / deltams));
         }
-        ave[9]= r;
-        rpm= sum/10;
+
+    }else{
+        // use encoder to calculate RPM
+        lasttime= benchmark_timer_start();
+        handle_rpm_encoder(deltams);
     }
 
     if(started && display_rpm) {
@@ -308,6 +344,44 @@ void Lathe::handle_rpm()
             }
             iter= 0;
         }
+    }
+}
+
+// calculate RPM from Encoder
+// Note at .5 secs sample rate we would wrap the counter at 960RPM and get a false reading (with a 2000ppr encoder returning 4000ppr)
+// at 10Hz sample rate we can go upto 4500RPM without wrapping
+// using a moving average to steady the RPM reading
+void Lathe::handle_rpm_encoder(uint32_t deltams)
+{
+    static float ave[10];
+    static int ave_cnt= 0;
+    static uint32_t last = 0;
+    uint32_t qemax = get_quadrature_encoder_max_count();
+    uint32_t qediv= get_quadrature_encoder_div();
+    uint32_t cnt = read_quadrature_encoder();
+    uint32_t c = (cnt > last) ? cnt - last : last - cnt;
+    last = cnt;
+
+    // deal with over/underflow
+    if(c > qemax / 2 ) {
+        c = qemax - c + 1;
+    }
+    // get RPM
+    float r = (c * 60 * (1000.0F/deltams)) / (ppr * qediv);
+
+    if(ave_cnt < 10) {
+        // fill the array first
+        ave[ave_cnt++]= r;
+        rpm= r;
+    }else{
+        // use moving average
+        float sum= r;
+        for (int i = 0; i < 10-1; ++i) {
+            ave[i]= ave[i+1];
+            sum += ave[i];
+        }
+        ave[9]= r;
+        rpm= sum/10;
     }
 }
 
