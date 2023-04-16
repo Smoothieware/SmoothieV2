@@ -1,11 +1,11 @@
 #pragma once
 
 #include "Module.h"
-#include "Pin.h"
 
 class GCode;
 class OutputStream;
 class StepperMotor;
+class Pin;
 
 class Lathe : public Module {
     public:
@@ -22,12 +22,17 @@ class Lathe : public Module {
         float calculate_position(int32_t cnt);
         float get_encoder_delta();
         void handle_rpm();
+        void handle_rpm_encoder(uint32_t deltams);
         void check_buttons();
         bool check_button(const char *name);
         void after_load();
+        void handle_index_irq();
 
         float wanted_pos{0};
         StepperMotor *stepper_motor;
+        Pin *index_pin{nullptr};
+        volatile uint32_t index_pulse{0};
+
         uint8_t motor_id;
         bool current_direction;
         float delta_mm;
