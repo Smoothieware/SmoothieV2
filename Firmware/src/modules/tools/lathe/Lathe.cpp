@@ -12,8 +12,6 @@
 #include "StepperMotor.h"
 #include "main.h"
 #include "OutputStream.h"
-#include "TM1638.h"
-#include "buttonbox.h"
 #include "Pin.h"
 #include "benchmark_timer.h"
 
@@ -25,24 +23,9 @@
 
 #define enable_key "enable"
 #define ppr_key "encoder_ppr"
-#define display_rpm_key "display_rpm"
-#define use_buttons_key "use_buttons"
 #define index_pin_key "index_pin"
 
 #define RPM_UPDATE_HZ 10
-
-// define a map of button names and but position
-// NOTE these buttons need to be defined in button box config as well
-static std::map<std::string, uint8_t> button_names = {
-    {"lathe-b1", 0x01},
-    {"lathe-b2", 0x02},
-    {"lathe-b3", 0x04},
-    {"lathe-b4", 0x08},
-    {"lathe-b5", 0x10},
-    {"lathe-b6", 0x20},
-    {"lathe-b7", 0x40},
-    {"lathe-b8", 0x80},
-};
 
 
 REGISTER_MODULE(Lathe, Lathe::create)
@@ -112,18 +95,6 @@ bool Lathe::configure(ConfigReader& cr)
     // what is the step accuracy in mm to 4 decimal places rounded up
     delta_mm = roundf((1.0F / stepper_motor->get_steps_per_mm()) * 10000.0F) / 10000.0F;
 
-    // use the display and buttons
-    display_rpm = cr.get_bool(m, display_rpm_key, false);
-
-    if(display_rpm) {
-        // can only use buttons if the display is defined
-        use_buttons = cr.get_bool(m, use_buttons_key, false);
-
-        // register a startup function that will be called after all modules have been loaded
-        // (as this module relies on the tm1638 module having been loaded)
-        register_startup(std::bind(&Lathe::after_load, this));
-    }
-
     // register gcodes and mcodes
     using std::placeholders::_1;
     using std::placeholders::_2;
@@ -134,51 +105,8 @@ bool Lathe::configure(ConfigReader& cr)
     Dispatcher::getInstance()->add_handler("rpm", std::bind( &Lathe::rpm_cmd, this, _1, _2) );
 
     SlowTicker::getInstance()->attach(RPM_UPDATE_HZ, std::bind(&Lathe::handle_rpm, this));
-    if(use_buttons) {
-        SlowTicker::getInstance()->attach(250, std::bind(&Lathe::check_buttons, this));
-    }
 
     return true;
-}
-
-void Lathe::after_load()
-{
-    // get display if available
-    Module *v= Module::lookup("tm1638");
-    if(v != nullptr) {
-        TM1638 *tm=  static_cast<TM1638*>(v);
-        display= tm;
-        tm->lock();
-        tm->displayBegin();
-        tm->reset();
-        tm->unlock();
-
-        printf("DEBUG: lathe: display started\n");
-    }else{
-        printf("WARNING: lathe: display is not available\n");
-        display_rpm= false;
-    }
-
-    if(use_buttons) {
-        // button box is used to define button functions
-        v= Module::lookup("buttonbox");
-        if(v != nullptr) {
-            ButtonBox *bb=  static_cast<ButtonBox*>(v);
-             // assign a callback for each of the buttons
-            // we need to match button names here with what was defined in button box config
-            using std::placeholders::_1;
-            for(auto i : button_names) {
-                if(!bb->set_cb_fnc(i.first.c_str(), std::bind(&Lathe::check_button, this, _1))){
-                    printf("WARNING: lathe: button %s was not defined in button box\n", i.first.c_str());
-                }
-            }
-        }else{
-            printf("WARNING: lathe: button box is not available\n");
-            use_buttons= false;
-        }
-    }
-    // allow timers to run now
-    started= true;
 }
 
 #define HELP(m) if(params == "-h") { os.printf("%s\n", m); return true; }
@@ -295,7 +223,6 @@ void Lathe::handle_index_irq()
 // called every 100 ms to calculate current RPM
 void Lathe::handle_rpm()
 {
-    static uint32_t iter= 0;
     static uint32_t last_index_pulse= 0;
     static uint32_t lasttime= 0;
 
@@ -327,23 +254,6 @@ void Lathe::handle_rpm()
         // use encoder to calculate RPM
         lasttime= benchmark_timer_start();
         handle_rpm_encoder(deltams);
-    }
-
-    if(started && display_rpm) {
-        // update display once per second
-        if(++iter >= RPM_UPDATE_HZ) {
-            TM1638 *tm=  static_cast<TM1638*>(display);
-            if(tm->lock()) {
-                tm->displayIntNum((int)roundf(rpm), false, TMAlignTextRight);
-                if(running) {
-                    tm->setLED(std::isnan(distance)?0:1, 1);
-                }else{
-                    tm->setLED(std::isnan(distance)?0:1, 0);
-                }
-                tm->unlock();
-            }
-            iter= 0;
-        }
     }
 }
 
@@ -507,42 +417,6 @@ int Lathe::update_position()
 #endif
 
     return -1;
-}
-
-// called in slow timer every 100ms to scan buttons
-void Lathe::check_buttons()
-{
-    if(!started) return;
-
-    TM1638 *tm=  static_cast<TM1638*>(display);
-    if(tm->lock()) {
-        buttons = tm->readButtons();
-        tm->unlock();
-    }
-
-    /* buttons contains a byte with values of button s8s7s6s5s4s3s2s1
-     HEX  :  Switch no : Binary
-     0x01 : S1 Pressed  0000 0001
-     0x02 : S2 Pressed  0000 0010
-     0x04 : S3 Pressed  0000 0100
-     0x08 : S4 Pressed  0000 1000
-     0x10 : S5 Pressed  0001 0000
-     0x20 : S6 Pressed  0010 0000
-     0x40 : S7 Pressed  0100 0000
-     0x80 : S8 Pressed  1000 0000
-    */
-}
-
-bool Lathe::check_button(const char *name)
-{
-    if(!started) return false;
-
-    auto bm= button_names.find(name);
-    if(bm != button_names.end()) {
-        return (buttons & bm->second) != 0;
-    }
-
-    return false;
 }
 
 void Lathe::on_halt(bool flg)

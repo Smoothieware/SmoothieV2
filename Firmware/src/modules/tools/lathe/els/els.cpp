@@ -1,3 +1,5 @@
+// Electronic Leadscrew as seen in Clough42 et al.
+
 #include "els.h"
 
 #include "TM1638.h"
@@ -6,23 +8,12 @@
 #include "SlowTicker.h"
 #include "main.h"
 #include "Lathe.h"
+#include "OutputStream.h"
+#include "MessageQueue.h"
 
 #include <cmath>
 
 #define enable_key "enable"
-
-// define a map of button names and but position
-// NOTE these buttons need to be defined in button box config as well
-static std::map<std::string, uint8_t> button_names = {
-    {"els-b1", 0x01},
-    {"els-b2", 0x02},
-    {"els-b3", 0x04},
-    {"els-b4", 0x08},
-    {"els-b5", 0x10},
-    {"els-b6", 0x20},
-    {"els-b7", 0x40},
-    {"els-b8", 0x80},
-};
 
 REGISTER_MODULE(ELS, ELS::create)
 
@@ -51,7 +42,7 @@ bool ELS::configure(ConfigReader& cr)
     }
 
     // register a startup function that will be called after all modules have been loaded
-    // (as this module relies on the tm1638 and buttonbox and Lathe modules having been loaded)
+    // (as this module relies on the tm1638, buttonbox and Lathe modules having been loaded)
     register_startup(std::bind(&ELS::after_load, this));
 
     return true;
@@ -70,8 +61,7 @@ void ELS::after_load()
     // get display if available
     v= Module::lookup("tm1638");
     if(v != nullptr) {
-        TM1638 *tm=  static_cast<TM1638*>(v);
-        display= tm;
+        tm=  static_cast<TM1638*>(v);
         tm->lock();
         tm->displayBegin();
         tm->reset();
@@ -83,43 +73,26 @@ void ELS::after_load()
         return;
     }
 
-
-    // button box is used to define button functions
-    v= Module::lookup("buttonbox");
-    if(v != nullptr) {
-        ButtonBox *bb=  static_cast<ButtonBox*>(v);
-         // assign a callback for each of the buttons
-        // we need to match button names here with what was defined in button box config
-        using std::placeholders::_1;
-        for(auto i : button_names) {
-            if(!bb->set_cb_fnc(i.first.c_str(), std::bind(&ELS::check_button, this, _1))){
-                printf("WARNING: ELS: button %s was not defined in button box\n", i.first.c_str());
-            }
-        }
-
-    }else{
-        printf("ERROR: ELS: button box is not available\n");
-        return;
-    }
-
-    SlowTicker::getInstance()->attach(250, std::bind(&ELS::check_buttons, this));
+    // start up timers
+    SlowTicker::getInstance()->attach(10, std::bind(&ELS::check_buttons, this));
+    SlowTicker::getInstance()->attach(1, std::bind(&ELS::update_rpm, this));
 }
 
 void ELS::update_rpm()
 {
-    if(display == nullptr) return;
+    if(tm == nullptr) return;
 
     // update display once per second
-    TM1638 *tm=  static_cast<TM1638*>(display);
     if(tm->lock()) {
         float rpm= lathe->get_rpm();
 
+        // display if running and what mode it is in
         tm->displayIntNum((int)roundf(rpm), false, TMAlignTextRight);
-        // if(running) {
-        //     tm->setLED(std::isnan(distance)?0:1, 1);
-        // }else{
-        //     tm->setLED(std::isnan(distance)?0:1, 0);
-        // }
+        if(lathe->is_running()) {
+            tm->setLED(std::isnan(lathe->get_distance())?0:1, 1);
+        }else{
+            tm->setLED(std::isnan(lathe->get_distance())?0:1, 0);
+        }
         tm->unlock();
     }
 }
@@ -127,7 +100,10 @@ void ELS::update_rpm()
 // called in slow timer every 100ms to scan buttons
 void ELS::check_buttons()
 {
-    TM1638 *tm=  static_cast<TM1638*>(display);
+    static uint8_t last_buttons= 0;
+
+    if(tm == nullptr) return;
+
     if(tm->lock()) {
         buttons = tm->readButtons();
         tm->unlock();
@@ -144,17 +120,22 @@ void ELS::check_buttons()
      0x40 : S7 Pressed  0100 0000
      0x80 : S8 Pressed  1000 0000
     */
-}
 
-bool ELS::check_button(const char *name)
-{
-    auto bm= button_names.find(name);
-    if(bm != button_names.end()) {
-        return (buttons & bm->second) != 0;
+    static OutputStream os; // NULL output stream, but we need to keep some state between calls
+
+    if((buttons & 0x01) && !(last_buttons & 0x01)) {
+        // button 1 pressed - Stop current operation
+        os.set_stop_request(true);
     }
 
-    return false;
+    if((buttons & 0x02) && !(last_buttons & 0x02)) {
+        // button 2 pressed, start operation G33 K1
+        send_message_queue("G33 K1", &os, false);
+    }
+
+    last_buttons= buttons;
 }
+
 
 
 

@@ -3,6 +3,7 @@
 #include "Module.h"
 
 class Lathe;
+class TM1638;
 
 class ELS : public Module {
     public:
@@ -17,6 +18,6 @@ class ELS : public Module {
         void update_rpm();
 
         Lathe *lathe{nullptr};
-        void *display{nullptr};
+        TM1638 *tm{nullptr};
         uint8_t buttons{0};
 };

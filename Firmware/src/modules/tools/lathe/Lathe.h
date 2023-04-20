@@ -14,6 +14,8 @@ class Lathe : public Module {
         bool configure(ConfigReader& cr);
         virtual void on_halt(bool flg);
         float get_rpm() const { return rpm; }
+        bool is_running() const { return running; }
+        float get_distance() const { return distance; }
 
     private:
         bool handle_gcode(GCode& gcode, OutputStream& os);
@@ -23,9 +25,6 @@ class Lathe : public Module {
         float get_encoder_delta();
         void handle_rpm();
         void handle_rpm_encoder(uint32_t deltams);
-        void check_buttons();
-        bool check_button(const char *name);
-        void after_load();
         void handle_index_irq();
 
         float wanted_pos{0};
@@ -43,9 +42,5 @@ class Lathe : public Module {
         float target_position{0}; // position in mm we want the Z axis to move
         float rpm{0};
         volatile bool running{false};
-        bool display_rpm{false};
-        void *display{nullptr};
-        bool use_buttons{false};
-        uint8_t buttons{0};
         bool started{false};
 };
