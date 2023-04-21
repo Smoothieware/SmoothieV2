@@ -75,6 +75,7 @@ bool Lathe::configure(ConfigReader& cr)
     }else{
         delete index_pin;
         index_pin= nullptr;
+        printf("INFO: configure-lathe: no index pin\n");
     }
 
     // pulses per rotation (takes into consideration any gearing) ppr= encoder resolution * gear ratio

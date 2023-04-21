@@ -13,6 +13,7 @@
 
 #include <cmath>
 #include <string>
+#include <iostream>
 
 #define enable_key "enable"
 
@@ -46,11 +47,17 @@ bool ELS::configure(ConfigReader& cr)
     // (as this module relies on the tm1638 and Lathe modules having been loaded)
     register_startup(std::bind(&ELS::after_load, this));
 
+    // start up timers
+    SlowTicker::getInstance()->attach(10, std::bind(&ELS::check_buttons, this));
+    SlowTicker::getInstance()->attach(1, std::bind(&ELS::update_rpm, this));
+
     return true;
 }
 
 void ELS::after_load()
 {
+    printf("DEBUG: ELS: post config running...\n");
+
     Module *v= Module::lookup("Lathe");
     if(v == nullptr) {
         printf("ERROR: ELS: Lathe is not available\n");
@@ -68,26 +75,24 @@ void ELS::after_load()
         tm->reset();
         tm->unlock();
 
-        printf("DEBUG: ELS: display started\n");
+        printf("DEBUG: ELS: TM1638 display started\n");
     }else{
         printf("ERROR: ELS: display is not available\n");
         return;
     }
 
-    // start up timers
-    SlowTicker::getInstance()->attach(10, std::bind(&ELS::check_buttons, this));
-    SlowTicker::getInstance()->attach(1, std::bind(&ELS::update_rpm, this));
+    started= true;
 }
 
 void ELS::update_rpm()
 {
-    if(tm == nullptr) return;
+    if(tm == nullptr || !started) return;
 
     // update display once per second
     if(tm->lock()) {
         // display current RPM in 4 left segments
         rpm= lathe->get_rpm();
-        tm->DisplayDecNumNibble((int)roundf(rpm), var1, false, TMAlignTextLeft);
+        tm->DisplayDecNumNibble((int)roundf(rpm), var1, false, TMAlignTextRight);
 
         // display if running and what mode it is in
         if(lathe->is_running()) {
@@ -104,7 +109,7 @@ void ELS::check_buttons()
 {
     static uint8_t last_buttons= 0;
 
-    if(tm == nullptr) return;
+    if(tm == nullptr || !started) return;
 
     if(tm->lock()) {
         buttons = tm->readButtons();
@@ -123,18 +128,22 @@ void ELS::check_buttons()
      0x80 : S8 Pressed  1000 0000
     */
 
-    static OutputStream os; // NULL output stream, but we need to keep some state between calls
+    static OutputStream os(&std::cout); // NULL output stream, but we need to keep some state between calls
 
     if((buttons & 0x01) && !(last_buttons & 0x01)) {
         // button 1 pressed - Stop current operation
-        os.set_stop_request(true);
+        if(lathe->is_running()) {
+            os.set_stop_request(true);
+        }
     }
 
     if((buttons & 0x02) && !(last_buttons & 0x02)) {
         // button 2 pressed, start operation G33 K{var1}
-        std::string cmd("G33 K");
-        cmd.append(std::to_string(var1));
-        send_message_queue(cmd.c_str(), &os, false);
+        if(!lathe->is_running()) {
+            std::string cmd("G33 K");
+            cmd.append(std::to_string(var1));
+            send_message_queue(cmd.c_str(), &os, false);
+        }
     }
 
     // up/down buttons
@@ -142,7 +151,10 @@ void ELS::check_buttons()
         if(++var1 > 9999) {
             var1= 9999;
         }else{
-            tm->DisplayDecNumNibble((int)roundf(rpm), var1, false, TMAlignTextRight);
+            if(tm->lock()) {
+                tm->DisplayDecNumNibble((int)roundf(rpm), var1, false, TMAlignTextRight);
+                tm->unlock();
+            }
         }
     }
 
@@ -150,7 +162,10 @@ void ELS::check_buttons()
         if(--var1 < 0) {
             var1= 0;
         }else{
-            tm->DisplayDecNumNibble((int)roundf(rpm), var1, false, TMAlignTextRight);
+            if(tm->lock()) {
+                tm->DisplayDecNumNibble((int)roundf(rpm), var1, false, TMAlignTextRight);
+                tm->unlock();
+            }
         }
     }
 

@@ -554,6 +554,7 @@ static void smoothie_startup(void *)
     }
 
     // run any startup functions that have been registered
+    printf("DEBUG: Running any post config startup functions\n");
     for(auto& f : startup_fncs) {
         f();
     }

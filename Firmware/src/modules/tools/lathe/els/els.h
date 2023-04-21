@@ -22,4 +22,5 @@ class ELS : public Module {
         Lathe *lathe{nullptr};
         TM1638 *tm{nullptr};
         uint8_t buttons{0};
+        bool started{false};
 };
