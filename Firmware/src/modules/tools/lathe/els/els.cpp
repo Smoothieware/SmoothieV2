@@ -12,6 +12,7 @@
 #include "MessageQueue.h"
 
 #include <cmath>
+#include <string>
 
 #define enable_key "enable"
 
@@ -42,7 +43,7 @@ bool ELS::configure(ConfigReader& cr)
     }
 
     // register a startup function that will be called after all modules have been loaded
-    // (as this module relies on the tm1638, buttonbox and Lathe modules having been loaded)
+    // (as this module relies on the tm1638 and Lathe modules having been loaded)
     register_startup(std::bind(&ELS::after_load, this));
 
     return true;
@@ -84,10 +85,11 @@ void ELS::update_rpm()
 
     // update display once per second
     if(tm->lock()) {
-        float rpm= lathe->get_rpm();
+        // display current RPM in 4 left segments
+        rpm= lathe->get_rpm();
+        tm->DisplayDecNumNibble((int)roundf(rpm), var1, false, TMAlignTextLeft);
 
         // display if running and what mode it is in
-        tm->displayIntNum((int)roundf(rpm), false, TMAlignTextRight);
         if(lathe->is_running()) {
             tm->setLED(std::isnan(lathe->get_distance())?0:1, 1);
         }else{
@@ -129,8 +131,27 @@ void ELS::check_buttons()
     }
 
     if((buttons & 0x02) && !(last_buttons & 0x02)) {
-        // button 2 pressed, start operation G33 K1
-        send_message_queue("G33 K1", &os, false);
+        // button 2 pressed, start operation G33 K{var1}
+        std::string cmd("G33 K");
+        cmd.append(std::to_string(var1));
+        send_message_queue(cmd.c_str(), &os, false);
+    }
+
+    // up/down buttons
+    if((buttons & 0x80) && !(last_buttons & 0x80)) {
+        if(++var1 > 9999) {
+            var1= 9999;
+        }else{
+            tm->DisplayDecNumNibble((int)roundf(rpm), var1, false, TMAlignTextRight);
+        }
+    }
+
+    if((buttons & 0x20) && !(last_buttons & 0x20)) {
+        if(--var1 < 0) {
+            var1= 0;
+        }else{
+            tm->DisplayDecNumNibble((int)roundf(rpm), var1, false, TMAlignTextRight);
+        }
     }
 
     last_buttons= buttons;
