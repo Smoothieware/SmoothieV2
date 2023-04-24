@@ -25,9 +25,6 @@
 #define ppr_key "encoder_ppr"
 #define index_pin_key "index_pin"
 
-#define RPM_UPDATE_HZ 10
-
-
 REGISTER_MODULE(Lathe, Lathe::create)
 
 bool Lathe::create(ConfigReader& cr)
@@ -105,7 +102,7 @@ bool Lathe::configure(ConfigReader& cr)
     Dispatcher::getInstance()->add_handler(Dispatcher::GCODE_HANDLER, 33, std::bind(&Lathe::handle_gcode, this, _1, _2));
     Dispatcher::getInstance()->add_handler("rpm", std::bind( &Lathe::rpm_cmd, this, _1, _2) );
 
-    SlowTicker::getInstance()->attach(RPM_UPDATE_HZ, std::bind(&Lathe::handle_rpm, this));
+    SlowTicker::getInstance()->attach(10, std::bind(&Lathe::handle_rpm, this));
 
     return true;
 }
@@ -232,7 +229,7 @@ void Lathe::handle_rpm()
         return;
     }
 
-    // get elapsed time since last call, more accurate that relying on 100ms
+    // get elapsed time since last call, more accurate than relying on 100ms timer
     uint32_t deltams= benchmark_timer_as_ms(benchmark_timer_elapsed(lasttime));
 
     if(index_pin != nullptr) {

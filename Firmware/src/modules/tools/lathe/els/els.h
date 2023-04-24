@@ -17,7 +17,7 @@ class ELS : public Module {
         void after_load();
         void update_rpm();
 
-        uint32_t var1{0};
+        int var1{0};
         float rpm;
         Lathe *lathe{nullptr};
         TM1638 *tm{nullptr};
