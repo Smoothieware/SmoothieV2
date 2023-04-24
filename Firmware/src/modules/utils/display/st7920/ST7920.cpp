@@ -1,8 +1,6 @@
 #include "ST7920.h"
 #include "ConfigReader.h"
-#include "SlowTicker.h"
 #include "main.h"
-#include "Spi.h"
 #include "Pin.h"
 #include "benchmark_timer.h"
 
@@ -142,27 +140,29 @@ static const uint8_t font5x8[] = {
     0x00, 0x00, 0x78, 0x78, 0x78, 0x78, 0x00, 0x00
 };
 
+// Use S/W SPI as it is slow anyway as it writes a nibble at a time, so the H/W SPI won't really be much faster
 // FIXME write bytes needs to be optimized
-#define ST7920_CS()              {spi->begin_transaction();cs->set(false);wait_us(10);}
-#define ST7920_NCS()             {cs->set(true);spi->end_transaction();wait_us(10);}
-#define ST7920_WRITE_BYTE(a)     {spi->write_byte((uint8_t)((a)&0xf0));spi->write_byte((uint8_t)((a)<<4));wait_us(10);}
-#define ST7920_WRITE_BYTES(p,l)  {for(uint8_t j=0;j<l;j++){spi->write_byte(*p&0xf0);spi->write_byte(*p<<4);p++;} wait_us(10); }
-#define ST7920_SET_CMD()         {spi->write_byte(0xf8);wait_us(10);}
-#define ST7920_SET_DAT()         {spi->write_byte(0xfa);wait_us(10);}
+#define ST7920_CS()
+#define ST7920_NCS()
+#define ST7920_WRITE_BYTE(a)     {spi_write((uint8_t)((a)&0xf0));spi_write((uint8_t)((a)<<4));wait_us(10);}
+#define ST7920_WRITE_BYTES(p,l)  {for(uint8_t j=0;j<l;j++){spi_write(*p&0xf0);spi_write(*p<<4);p++;} wait_us(10); }
+#define ST7920_SET_CMD()         {spi_write(0xf8);wait_us(10);}
+#define ST7920_SET_DAT()         {spi_write(0xfa);wait_us(10);}
 #define PAGE_HEIGHT 32  //512 byte framebuffer
 #define WIDTH 128
 #define HEIGHT 64
 #define FB_SIZE WIDTH*HEIGHT/8
 
 #define enable_key "enable"
-#define cs_pin_key "cs"
-#define spi_channel_key "spi_channel"
+#define clk_pin_key "clk"
+#define mosi_pin_key "mosi"
+//#define miso_pin_key "miso"
 
 static void wait_us(uint32_t us)
 {
     if(us >= 10000) {
-        safe_sleep(us/10000);
-    }else{
+        safe_sleep(us / 10000);
+    } else {
         uint32_t st = benchmark_timer_start();
         while(benchmark_timer_as_us(benchmark_timer_elapsed(st)) < us) ;
     }
@@ -187,14 +187,14 @@ ST7920::ST7920() : Module("st7920")
 
 ST7920::~ST7920()
 {
-    if(spi != nullptr) {
-        SPI::deleteInstance(spi_channel);
-    }
     if(fb != nullptr) {
         free(fb);
     }
-    if(cs != nullptr) {
-        delete cs;
+    if(clk != nullptr) {
+        delete clk;
+    }
+    if(mosi != nullptr) {
+        delete mosi;
     }
 }
 
@@ -207,32 +207,22 @@ bool ST7920::configure(ConfigReader& cr)
         return false;
     }
 
-    // Note CS pins go low to select the chip, we do not invert the pin to avoid confusion here
-    std::string cs_pin = cr.get_string(m, cs_pin_key, "nc");
-    cs = new Pin(cs_pin.c_str(), Pin::AS_OUTPUT_ON); // set high on creation
-    if(!cs->connected()) {
-        delete cs;
-        cs= nullptr;
-        printf("ERROR:config_st7920: spi cs pin %s is invalid\n", cs_pin.c_str());
+    std::string clk_pin = cr.get_string(m, clk_pin_key, "nc");
+    clk = new Pin(clk_pin.c_str(), Pin::AS_OUTPUT_ON); // set high on creation
+    if(!clk->connected()) {
+        printf("ERROR:config_st7920: spi clk pin %s is invalid\n", clk_pin.c_str());
         return false;
     }
+    printf("DEBUG:config_st7920: spi clk pin: %s\n", clk->to_string().c_str());
 
-    cs->set(true);
-    printf("DEBUG:config_st7920: spi cs pin: %s\n", cs->to_string().c_str());
-
-    // set SPI channel to use
-    spi_channel = cr.get_int(m, spi_channel_key, 0);
-    spi = SPI::getInstance(spi_channel);
-    if(spi != nullptr) {
-        if(spi->init(8, 3, 500000)) { // 8bit, mode3, 500KHz
-            printf("ERROR:config_st7920: failed to get SPI channel %d\n", spi_channel);
-            return false;
-        }
-
-    }else {
-        printf("ERROR:config_st7920: failed to get SPI instance %d\n", spi_channel);
+    std::string mosi_pin = cr.get_string(m, mosi_pin_key, "nc");
+    mosi = new Pin(mosi_pin.c_str(), Pin::AS_OUTPUT_ON); // set high on creation
+    if(!mosi->connected()) {
+        printf("ERROR:config_st7920: spi mosi pin %s is invalid\n", mosi_pin.c_str());
         return false;
     }
+    printf("DEBUG:config_st7920: spi mosi pin: %s\n", mosi->to_string().c_str());
+
 
     fb = (uint8_t *)malloc(FB_SIZE); // grab some memory for the frame buffer
     if(fb == nullptr) {
@@ -241,6 +231,17 @@ bool ST7920::configure(ConfigReader& cr)
     }
 
     return true;
+}
+
+void ST7920::spi_write(uint8_t v)
+{
+    for (int b = 7; b >= 0; --b) {
+        mosi->set(((v >> b) & 0x01) != 0);
+        clk->set(false);
+        wait_us(10);
+        clk->set(true);
+        wait_us(10);
+    }
 }
 
 void ST7920::initDisplay()

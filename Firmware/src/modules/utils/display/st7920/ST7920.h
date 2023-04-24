@@ -8,7 +8,6 @@
 #include "Module.h"
 
 class Pin;
-class SPI;
 class ConfigReader;
 
 class ST7920  : public Module
@@ -33,10 +32,11 @@ public:
 private:
     void renderChar(uint8_t *fb, char c, int ox, int oy);
     void displayChar(int row, int column, char inpChr);
+    void spi_write(uint8_t v);
 
-    int spi_channel;
-    Pin *cs{nullptr};
-    SPI *spi{nullptr};
+    Pin *clk{nullptr};
+    Pin *mosi{nullptr};
+    // Pin *miso{nullptr};
     uint8_t *fb{nullptr};
     bool inited{false};
     bool dirty{false};
