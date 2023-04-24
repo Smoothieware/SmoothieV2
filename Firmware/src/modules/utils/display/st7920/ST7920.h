@@ -28,6 +28,7 @@ public:
 
     // copy the bits in g, of X line size pixels, to x, y in frame buffer
     void renderGlyph(int x, int y, const uint8_t *g, int pixelWidth, int pixelHeight);
+    void bltGlyph(int x, int y, int w, int h, const uint8_t *glyph, int span, int x_offset, int y_offset);
 
 private:
     void renderChar(uint8_t *fb, char c, int ox, int oy);

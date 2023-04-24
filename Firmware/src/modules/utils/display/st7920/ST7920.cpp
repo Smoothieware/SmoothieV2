@@ -208,7 +208,7 @@ bool ST7920::configure(ConfigReader& cr)
     }
 
     std::string clk_pin = cr.get_string(m, clk_pin_key, "nc");
-    clk = new Pin(clk_pin.c_str(), Pin::AS_OUTPUT_ON); // set high on creation
+    clk = new Pin(clk_pin.c_str(), Pin::AS_OUTPUT_OFF); // set low on creation
     if(!clk->connected()) {
         printf("ERROR:config_st7920: spi clk pin %s is invalid\n", clk_pin.c_str());
         return false;
@@ -216,7 +216,7 @@ bool ST7920::configure(ConfigReader& cr)
     printf("DEBUG:config_st7920: spi clk pin: %s\n", clk->to_string().c_str());
 
     std::string mosi_pin = cr.get_string(m, mosi_pin_key, "nc");
-    mosi = new Pin(mosi_pin.c_str(), Pin::AS_OUTPUT_ON); // set high on creation
+    mosi = new Pin(mosi_pin.c_str(), Pin::AS_OUTPUT_OFF); // set low on creation
     if(!mosi->connected()) {
         printf("ERROR:config_st7920: spi mosi pin %s is invalid\n", mosi_pin.c_str());
         return false;
@@ -237,9 +237,9 @@ void ST7920::spi_write(uint8_t v)
 {
     for (int b = 7; b >= 0; --b) {
         mosi->set(((v >> b) & 0x01) != 0);
-        clk->set(false);
-        wait_us(1);
         clk->set(true);
+        wait_us(1);
+        clk->set(false);
         wait_us(1);
     }
 }
@@ -365,6 +365,29 @@ void ST7920::renderGlyph(int xp, int yp, const uint8_t *g, int pixelWidth, int p
                 b = *g++;
             }
         }
+    }
+}
+
+// displays a selectable rectangle from the glyph
+void ST7920::bltGlyph(int x, int y, int w, int h, const uint8_t *glyph, int span, int x_offset, int y_offset) {
+    if(x_offset == 0 && y_offset == 0 && span == 0) {
+        // blt the whole thing
+        renderGlyph(x, y, glyph, w, h);
+
+    }else{
+        // copy portion of glyph into g where x_offset is left byte aligned
+        // Note currently the x_offset must be byte aligned
+        int n= w/8; // bytes per line to copy
+        if(w%8 != 0) n++; // round up to next byte
+        uint8_t g[n*h];
+        uint8_t *dst= g;
+        const uint8_t *src= &glyph[y_offset*span + x_offset/8];
+        for (int i = 0; i < h; ++i) {
+            memcpy(dst, src, n);
+            dst+=n;
+            src+= span;
+        }
+        renderGlyph(x, y, g, w, h);
     }
 }
 
