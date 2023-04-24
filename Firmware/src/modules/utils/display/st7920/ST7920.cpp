@@ -6,7 +6,6 @@
 
 #include <cstring>
 
-
 // memory mapped character glyphs
 static const uint8_t font5x8[] = {
     // 5x8 font each byte is consecutive x bits left aligned then each subsequent byte is Y 8 bytes per character
@@ -168,6 +167,12 @@ static void wait_us(uint32_t us)
     }
 }
 
+static void wait_ns(uint32_t ns)
+{
+    uint32_t st = benchmark_timer_start();
+    while(benchmark_timer_as_ns(benchmark_timer_elapsed(st)) < ns) ;
+}
+
 REGISTER_MODULE(ST7920, ST7920::create)
 
 bool ST7920::create(ConfigReader& cr)
@@ -237,10 +242,11 @@ void ST7920::spi_write(uint8_t v)
 {
     for (int b = 7; b >= 0; --b) {
         mosi->set(((v >> b) & 0x01) != 0);
+        wait_ns(40);
         clk->set(true);
-        wait_us(1);
+        wait_ns(300);
         clk->set(false);
-        wait_us(1);
+        wait_ns(300);
     }
 }
 
@@ -369,23 +375,24 @@ void ST7920::renderGlyph(int xp, int yp, const uint8_t *g, int pixelWidth, int p
 }
 
 // displays a selectable rectangle from the glyph
-void ST7920::bltGlyph(int x, int y, int w, int h, const uint8_t *glyph, int span, int x_offset, int y_offset) {
+void ST7920::bltGlyph(int x, int y, int w, int h, const uint8_t *glyph, int span, int x_offset, int y_offset)
+{
     if(x_offset == 0 && y_offset == 0 && span == 0) {
         // blt the whole thing
         renderGlyph(x, y, glyph, w, h);
 
-    }else{
+    } else {
         // copy portion of glyph into g where x_offset is left byte aligned
         // Note currently the x_offset must be byte aligned
-        int n= w/8; // bytes per line to copy
-        if(w%8 != 0) n++; // round up to next byte
-        uint8_t g[n*h];
-        uint8_t *dst= g;
-        const uint8_t *src= &glyph[y_offset*span + x_offset/8];
+        int n = w / 8; // bytes per line to copy
+        if(w % 8 != 0) n++; // round up to next byte
+        uint8_t g[n * h];
+        uint8_t *dst = g;
+        const uint8_t *src = &glyph[y_offset * span + x_offset / 8];
         for (int i = 0; i < h; ++i) {
             memcpy(dst, src, n);
-            dst+=n;
-            src+= span;
+            dst += n;
+            src += span;
         }
         renderGlyph(x, y, g, w, h);
     }
