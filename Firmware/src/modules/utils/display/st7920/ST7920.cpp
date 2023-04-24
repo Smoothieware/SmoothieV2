@@ -161,7 +161,7 @@ static const uint8_t font5x8[] = {
 static void wait_us(uint32_t us)
 {
     if(us >= 10000) {
-        safe_sleep(us / 10000);
+        safe_sleep(us / 1000);
     } else {
         uint32_t st = benchmark_timer_start();
         while(benchmark_timer_as_us(benchmark_timer_elapsed(st)) < us) ;
@@ -238,9 +238,9 @@ void ST7920::spi_write(uint8_t v)
     for (int b = 7; b >= 0; --b) {
         mosi->set(((v >> b) & 0x01) != 0);
         clk->set(false);
-        wait_us(10);
+        wait_us(1);
         clk->set(true);
-        wait_us(10);
+        wait_us(1);
     }
 }
 
