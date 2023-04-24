@@ -4,6 +4,7 @@
 #include "main.h"
 #include "Spi.h"
 #include "Pin.h"
+#include "benchmark_timer.h"
 
 #include <cstring>
 
@@ -159,7 +160,12 @@ static const uint8_t font5x8[] = {
 
 static void wait_us(uint32_t us)
 {
-
+    if(us >= 10000) {
+        safe_sleep(us/10000);
+    }else{
+        uint32_t st = benchmark_timer_start();
+        while(benchmark_timer_as_us(benchmark_timer_elapsed(st)) < us) ;
+    }
 }
 
 REGISTER_MODULE(ST7920, ST7920::create)
