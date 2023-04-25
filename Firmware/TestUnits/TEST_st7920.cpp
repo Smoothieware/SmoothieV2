@@ -4,6 +4,7 @@
 #include <cstring>
 #include <sstream>
 #include <iostream>
+#include <string>
 
 #include "TestRegistry.h"
 
@@ -12,6 +13,7 @@
 
 #include "ST7920.h" //include the module
 #include "ConfigReader.h"
+#include "benchmark_timer.h"
 
 ST7920 lcd;
 
@@ -38,5 +40,21 @@ REGISTER_TEST(ST7920, run_tests)
     lcd.refresh();
 
     lcd.displayString(0, 0, "This is a test", 14);
+    lcd.displayString(1, 0, "This is line 2", 14);
+    lcd.displayString(2, 0, "This is line 3", 14);
+    lcd.displayString(3, 0, "This is line 4", 14);
+    lcd.displayString(4, 0, "This is line 5", 14);
+    lcd.displayString(5, 0, "This is line 6", 14);
+    lcd.displayString(6, 0, "This is line 7", 14);
     lcd.refresh();
+
+    int cnt= 0;
+    while(true) {
+        uint32_t st = benchmark_timer_start();
+        while(benchmark_timer_as_ms(benchmark_timer_elapsed(st)) < 1000) ;
+        std::string str = "Count: ";
+        str.append(std::to_string(++cnt));
+        lcd.displayString(7, 0, str.c_str(), str.size());
+        lcd.refresh();
+    }
 }

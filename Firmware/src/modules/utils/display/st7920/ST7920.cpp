@@ -350,6 +350,7 @@ void ST7920::renderGlyph(int xp, int yp, const uint8_t *g, int pixelWidth, int p
         // if(rf != 0) {
 
         // }
+        dirty = true;
         return;
     }
 
@@ -372,6 +373,7 @@ void ST7920::renderGlyph(int xp, int yp, const uint8_t *g, int pixelWidth, int p
             }
         }
     }
+    dirty = true;
 }
 
 // displays a selectable rectangle from the glyph
