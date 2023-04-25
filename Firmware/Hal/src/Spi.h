@@ -25,6 +25,8 @@ public:
 	bool init(int bits=8, int mode=0, int frequency=1000000);
 
 	bool write_read(void *wvalue, void *rvalue, uint32_t n);
+    bool write_byte(uint8_t b);
+
 	bool valid() const { return _valid; }
 	void *get_hspi() const { return _hspi; }
     uint8_t get_mode() const { return _mode; }

@@ -292,6 +292,16 @@ bool SPI::write_read(void *wvalue, void *rvalue, uint32_t n)
     return true;
 }
 
+// write one byte
+bool SPI::write_byte(uint8_t b)
+{
+    if(HAL_SPI_Transmit((SPI_HandleTypeDef*)_hspi, &b, 1, 1000) != HAL_OK) {
+        // Transfer error in transmission process
+        return false;
+    }
+    return true;
+}
+
 /**
   * @brief SPI MSP Initialization
   *        This function configures the hardware resources used in this example:
