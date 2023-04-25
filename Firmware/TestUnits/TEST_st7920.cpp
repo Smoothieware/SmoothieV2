@@ -48,6 +48,13 @@ REGISTER_TEST(ST7920, run_tests)
     lcd.displayString(6, 0, "This is line 7", 14);
     lcd.refresh();
 
+    // outline the last line
+    lcd.drawHLine(0, 64-8, 128, 1);
+    lcd.drawVLine(0, 64-8, 8, 1);
+    lcd.drawHLine(0, 63, 128, 1);
+    lcd.drawVLine(127, 64-8, 8, 1);
+    lcd.refresh();
+
     int cnt= 0;
     while(true) {
         uint32_t st = benchmark_timer_start();

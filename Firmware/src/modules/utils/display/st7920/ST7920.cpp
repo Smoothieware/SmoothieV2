@@ -140,7 +140,6 @@ static const uint8_t font5x8[] = {
 };
 
 // Use S/W SPI as it is slow anyway as it writes a nibble at a time, so the H/W SPI won't really be much faster
-// FIXME write bytes needs to be optimized
 #define ST7920_CS()
 #define ST7920_NCS()
 #define ST7920_WRITE_BYTE(a)     {spi_write((uint8_t)((a)&0xf0));spi_write((uint8_t)((a)<<4));wait_us(10);}
@@ -266,8 +265,9 @@ void ST7920::initDisplay()
         ST7920_WRITE_BYTE(0x80 | y); //set y
         ST7920_WRITE_BYTE(0x80);     //set x = 0
         ST7920_SET_DAT();
-        for(int i = 0; i < 2 * WIDTH / 8; i++) //2x width clears both segments
+        for(int i = 0; i < 2 * WIDTH / 8; i++) { //2x width clears both segments
             ST7920_WRITE_BYTE(0);
+        }
         ST7920_SET_CMD();
     }
     ST7920_WRITE_BYTE(0x0C); //display on, cursor+blink off
@@ -426,4 +426,43 @@ void ST7920::refresh()
     if(!inited || !dirty) return;
     fillGDRAM(this->fb);
     dirty = false;
+}
+
+void ST7920::drawByte(int index, uint8_t mask, int color)
+{
+    if (color == 1) {
+        fb[index] |= mask;
+    } else if (color == 0) {
+        fb[index] &= ~mask;
+    } else {
+        fb[index] ^= mask;
+    }
+    dirty = true;
+}
+
+void ST7920::pixel(int x, int y, int color)
+{
+    if (y < HEIGHT && x < WIDTH) {
+        unsigned char mask = 0x80 >> (x % 8);
+        drawByte(y * (WIDTH / 8) + (x / 8), mask, color);
+    }
+}
+void ST7920::drawHLine(int x, int y, int w, int color)
+{
+    for (int i = 0; i < w; i++) {
+        pixel( x + i,  y,  color);
+    }
+}
+
+void ST7920::drawVLine(int x, int y, int h, int color)
+{
+    for (int i = 0; i < h; i++) {
+        pixel( x,  y + i,  color);
+    }
+}
+void ST7920::drawBox(int x, int y, int w, int h, int color)
+{
+    for (int i = 0; i < w; i++) {
+        drawVLine(x + i, y, h, color);
+    }
 }

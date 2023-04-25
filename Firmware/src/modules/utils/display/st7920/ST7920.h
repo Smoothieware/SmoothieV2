@@ -30,9 +30,15 @@ public:
     void renderGlyph(int x, int y, const uint8_t *g, int pixelWidth, int pixelHeight);
     void bltGlyph(int x, int y, int w, int h, const uint8_t *glyph, int span, int x_offset, int y_offset);
 
+    void pixel(int x, int y, int color);
+    void drawHLine(int x, int y, int w, int color);
+    void drawVLine(int x, int y, int h, int color);
+    void drawBox(int x, int y, int w, int h, int color);
+
 private:
     void renderChar(uint8_t *fb, char c, int ox, int oy);
     void displayChar(int row, int column, char inpChr);
+    void drawByte(int index, uint8_t mask, int color);
     void spi_write(uint8_t v);
 
     Pin *clk{nullptr};
