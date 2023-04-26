@@ -466,3 +466,43 @@ void ST7920::drawBox(int x, int y, int w, int h, int color)
         drawVLine(x + i, y, h, color);
     }
 }
+
+// Handle AdaFruit fonts
+
+// modified code from Adafruit GFX library
+int ST7920::drawAFChar(int x, int y, uint8_t c, int color)
+{
+    if(gfxFont == nullptr) return 0;
+
+    c -= (uint8_t)gfxFont->first;
+    GFXglyph *glyph = gfxFont->glyph + c;
+    uint8_t *bitmap = gfxFont->bitmap;
+
+    uint16_t bo = glyph->bitmapOffset;
+    uint8_t w = glyph->width, h = glyph->height;
+    int8_t xo = glyph->xOffset, yo = glyph->yOffset;
+    uint8_t xx, yy, bits = 0, bit = 0;
+
+    for (yy = 0; yy < h; yy++) {
+        for (xx = 0; xx < w; xx++) {
+            if (!(bit++ & 7)) {
+                bits = bitmap[bo++];
+            }
+            if (bits & 0x80) {
+                pixel(x + xo + xx, y + yo + yy, color);
+            }
+            bits <<= 1;
+        }
+    }
+    return xo + w; // return width of character
+}
+
+void ST7920::displayAFString(int x, int y, int color, const char *ptr, int length)
+{
+    if(length == 0) length= strnlen(ptr, 64);
+    for (int i = 0; i < length; ++i) {
+        int w= drawAFChar(x, y, ptr[i], color);
+        x += (w+1);
+    }
+    dirty = true;
+}

@@ -35,11 +35,34 @@ public:
     void drawVLine(int x, int y, int h, int color);
     void drawBox(int x, int y, int w, int h, int color);
 
+    typedef struct {
+      uint16_t bitmapOffset; ///< Pointer into GFXfont->bitmap
+      uint8_t width;         ///< Bitmap dimensions in pixels
+      uint8_t height;        ///< Bitmap dimensions in pixels
+      uint8_t xAdvance;      ///< Distance to advance cursor (x axis)
+      int8_t xOffset;        ///< X dist from cursor pos to UL corner
+      int8_t yOffset;        ///< Y dist from cursor pos to UL corner
+    } GFXglyph;
+
+    /// Data stored for FONT AS A WHOLE
+    typedef struct {
+      uint8_t *bitmap;  ///< Glyph bitmaps, concatenated
+      GFXglyph *glyph;  ///< Glyph array
+      uint16_t first;   ///< ASCII extents (first char)
+      uint16_t last;    ///< ASCII extents (last char)
+      uint8_t yAdvance; ///< Newline distance (y axis)
+    } GFXfont;
+    void displayAFString(int x, int y, int color, const char *ptr, int length=0);
+    void setFont(const GFXfont *f) { gfxFont= f; }
+
 private:
     void renderChar(uint8_t *fb, char c, int ox, int oy);
     void displayChar(int row, int column, char inpChr);
     void drawByte(int index, uint8_t mask, int color);
+    int drawAFChar(int x, int y, uint8_t c, int color);
+
     void spi_write(uint8_t v);
+    const GFXfont *gfxFont{nullptr};
 
     Pin *clk{nullptr};
     Pin *mosi{nullptr};

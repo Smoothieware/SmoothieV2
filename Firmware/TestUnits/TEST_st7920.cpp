@@ -14,6 +14,8 @@
 #include "ST7920.h" //include the module
 #include "ConfigReader.h"
 #include "benchmark_timer.h"
+//#include "fonts/TomThumb.h"
+#include "fonts/Org_01.h"
 
 ST7920 lcd;
 
@@ -39,13 +41,24 @@ REGISTER_TEST(ST7920, run_tests)
     lcd.clearScreen();
     lcd.refresh();
 
+    // default 5x8 font
     lcd.displayString(0, 0, "This is a test", 14);
     lcd.displayString(1, 0, "This is line 2", 14);
-    lcd.displayString(2, 0, "This is line 3", 14);
-    lcd.displayString(3, 0, "This is line 4", 14);
-    lcd.displayString(4, 0, "This is line 5", 14);
-    lcd.displayString(5, 0, "This is line 6", 14);
-    lcd.displayString(6, 0, "This is line 7", 14);
+    lcd.refresh();
+
+    // Adafruit font, y is bottom not top
+    // lcd.setFont(&TomThumb);
+    // int inc= 6;
+    // int y= 16+inc;
+    // lcd.displayAFString(0, y, 1, "Testing AF 3x5 Font"); y+=6;
+    lcd.setFont(&Org_01);
+    int inc= 6;
+    int y= 16+inc;
+    lcd.displayAFString(0, y, 1, "Testing Org01 Font"); y+=inc;
+    lcd.displayAFString(0, y, 1, "next line"); y+=inc;
+    lcd.displayAFString(0, y, 1, "abcdefghijklmnopqrstuvwxyz"); y+=inc;
+    lcd.displayAFString(0, y, 1, "ABCDEFGHIJKLMNOPQRSTUVWXYZ"); y+=inc;
+    lcd.displayAFString(0, y, 1, "0123456789 *+-,.");
     lcd.refresh();
 
     // outline the last line
