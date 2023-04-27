@@ -33,7 +33,8 @@ public:
     void pixel(int x, int y, int color);
     void drawHLine(int x, int y, int w, int color);
     void drawVLine(int x, int y, int h, int color);
-    void drawBox(int x, int y, int w, int h, int color);
+    void fillRect(int16_t x, int16_t y, int16_t w, int16_t h, int color=0);
+    void drawRect(int16_t x, int16_t y, int16_t w, int16_t h, int color=1);
 
     typedef struct {
       uint16_t bitmapOffset; ///< Pointer into GFXfont->bitmap
@@ -54,6 +55,8 @@ public:
     } GFXfont;
     void displayAFString(int x, int y, int color, const char *ptr, int length=0);
     void setFont(const GFXfont *f) { gfxFont= f; }
+    void charBounds(unsigned char c, int16_t *x, int16_t *y, int16_t *minx, int16_t *miny, int16_t *maxx, int16_t *maxy);
+    void getTextBounds(const char *str, int16_t x, int16_t y, int16_t *x1, int16_t *y1, uint16_t *w, uint16_t *h);
 
 private:
     void renderChar(uint8_t *fb, char c, int ox, int oy);
