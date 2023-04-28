@@ -44,37 +44,44 @@ REGISTER_TEST(ST7920, run_tests)
     // default 5x8 font
     lcd.displayString(0, 0, "This is a test", 14);
     lcd.displayString(1, 0, "This is line 2", 14);
+    lcd.fillRect(0, 16, 128, 4, 1); // draw horizontal filled bar 4 pixels in height
     lcd.refresh();
 
     // Adafruit font, y is bottom not top
     // lcd.setFont(&TomThumb);
     // int inc= 6;
-    // int y= 16+inc;
+    // int y= 20+inc;
     // lcd.displayAFString(0, y, 1, "Testing AF 3x5 Font"); y+=6;
+
     lcd.setFont(&Org_01);
     int inc= 6;
-    int y= 16+inc;
+    int y= 20+inc;
     lcd.displayAFString(0, y, 1, "Testing Org01 Font"); y+=inc;
-    lcd.displayAFString(0, y, 1, "next line"); y+=inc;
     lcd.displayAFString(0, y, 1, "abcdefghijklmnopqrstuvwxyz"); y+=inc;
     lcd.displayAFString(0, y, 1, "ABCDEFGHIJKLMNOPQRSTUVWXYZ"); y+=inc;
-    lcd.displayAFString(0, y, 1, "0123456789 *+-,.");
+    lcd.displayAFString(0, y, 1, "0123456789 *+-,."); y+=inc;
     lcd.refresh();
 
-    // outline the last line
-    lcd.drawHLine(0, 64-8, 128, 1);
-    lcd.drawVLine(0, 64-8, 8, 1);
-    lcd.drawHLine(0, 63, 128, 1);
-    lcd.drawVLine(127, 64-8, 8, 1);
+    // outline an area
+    y-=4;
+    lcd.drawRect(0, y, 127, 16);
     lcd.refresh();
 
+    y += 7;
     int cnt= 0;
     while(true) {
         uint32_t st = benchmark_timer_start();
         while(benchmark_timer_as_ms(benchmark_timer_elapsed(st)) < 1000) ;
         std::string str = "Count: ";
         str.append(std::to_string(++cnt));
-        lcd.displayString(7, 0, str.c_str(), str.size());
+        // get size of string
+        int16_t x1, y1;
+        uint16_t w, h;
+        lcd.getTextBounds(str.c_str(), 2, y+3, &x1, &y1, &w, &h);
+        printf("y= %d, size: %d, %d, %d, %d\n", y, x1, y1, w, h);
+
+        lcd.fillRect(x1, y1, w, h, 0); // clear box for text
+        lcd.displayAFString(2, y+3, 1, str.c_str());
         lcd.refresh();
     }
 }

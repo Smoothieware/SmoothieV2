@@ -447,23 +447,33 @@ void ST7920::pixel(int x, int y, int color)
         drawByte(y * (WIDTH / 8) + (x / 8), mask, color);
     }
 }
+
 void ST7920::drawHLine(int x, int y, int w, int color)
 {
     for (int i = 0; i < w; i++) {
-        pixel( x + i,  y,  color);
+        pixel(x + i,  y,  color);
     }
 }
 
 void ST7920::drawVLine(int x, int y, int h, int color)
 {
     for (int i = 0; i < h; i++) {
-        pixel( x,  y + i,  color);
+        pixel(x,  y + i,  color);
     }
 }
-void ST7920::drawBox(int x, int y, int w, int h, int color)
+
+void ST7920::drawRect(int16_t x, int16_t y, int16_t w, int16_t h, int color)
 {
-    for (int i = 0; i < w; i++) {
-        drawVLine(x + i, y, h, color);
+    drawHLine(x, y, w, color);
+    drawHLine(x, y + h - 1, w, color);
+    drawVLine(x, y, h, color);
+    drawVLine(x + w - 1, y, h, color);
+}
+
+void ST7920::fillRect(int16_t x, int16_t y, int16_t w, int16_t h, int color)
+{
+    for (int16_t i = x; i < x + w; i++) {
+        drawVLine(i, y, h, color);
     }
 }
 
@@ -499,10 +509,78 @@ int ST7920::drawAFChar(int x, int y, uint8_t c, int color)
 
 void ST7920::displayAFString(int x, int y, int color, const char *ptr, int length)
 {
-    if(length == 0) length= strnlen(ptr, 64);
+    if(length == 0) length = strnlen(ptr, 64);
     for (int i = 0; i < length; ++i) {
-        int w= drawAFChar(x, y, ptr[i], color);
-        x += (w+1);
+        int w = drawAFChar(x, y, ptr[i], color);
+        x += (w + 1);
     }
     dirty = true;
 }
+
+void ST7920::charBounds(unsigned char c, int16_t *x, int16_t *y,
+                        int16_t *minx, int16_t *miny, int16_t *maxx,
+                        int16_t *maxy)
+{
+    if (gfxFont == nullptr) return;
+    int textsize_x = 1;
+    int textsize_y = 1;
+    int _width = WIDTH;
+    bool wrap = true;
+
+    uint8_t first = gfxFont->first,
+            last = gfxFont->last;
+    if ((c >= first) && (c <= last)) { // Char present in this font?
+        GFXglyph *glyph = gfxFont->glyph + (c - first);
+        uint8_t gw = glyph->width,
+                gh = glyph->height,
+                xa = glyph->xAdvance;
+        int8_t xo = glyph->xOffset,
+               yo = glyph->yOffset;
+        if (wrap && ((*x + (((int16_t)xo + gw) * textsize_x)) > _width)) {
+            *x = 0; // Reset x to zero, advance y by one line
+            *y += textsize_y * (uint8_t)gfxFont->yAdvance;
+        }
+        int16_t tsx = (int16_t)textsize_x, tsy = (int16_t)textsize_y,
+                x1 = *x + xo * tsx, y1 = *y + yo * tsy, x2 = x1 + gw * tsx - 1,
+                y2 = y1 + gh * tsy - 1;
+        if (x1 < *minx)
+            *minx = x1;
+        if (y1 < *miny)
+            *miny = y1;
+        if (x2 > *maxx)
+            *maxx = x2;
+        if (y2 > *maxy)
+            *maxy = y2;
+        *x += xa * tsx;
+    }
+}
+
+void ST7920::getTextBounds(const char *str, int16_t x, int16_t y,
+                           int16_t *x1, int16_t *y1, uint16_t *w,
+                           uint16_t *h)
+{
+
+    uint8_t c; // Current character
+    int16_t minx = 0x7FFF, miny = 0x7FFF, maxx = -1, maxy = -1; // Bound rect
+    // Bound rect is intentionally initialized inverted, so 1st char sets it
+
+    *x1 = x; // Initial position is value passed in
+    *y1 = y;
+    *w = *h = 0; // Initial size is zero
+
+    while ((c = *str++)) {
+        // charBounds() modifies x/y to advance for each character,
+        // and min/max x/y are updated to incrementally build bounding rect.
+        charBounds(c, &x, &y, &minx, &miny, &maxx, &maxy);
+    }
+
+    if (maxx >= minx) {     // If legit string bounds were found...
+        *x1 = minx;           // Update x1 to least X coord,
+        *w = maxx - minx + 1; // And w to bound rect width
+    }
+    if (maxy >= miny) { // Same for height
+        *y1 = miny;
+        *h = maxy - miny + 1;
+    }
+}
+
