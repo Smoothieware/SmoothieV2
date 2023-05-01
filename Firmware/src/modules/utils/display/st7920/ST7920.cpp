@@ -275,12 +275,12 @@ void ST7920::initDisplay()
     inited = true;
 }
 
-int16_t width(void) const
+int16_t ST7920::width(void) const
 {
     return WIDTH;
 }
 
-int16_t height(void) const
+int16_t ST7920::height(void) const
 {
     return HEIGHT;
 }
