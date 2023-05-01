@@ -57,6 +57,8 @@ public:
     void setFont(const GFXfont *f) { gfxFont= f; }
     void charBounds(unsigned char c, int16_t *x, int16_t *y, int16_t *minx, int16_t *miny, int16_t *maxx, int16_t *maxy);
     void getTextBounds(const char *str, int16_t x, int16_t y, int16_t *x1, int16_t *y1, uint16_t *w, uint16_t *h);
+    int16_t width(void) const;
+    int16_t height(void) const;
 
 private:
     void renderChar(uint8_t *fb, char c, int ox, int oy);
