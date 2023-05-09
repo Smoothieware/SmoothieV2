@@ -15,7 +15,8 @@ In addition to following the [Coding-Standards](http://smoothieware.org/coding-s
 * Do not reformat the Config Samples to suit your style.
 * Add examples of your config entries to the ConfigSamples/Snippets folder, only change existing config samples if absolutely necessary
 * If you must correct existing comments (like correct spelling mistakes or typos) then submit them as separate pull requests
-* Make sure your Pull request is against the current edge branch, and passes the Travis CI.
+* Make sure your Pull request is against the current unstable branch
 * All comments and code must be in English, this includes names of functions.
+* Where possible test units should be provided in the TestUnits directory, and should pass. (If it is deemed test units are appropriate, but not provided, then the PR maybe rejected until test units are provided).
 
 It may seem like a pain to follow these rules, but it takes the maintainers valuable time and effort to review and test pull requests, these guidelines help reduce that effort.
