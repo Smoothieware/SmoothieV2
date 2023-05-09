@@ -20,11 +20,17 @@ Modules that have been ported so far...
 * temperaturecontrol
 * temperatureswitch
 * zprobe
+* filamentdetector
 * currentcontrol
 * killbutton
 * player
 * network
+* drillcycles
 
+New Modules include...
+
+* buttonbox ( for input only switches)
+* display (drivers only for ST7920/RRD GLCD, TM1638 LED&KEY 7 segment display)
 
 On the Prime there are 4 leds..
 
@@ -41,8 +47,8 @@ all on means there was a Hardfault detected
 The debug UART port is on the STLink3 ACM0 on the Nucleo, and on the DEBUG Uart header on the Prime
 baud rate 115200.
 
-Initial Bootstrap (Only needed one time on a virgin board)
------------------
+Initial Bootstrap or Debrick
+----------------------------
 
 V2 does not have a bootloader, the firmware itself can flash itself and do updates etc.
 To bootstrap the inital firmware (or to recover from bad firmware or bricking) you can use a jlink to flash the firmware or use the STLINKV3 drag and drop, or use the BOOT0 USB flashing (press BOOT0 button and reset)...
@@ -60,6 +66,7 @@ Download STM32_Programmer_CLI from https://www.st.com/en/development-tools/stm32
 
 
 If using the STM32H745 you must first set the option bytes to only boot the M7 core... (not needed for STM32H743)
+(Only needed one time on a virgin board).
     
     STM32_Programmer_CLI -c port=swd -ob BCM4=0
     (use port=usb1 if using BOOT0 mode)

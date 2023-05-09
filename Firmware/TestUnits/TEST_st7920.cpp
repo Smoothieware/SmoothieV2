@@ -41,10 +41,14 @@ REGISTER_TEST(ST7920, run_tests)
     lcd.clearScreen();
     lcd.refresh();
 
+    int width = lcd.width();
+    int height = lcd.height();
+    printf("LCD width= %d, height= %d\n", width, height);
+
     // default 5x8 font
     lcd.displayString(0, 0, "This is a test", 14);
     lcd.displayString(1, 0, "This is line 2", 14);
-    lcd.fillRect(0, 16, 128, 4, 1); // draw horizontal filled bar 4 pixels in height
+    lcd.fillRect(0, 16, width, 4, 1); // draw horizontal filled bar 4 pixels in height
     lcd.refresh();
 
     // Adafruit font, y is bottom not top
@@ -64,7 +68,7 @@ REGISTER_TEST(ST7920, run_tests)
 
     // outline an area
     y-=4;
-    lcd.drawRect(0, y, 127, 16);
+    lcd.drawRect(0, y, width, 16);
     lcd.refresh();
 
     y += 7;

@@ -275,6 +275,16 @@ void ST7920::initDisplay()
     inited = true;
 }
 
+int16_t ST7920::width(void) const
+{
+    return WIDTH;
+}
+
+int16_t ST7920::height(void) const
+{
+    return HEIGHT;
+}
+
 void ST7920::clearScreen()
 {
     if(fb == NULL) return;
