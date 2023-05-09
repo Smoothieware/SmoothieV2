@@ -69,5 +69,5 @@ The rake build system will run on Windows, however some utilities need to be ins
 
 make sure they are all added to the PATH, then in powershell navigate to the Firmware folder and type ```rake -m```
 
-See https://github.com/wolfmanjm/stm_smoothie2/blob/master/Firmware/README.md for flashing details.
+See https://github.com/Smoothieware/SmoothieV2/blob/master/Firmware/README.md for flashing details.
 
