@@ -31,6 +31,8 @@ New Modules include...
 
 * buttonbox ( for input only switches)
 * display (drivers only for ST7920/RRD GLCD, TM1638 LED&KEY 7 segment display)
+* lathe (experimental WIP allowing synchronized moves G33)
+* lathe/els (experimental WIP to implement ELS with display)
 
 On the Prime there are 4 leds..
 
