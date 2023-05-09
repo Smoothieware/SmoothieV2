@@ -164,7 +164,7 @@ private:
     float delta_segments_per_second;                     // Setting : Used to split lines into segments for delta based on speed
     float seconds_per_minute;                            // for realtime speed change
     float default_acceleration;                          // the defualt accleration if not set for each axis
-    float s_value{0.8};                                  // modal S value
+    float s_value{0};                                    // modal S value
 
     // Number of arc generation iterations by small angle approximation before exact arc trajectory
     // correction. This parameter may be decreased if there are issues with the accuracy of the arc

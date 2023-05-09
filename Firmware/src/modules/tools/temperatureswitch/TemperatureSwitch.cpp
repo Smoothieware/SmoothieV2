@@ -144,6 +144,8 @@ void TemperatureSwitch::after_load()
 {
     // all modules have been loaded so check that the switch exists here
     // get current switch state for the named switch
+    printf("DEBUG: switch: post config running...\n");
+
     Module *m = Module::lookup("switch", this->switch_name.c_str());
     if(m != nullptr) {
         // check it is an output switch

@@ -3,6 +3,8 @@
 #include "ConfigReader.h"
 #include "SlowTicker.h"
 #include "Consoles.h"
+#include "Dispatcher.h"
+#include "GCode.h"
 
 #define template_enable_key "enable"
 

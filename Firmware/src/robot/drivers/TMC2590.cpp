@@ -10,7 +10,6 @@
 #include "ConfigReader.h"
 #include "StringUtils.h"
 #include "GCode.h"
-#include "Lock.h"
 #include "Conveyor.h"
 
 #include "FreeRTOS.h"

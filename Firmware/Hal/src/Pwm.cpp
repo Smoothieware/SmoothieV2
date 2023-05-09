@@ -112,7 +112,7 @@ float Pwm::set_microseconds(float v)
 
 // this changes the frequency of an existing, running PWM timer
 // Take care in using this as it changes the frequency of all running channels for this timer
-void Pwm:: set_frequency(uint32_t freq)
+void Pwm::set_frequency(uint32_t freq)
 {
     if(!valid) return;
 

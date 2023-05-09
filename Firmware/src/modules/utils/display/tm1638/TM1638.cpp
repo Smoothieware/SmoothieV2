@@ -7,6 +7,10 @@
 #include "SlowTicker.h"
 #include "main.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+#include "semphr.h"
+
 #include <cstring>
 
 #define enable_key "enable"
@@ -18,7 +22,7 @@ REGISTER_MODULE(TM1638, TM1638::create)
 
 bool TM1638::create(ConfigReader& cr)
 {
-    printf("DEBUG: configure TM1638 button\n");
+    printf("DEBUG: configure TM1638 display\n");
     TM1638 *tm = new TM1638();
     if(!tm->configure(cr)) {
         printf("INFO: TM1638 not enabled\n");
@@ -29,6 +33,35 @@ bool TM1638::create(ConfigReader& cr)
 
 TM1638::TM1638() : Module("tm1638")
 {
+    plock= (void*)xSemaphoreCreateMutex();
+}
+
+TM1638::~TM1638()
+{
+    if(plock != nullptr) {
+        vSemaphoreDelete(plock);
+    }
+}
+
+bool TM1638::lock()
+{
+    if(plock != nullptr) {
+        // take lock
+        uint32_t t= 0; // pdMS_TO_TICKS(10);
+        if(xSemaphoreTake(plock, t) != pdTRUE) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void TM1638::unlock()
+{
+    if(plock != nullptr) {
+        // release lock
+        xSemaphoreGive(plock);
+    }
 }
 
 bool TM1638::configure(ConfigReader& cr)
@@ -230,6 +263,7 @@ uint8_t TM1638::readButtons()
         buttons |= v;
     }
     data_pin.as_output();
+    strobe_pin.set(true);
 
     return buttons;
 }

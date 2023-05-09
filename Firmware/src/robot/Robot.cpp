@@ -513,6 +513,8 @@ bool Robot::configure(ConfigReader& cr)
 
     // M code handlers
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 2, std::bind(&Robot::handle_mcodes, this, _1, _2));
+    THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 3, std::bind(&Robot::handle_mcodes, this, _1, _2));
+    THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 5, std::bind(&Robot::handle_mcodes, this, _1, _2));
 
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 17, std::bind(&Robot::handle_mcodes, this, _1, _2));
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 18, std::bind(&Robot::handle_mcodes, this, _1, _2));
@@ -615,6 +617,7 @@ void Robot::on_halt(bool flg)
             a->enable(false);
             a->stop_moving();
         }
+        s_value = 0;
     }
 }
 
@@ -1143,6 +1146,17 @@ bool Robot::handle_mcodes(GCode& gcode, OutputStream& os)
             absolute_mode = true;
             seconds_per_minute = 60;
             break;
+
+        case 3: // M3 is spindle on and maybe handled elsewhere, but we want to make the S parameter sticky
+            if(gcode.has_arg('S')) {
+                set_s_value(gcode.get_arg('S'));
+            }
+            break;
+
+        case 5: // M5 is spindle off and maybe handled elsewhere, but we want to make the S parameter sticky
+            set_s_value(0);
+            break;
+
         case 17:
             enable_all_motors(true); // turn all enable pins on
             break;
@@ -2444,13 +2458,14 @@ void Robot::get_query_string(std::string & str) const
         if(n > sizeof(buf)) n = sizeof(buf);
         str.append(buf, n);
 
-        // current Laser power
+        // S value (either laser or spindle)
         float sr = get_s_value();
         n = snprintf(buf, sizeof(buf), "|S:%1.4f", sr);
         str.append(buf, n);
 
         m = Module::lookup("laser");
         if(m != nullptr) {
+            // current Laser power if laser module is active
             float lp;
             bool ok = m->request("get_current_power", &lp);
             if(ok) {
@@ -2489,6 +2504,14 @@ void Robot::get_query_string(std::string & str) const
         n = snprintf(buf, sizeof(buf), "|F:%1.1f,%1.1f", fr, fro);
         if(n > sizeof(buf)) n = sizeof(buf);
         str.append(buf, n);
+
+        m = Module::lookup("laser");
+        if(m == nullptr) {
+            // S is spindle RPM
+            float sr = get_s_value();
+            n = snprintf(buf, sizeof(buf), "|S:%1.2f", sr);
+            str.append(buf, n);
+        }
     }
 
     // if not grbl mode get temperatures

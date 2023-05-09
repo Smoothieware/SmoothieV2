@@ -137,7 +137,7 @@ REGISTER_TEST(PinTest, interrupt_pin)
 
 	TEST_ASSERT_TRUE(button.as_interrupt(test_button_int));
 	if(button.connected()) {
- 		printf("Set input pin %s\n", button.to_string().c_str());
+ 		printf("Set interrupt pin %s\n", button.to_string().c_str());
 	}else{
 		printf("Button was invalid\n");
 	}

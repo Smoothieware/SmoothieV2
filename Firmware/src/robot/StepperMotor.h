@@ -22,6 +22,7 @@ class StepperMotor
         inline void unstep() { step_pin.set(0); }
         // called from step ticker ISR
         inline void set_direction(bool f) { dir_pin.set(f); direction= f; }
+        inline bool get_direction() const { return direction; }
 
         void enable(bool state);
         bool is_enabled() const;
@@ -30,6 +31,8 @@ class StepperMotor
         inline void stop_moving() { moving= false; }
 
         void manual_step(bool dir);
+        inline bool has_forced_step() { return forced_steps != 0; }
+        inline void decrement_forced_step() { --forced_steps; }
 
         inline bool which_direction() const { return direction; }
 
@@ -66,6 +69,7 @@ class StepperMotor
         volatile int32_t current_position_steps;
         int32_t last_milestone_steps;
         float   last_milestone_mm;
+        uint32_t forced_steps{0};
 
         volatile struct {
             uint8_t motor_id:8;

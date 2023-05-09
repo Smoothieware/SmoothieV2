@@ -1,3 +1,5 @@
+// build with... rake testing=1 test=temperatureswitch modules=tools/temperatureswitch -m
+
 #include "../Unity/src/unity.h"
 #include "TestRegistry.h"
 

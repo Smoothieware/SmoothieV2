@@ -223,6 +223,7 @@ static void smoothie_startup(void *)
 #else
     step_ticker->set_frequency(200000); // 200KHz
 #endif
+    // this is configurable, but set the default here (for internal drivers)
     step_ticker->set_unstep_time(1); // 1us step pulse by default
 
     bool flash_on_boot = true;
@@ -344,14 +345,15 @@ static void smoothie_startup(void *)
             // This needs to be done before any module that could use it
             // NOTE that Pwm::post_config_setup() needs to be called after all modules have been created
             uint32_t deffreq = 10000; // default is 10KHz
-            ConfigReader::section_map_t m;
-            if(cr.get_section("pwm1", m)) {
-                uint32_t freq = cr.get_int(m, "frequency", deffreq);
+            ConfigReader::section_map_t m1;
+            if(cr.get_section("pwm1", m1)) {
+                uint32_t freq = cr.get_int(m1, "frequency", deffreq);
                 Pwm::setup(0, freq);
                 printf("INFO: PWM1 frequency set to %lu Hz\n", freq);
             }
-            if(cr.get_section("pwm2", m)) {
-                uint32_t freq = cr.get_int(m, "frequency", deffreq);
+            ConfigReader::section_map_t m2;
+            if(cr.get_section("pwm2", m2)) {
+                uint32_t freq = cr.get_int(m2, "frequency", deffreq);
                 Pwm::setup(1, freq);
                 printf("INFO: PWM2 frequency set to %lu Hz\n", freq);
             }
@@ -552,6 +554,7 @@ static void smoothie_startup(void *)
     }
 
     // run any startup functions that have been registered
+    printf("DEBUG: Running any post config startup functions\n");
     for(auto& f : startup_fncs) {
         f();
     }

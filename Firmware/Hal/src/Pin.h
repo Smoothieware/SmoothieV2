@@ -25,7 +25,8 @@ public:
 
     bool as_output();
     bool as_input();
-    bool as_interrupt(std::function<void(void)> fnc, bool rising=true, uint32_t pri=0x0F);
+    enum INT_TYPE_T {RISING, FALLING, CHANGE};
+    bool as_interrupt(std::function<void(void)> fnc, Pin::INT_TYPE_T rising=RISING, uint32_t pri=0x0F);
 
     // we need to do this inline
     inline bool get() const

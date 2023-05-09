@@ -725,10 +725,10 @@ bool CommandShell::gpio_cmd(std::string& params, OutputStream& os)
         bool b = (v == "on" || v == "1");
         pin.set(b);
         os.printf("%s: was set to %s\n", pin.to_string().c_str(), v.c_str());
-        v= stringutils::shift_parameter( params ); // get timeout
+        v = stringutils::shift_parameter( params ); // get timeout
         if(v.empty()) {
             safe_sleep(2000);
-        }else{
+        } else {
             safe_sleep(atoi(v.c_str()));
         }
         pin.deinit();
@@ -1011,7 +1011,7 @@ bool CommandShell::grblDP_cmd(std::string& params, OutputStream& os)
 // may want to run the long running commands in a thread
 bool CommandShell::test_cmd(std::string& params, OutputStream& os)
 {
-    HELP("test [jog|circle|square|raw]");
+    HELP("test [jog|circle|square|raw|pulse]");
 
     if(Module::is_halted()) {
         os.set_no_response(true);
@@ -1022,12 +1022,12 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
     AutoPushPop app; // this will save the state and restore it on exit
     std::string what = stringutils::shift_parameter( params );
     OutputStream nullos;
-    bool disas= false;
+    bool disas = false;
     if (what == "jog") {
         // jogs back and forth usage: axis [-d] distance iterations [feedrate], -d means disable arm solution
         std::string axis = stringutils::shift_parameter(params);
         if(axis == "-d") {
-            disas= true;
+            disas = true;
             axis = stringutils::shift_parameter(params);
         }
         std::string dist = stringutils::shift_parameter(params);
@@ -1043,13 +1043,13 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
 
         bool toggle = false;
         Robot::getInstance()->absolute_mode = false;
-        if(disas) Robot::getInstance()->disable_arm_solution= true;
+        if(disas) Robot::getInstance()->disable_arm_solution = true;
         for (uint32_t i = 0; i < n; ++i) {
             THEDISPATCHER->dispatch(nullos, 'G', 1, 'F', f, toupper(axis[0]), toggle ? -d : d, 0);
             if(Module::is_halted()) break;
             toggle = !toggle;
         }
-        if(disas) Robot::getInstance()->disable_arm_solution= false;
+        if(disas) Robot::getInstance()->disable_arm_solution = false;
 
     } else if (what == "circle") {
         // draws a circle around origin. usage: radius iterations [feedrate]
@@ -1144,13 +1144,62 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
 
         os.printf("issuing %d steps at a rate of %d steps/sec on the %c axis\n", steps, sps, ax);
 
+        // make sure motors are enabled, as manual step does not check
+        if(!Robot::getInstance()->actuators[a]->is_enabled()) Robot::getInstance()->actuators[a]->enable(true);
+
         uint32_t delayus = 1000000.0F / sps;
         for(int s = 0; s < steps; s++) {
             if(Module::is_halted()) break;
             Robot::getInstance()->actuators[a]->manual_step(dir);
             // delay
-            uint32_t st = benchmark_timer_start();
-            while(benchmark_timer_as_us(benchmark_timer_elapsed(st)) < delayus) ;
+            if(delayus >= 10000) {
+                safe_sleep(delayus / 1000);
+            } else {
+                uint32_t st = benchmark_timer_start();
+                while(benchmark_timer_as_us(benchmark_timer_elapsed(st)) < delayus) ;
+            }
+        }
+
+        // reset the position based on current actuator position
+        Robot::getInstance()->reset_position_from_current_actuator_position();
+
+    } else if (what == "pulse") {
+        // issues a step pulse then waits then unsteps, for testing if step pin needs to be inverted
+        std::string axis = stringutils::shift_parameter( params );
+        std::string reps = stringutils::shift_parameter( params );
+        if(axis.empty()) {
+            os.printf("error: Need axis [iterations]\n");
+            return true;
+        }
+
+        char ax = toupper(axis[0]);
+        uint8_t a = ax >= 'X' ? ax - 'X' : ax - 'A' + 3;
+
+        if(a > C_AXIS) {
+            os.printf("error: axis must be x, y, z, a, b, c\n");
+            return true;
+        }
+
+        if(a >= Robot::getInstance()->get_number_registered_motors()) {
+            os.printf("error: axis is out of range\n");
+            return true;
+        }
+
+        int nreps = 1;
+        if(!reps.empty()) {
+            nreps = strtol(reps.c_str(), NULL, 10);
+        }
+
+        uint32_t delayms = 5000.0F; // step every five seconds
+        for(int s = 0; s < nreps; s++) {
+            if(Module::is_halted()) break;
+            os.printf("// leading edge should step\n");
+            Robot::getInstance()->actuators[a]->step();
+            safe_sleep(delayms);
+            os.printf("// trailing edge should not step\n");
+            Robot::getInstance()->actuators[a]->unstep();
+            if(Module::is_halted()) break;
+            safe_sleep(delayms);
         }
 
         // reset the position based on current actuator position
@@ -1162,6 +1211,7 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
         os.printf(" test circle radius iterations [feedrate]\n");
         os.printf(" test raw axis steps steps/sec\n");
         os.printf(" test acc axis units units/sec\n");
+        os.printf(" test pulse axis iterations\n");
     }
 
     // wait for the test to complete
@@ -1216,12 +1266,12 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         if(ax == 'S') {
             // get speed scale
             scale = strtof(p.substr(1).c_str(), NULL);
-            fr= NAN;
+            fr = NAN;
             continue;
-        }else if(ax == 'F') {
+        } else if(ax == 'F') {
             // OR specify feedrate (last one wins)
-            scale= 1.0F;
-            fr= strtof(p.substr(1).c_str(), NULL) / 60.0F; // we want mm/sec but F is specified in mm/min
+            scale = 1.0F;
+            fr = strtof(p.substr(1).c_str(), NULL) / 60.0F; // we want mm/sec but F is specified in mm/min
             continue;
         }
 
@@ -1278,9 +1328,9 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
     if(isnan(fr)) {
         fr = rate_mm_s * scale;
 
-    }else{
+    } else {
         // make sure we do not exceed maximum
-        if(fr > rate_mm_s) fr= rate_mm_s;
+        if(fr > rate_mm_s) fr = rate_mm_s;
     }
 
     if(cont_mode) {
@@ -1299,7 +1349,7 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         for (int i = 0; i < n_motors; ++i) {
             if(delta[i] == 0) continue;
             float ma =  Robot::getInstance()->actuators[i]->get_acceleration(); // in mm/sec²
-            if(ma > 0.0001F && ma < acc) acc= ma;
+            if(ma > 0.0001F && ma < acc) acc = ma;
         }
 
         // calculate minimum distance to travel to accomodate acceleration and feedrate
@@ -1307,16 +1357,16 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         float d = 0.5F * acc * powf(t, 2); // distance required to accelerate
         d = std::max(d, 0.3333F); // take minimum being 1mm overall so 0.3333mm
         // we need to check if the feedrate is too slow, for continuous jog if it takes over 5 seconds it is too slow
-        t= d*3 / fr; // time it will take to do all three blocks
+        t = d * 3 / fr; // time it will take to do all three blocks
         if(t > 5) {
             // increase feedrate so it will not take more than 5 seconds
-            fr= (d*3)/5;
+            fr = (d * 3) / 5;
         }
 
         // we need to move at least this distance to reach full speed
         for (int i = 0; i < n_motors; ++i) {
             if(delta[i] != 0) {
-                delta[i]= d * (delta[i]<0?-1:1);
+                delta[i] = d * (delta[i] < 0 ? -1 : 1);
             }
         }
         //printf("distance: %f, time:%f, X%f Y%f Z%f A%f, speed:%f, acc:%f\n", d, t, delta[0], delta[1], delta[2], delta[3], fr, acc);
@@ -1342,7 +1392,7 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         // then send third block to decelerate
         if(!Conveyor::getInstance()->set_continuous_mode(true)) {
             os.printf("error:unable to set continuous jog mode\n");
-            Robot::getInstance()->compensationTransform= savect;
+            Robot::getInstance()->compensationTransform = savect;
             Conveyor::getInstance()->set_hold(false);
             return true;
         }
@@ -1364,9 +1414,9 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         // reset the position based on current actuator position
         Robot::getInstance()->reset_position_from_current_actuator_position();
         // restore compensationTransform
-        Robot::getInstance()->compensationTransform= savect;
+        Robot::getInstance()->compensationTransform = savect;
 
-    }else{
+    } else {
 
         Robot::getInstance()->delta_move(delta, fr, n_motors);
         Conveyor::getInstance()->force_queue();
@@ -1476,19 +1526,19 @@ bool CommandShell::config_set_cmd(std::string& params, OutputStream& os)
     const char *value = nullptr;
 
     // empty valuestr will delete the key
-    if(!valuestr.empty()) value= valuestr.c_str();
+    if(!valuestr.empty()) value = valuestr.c_str();
 
     if(cw.write(section, key, value)) {
         if(value == nullptr) {
             os.printf("deleted config: [%s] %s\n", section, key);
-        }else{
+        } else {
             os.printf("set config: [%s] %s = %s\n", section, key, value);
         }
 
     } else {
         if(value == nullptr) {
             os.printf("failed to delete config: [%s] %s\n", section, key);
-        }else{
+        } else {
             os.printf("failed to set config: [%s] %s = %s\n", section, key, value);
         }
         return true;

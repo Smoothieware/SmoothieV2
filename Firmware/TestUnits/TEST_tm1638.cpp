@@ -1,4 +1,7 @@
 /*
+  build with...
+    rake testing=1 test=tm1638 modules=utils/display/tm1638 -m
+
   Project Name: TM1638
   File: TM1638plus_TEST_Model1.ino
   Description: ST32 demo file library for  TM1638 module(LED & KEY). Model 1
@@ -64,7 +67,7 @@ static void Test14(void);
 // Some vars and defines for the tests.
 #define myTestDelay  5000
 #define myTestDelay1 1000
-uint8_t  testcount = 0;
+uint8_t  testcount = 12;
 
 TM1638 tm;
 
@@ -72,9 +75,9 @@ TM1638 tm;
 const static char tm1638_config[]= "\
 [tm1638]\n\
 enable = true \n\
-clock_pin = PJ9 \n\
-data_pin = PJ10 \n\
-strobe_pin = PJ6 \n\
+clock_pin = PJ11 \n\
+data_pin = PJ6\n\
+strobe_pin = PJ9 \n\
 ";
 
 REGISTER_TEST(TM1638Test, run_tests)

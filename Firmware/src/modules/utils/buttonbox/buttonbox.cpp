@@ -38,7 +38,7 @@ bool ButtonBox::create(ConfigReader& cr)
     return true;
 }
 
-ButtonBox::ButtonBox() : Module("ButtonBox")
+ButtonBox::ButtonBox() : Module("buttonbox")
 {
 }
 
@@ -56,30 +56,55 @@ bool ButtonBox::configure(ConfigReader& cr)
         std::string name = i.first;
         auto& m = i.second;
         if(!cr.get_bool(m, enable_key, false)) continue; // skip if not enabled
-        Pin *b = new Pin(cr.get_string(m, pin_key, "nc"), Pin::AS_INPUT);
-        if(!b->connected()) {
-            printf("ERROR: configure-buttonbox: No, or illegal, button defined\n");
-            delete b;
-            continue;
+        std::string p = cr.get_string(m, pin_key, "nc");
+        Pin *b = nullptr;
+        bool external = false;
+        if(p == "external") {
+            external = true;
+            b = nullptr;
+
+        } else {
+            b = new Pin(p.c_str(), Pin::AS_INPUT);
+            if(!b->connected()) {
+                printf("ERROR: configure-buttonbox: No, or illegal, button defined\n");
+                delete b;
+                continue;
+            }
+            external = false;
         }
 
         std::string press = cr.get_string(m, press_key, "");
         if(press.empty()) {
             printf("ERROR: configure-buttonbox: No press defined\n");
-            delete b;
+            if(!external) delete b;
             continue;
         }
         std::string release = cr.get_string(m, release_key, "");
 
-        but_t bt {
-            .but = b,
-            .press_act = press,
-            .release_act =  release,
-            .state = false,
-        };
-        buttons.push_back(bt);
+        if(external) {
+            but_t bt {
+                .name = name,
+                .but = nullptr,
+                .fnc = nullptr, // must be set by external module
+                .press_act = press,
+                .release_act = release,
+                .state = false,
+            };
+            buttons.push_back(bt);
+            printf("DEBUG: external button %s, press: %s, release: %s\n", name.c_str(), press.c_str(), release.c_str());
 
-        printf("DEBUG: button %s - %s, press: %s, release: %s\n", name.c_str(), b->to_string().c_str(), press.c_str(), release.c_str());
+        } else {
+            but_t bt {
+                .name = name,
+                .but = b,
+                .fnc = nullptr,
+                .press_act = press,
+                .release_act =  release,
+                .state = false,
+            };
+            buttons.push_back(bt);
+            printf("DEBUG: pin button %s - %s, press: %s, release: %s\n", name.c_str(), b->to_string().c_str(), press.c_str(), release.c_str());
+        }
 
         ++cnt;
     }
@@ -96,6 +121,23 @@ bool ButtonBox::configure(ConfigReader& cr)
     return false;
 }
 
+// called by an external module to register the callback to get the named buttons state
+bool ButtonBox::set_cb_fnc(const char *name, std::function<bool(const char *name)> fnc)
+{
+    // find the named button
+    for (auto& i : buttons) {
+        if(i.name != name) continue;
+        if(i.but != nullptr) {
+            printf("ERROR: buttonbox set_cb_fnc: The button %s is not an external button\n", name);
+            return false;
+        }
+        i.fnc = fnc;
+        return true;
+    }
+
+    return false;
+}
+
 // Check the state of the buttons and act accordingly
 // Note this is the RTOS timer task so don't do anything slow or blocking in here
 void ButtonBox::button_tick()
@@ -103,25 +145,37 @@ void ButtonBox::button_tick()
     static OutputStream os; // NULL output stream, but we need to keep some state between calls
 
     for(auto& i : buttons) {
-        bool state_changed= false;
+        bool state_changed = false;
         bool new_state;
-        const char *cmd= nullptr;
-        if(!i.state && i.but->get()) {
+        const char *cmd = nullptr;
+
+        bool bs;
+        if(i.but != nullptr) {
+            bs = i.but->get();
+        } else {
+            // if not defined yet ignore it
+            if(i.fnc) {
+                bs = i.fnc(i.name.c_str());
+            } else {
+                continue;
+            }
+        }
+
+        if(!i.state && bs) {
             // pressed
             cmd = i.press_act.c_str();
-            state_changed= true;
-            new_state= true;
+            state_changed = true;
+            new_state = true;
 
-        } else if(i.state && !i.but->get()) {
+        } else if(i.state && !bs) {
             // released
-            std::string c = i.release_act;
-            if(!c.empty()) {
-                state_changed= true;
-                new_state= false;
-                cmd= c.c_str();
-            }else{
+            if(!i.release_act.empty()) {
+                state_changed = true;
+                new_state = false;
+                cmd = i.release_act.c_str();
+            } else {
                 // empty command for release
-                i.state= false;
+                i.state = false;
             }
         }
 
@@ -129,6 +183,10 @@ void ButtonBox::button_tick()
             if(strcmp(cmd, "$J STOP") == 0) {
                 os.set_stop_request(true);
                 i.state = new_state;
+
+            }else if(strcmp(cmd, "KILL") == 0) {
+                i.state = new_state;
+                Module::broadcast_halt(true);
 
             } else {
                 // Do not block and if queue was full the command is not sent
