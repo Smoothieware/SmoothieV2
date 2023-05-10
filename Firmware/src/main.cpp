@@ -583,7 +583,7 @@ static void smoothie_startup(void *)
         Board_LED_Set(0, false);
     }
 
-    if(flash_on_boot) {
+    if(ok && flash_on_boot) {
         OutputStream os(&std::cout);
         if(check_flashme_file(os, false)) {
             // we have a valid flashme file, so flash
