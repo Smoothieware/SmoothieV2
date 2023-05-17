@@ -1201,7 +1201,7 @@ bool TMC2590::check_error_status_bits(OutputStream& stream)
     readStatus(TMC2590_READOUT_POSITION); // get the status bits
     // test the flags are ok
     if((driver_status_result & 0x00300) != 0){
-        stream.printf("WARNING: Response read appears incorrect: %05lX\n", driver_status_result);
+        stream.printf("WARNING: %c: Response read appears incorrect: %05lX\n", designator, driver_status_result);
         return false;
     }
 

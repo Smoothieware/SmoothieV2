@@ -1265,7 +1265,7 @@ bool TMC26X::check_error_status_bits(OutputStream& stream)
 
     // test the flags are ok
     if((driver_status_result & 0x00300) != 0){
-        stream.printf("WARNING: Response read appears incorrect: %05lX\n", driver_status_result);
+        stream.printf("WARNING: %c: Response read appears incorrect: %05lX\n", designator, driver_status_result);
         return false;
     }
 
@@ -1329,7 +1329,7 @@ bool TMC26X::check_standstill()
         }
         lock(false);
         if(ok) {
-            printf("DEBUG: %c standstill current set to %lu mA\n", designator, standstill_current);
+            printf("DEBUG: TMC26X: %c standstill current set to %lu mA\n", designator, standstill_current);
         }
     }
     return ok;
