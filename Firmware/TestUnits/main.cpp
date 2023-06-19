@@ -106,7 +106,7 @@ void safe_sleep(uint32_t ms)
     }
 }
 
-void print_to_all_consoles(const char *str)
+extern "C" void print_to_all_consoles(const char *str)
 {
     printf("%s", str);
 }

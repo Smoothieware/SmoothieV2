@@ -22,10 +22,6 @@ public:
     void on_halt(bool flg);
     bool request(const char *key, void *value);
 
-    void set_desired_temperature(float desired_temperature);
-    float get_temperature();
-    const char *get_designator() const { return designator.c_str(); }
-
     using pad_temperature_t = struct pad_temperature {
         float current_temperature;
         float target_temperature;
@@ -34,11 +30,14 @@ public:
         std::string designator;
     };
 
-
     friend class PID_Autotuner;
 
 private:
     bool configure(ConfigReader& cr, ConfigReader::section_map_t& m, const char *name);
+
+    void set_desired_temperature(float desired_temperature);
+    float get_temperature();
+    const char *get_designator() const { return designator.c_str(); }
 
     void thermistor_read_tick(void);
     void pid_process(float);

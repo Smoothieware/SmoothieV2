@@ -491,6 +491,12 @@ bool TemperatureControl::request(const char *key, void *value)
         return true;
     }
 
+    if(strcmp(key, "set_sensor") == 0) {
+        // NOTE for testing only
+        this->sensor= static_cast<TempSensor *>(value);
+        return true;
+    }
+
     return false;
 }
 
