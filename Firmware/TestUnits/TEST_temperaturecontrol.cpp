@@ -26,8 +26,8 @@ const static char test_config[]= "\
 bed.enable = true\n\
 bed.sensor = test\n\
 bed.runaway_range =  10\n\
-bed.runaway_heating_timeout = 2\n\
-bed.runaway_cooling_timeout = 3\n\
+bed.runaway_heating_timeout = 15\n\
+bed.runaway_cooling_timeout = 15\n\
 bed.runaway_error_range = 1.0\n\
 ";
 
@@ -43,6 +43,15 @@ class MockSensor : public TempSensor
 // set the sensor to our mock sensor
 static class MockSensor mock_sensor;
 static class TemperatureControl *tempcontrol;
+
+
+static bool set_target_temp(float t)
+{
+    bool r = tempcontrol->request("set_temperature", &t);
+    TEST_ASSERT_TRUE(r);
+    printf("Set target temp to %f\n", t);
+    return r;
+}
 
 REGISTER_TEST(TemperatureControl,setup)
 {
@@ -73,8 +82,7 @@ REGISTER_TEST(TemperatureControl,set_get_temps)
 {
     // first make sure we can set and get the target temperature directly
     float t= 123.0F;
-    bool r = tempcontrol->request("set_temperature", &t);
-    TEST_ASSERT_TRUE(r);
+    set_target_temp(t);
 
     // set the current temp
     mock_temp = t;
@@ -90,18 +98,14 @@ REGISTER_TEST(TemperatureControl,set_get_temps)
     TEST_ASSERT_EQUAL(t, temp.current_temperature);
 
     // set temp back to 0
-    t= 0;
-    r = tempcontrol->request("set_temperature", &t);
-    TEST_ASSERT_TRUE(r);
+    set_target_temp(0);
 }
 
 REGISTER_TEST(TemperatureControl,change_temp_down)
 {
     float t= 100.0F;
-    bool r = tempcontrol->request("set_temperature", &t);
-    TEST_ASSERT_TRUE(r);
 
-    printf("Set temp to 100\n");
+    set_target_temp(t);
     // set the current temp
     mock_temp = t;
 
@@ -109,19 +113,67 @@ REGISTER_TEST(TemperatureControl,change_temp_down)
     vTaskDelay(pdMS_TO_TICKS(4000));
 
     // set new temp much lower
-    printf("Set temp to 60 but leave current temp at 100\n");
-    float t2= 60.0F;
-    r = tempcontrol->request("set_temperature", &t2);
-    TEST_ASSERT_TRUE(r);
-
-    // give it time to test failsafe
-    vTaskDelay(pdMS_TO_TICKS(2000));
-
-    printf("Set temp to 60\n");
-    mock_temp = 60;
+    printf("Set target temp to 60 but leave current temp at 100\n");
+    set_target_temp(60);
 
     // give it time to test failsafe
     vTaskDelay(pdMS_TO_TICKS(10000));
+    TEST_ASSERT_FALSE(Module::is_halted());
 
+    printf("Set current temp to 60\n");
+    mock_temp = 60;
+
+    // give it time to test failsafe
+    vTaskDelay(pdMS_TO_TICKS(20000));
+
+    TEST_ASSERT_FALSE(Module::is_halted());
+
+    set_target_temp(0);
+    mock_temp = 0;
+}
+
+REGISTER_TEST(TemperatureControl,timeout_set_temp_up)
+{
+    TEST_ASSERT_FALSE(Module::is_halted());
+
+    mock_temp = 10;
+    set_target_temp(100);
+
+    printf("Expect: ERROR: Temperature took too long to be reached...\n");
+
+    // give it time to test failsafe
+    vTaskDelay(pdMS_TO_TICKS(20000));
+
+    TEST_ASSERT_TRUE(Module::is_halted());
+
+    set_target_temp(0);
+    mock_temp = 0;
+
+    Module::broadcast_halt(false);
+    TEST_ASSERT_FALSE(Module::is_halted());
+}
+
+REGISTER_TEST(TemperatureControl,temp_range_error)
+{
+    set_target_temp(100);
+    mock_temp = 100;
+
+    // give it time to test failsafe
+    vTaskDelay(pdMS_TO_TICKS(20000));
+    TEST_ASSERT_FALSE(Module::is_halted());
+
+    printf("Set temp to 150, Expect ERROR: Temperature runaway on B (delta temp 50.000000)...\n");
+    mock_temp = 150;
+
+    // give it time to test failsafe
+    vTaskDelay(pdMS_TO_TICKS(20000));
+
+    TEST_ASSERT_TRUE(Module::is_halted());
+
+    set_target_temp(0);
+    mock_temp = 0;
+
+    Module::broadcast_halt(false);
+    TEST_ASSERT_FALSE(Module::is_halted());
 }
 
