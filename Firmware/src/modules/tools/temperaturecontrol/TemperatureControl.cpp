@@ -149,6 +149,16 @@ bool TemperatureControl::configure(ConfigReader& cr, ConfigReader::section_map_t
     this->runaway_range = cr.get_int(m, runaway_range_key, 20);
     this->runaway_heating_timeout = cr.get_int(m, runaway_heating_timeout_key, 60 * 5); // default timeout is 5 mins
     this->runaway_cooling_timeout = cr.get_int(m, runaway_cooling_timeout_key, this->runaway_heating_timeout); // same as heating timeout by default
+
+    if(this->runaway_range == 0) {
+        printf("WARNING: configure-temperature: %s runaway range failsafe is disabled. This is potentially DANGEROUS\n", name);
+    }
+
+    if(this->runaway_heating_timeout == 0 || this->runaway_cooling_timeout == 0) {
+        if(this->runaway_range == 0)
+        printf("WARNING: configure-temperature: %s runaway timeout failsafe for heating and/or cooling is disabled. This is potentially DANGEROUS\n", name);
+    }
+
     this->runaway_error_range = cr.get_float(m, runaway_error_range_key, 1.0F);
 
     // Max and min temperatures we are not allowed to get over (Safety)
