@@ -27,13 +27,13 @@ Pin stepticker_debug_pin(STEPTICKER_DEBUG_PIN, Pin::AS_OUTPUT);
 #define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
 //#define _ramfunc_
 
-StepTicker *StepTicker::instance= nullptr;
-bool StepTicker::started= false;
+StepTicker *StepTicker::instance = nullptr;
+bool StepTicker::started = false;
 
 StepTicker *StepTicker::getInstance()
 {
     if(instance == nullptr) {
-        instance= new(*_DTCMRAM) StepTicker;
+        instance = new(*_DTCMRAM) StepTicker;
     }
 
     return instance;
@@ -44,12 +44,12 @@ void StepTicker::deleteInstance()
         instance->stop();
     }
     delete instance;
-    instance= nullptr;
+    instance = nullptr;
 }
 
 StepTicker::StepTicker()
 {
-    conveyor= Conveyor::getInstance();
+    conveyor = Conveyor::getInstance();
 }
 
 StepTicker::~StepTicker()
@@ -114,9 +114,9 @@ void StepTicker::set_unstep_time( float microseconds )
     }
 
     // check that the unstep time is less than the step period
-    uint32_t d= roundf(microseconds);
-    uint32_t period= floorf(1000000.0F/frequency);
-    if(d > period-1) { // within 1us of the period
+    uint32_t d = roundf(microseconds);
+    uint32_t period = floorf(1000000.0F / frequency);
+    if(d > period - 1) { // within 1us of the period
         printf("ERROR: cannot set stepticker unstep delay greater than or equal to step ticker period: %lu, %lu\n", delay, period);
         return;
     }
@@ -133,14 +133,14 @@ _ramfunc_  bool StepTicker::start_unstep_ticker()
 // Reset step pins on any motor that was stepped
 _ramfunc_  void StepTicker::unstep_tick()
 {
-    uint32_t bitmsk= 1;
+    uint32_t bitmsk = 1;
     for (int i = 0; i < num_motors; i++) {
         if(this->unstep & bitmsk) {
             this->motor[i]->unstep();
         }
         bitmsk <<= 1;
     }
-    this->unstep= 0;
+    this->unstep = 0;
 }
 
 // step clock
@@ -157,10 +157,10 @@ _ramfunc_  void StepTicker::step_tick (void)
 
     if(callback_fnc) {
         // call an external function
-        int m= callback_fnc();
+        int m = callback_fnc();
         if(m >= 0) {
             // we stepped so schedule an unstep
-            unstep |= (1<<m);
+            unstep |= (1 << m);
         }
     }
 
@@ -179,7 +179,7 @@ _ramfunc_  void StepTicker::step_tick (void)
             if(unstep != 0) {
                 start_unstep_ticker();
             }
-           return;
+            return;
         }
     }
 
@@ -194,18 +194,18 @@ _ramfunc_  void StepTicker::step_tick (void)
     bool still_moving = false;
     // foreach motor, if it is active see if time to issue a step to that motor
     for (uint8_t m = 0; m < num_motors; m++) {
-        auto *cur_motor= motor[m];
-        auto& cur_tick_info= current_block->tick_info[m];
+        auto *cur_motor = motor[m];
+        auto& cur_tick_info = current_block->tick_info[m];
 
         // first check if we have any forced steps
         if(cur_motor->has_forced_step()) {
             cur_motor->step();
             cur_motor->decrement_forced_step();
             // note this assumes only one axis can have forced steps
-            if(!cur_motor->has_forced_step()) check_forced_steps= false;
+            if(!cur_motor->has_forced_step()) check_forced_steps = false;
 
             // we stepped so schedule an unstep
-            unstep |= (1<<m);
+            unstep |= (1 << m);
             continue; // this will override any moves in the block queue for this motor
         }
 
@@ -249,11 +249,11 @@ _ramfunc_  void StepTicker::step_tick (void)
             // step the motor
             bool ismoving = cur_motor->step(); // returns false if the moving flag was set to false externally (probes, endstops etc)
             // we stepped so schedule an unstep
-            unstep |= (1<<m);
+            unstep |= (1 << m);
 
             if(!ismoving || cur_tick_info.step_count == cur_tick_info.steps_to_move) {
                 // done
-                current_block->tick_info[m].steps_to_move = 0;
+                cur_tick_info.steps_to_move = 0;
                 cur_motor->stop_moving(); // let motor know it is no longer moving
             }
         }
