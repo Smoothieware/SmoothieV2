@@ -40,7 +40,7 @@ bool Lathe::create(ConfigReader& cr)
 
 Lathe::Lathe() : Module("Lathe")
 {
-    distance= NAN;
+    end_pos = NAN;
 }
 
 bool Lathe::configure(ConfigReader& cr)
@@ -59,19 +59,19 @@ bool Lathe::configure(ConfigReader& cr)
     }
 
     // use index pin if we define one
-    index_pin=  new Pin(cr.get_string(m, index_pin_key, "nc"));
+    index_pin =  new Pin(cr.get_string(m, index_pin_key, "nc"));
     if(index_pin->connected()) {
         index_pin->as_interrupt(std::bind(&Lathe::handle_index_irq, this), Pin::RISING);
         if(!index_pin->connected()) {
             printf("ERROR: configure-lathe: Cannot set index pin to interrupt %s\n", index_pin->to_string().c_str());
             delete index_pin;
-            index_pin= nullptr;
+            index_pin = nullptr;
         }
         printf("INFO: configure-lathe: using index pin: %s\n", index_pin->to_string().c_str());
 
-    }else{
+    } else {
         delete index_pin;
-        index_pin= nullptr;
+        index_pin = nullptr;
         printf("INFO: configure-lathe: no index pin\n");
     }
 
@@ -129,6 +129,13 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
                 return true;
             }
 
+            if(dpr < 0) {
+                reversed = true;
+                dpr = -dpr;
+            } else {
+                reversed = false;
+            }
+
         } else {
             gcode.set_error("K argument required");
             return true;
@@ -140,12 +147,19 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
                 return true;
             }
 
-            distance = gcode.get_arg('Z'); // distance to move
-            start_pos = stepper_motor->get_current_position();
+            float distance = gcode.get_arg('Z'); // distance to move
+            end_pos = stepper_motor->get_current_position() + distance;
+
+            if(distance < 0) {
+                reversed = true;
+                distance = -distance;
+            } else {
+                reversed = false;
+            }
 
             // if we have an index_pin then we wait to start by synchronizing to it
             if(index_pin != nullptr) {
-                uint32_t curindex= index_pulse;
+                uint32_t curindex = index_pulse;
                 while(curindex == index_pulse) {
                     // wait for index pulse to be hit
                     // TODO may need to do safe_sleep here but that may take too long
@@ -167,6 +181,8 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
                 }
             }
 
+            running = false;
+
             // reset the position based on current actuator position
             Robot::getInstance()->reset_position_from_current_actuator_position();
 
@@ -176,13 +192,13 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
         } else {
             // no Z arg means manual mode where the half nut must be engaged and disengaged, control Y will stop it
             // K sets the mm per revolution
-            distance = NAN;
+            end_pos = NAN;
             target_position = stepper_motor->get_current_position();
             if(!stepper_motor->is_enabled()) stepper_motor->enable(true);
-            current_direction= stepper_motor->get_direction();
+            current_direction = stepper_motor->get_direction();
 
             // have stepticker call us
-            StepTicker::getInstance()->callback_fnc= std::bind(&Lathe::update_position, this);
+            StepTicker::getInstance()->callback_fnc = std::bind(&Lathe::update_position, this);
             running = true;
 
             while(!os.get_stop_request() && !Module::is_halted()) {
@@ -197,7 +213,7 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
             }
             running = false;
 
-            StepTicker::getInstance()->callback_fnc= nullptr;
+            StepTicker::getInstance()->callback_fnc = nullptr;
 
             os.set_stop_request(false);
             safe_sleep(100);
@@ -221,36 +237,36 @@ void Lathe::handle_index_irq()
 // called every 100 ms to calculate current RPM
 void Lathe::handle_rpm()
 {
-    static uint32_t last_index_pulse= 0;
-    static uint32_t lasttime= 0;
+    static uint32_t last_index_pulse = 0;
+    static uint32_t lasttime = 0;
 
     if(lasttime == 0 || benchmark_timer_wrapped(lasttime)) {
-        lasttime= benchmark_timer_start();
+        lasttime = benchmark_timer_start();
         return;
     }
 
     // get elapsed time since last call, more accurate than relying on 100ms timer
-    uint32_t deltams= benchmark_timer_as_ms(benchmark_timer_elapsed(lasttime));
+    uint32_t deltams = benchmark_timer_as_ms(benchmark_timer_elapsed(lasttime));
 
     if(index_pin != nullptr) {
         // use the index pin to calculate RPM
         // sample about every second to increase pulse count captured
         if(deltams >= 1000) {
-            lasttime= benchmark_timer_start();
+            lasttime = benchmark_timer_start();
             if(last_index_pulse > index_pulse) {
                 // we wrapped so skip this one
-                last_index_pulse= index_pulse;
+                last_index_pulse = index_pulse;
                 return;
             }
 
-            uint32_t d= index_pulse - last_index_pulse;
-            last_index_pulse= index_pulse;
+            uint32_t d = index_pulse - last_index_pulse;
+            last_index_pulse = index_pulse;
             rpm = (d * 60 * (1000.0F / deltams));
         }
 
-    }else{
+    } else {
         // use encoder to calculate RPM
-        lasttime= benchmark_timer_start();
+        lasttime = benchmark_timer_start();
         handle_rpm_encoder(deltams);
     }
 }
@@ -262,10 +278,10 @@ void Lathe::handle_rpm()
 void Lathe::handle_rpm_encoder(uint32_t deltams)
 {
     static float ave[10];
-    static int ave_cnt= 0;
+    static int ave_cnt = 0;
     static uint32_t last = 0;
     uint32_t qemax = get_quadrature_encoder_max_count();
-    uint32_t qediv= get_quadrature_encoder_div();
+    uint32_t qediv = get_quadrature_encoder_div();
     uint32_t cnt = read_quadrature_encoder();
     uint32_t c = (cnt > last) ? cnt - last : last - cnt;
     last = cnt;
@@ -275,21 +291,21 @@ void Lathe::handle_rpm_encoder(uint32_t deltams)
         c = qemax - c + 1;
     }
     // get RPM
-    float r = (c * 60 * (1000.0F/deltams)) / (ppr * qediv);
+    float r = (c * 60 * (1000.0F / deltams)) / (ppr * qediv);
 
     if(ave_cnt < 10) {
         // fill the array first
-        ave[ave_cnt++]= r;
-        rpm= r;
-    }else{
+        ave[ave_cnt++] = r;
+        rpm = r;
+    } else {
         // use moving average
-        float sum= r;
-        for (int i = 0; i < 10-1; ++i) {
-            ave[i]= ave[i+1];
+        float sum = r;
+        for (int i = 0; i < 10 - 1; ++i) {
+            ave[i] = ave[i + 1];
             sum += ave[i];
         }
-        ave[9]= r;
-        rpm= sum/10;
+        ave[9] = r;
+        rpm = sum / 10;
     }
 }
 
@@ -319,23 +335,23 @@ _ramfunc_
 float Lathe::get_encoder_delta()
 {
     static uint32_t last_cnt = 0;
-    float delta= 0;
+    float delta = 0;
     uint32_t cnt = read_quadrature_encoder();
     uint32_t qemax = get_quadrature_encoder_max_count();
-    uint32_t qediv= get_quadrature_encoder_div();
-    int sign= 1;
+    uint32_t qediv = get_quadrature_encoder_div();
+    int sign = 1;
 
     // handle encoder wrap around and get encoder pulses since last read
     if(cnt < last_cnt && (last_cnt - cnt) > (qemax / 2)) {
         delta = (qemax - last_cnt) + cnt + 1;
-        sign= 1;
+        sign = 1;
     } else if(cnt > last_cnt && (cnt - last_cnt) > (qemax / 2)) {
         delta = (qemax - cnt) + last_cnt + 1;
-        sign= -1;
+        sign = -1;
     } else if(cnt > last_cnt) {
         delta = cnt - last_cnt;
         sign = 1;
-    }else if(cnt < last_cnt){
+    } else if(cnt < last_cnt) {
         delta = last_cnt - cnt;
         sign = -1;
     }
@@ -355,64 +371,45 @@ int Lathe::update_position()
 {
     if(!running || Module::is_halted()) return -1;
 
-    if(std::isnan(distance)) {
-        // just run the lead screw at the given rate (mm/rev in dpr) until told to stop
+    float current_position = stepper_motor->get_current_position();
 
-        float delta= get_encoder_delta();
-
-        if(delta != 0) {
-            // calculate fraction of a rotation since last time and based on dpr calculate how far to move
-            float mm = dpr * (delta / ppr); // calculate mm to move based on requested distance per rev
-            target_position += mm; // accumulate target move
-        }
-
-        float current_position = stepper_motor->get_current_position();
-
-        // we first check if the target is equal to current within the limits of the step increment
-        if(!equal_within(target_position, current_position, delta_mm)) {
-            if(target_position > current_position) {
-                if(current_direction) {
-                    stepper_motor->set_direction(false);
-                    current_direction= false;
-                }
-                stepper_motor->step();
-                return motor_id;
-            } else if(target_position < current_position) {
-                if(!current_direction) {
-                    stepper_motor->set_direction(true);
-                    current_direction= true;
-                }
-                stepper_motor->step();
-                return motor_id;
-            }
-        }
-        return -1;
-    }
-
-#if 0
-    else{
-        // TODO this is not G33 mode, currently G33 just turns on the synchronized spindle mode
-        // which will travel for the given distance before suddenly stopping
-
-        // get current spindle position
-        float delta = get_encoder_delta();
-        wanted_pos = calculate_position(delta);
-
-        // compare with current position and issue step if needed
-        float current_position = stepper_motor->get_current_position();
-        if(current_position >= start_pos + distance) {
+    if(!std::isnan(end_pos)) {
+        // G33 Znnn mode run the lead screw at the given rate (mm/rev in dpr) until distance is reached
+        // check if we have travelled the required distance
+        // FIXME an equality operation is probably risky here we need to do > or < based on direction of travel
+        if(equal_within(end_pos, current_position, delta_mm)) {
             running = false;
-            return;
-        }
-
-        if(wanted_pos > current_position) {
-            stepper_motor->manual_step(true);
-
-        } else if(wanted_pos < current_position) {
-            stepper_motor->manual_step(false);
+            return -1;
         }
     }
-#endif
+
+    float delta = get_encoder_delta();
+
+    if(delta != 0) {
+        // calculate fraction of a rotation since last time and based on dpr calculate how far to move
+        float mm = dpr * (delta / ppr); // calculate mm to move based on requested distance per rev
+        target_position += mm; // accumulate target move
+    }
+
+    // issue steps until we hit the target move specified by the encoder/chuck rotation
+    // we first check if the target is equal to current within the limits of the step increment
+    if(!equal_within(target_position, current_position, delta_mm)) {
+        if(target_position > current_position) {
+            if(current_direction) {
+                stepper_motor->set_direction(false ^ reversed);
+                current_direction = false;
+            }
+            stepper_motor->step();
+            return motor_id;
+        } else if(target_position < current_position) {
+            if(!current_direction) {
+                stepper_motor->set_direction(true ^ reversed);
+                current_direction = true;
+            }
+            stepper_motor->step();
+            return motor_id;
+        }
+    }
 
     return -1;
 }
@@ -420,6 +417,6 @@ int Lathe::update_position()
 void Lathe::on_halt(bool flg)
 {
     if(flg) {
-        running= false;
+        running = false;
     }
 }

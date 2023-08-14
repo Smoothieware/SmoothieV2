@@ -95,11 +95,10 @@ void ELS::update_rpm()
         tm->DisplayDecNumNibble((int)roundf(rpm), var1, false, TMAlignTextRight);
 
         // display if running and what mode it is in
-        if(lathe->is_running()) {
-            tm->setLED(std::isnan(lathe->get_distance())?0:1, 1);
-        }else{
-            tm->setLED(std::isnan(lathe->get_distance())?0:1, 0);
-        }
+        tm->setLED(0, lathe->is_running()?1:0);
+        tm->setLED(1, std::isnan(lathe->get_end_position())?0:1);
+        tm->setLED(2, lathe->is_reversed()?1:0);
+
         tm->unlock();
     }
 }

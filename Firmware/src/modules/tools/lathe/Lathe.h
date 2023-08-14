@@ -15,7 +15,8 @@ class Lathe : public Module {
         virtual void on_halt(bool flg);
         float get_rpm() const { return rpm; }
         bool is_running() const { return running; }
-        float get_distance() const { return distance; }
+        bool is_reversed() const { return reversed; }
+        float get_end_position() const { return end_pos; }
 
     private:
         bool handle_gcode(GCode& gcode, OutputStream& os);
@@ -35,12 +36,12 @@ class Lathe : public Module {
         uint8_t motor_id;
         bool current_direction;
         float delta_mm;
-        float distance;
-        float start_pos;
+        float end_pos;
         float dpr; // distance per rotation set by K
         float ppr;  // encoder pulses per rotation
         float target_position{0}; // position in mm we want the Z axis to move
         float rpm{0};
         volatile bool running{false};
         bool started{false};
+        bool reversed{false};
 };
