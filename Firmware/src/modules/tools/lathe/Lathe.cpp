@@ -158,6 +158,8 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
             }
 
             // if we have an index_pin then we wait to start by synchronizing to it
+            // NOTE the spindle and encoder must be geared 1:1 (or multiple spindle turns per 1 encoder turn)
+            // for this to have the desired effect, ie always start at the same place.
             if(index_pin != nullptr) {
                 uint32_t curindex = index_pulse;
                 while(curindex == index_pulse) {
