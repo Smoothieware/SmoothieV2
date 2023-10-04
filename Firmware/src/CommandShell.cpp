@@ -1222,7 +1222,7 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
 
 bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
 {
-    HELP("instant jog: $J [-c] X0.01 [Y1] [Z1] [S0.5] - axis can be XYZABC, optional speed (Snnn) is scale of max_rate. -c turns on continuous jog mode");
+    HELP("instant jog: $J [-c] X0.01 [Y1] [Z1] [S0.5|F300] - axis can be XYZABC, optional speed (Snnn) is scale of max_rate. -c turns on continuous jog mode");
 
     os.set_no_response(true);
 
