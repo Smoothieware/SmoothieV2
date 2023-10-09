@@ -41,7 +41,7 @@ bool MPG::create(ConfigReader& cr)
             MPG *t = new MPG();
             if(t->configure(cr, m, name.c_str())) {
                 ++cnt;
-            }else{
+            } else {
                 printf("WARNING: failed to configure MPG %s\n", name.c_str());
                 delete t;
             }
@@ -97,13 +97,34 @@ void MPG::check_encoder()
 {
     while(1) {
         xSemaphoreTake(xBinarySemaphore, portMAX_DELAY);
-        uint32_t c = enc->get_count();
-        // TODO handle wrap around
-        if(c != last_count) {
-            int delta = c - last_count;
-            bool dir = c > last_count;
-            last_count = c;
-            for (int i = 0; i < std::abs(delta); ++i) {
+
+        uint32_t cnt = enc->get_count();
+        // handle wrap around
+        uint32_t qemax = 0XFFFFFFFF;
+        int32_t delta;
+        int sign = 1;
+
+        // handle encoder wrap around and get encoder pulses since last read
+        if(cnt < last_count && (last_count - cnt) > (qemax / 2)) {
+            delta = (qemax - last_count) + cnt + 1;
+            sign = 1;
+        } else if(cnt > last_count && (cnt - last_count) > (qemax / 2)) {
+            delta = (qemax - cnt) + last_count + 1;
+            sign = -1;
+        } else if(cnt > last_count) {
+            delta = cnt - last_count;
+            sign = 1;
+        } else if(cnt < last_count) {
+            delta = last_count - cnt;
+            sign = -1;
+        }
+        last_count = cnt;
+
+        int32_t d = sign * delta;
+
+        if(d != 0) {
+            bool dir = (d > 0);
+            for (int i = 0; i < std::abs(d); ++i) {
                 Robot::getInstance()->actuators[axis]->manual_step(dir);
             }
         }
