@@ -70,6 +70,12 @@ RotaryEncoder::RotaryEncoder(Pin& p1, Pin& p2) : pin1(p1), pin2(p2)
     count= 0;
 }
 
+RotaryEncoder::RotaryEncoder(Pin& p1, Pin& p2, std::function<void(void)> cb) : pin1(p1), pin2(p2), callback(cb)
+{
+    state= R_START;
+    count= 0;
+}
+
 uint8_t RotaryEncoder::process()
 {
     // Grab state of input pins.
@@ -88,6 +94,8 @@ void RotaryEncoder::handle_en_irq()
     } else if (result == DIR_CCW) {
         --count;
     }
+
+    if(callback) callback();
 }
 
 bool RotaryEncoder::setup()
