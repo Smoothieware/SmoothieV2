@@ -46,7 +46,7 @@ bool Switch::load_switches(ConfigReader& cr)
     printf("DEBUG: configure switches\n");
     ConfigReader::sub_section_map_t ssmap;
     if(!cr.get_sub_sections("switch", ssmap)) {
-        printf("configure-switch: no switch section found\n");
+        printf("INFO: configure-switch: no switch section found\n");
         return false;
     }
 
@@ -60,7 +60,7 @@ bool Switch::load_switches(ConfigReader& cr)
             if(sw->configure(cr, m)){
                 ++cnt;
             }else{
-                printf("configure-switch: failed to configure switch %s\n", name.c_str());
+                printf("INFO: configure-switch: failed to configure switch %s\n", name.c_str());
                 delete sw;
             }
         }
