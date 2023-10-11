@@ -101,7 +101,7 @@ void MPG::check_encoder()
         uint32_t cnt = enc->get_count();
         // handle wrap around
         uint32_t qemax = 0XFFFFFFFF;
-        int32_t delta;
+        uint32_t delta = 0;
         int sign = 1;
 
         // handle encoder wrap around and get encoder pulses since last read
@@ -127,6 +127,11 @@ void MPG::check_encoder()
             for (int i = 0; i < std::abs(d); ++i) {
                 Robot::getInstance()->actuators[axis]->manual_step(dir);
             }
+
+            // reset the position based on current actuator position
+            Robot::getInstance()->reset_position_from_current_actuator_position();
+
+            // printf("enc %lu, delta: %ld\n", cnt, d);
         }
     }
 }
@@ -143,8 +148,8 @@ void MPG::handle_change()
 
     [mpg]
     xaxis.enable = true
-    xaxis.enca_pin = PA1^
-    xaxis.encb_pin = PA2^
+    xaxis.enca_pin = PF10^  # must be an interrupt pin that the line number (10) is unused
+    xaxis.encb_pin = PF6^   # must be an interrupt pin that the line number (6) is unused
     xaxis.axis = 0
 
     yaxis.enable = true
