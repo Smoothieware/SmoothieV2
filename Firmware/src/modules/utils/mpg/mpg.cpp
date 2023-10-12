@@ -10,6 +10,7 @@
 #include "OutputStream.h"
 #include "Robot.h"
 #include "StepperMotor.h"
+#include "Conveyor.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -123,6 +124,12 @@ void MPG::check_encoder()
         int32_t d = sign * delta;
 
         if(d != 0) {
+            // we do not want to do this if we are running anything in block queue
+            if(!Conveyor::getInstance()->is_idle()) {
+                // ignore it
+                return;
+            }
+
             bool dir = (d > 0);
             for (int i = 0; i < std::abs(d); ++i) {
                 Robot::getInstance()->actuators[axis]->manual_step(dir);
