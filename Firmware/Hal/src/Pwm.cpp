@@ -273,16 +273,17 @@ bool Pwm::post_config_setup()
   */
 extern "C" void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef *htim)
 {
-    GPIO_InitTypeDef   GPIO_InitStruct;
+    GPIO_InitTypeDef   GPIO_InitStruct{0};
+
+    // Common configuration for all channels
+    // TODO How to allow different settings for different pins? O/D, no pullup etc
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
 
     if(htim->Instance == PWM1) {
         PWM1_CLK_ENABLE();
         PWM1_CHANNEL_GPIO_PORT();
-
-        /* Common configuration for all channels */
-        GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-        GPIO_InitStruct.Pull = GPIO_PULLUP;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
 
         if(Pwm::is_allocated(0, 0)) {
             GPIO_InitStruct.Alternate = PWM1_GPIO_AF_CHANNEL1;
@@ -315,11 +316,6 @@ extern "C" void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef *htim)
     } else if(htim->Instance == PWM2) {
         PWM2_CLK_ENABLE();
         PWM2_CHANNEL_GPIO_PORT();
-
-        /* Common configuration for all channels */
-        GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-        GPIO_InitStruct.Pull = GPIO_PULLUP;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
 
         if(Pwm::is_allocated(1, 0)) {
             GPIO_InitStruct.Alternate = PWM2_GPIO_AF_CHANNEL1;

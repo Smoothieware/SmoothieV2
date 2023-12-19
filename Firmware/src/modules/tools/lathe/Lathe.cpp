@@ -125,7 +125,7 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
         if(gcode.has_arg('K')) {
             dpr = gcode.get_arg('K'); // distance per revolution
             if(dpr == 0) {
-                gcode.set_error("K argument must be > 0");
+                gcode.set_error("K argument cannot be 0");
                 return true;
             }
 
