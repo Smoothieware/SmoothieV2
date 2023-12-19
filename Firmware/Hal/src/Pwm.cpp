@@ -258,6 +258,8 @@ bool Pwm::post_config_setup()
                 printf("ERROR: PWM%d_%d start failed\n", t+1, ch+1);
                 return false;
             }
+            Pwm *p= get_allocation(t, ch);
+            printf("INFO: PWM%d_%d setup od %d, pu %d\n", t+1, ch+1, p->od, p->pullup);
         }
     }
     return true;
