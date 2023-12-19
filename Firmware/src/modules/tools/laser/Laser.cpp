@@ -18,6 +18,8 @@
 #define enable_key "enable"
 #define pwm_pin_key "pwm_pin"
 #define inverted_key "inverted_pwm"
+#define pullup_key "pullup"
+#define opendrain_key "opendrain"
 #define ttl_pin_key "ttl_pin"
 #define maximum_power_key "maximum_power"
 #define minimum_power_key "minimum_power"
@@ -68,6 +70,9 @@ bool Laser::configure(ConfigReader& cr)
     }
 
     this->pwm_inverting = cr.get_bool(m, inverted_key, false);
+
+    this->pwm_pin->set_pullup(cr.get_bool(m, pullup_key, true));
+    this->pwm_pin->set_od(cr.get_bool(m, opendrain_key, false));
 
     // TTL settings
     ttl_pin = new Pin(cr.get_string(m, ttl_pin_key, "nc"), Pin::AS_OUTPUT_OFF);
