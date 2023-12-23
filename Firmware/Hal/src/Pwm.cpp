@@ -15,7 +15,7 @@
 // we have two timers and each has 4 channels
 // each timer can have a different frequency
 // channels on the same timer have the same frequency but different duty cycles
-bool Pwm::allocated[2][4];
+Pwm *Pwm::allocated[2][4]{0};
 Pwm::instance_t Pwm::instances[2];
 
 // name is PWM1_1 and PWM2_1, first is the timer second is the channel
@@ -40,7 +40,7 @@ Pwm::Pwm(const char *nm)
     }
 
     // make sure it is not already in use
-    if(allocated[timr][channel]) {
+    if(get_allocation(timr, channel) != nullptr) {
         printf("ERROR: PWM channel %s already allocated\n", nm);
         return;
     }
@@ -50,15 +50,15 @@ Pwm::Pwm(const char *nm)
         return;
     }
 
-    allocated[timr][channel]= true;
+    allocated[timr][channel]= this;
     valid= true;
 }
 
 Pwm::~Pwm()
 {
-    if(allocated[timr][channel]) {
+    if(get_allocation(timr, channel) != nullptr) {
         set(0);
-        allocated[timr][channel]= false;
+        allocated[timr][channel]= nullptr;
         // If we stop it here we can't start it again so leave it running
         // if(instances[timr]._htim != nullptr) {
         //     uint32_t tc;
@@ -237,7 +237,7 @@ bool Pwm::post_config_setup()
         }
 
         for (int ch = 0; ch < 4; ++ch) {
-            if(!allocated[t][ch]) continue;
+            if(get_allocation(t, ch) == nullptr) continue;
             printf("DEBUG: PWM setting up PWM%d_%d\n", t+1, ch+1);
             uint32_t tc;
             switch(ch) {
@@ -258,6 +258,9 @@ bool Pwm::post_config_setup()
                 printf("ERROR: PWM%d_%d start failed\n", t+1, ch+1);
                 return false;
             }
+
+            Pwm *p= get_allocation(t, ch);
+            printf("INFO: PWM%d_%d setup od:%d, pu:%d\n", t+1, ch+1, p->od, p->pullup);
         }
     }
     return true;
@@ -276,37 +279,46 @@ extern "C" void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef *htim)
     GPIO_InitTypeDef   GPIO_InitStruct{0};
 
     // Common configuration for all channels
-    // TODO How to allow different settings for different pins? O/D, no pullup etc
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
 
     if(htim->Instance == PWM1) {
         PWM1_CLK_ENABLE();
         PWM1_CHANNEL_GPIO_PORT();
 
-        if(Pwm::is_allocated(0, 0)) {
+        if(Pwm::get_allocation(0, 0) != nullptr) {
+            Pwm *p= Pwm::get_allocation(0, 0);
+            GPIO_InitStruct.Mode = (p->is_od()) ? GPIO_MODE_AF_OD : GPIO_MODE_AF_PP;
+            GPIO_InitStruct.Pull = (p->is_pullup()) ? GPIO_PULLUP : GPIO_NOPULL;
             GPIO_InitStruct.Alternate = PWM1_GPIO_AF_CHANNEL1;
             GPIO_InitStruct.Pin = PWM1_GPIO_PIN_CHANNEL1;
             HAL_GPIO_Init(PWM1_GPIO_PORT_CHANNEL1, &GPIO_InitStruct);
             allocate_hal_pin(PWM1_GPIO_PORT_CHANNEL1, PWM1_GPIO_PIN_CHANNEL1);
         }
 
-        if(Pwm::is_allocated(0, 1)) {
+        if(Pwm::get_allocation(0, 1) != nullptr) {
+            Pwm *p= Pwm::get_allocation(0, 1);
+            GPIO_InitStruct.Mode = (p->is_od()) ? GPIO_MODE_AF_OD : GPIO_MODE_AF_PP;
+            GPIO_InitStruct.Pull = (p->is_pullup()) ? GPIO_PULLUP : GPIO_NOPULL;
             GPIO_InitStruct.Alternate = PWM1_GPIO_AF_CHANNEL2;
             GPIO_InitStruct.Pin = PWM1_GPIO_PIN_CHANNEL2;
             HAL_GPIO_Init(PWM1_GPIO_PORT_CHANNEL2, &GPIO_InitStruct);
             allocate_hal_pin(PWM1_GPIO_PORT_CHANNEL2, PWM1_GPIO_PIN_CHANNEL2);
         }
 
-        if(Pwm::is_allocated(0, 2)) {
+        if(Pwm::get_allocation(0, 2) != nullptr) {
+            Pwm *p= Pwm::get_allocation(0, 2);
+            GPIO_InitStruct.Mode = (p->is_od()) ? GPIO_MODE_AF_OD : GPIO_MODE_AF_PP;
+            GPIO_InitStruct.Pull = (p->is_pullup()) ? GPIO_PULLUP : GPIO_NOPULL;
             GPIO_InitStruct.Alternate = PWM1_GPIO_AF_CHANNEL3;
             GPIO_InitStruct.Pin = PWM1_GPIO_PIN_CHANNEL3;
             HAL_GPIO_Init(PWM1_GPIO_PORT_CHANNEL3, &GPIO_InitStruct);
             allocate_hal_pin(PWM1_GPIO_PORT_CHANNEL3, PWM1_GPIO_PIN_CHANNEL3);
         }
 
-        if(Pwm::is_allocated(0, 3)) {
+        if(Pwm::get_allocation(0, 3) != nullptr) {
+            Pwm *p= Pwm::get_allocation(0, 3);
+            GPIO_InitStruct.Mode = (p->is_od()) ? GPIO_MODE_AF_OD : GPIO_MODE_AF_PP;
+            GPIO_InitStruct.Pull = (p->is_pullup()) ? GPIO_PULLUP : GPIO_NOPULL;
             GPIO_InitStruct.Alternate = PWM1_GPIO_AF_CHANNEL4;
             GPIO_InitStruct.Pin = PWM1_GPIO_PIN_CHANNEL4;
             HAL_GPIO_Init(PWM1_GPIO_PORT_CHANNEL4, &GPIO_InitStruct);
@@ -317,28 +329,40 @@ extern "C" void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef *htim)
         PWM2_CLK_ENABLE();
         PWM2_CHANNEL_GPIO_PORT();
 
-        if(Pwm::is_allocated(1, 0)) {
+        if(Pwm::get_allocation(1, 0) != nullptr) {
+            Pwm *p= Pwm::get_allocation(1, 0);
+            GPIO_InitStruct.Mode = (p->is_od()) ? GPIO_MODE_AF_OD : GPIO_MODE_AF_PP;
+            GPIO_InitStruct.Pull = (p->is_pullup()) ? GPIO_PULLUP : GPIO_NOPULL;
             GPIO_InitStruct.Alternate = PWM2_GPIO_AF_CHANNEL1;
             GPIO_InitStruct.Pin = PWM2_GPIO_PIN_CHANNEL1;
             HAL_GPIO_Init(PWM2_GPIO_PORT_CHANNEL1, &GPIO_InitStruct);
             allocate_hal_pin(PWM2_GPIO_PORT_CHANNEL1, PWM2_GPIO_PIN_CHANNEL1);
         }
 
-        if(Pwm::is_allocated(1, 1)) {
+        if(Pwm::get_allocation(1, 1) != nullptr) {
+            Pwm *p= Pwm::get_allocation(1, 1);
+            GPIO_InitStruct.Mode = (p->is_od()) ? GPIO_MODE_AF_OD : GPIO_MODE_AF_PP;
+            GPIO_InitStruct.Pull = (p->is_pullup()) ? GPIO_PULLUP : GPIO_NOPULL;
             GPIO_InitStruct.Alternate = PWM2_GPIO_AF_CHANNEL2;
             GPIO_InitStruct.Pin = PWM2_GPIO_PIN_CHANNEL2;
             HAL_GPIO_Init(PWM2_GPIO_PORT_CHANNEL2, &GPIO_InitStruct);
             allocate_hal_pin(PWM2_GPIO_PORT_CHANNEL2, PWM2_GPIO_PIN_CHANNEL2);
         }
 
-        if(Pwm::is_allocated(1, 2)) {
+        if(Pwm::get_allocation(1, 2) != nullptr) {
+            Pwm *p= Pwm::get_allocation(1, 2);
+            GPIO_InitStruct.Mode = (p->is_od()) ? GPIO_MODE_AF_OD : GPIO_MODE_AF_PP;
+            GPIO_InitStruct.Pull = (p->is_pullup()) ? GPIO_PULLUP : GPIO_NOPULL;
             GPIO_InitStruct.Alternate = PWM2_GPIO_AF_CHANNEL3;
             GPIO_InitStruct.Pin = PWM2_GPIO_PIN_CHANNEL3;
             HAL_GPIO_Init(PWM2_GPIO_PORT_CHANNEL3, &GPIO_InitStruct);
             allocate_hal_pin(PWM2_GPIO_PORT_CHANNEL3, PWM2_GPIO_PIN_CHANNEL3);
         }
 
-        if(Pwm::is_allocated(1, 3)) {
+        if(Pwm::get_allocation(1, 3) != nullptr) {
+            Pwm *p= Pwm::get_allocation(1, 3);
+            GPIO_InitStruct.Mode = (p->is_od()) ? GPIO_MODE_AF_OD : GPIO_MODE_AF_PP;
+            GPIO_InitStruct.Pull = (p->is_pullup()) ? GPIO_PULLUP : GPIO_NOPULL;
             GPIO_InitStruct.Alternate = PWM2_GPIO_AF_CHANNEL4;
             GPIO_InitStruct.Pin = PWM2_GPIO_PIN_CHANNEL4;
             HAL_GPIO_Init(PWM2_GPIO_PORT_CHANNEL4, &GPIO_InitStruct);
