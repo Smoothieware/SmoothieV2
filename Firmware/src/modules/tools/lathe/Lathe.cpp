@@ -66,8 +66,9 @@ bool Lathe::configure(ConfigReader& cr)
             printf("ERROR: configure-lathe: Cannot set index pin to interrupt %s\n", index_pin->to_string().c_str());
             delete index_pin;
             index_pin = nullptr;
+        }else{
+            printf("INFO: configure-lathe: using index pin: %s\n", index_pin->to_string().c_str());
         }
-        printf("INFO: configure-lathe: using index pin: %s\n", index_pin->to_string().c_str());
 
     } else {
         delete index_pin;
