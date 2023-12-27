@@ -984,6 +984,24 @@ bool Endstops::handle_G28(GCode& gcode, OutputStream& os)
             os.set_append_nl();
             break;
 
+        case 7: // G28.7 is a smoothie special it homes a slaved axis and optionally adjusts it to the stored trim value
+            if(gcode.get_num_args() != 1) {
+                os.printf("G28.7 requires one axis argument (XYZ)\n");
+
+            }else{
+                int a= -1;
+                bool adjust= false;
+                if(gcode.has_arg('X')) { a= 0; adjust= gcode.get_arg('X') != 0; }
+                else if(gcode.has_arg('Y')) { a= 1; adjust= gcode.get_arg('Y') != 0; }
+                else if(gcode.has_arg('Z')) { a= 2; adjust= gcode.get_arg('Z') != 0; }
+                else os.printf("axis argument must be one of XYZ\n");
+
+                if(a >= 0) {
+                    move_slaved_axis(a, adjust, os);
+                }
+            }
+            break;
+
         default:
             return false;
     }
@@ -1292,7 +1310,7 @@ bool Endstops::move_slaved_axis(uint8_t paxis, bool adjust, OutputStream& os)
     if(adjust && trim_mm[paxis] != 0) {
         steps = lroundf(Robot::getInstance()->actuators[paxis]->get_steps_per_mm() * offset);
         manual_move(steps, sps, a, !dir, nsteps);
-        os.printf("Actuator %d, adjusted %lu steps, %0.4f mm\n", a, nsteps, steps/Robot::getInstance()->actuators[paxis]->get_steps_per_mm());
+        os.printf("Actuator %d, adjusted %lu steps, %1.4f mm\n", a, nsteps, steps/Robot::getInstance()->actuators[paxis]->get_steps_per_mm());
     }
     return true;
 }
