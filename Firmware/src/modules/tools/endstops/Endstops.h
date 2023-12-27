@@ -37,6 +37,8 @@ class Endstops : public Module
         void rotary_delta_M306(GCode& gcode, OutputStream& os);
         bool handle_G28(GCode& gcode, OutputStream& os);
         bool handle_mcode(GCode& gcode, OutputStream& os);
+        bool move_slaved_axis(uint8_t paxis, bool adjust, OutputStream& os);
+        bool manual_move(uint32_t steps, uint32_t sps, uint8_t a, bool dir, uint32_t& nsteps, Pin *pin=nullptr);
 
         // global settings
         uint32_t debounce_ms;
