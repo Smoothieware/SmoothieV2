@@ -33,7 +33,7 @@
 #define homing_order_key "homing_order"
 #define move_to_origin_key "move_to_origin_after_home"
 
-#define alpha_trim_key "alpha_"
+#define alpha_trim_key "alpha_trim_mm"
 #define beta_trim_key "beta_trim_mm"
 #define gamma_trim_key "gamma_trim_mm"
 
@@ -1045,8 +1045,10 @@ bool Endstops::handle_mcode(GCode& gcode, OutputStream& os)
                           homing_axis[X_AXIS].home_offset, homing_axis[Y_AXIS].home_offset, homing_axis[Z_AXIS].home_offset);
             }
 
+            if(trim_mm[0] != 0 || trim_mm[1] != 0 || trim_mm[2] != 0) {
+                os.printf(";Trim (mm):\nM666 X%1.4f Y%1.4f Z%1.4f\n", trim_mm[0], trim_mm[1], trim_mm[2]);
+            }
             if (this->is_delta || this->is_scara) {
-                os.printf(";Trim (mm):\nM666 X%1.3f Y%1.3f Z%1.3f\n", trim_mm[0], trim_mm[1], trim_mm[2]);
                 os.printf(";Max Z\nM665 Z%1.3f\n", homing_axis[Z_AXIS].homing_position);
             }
             break;
@@ -1063,15 +1065,13 @@ bool Endstops::handle_mcode(GCode& gcode, OutputStream& os)
             break;
 
         case 666:
-            if(this->is_delta || this->is_scara) { // M666 - set trim for each axis in mm, NB negative mm trim is down
-                if (gcode.has_arg('X')) trim_mm[0] = gcode.get_arg('X');
-                if (gcode.has_arg('Y')) trim_mm[1] = gcode.get_arg('Y');
-                if (gcode.has_arg('Z')) trim_mm[2] = gcode.get_arg('Z');
+            // M666 - set trim for each axis in mm, NB negative mm trim is down
+            if (gcode.has_arg('X')) trim_mm[0] = gcode.get_arg('X');
+            if (gcode.has_arg('Y')) trim_mm[1] = gcode.get_arg('Y');
+            if (gcode.has_arg('Z')) trim_mm[2] = gcode.get_arg('Z');
 
-                // print the current trim values in mm
-                os.printf("X: %5.3f Y: %5.3f Z: %5.3f\n", trim_mm[0], trim_mm[1], trim_mm[2]);
-
-            }
+            // print the current trim values in mm
+            os.printf("X: %5.4f Y: %5.4f Z: %5.4f\n", trim_mm[0], trim_mm[1], trim_mm[2]);
             break;
 
         default:
@@ -1221,7 +1221,7 @@ void Endstops::rotary_delta_M306(GCode& gcode, OutputStream& os)
 // For the given primary axis find the slave actuator and move it until the associated endstop is hit
 // special function for moving the slaved actuator to align an axis with two actuators
 // presumes the primary axis has already been homed.
-bool Endstops::move_slaved_axis(uint8_t paxis, OutputStream& os)
+bool Endstops::move_slaved_axis(uint8_t paxis, bool adjust, OutputStream& os)
 {
     // check it is a slaved axis and get the associated primary axis
     uint8_t a= homing_axis[paxis].slaved_axis_index;
@@ -1273,20 +1273,43 @@ bool Endstops::move_slaved_axis(uint8_t paxis, OutputStream& os)
     }
 
     // move in the same direction as the homing cycle would move
+    uint32_t nsteps;
     bool dir= !homing_axis[paxis].home_direction;
 
     os.printf("issuing %d steps at a rate of %d steps/sec on the %c axis, direction %d\n", steps, sps, a, dir);
+    bool hit= manual_move(steps, sps, a, dir, nsteps, &es->pin);
 
+    if(!hit) {
+        os.printf("error: endstop %d was not triggered, please make sure it is within %f mm\n", a, max_travel);
+        return false;
+    }
+
+    // find the offset moved from aligned
+    float offset= nsteps / Robot::getInstance()->actuators[paxis]->get_steps_per_mm();
+    os.printf("Actuator %d, moved %lu steps, %0.4f mm to endstop\n", a, nsteps, offset);
+
+    // if trim is set then move back that amount to realign the axis
+    if(adjust && trim_mm[paxis] != 0) {
+        steps = lroundf(Robot::getInstance()->actuators[paxis]->get_steps_per_mm() * offset);
+        manual_move(steps, sps, a, !dir, nsteps);
+        os.printf("Actuator %d, adjusted %lu steps, %0.4f mm\n", a, nsteps, steps/Robot::getInstance()->actuators[paxis]->get_steps_per_mm());
+    }
+    return true;
+}
+
+// do a step by step manual move optionally until the pin is hit
+bool Endstops::manual_move(uint32_t steps, uint32_t sps, uint8_t a, bool dir, uint32_t& nsteps, Pin *pin)
+{
     // make sure motors are enabled, as manual step does not check
     if(!Robot::getInstance()->actuators[a]->is_enabled()) Robot::getInstance()->actuators[a]->enable(true);
 
     // now move at the required speed until the endstop triggers
     bool hit= false;
-    uint32_t nsteps= 0; // number of steps actually moved
+    nsteps= 0; // number of steps actually moved
     uint32_t delayus = 1000000.0F / sps;
     for(uint32_t s = 0; s < steps; s++) {
         if(Module::is_halted()) break;
-        if(es->pin.get()) {
+        if(pin != nullptr && pin->get()) {
             hit= true;
             break;
         }
@@ -1303,13 +1326,5 @@ bool Endstops::move_slaved_axis(uint8_t paxis, OutputStream& os)
         }
     }
 
-    if(!hit) {
-        os.printf("error: endstop %d was not triggered, please make sure it is within %f mm\n", a, max_travel);
-        return false;
-    }
-
-    os.printf("Actuator %d, moved %lu steps, %0.4f mm to endstop\n", a, nsteps,
-        nsteps/Robot::getInstance()->actuators[paxis]->get_steps_per_mm());
-
-    return true;
+    return hit;
 }
