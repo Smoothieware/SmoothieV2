@@ -1309,8 +1309,9 @@ bool Endstops::move_slaved_axis(uint8_t paxis, bool adjust, OutputStream& os)
     // if trim is set then move back that amount to realign the axis
     if(adjust && trim_mm[paxis] != 0) {
         steps = lroundf(Robot::getInstance()->actuators[paxis]->get_steps_per_mm() * offset);
-        manual_move(steps, sps, a, !dir, nsteps);
-        os.printf("Actuator %d, adjusted %lu steps, %1.4f mm\n", a, nsteps, steps/Robot::getInstance()->actuators[paxis]->get_steps_per_mm());
+        if(manual_move(steps, sps, a, !dir, nsteps)) {
+            os.printf("Actuator %d, adjusted %lu steps, %1.4f mm\n", a, nsteps, steps/Robot::getInstance()->actuators[paxis]->get_steps_per_mm());
+        }
     }
     return true;
 }
@@ -1326,7 +1327,8 @@ bool Endstops::manual_move(uint32_t steps, uint32_t sps, uint8_t a, bool dir, ui
     nsteps= 0; // number of steps actually moved
     uint32_t delayus = 1000000.0F / sps;
     for(uint32_t s = 0; s < steps; s++) {
-        if(Module::is_halted()) break;
+        if(Module::is_halted()) return false;
+
         if(pin != nullptr && pin->get()) {
             hit= true;
             break;
