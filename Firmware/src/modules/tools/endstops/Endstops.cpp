@@ -14,6 +14,7 @@
 #include "main.h"
 #include "BaseSolution.h"
 #include "Consoles.h"
+#include "benchmark_timer.h"
 
 #include <ctype.h>
 #include <algorithm>
@@ -32,7 +33,7 @@
 #define homing_order_key "homing_order"
 #define move_to_origin_key "move_to_origin_after_home"
 
-#define alpha_trim_key "alpha_trim_mm"
+#define alpha_trim_key "alpha_"
 #define beta_trim_key "beta_trim_mm"
 #define gamma_trim_key "gamma_trim_mm"
 
@@ -235,7 +236,7 @@ bool Endstops::load_endstops(ConfigReader& cr)
 
         // See if this axis has a slave and set it
         hinfo.slaved_axis_index = 0; // no slave is the default
-        #if MAX_ROBOT_ACTUATORS > 3
+#if MAX_ROBOT_ACTUATORS > 3
         if(a >= X_AXIS && a <= Z_AXIS) {
             for (uint8_t i = A_AXIS; i < Robot::getInstance()->get_number_registered_motors(); ++i) {
                 if(Robot::getInstance()->get_slaved_to(i) == a) {
@@ -243,7 +244,7 @@ bool Endstops::load_endstops(ConfigReader& cr)
                 }
             }
         }
-        #endif
+#endif
 
         // stick into array in correct place
         temp_axis_array[hinfo.axis_index] = hinfo;
@@ -372,7 +373,7 @@ void Endstops::read_endstops()
                         // we signal the motor to stop, which will preempt any moves on that axis
                         STEPPER[m]->stop_moving();
                         // also stop any slaved actuator
-                        uint8_t si= e.slaved_axis_index;
+                        uint8_t si = e.slaved_axis_index;
                         if(si >= A_AXIS && si <= C_AXIS) {
                             STEPPER[si]->stop_moving();
                         }
@@ -704,7 +705,7 @@ void Endstops::process_home_command(GCode& gcode, OutputStream& os)
             if(p.pin_info == nullptr) continue;
             if(!axis_speced || gcode.has_arg(p.axis)) {
                 haxis.set(p.axis_index);
-                p.homed= false;
+                p.homed = false;
                 // now reset axis to 0 as we do not know what state we are in
                 if (!is_scara) {
                     Robot::getInstance()->reset_axis_position(0, p.axis_index);
@@ -724,7 +725,7 @@ void Endstops::process_home_command(GCode& gcode, OutputStream& os)
             if(p.pin_info == nullptr) continue;
             if(!axis_speced || gcode.has_arg(p.axis)) {
                 haxis.set(p.axis_index);
-                p.homed= false;
+                p.homed = false;
             }
         }
 
@@ -1026,7 +1027,7 @@ bool Endstops::handle_mcode(GCode& gcode, OutputStream& os)
         case 306: // set homing offset based on current position
             if(is_rdelta) {
                 rotary_delta_M306(gcode, os);
-            }else{
+            } else {
                 set_homing_offset(gcode, os);
             }
             break;
@@ -1090,10 +1091,10 @@ bool Endstops::request(const char *key, void *value)
 
     if(strcmp(key, "is_homed") == 0) {
         bool *homed = static_cast<bool *>(value);
-        *homed= true;
+        *homed = true;
         for (auto &p : homing_axis) {
             if(p.pin_info != nullptr && !p.homed) {
-                *homed= false;
+                *homed = false;
                 break;
             }
         }
@@ -1147,13 +1148,13 @@ void Endstops::rotary_delta_M306(GCode& gcode, OutputStream& os)
 
     // get the current angle for each actuator, relies on being left where probe triggered (G30.1)
     // NOTE we only deal with XYZ so if there are more than 3 actuators this will probably go wonky
-    ActuatorCoordinates current_angle= {
+    ActuatorCoordinates current_angle = {
         Robot::getInstance()->actuators[0]->get_current_position(),
         Robot::getInstance()->actuators[1]->get_current_position(),
         Robot::getInstance()->actuators[2]->get_current_position()
     };
 
-    #if 0
+#if 0
     // FIXME the last probe is not in degrees for a rotary, so this is no longer valid
     if (gcode.has_arg('L') && gcode.get_arg('L') != 0) {
         // specifying L1 it will take the last probe position (set by G30) which is degrees moved
@@ -1172,11 +1173,11 @@ void Endstops::rotary_delta_M306(GCode& gcode, OutputStream& os)
         current_angle[1] += d;
         current_angle[2] += d;
     }
-    #endif
+#endif
 
     float theta_offset[3];
     for (int i = 0; i < 3; ++i) {
-        theta_offset[i]= homing_axis[i].home_offset;
+        theta_offset[i] = homing_axis[i].home_offset;
     }
 
     int cnt = 0;
@@ -1202,7 +1203,7 @@ void Endstops::rotary_delta_M306(GCode& gcode, OutputStream& os)
     }
 
     for (int i = 0; i < 3; ++i) {
-        homing_axis[i].home_offset= theta_offset[i];
+        homing_axis[i].home_offset = theta_offset[i];
     }
 
     // reset the actuator positions (and machine position accordingly)
@@ -1215,4 +1216,100 @@ void Endstops::rotary_delta_M306(GCode& gcode, OutputStream& os)
     }
 
     os.printf("Theta Offset: X %8.5f Y %8.5f Z %8.5f\n", theta_offset[0], theta_offset[1], theta_offset[2]);
+}
+
+// For the given primary axis find the slave actuator and move it until the associated endstop is hit
+// special function for moving the slaved actuator to align an axis with two actuators
+// presumes the primary axis has already been homed.
+bool Endstops::move_slaved_axis(uint8_t paxis, OutputStream& os)
+{
+    // check it is a slaved axis and get the associated primary axis
+    uint8_t a= homing_axis[paxis].slaved_axis_index;
+    if(a >= A_AXIS) {
+        if(!homing_axis[paxis].homed) {
+            // the primary axis has not been homed so bail
+            os.printf("error: The primary axis %c (%d) has not been homed\n", homing_axis[paxis].axis,  paxis);
+            return false;
+        }
+
+    } else {
+        os.printf("error: axis %c (%d) does not have a slaved axis\n", homing_axis[paxis].axis, paxis);
+        return false;
+    }
+
+    // use slow feedrate in mm/sec of the primary axis
+    float fr = homing_axis[paxis].slow_rate;
+    // The maximum travel fo rthe slaved actuator needs to be quite small to avoid causing damage
+    float max_travel= 10; // maximum travel in mm (TODO may need to be configurable)
+    uint32_t steps = lroundf(Robot::getInstance()->actuators[paxis]->get_steps_per_mm() * max_travel);
+    // convert fr to steps/sec
+    uint32_t sps = lroundf(Robot::getInstance()->actuators[paxis]->get_steps_per_mm() * fr);
+    sps = std::max(sps, (uint32_t)1); // make sure it is at least 1 step/sec
+
+    // find the endstop pin for the slaved axis, it will be the endstop for the A (or B/C) axis
+    endstop_info_t *es= nullptr;
+    for(endstop_info_t *e : endstops) {
+        if(e->axis_index != a) continue;
+
+        if(e->limit_enable) {
+            os.printf("error: limit must not be enabled for the endstop %d\n", a);
+            return false;
+        }
+
+        es= e;
+    }
+
+    if(es == nullptr) {
+        os.printf("error: The slaved axis %d has no assigned endstop\n", a);
+        return false;
+
+    }
+
+    // if already triggered explain that it needs to be moved away slightly
+    // TODO this may be fixed in a later version and allow for it to be triggered
+    if(es->pin.get()) {
+        os.printf("error: endstop %d is already triggered, please adjust so it is not triggered at the same time as the primary endstop\n", a);
+        return false;
+    }
+
+    // move in the same direction as the homing cycle would move
+    bool dir= !homing_axis[paxis].home_direction;
+
+    os.printf("issuing %d steps at a rate of %d steps/sec on the %c axis, direction %d\n", steps, sps, a, dir);
+
+    // make sure motors are enabled, as manual step does not check
+    if(!Robot::getInstance()->actuators[a]->is_enabled()) Robot::getInstance()->actuators[a]->enable(true);
+
+    // now move at the required speed until the endstop triggers
+    bool hit= false;
+    uint32_t nsteps= 0; // number of steps actually moved
+    uint32_t delayus = 1000000.0F / sps;
+    for(uint32_t s = 0; s < steps; s++) {
+        if(Module::is_halted()) break;
+        if(es->pin.get()) {
+            hit= true;
+            break;
+        }
+
+        Robot::getInstance()->actuators[a]->manual_step(dir);
+        ++nsteps;
+
+        // delay
+        if(delayus >= 10000) {
+            safe_sleep(delayus / 1000);
+        } else {
+            uint32_t st = benchmark_timer_start();
+            while(benchmark_timer_as_us(benchmark_timer_elapsed(st)) < delayus) ;
+        }
+    }
+
+    if(!hit) {
+        os.printf("error: endstop %d was not triggered, please make sure it is within %f mm\n", a, max_travel);
+        return false;
+    }
+
+    os.printf("Actuator %d, moved %lu steps, %0.4f mm to endstop\n", a, nsteps,
+        nsteps/Robot::getInstance()->actuators[paxis]->get_steps_per_mm());
+
+    return true;
 }
