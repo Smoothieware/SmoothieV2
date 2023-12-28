@@ -1292,7 +1292,7 @@ bool Endstops::move_slaved_axis(uint8_t paxis, bool adjust, OutputStream& os)
 
     // move in the same direction as the homing cycle would move
     uint32_t nsteps;
-    bool dir= !homing_axis[paxis].home_direction;
+    bool dir= homing_axis[paxis].home_direction;
 
     os.printf("issuing %d steps at a rate of %d steps/sec on the %c axis, direction %d\n", steps, sps, a, dir);
     bool hit= manual_move(steps, sps, a, dir, nsteps, &es->pin);
