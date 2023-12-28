@@ -1299,6 +1299,9 @@ bool Endstops::move_slaved_axis(uint8_t paxis, bool adjust, OutputStream& os)
 
     if(!hit) {
         os.printf("error: endstop %d was not triggered, please make sure it is within %f mm\n", a, max_travel);
+        // return to where it was
+        uint32_t x;
+        manual_move(nsteps, sps, a, !dir, x);
         return false;
     }
 
@@ -1306,13 +1309,19 @@ bool Endstops::move_slaved_axis(uint8_t paxis, bool adjust, OutputStream& os)
     float offset= nsteps / Robot::getInstance()->actuators[paxis]->get_steps_per_mm();
     os.printf("Actuator %d, moved %lu steps, %0.4f mm to endstop\n", a, nsteps, offset);
 
-    // if trim is set then move back that amount to realign the axis
     if(adjust && trim_mm[paxis] != 0) {
+        // if trim is set then move back that amount to realign the axis
         steps = lroundf(Robot::getInstance()->actuators[paxis]->get_steps_per_mm() * trim_mm[paxis]);
         if(manual_move(steps, sps, a, !dir, nsteps)) {
             os.printf("Actuator %d, adjusted %lu steps, %1.4f mm\n", a, nsteps, steps/Robot::getInstance()->actuators[paxis]->get_steps_per_mm());
         }
+
+    }else{
+        // return to where it was
+        uint32_t x;
+        manual_move(nsteps, sps, a, !dir, x);
     }
+
     return true;
 }
 
