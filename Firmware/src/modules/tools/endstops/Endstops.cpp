@@ -463,7 +463,7 @@ void Endstops::back_off_home(axis_bitmap_t axis)
     // these are handled differently
     if(is_delta) {
         // Move off of the endstop using a regular relative move in Z only
-        deltas[Z_AXIS] = Robot::getInstance()->from_millimeters(homing_axis[Z_AXIS].retract * (homing_axis[Z_AXIS].home_direction ? 1 : -1));
+        deltas[Z_AXIS] = homing_axis[Z_AXIS].retract * (homing_axis[Z_AXIS].home_direction ? 1 : -1);
         fast_rate = homing_axis[Z_AXIS].fast_rate;
 
     } else {
@@ -473,7 +473,7 @@ void Endstops::back_off_home(axis_bitmap_t axis)
 
             // if not triggered no need to move off
             if(e.pin_info != nullptr && e.pin_info->limit_enable && e.pin_info->pin.get()) {
-                deltas[e.axis_index] = Robot::getInstance()->from_millimeters(e.retract * (e.home_direction ? 1 : -1));
+                deltas[e.axis_index] = e.retract * (e.home_direction ? 1 : -1);
                 // select slowest of them all
                 fast_rate = fast_rate == 0 ? e.fast_rate : std::min(fast_rate, e.fast_rate);
             }
