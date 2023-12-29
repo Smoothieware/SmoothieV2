@@ -467,15 +467,19 @@ void Endstops::back_off_home(axis_bitmap_t axis)
         fast_rate = homing_axis[Z_AXIS].fast_rate;
 
     } else {
-        // cartesians concatenate all the moves we need to do into one gcode
+        // cartesians concatenate all the moves we need to do into one move
         for( auto& e : homing_axis) {
             if(!axis[e.axis_index] || e.axis_index > Z_AXIS) continue; // only for axes we asked to move and X,Y,Z
 
-            // if not triggered no need to move off
-            if(e.pin_info != nullptr && e.pin_info->limit_enable && e.pin_info->pin.get()) {
-                deltas[e.axis_index] = e.retract * (e.home_direction ? 1 : -1);
-                // select slowest of them all
-                fast_rate = fast_rate == 0 ? e.fast_rate : std::min(fast_rate, e.fast_rate);
+            if(e.pin_info != nullptr && e.pin_info->limit_enable) {
+                // debounce if needed
+                safe_sleep(debounce_ms);
+                // if not triggered no need to move off
+                if(e.pin_info->pin.get()) {
+                    deltas[e.axis_index] = e.retract * (e.home_direction ? 1 : -1);
+                    // select slowest of them all
+                    fast_rate = fast_rate == 0 ? e.fast_rate : std::min(fast_rate, e.fast_rate);
+                }
             }
         }
     }
