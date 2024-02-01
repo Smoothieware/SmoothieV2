@@ -63,7 +63,7 @@ To bootstrap the inital firmware (or to recover from bad firmware or bricking) y
 
 Download STM32_Programmer_CLI from https://www.st.com/en/development-tools/stm32cubeprog.html
 
-    STM32_Programmer_CLI -q -c port=usb1 -w smoothiev2_Nucleo/smoothiev2.bin 0x08000000 -rst
+    STM32_Programmer_CLI -q -c port=usb1 -w smoothiev2_Prime/smoothiev2.bin 0x08000000 -rst
     (you can also use dfu-util -a 0 -D smoothiev2.bin --dfuse-address 0x08000000)
 
 
