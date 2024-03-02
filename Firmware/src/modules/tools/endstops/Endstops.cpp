@@ -455,34 +455,40 @@ void Endstops::check_limits()
 // checks if triggered and only backs off if triggered
 void Endstops::back_off_home(axis_bitmap_t axis)
 {
-    std::vector<std::pair<char, float>> params;
     this->status = BACK_OFF_HOME;
     float deltas[3] {0, 0, 0};
-    float fast_rate = 0; // default mm/sec
+    float slow_rate = 0; // default mm/sec
+    bool delta_set= false;
 
     // these are handled differently
     if(is_delta) {
         // Move off of the endstop using a regular relative move in Z only
-        deltas[Z_AXIS] = Robot::getInstance()->from_millimeters(homing_axis[Z_AXIS].retract * (homing_axis[Z_AXIS].home_direction ? 1 : -1));
-        fast_rate = homing_axis[Z_AXIS].fast_rate;
+        deltas[Z_AXIS] = homing_axis[Z_AXIS].retract * (homing_axis[Z_AXIS].home_direction ? 1 : -1);
+        slow_rate = homing_axis[Z_AXIS].slow_rate;
+        delta_set= true;
 
     } else {
-        // cartesians concatenate all the moves we need to do into one gcode
+        // cartesians concatenate all the moves we need to do into one move
         for( auto& e : homing_axis) {
             if(!axis[e.axis_index] || e.axis_index > Z_AXIS) continue; // only for axes we asked to move and X,Y,Z
 
-            // if not triggered no need to move off
-            if(e.pin_info != nullptr && e.pin_info->limit_enable && e.pin_info->pin.get()) {
-                deltas[e.axis_index] = Robot::getInstance()->from_millimeters(e.retract * (e.home_direction ? 1 : -1));
-                // select slowest of them all
-                fast_rate = fast_rate == 0 ? e.fast_rate : std::min(fast_rate, e.fast_rate);
+            if(e.pin_info != nullptr && e.pin_info->limit_enable) {
+                // debounce if needed
+                safe_sleep(debounce_ms);
+                // if not triggered no need to move off
+                if(e.pin_info->pin.get()) {
+                    deltas[e.axis_index] = e.retract * (e.home_direction ? 1 : -1);
+                    // select slowest of them all
+                    slow_rate = (slow_rate == 0) ? e.slow_rate : std::min(slow_rate, e.slow_rate);
+                    delta_set= true;
+                }
             }
         }
     }
 
-    if(deltas[X_AXIS] > 0.00001F || deltas[Y_AXIS] > 0.00001F || deltas[Z_AXIS] > 0.00001F) {
+    if(delta_set) {
         // Move off of the endstop using a delta relative move
-        Robot::getInstance()->delta_move(deltas, fast_rate, 3);
+        Robot::getInstance()->delta_move(deltas, slow_rate, 3);
         // Wait for above to finish
         Conveyor::getInstance()->wait_for_idle();
     }
@@ -508,7 +514,7 @@ void Endstops::move_to_origin(axis_bitmap_t axis)
     Robot::getInstance()->absolute_mode = true;
     Robot::getInstance()->next_command_is_MCS = true; // must use machine coordinates in case G92 or WCS is in effect
     OutputStream nullos;
-    THEDISPATCHER->dispatch(nullos, 'G', 1, 'X', 0.0F, 'Y', 0.0F, 'F', Robot::getInstance()->from_millimeters(rate), 0);
+    THEDISPATCHER->dispatch(nullos, 'G', 0, 'X', 0.0F, 'Y', 0.0F, 'F', Robot::getInstance()->from_millimeters(rate), 0);
 
     Robot::getInstance()->pop_state();
 
@@ -641,13 +647,13 @@ void Endstops::home(axis_bitmap_t a)
     for (size_t i = 0; i < homing_axis.size(); ++i) delta[i] = 0;
 
     // use minimum feed rate of all axes that are being homed (sub optimal, but necessary)
-    float feed_rate = homing_axis[X_AXIS].slow_rate;
+    float feed_rate = 0;
     for (auto& i : homing_axis) {
         int c = i.axis_index;
         if(axis_to_home[c]) {
             delta[c] = i.retract;
             if(!i.home_direction) delta[c] = -delta[c];
-            feed_rate = std::min(i.slow_rate, feed_rate);
+            feed_rate = (feed_rate == 0) ? i.slow_rate : std::min(i.slow_rate, feed_rate);
         }
     }
 
@@ -925,6 +931,7 @@ bool Endstops::handle_G28(GCode& gcode, OutputStream& os)
             if(!THEDISPATCHER->is_grbl_mode()) {
                 process_home_command(gcode, os);
             } else {
+                // park handled in Robot
                 return false;
             }
             break;
@@ -933,6 +940,7 @@ bool Endstops::handle_G28(GCode& gcode, OutputStream& os)
             if(THEDISPATCHER->is_grbl_mode()) {
                 process_home_command(gcode, os);
             } else {
+                // park handled in Robot
                 return false;
             }
             break;
@@ -1258,7 +1266,7 @@ bool Endstops::move_slaved_axis(uint8_t paxis, bool adjust, OutputStream& os)
     // use slow feedrate in mm/sec of the primary axis
     float fr = homing_axis[paxis].slow_rate;
     // The maximum travel fo rthe slaved actuator needs to be quite small to avoid causing damage
-    float max_travel= 10; // maximum travel in mm (TODO may need to be configurable)
+    float max_travel= 20; // maximum travel in mm (TODO may need to be configurable)
     uint32_t steps = lroundf(Robot::getInstance()->actuators[paxis]->get_steps_per_mm() * max_travel);
     // convert fr to steps/sec
     uint32_t sps = lroundf(Robot::getInstance()->actuators[paxis]->get_steps_per_mm() * fr);
@@ -1299,20 +1307,24 @@ bool Endstops::move_slaved_axis(uint8_t paxis, bool adjust, OutputStream& os)
 
     if(!hit) {
         os.printf("error: endstop %d was not triggered, please make sure it is within %f mm\n", a, max_travel);
-        return false;
-    }
 
-    // find the offset moved from aligned
-    float offset= nsteps / Robot::getInstance()->actuators[paxis]->get_steps_per_mm();
-    os.printf("Actuator %d, moved %lu steps, %0.4f mm to endstop\n", a, nsteps, offset);
+    }else{
 
-    // if trim is set then move back that amount to realign the axis
-    if(adjust && trim_mm[paxis] != 0) {
-        steps = lroundf(Robot::getInstance()->actuators[paxis]->get_steps_per_mm() * trim_mm[paxis]);
-        if(manual_move(steps, sps, a, !dir, nsteps)) {
-            os.printf("Actuator %d, adjusted %lu steps, %1.4f mm\n", a, nsteps, steps/Robot::getInstance()->actuators[paxis]->get_steps_per_mm());
+        // find the offset moved from aligned
+        float offset= nsteps / Robot::getInstance()->actuators[paxis]->get_steps_per_mm();
+        os.printf("Actuator %d, moved %lu steps, %0.4f mm to endstop\n", a, nsteps, offset);
+
+        if(adjust && trim_mm[paxis] != 0) {
+            // if trim is set then move back that amount to realign the axis
+            nsteps = lroundf(Robot::getInstance()->actuators[paxis]->get_steps_per_mm() * trim_mm[paxis]);
+            os.printf("Actuator %d, adjusted %lu steps, %1.4f mm\n", a, nsteps, nsteps / Robot::getInstance()->actuators[paxis]->get_steps_per_mm());
         }
     }
+
+    // return to where it was
+    uint32_t x;
+    manual_move(nsteps, sps, a, !dir, x);
+
     return true;
 }
 
