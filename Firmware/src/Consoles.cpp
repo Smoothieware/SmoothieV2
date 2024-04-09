@@ -690,7 +690,7 @@ bool configure_consoles(ConfigReader& cr)
             else if(parity == "odd") uart_console_settings.parity = 1;
             else if(parity == "even") uart_console_settings.parity = 2;
             else printf("ERROR: uart console parity must be one of none|odd|even\n");
-            printf("INFO: uart console settings: channel=%d, baudrate=%lu, bits=%d, stop_bits=%d, parity=%d\n",
+            printf("INFO: uart console settings: channel=%d, baudrate=%u, bits=%d, stop_bits=%d, parity=%d\n",
                    uart_channel, uart_console_settings.baudrate, uart_console_settings.bits, uart_console_settings.stop_bits, uart_console_settings.parity);
         }
 

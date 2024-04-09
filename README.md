@@ -15,7 +15,7 @@ Currently runs on the NUCLEO-H745ZI-Q board (no longer supported though), a Deve
 
 Currently uses the following toolchain..
 
-     gcc version 9.2.1 20191025 (release) [ARM/arm-9-branch revision 277599]
+     gcc version 10.3.1 20210621 (release) (15:10.3-2021.07-4)
     
 To get the tool chain you should do the following on Ubuntu based Linuxes...
 
