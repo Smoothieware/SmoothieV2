@@ -29,6 +29,9 @@
 #define dns_server_key "dns_server"
 #define ntp_server_key "ntp_server"
 #define timezone_key "timezone"
+#define firmware_url_key "firmware_url"
+
+#define FIRMWAREURL "http://download.smoothieware.org/"
 
 REGISTER_MODULE(Network, Network::create)
 
@@ -90,6 +93,7 @@ bool Network::configure(ConfigReader& cr)
     }
 
     hostname = cr.get_string(m, hostname_key, "smoothiev2");
+    firmware_url = cr.get_string(m, firmware_url_key, FIRMWAREURL);
 
     std::string ip_address_str = cr.get_string(m, ip_address_key, "auto");
     if(!ip_address_str.empty() && ip_address_str != "auto") {
@@ -263,24 +267,27 @@ bool Network::update_cmd( std::string& params, OutputStream& os )
     }
 
 #ifdef BOARD_PRIME
-    std::string urlbin = "http://smoothieware.org/_media/bin/pr.bin";
-    std::string urlmd5 = "http://smoothieware.org/_media/bin/pr.md5";
+    std::string nm = "pr";
 #elif BOARD_NUCLEO
-    std::string urlbin = "http://smoothieware.org/_media/bin/nu.bin";
-    std::string urlmd5 = "http://smoothieware.org/_media/bin/nu.md5";
+    std::string nm = "nu";
 #elif defined(BOARD_DEVEBOX)
-    std::string urlbin = "http://smoothieware.org/_media/bin/de.bin";
-    std::string urlmd5 = "http://smoothieware.org/_media/bin/de.md5";
+    std::string nm = "de";
 #else
 #error "board not supported by update_cmd"
 #endif
+
+    std::string urlbin = firmware_url;
+    std::string urlmd5 = firmware_url;
+
+    urlbin.append(nm).append(".bin");
+    urlmd5.append(nm).append(".md5");
 
     // fetch the md5 of the file from the server
     std::ostringstream oss;
     OutputStream tos(&oss);
     // fetch the md5 into the ostringstream
     if(!wget(urlmd5.c_str(), nullptr, tos)) {
-        os.printf("failed to get firmware checksum (file not found?)\n");
+        os.printf("failed to get firmware checksum (file not found?): %s\n", urlmd5.c_str());
         return true;
     }
 
@@ -305,7 +312,7 @@ bool Network::update_cmd( std::string& params, OutputStream& os )
         return true;
     }
 
-    os.printf("Downloading updated firmware from server...\n");
+    os.printf("Downloading updated firmware from server: %s ...\n", urlbin.c_str());
 
     // fetch firmware from server
     if(!wget(urlbin.c_str(), "/sd/flashme.bin", os)) {
