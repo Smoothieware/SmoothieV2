@@ -55,7 +55,7 @@ bool ButtonBox::configure(ConfigReader& cr)
         // foreach button
         std::string name = i.first;
         auto& m = i.second;
-        if(!cr.get_bool(m, enable_key, false)) continue; // skip if not enabled
+        if(!cr.get_bool(m, enable_key, true)) continue; // skip if not enabled
         std::string p = cr.get_string(m, pin_key, "nc");
         Pin *b = nullptr;
         bool external = false;

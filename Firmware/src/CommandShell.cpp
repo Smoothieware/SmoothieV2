@@ -1764,9 +1764,10 @@ bool CommandShell::truncate_cmd(std::string& params, OutputStream& os)
 
 bool CommandShell::echo_cmd(std::string& params, OutputStream& os)
 {
+    HELP("echo to consoles: [-n] don't send NL [-1] only send to Aux Uart, everything else gets sent");
     std::string s;
-    bool send_nl= true;
-    bool send_to_uart= false;
+    bool send_nl = true;
+    bool send_to_uart = false;
 
     // -n don't send NL
     // -1 send only to uart
@@ -1790,6 +1791,7 @@ bool CommandShell::echo_cmd(std::string& params, OutputStream& os)
 
         } else {
             s.append(opts);
+            if(params.size() > 0) s.append(" ");
             break;
         }
     }
@@ -1798,7 +1800,7 @@ bool CommandShell::echo_cmd(std::string& params, OutputStream& os)
     if(send_nl) s.append("\n");
     if(!send_to_uart) {
         print_to_all_consoles(s.c_str());
-    }else{
+    } else {
         UART *uart = get_aux_uart();
         if(uart != nullptr) {
             uart->write((uint8_t*)s.data(), s.size());
