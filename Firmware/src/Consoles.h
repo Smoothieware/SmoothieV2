@@ -2,6 +2,7 @@
 
 class OutputStream;
 class ConfigReader;
+class UART;
 
 #define DEFAULT_OVERRIDE_FILE "/sd/config-override"
 
@@ -12,6 +13,7 @@ bool configure_consoles(ConfigReader& cr);
 bool start_consoles();
 bool load_config_override(OutputStream& os, const char *fn=DEFAULT_OVERRIDE_FILE);
 void command_handler();
+UART *get_aux_uart();
 
 // print string to all connected consoles
 extern "C" void print_to_all_consoles(const char *);

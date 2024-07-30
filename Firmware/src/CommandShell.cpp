@@ -20,6 +20,7 @@
 #include "GCodeProcessor.h"
 #include "Consoles.h"
 #include "BaseSolution.h"
+#include "Uart.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -1763,9 +1764,46 @@ bool CommandShell::truncate_cmd(std::string& params, OutputStream& os)
 
 bool CommandShell::echo_cmd(std::string& params, OutputStream& os)
 {
-    std::string s(params);
-    s.append("\n");
-    print_to_all_consoles(s.c_str());
+    std::string s;
+    bool send_nl= true;
+    bool send_to_uart= false;
+
+    // -n don't send NL
+    // -1 send only to uart
+    while(true) {
+        std::string opts = stringutils::shift_parameter(params);
+        if(opts.size() == 2 && opts[0] == '-') {
+            // process option
+            switch(toupper(opts[1])) {
+                case 'N':
+                    send_nl = false;
+                    break;
+                case '1':
+                    send_to_uart = true;
+                    break;
+                default:
+                    s.append(opts);
+                    if(params.size() > 0) s.append(" ");
+                    break;
+            }
+            continue;
+
+        } else {
+            s.append(opts);
+            break;
+        }
+    }
+
+    s.append(params);
+    if(send_nl) s.append("\n");
+    if(!send_to_uart) {
+        print_to_all_consoles(s.c_str());
+    }else{
+        UART *uart = get_aux_uart();
+        if(uart != nullptr) {
+            uart->write((uint8_t*)s.data(), s.size());
+        }
+    }
     return true;
 }
 
