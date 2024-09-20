@@ -157,8 +157,7 @@ bool DeltaGridStrategy::configure(ConfigReader& cr)
 
 void DeltaGridStrategy::save_grid(OutputStream& os)
 {
-    if(grid[0] < -1e5F) {
-        // very big negative number is unallocated
+    if(isnan(grid[0])) {
         os.printf("error:No grid to save\n");
         return;
     }
@@ -249,7 +248,7 @@ bool DeltaGridStrategy::probe_grid(int n, float radius, OutputStream& os)
         return true;
     }
 
-    float maxz = -1e6F, minz = 1e6F;
+    float maxz = NAN, minz = NAN;
     float initial_z;
     if(!findBed(initial_z)) return false;
 
@@ -267,8 +266,8 @@ bool DeltaGridStrategy::probe_grid(int n, float radius, OutputStream& os)
                 float mm;
                 if(!zprobe->doProbeAt(mm, x, y)) return false;
                 z = zprobe->getProbeHeight() - mm;
-                if(z > maxz) maxz = z;
-                if(z < minz) minz = z;
+                if(isnan(maxz) || z > maxz) maxz = z;
+                if(isnan(minz) || z < minz) minz = z;
             }
             char buf[16];
             size_t s= snprintf(buf, sizeof(buf), "%8.4f ", z);
@@ -291,7 +290,7 @@ bool DeltaGridStrategy::probe_spiral(int n, float radius, OutputStream& os)
 
     auto theta = [a](float length) {return sqrtf(2 * length / a); };
 
-    float maxz = -1e6F, minz = 1e6F;
+    float maxz = NAN, minz = NAN;
     for (int i = 0; i < n; i++) {
         float angle = theta(i * step_length);
         float r = angle * a;
@@ -303,8 +302,8 @@ bool DeltaGridStrategy::probe_spiral(int n, float radius, OutputStream& os)
         if (!zprobe->doProbeAt(mm, x, y)) return false;
         float z = zprobe->getProbeHeight() - mm;
         os.printf("PROBE: X%1.4f, Y%1.4f, Z%1.4f\n", x, y, z);
-        if(z > maxz) maxz = z;
-        if(z < minz) minz = z;
+        if(isnan(maxz) || z > maxz) maxz = z;
+        if(isnan(minz) || z < minz) minz = z;
     }
 
     os.printf("max: %1.4f, min: %1.4f, delta: %1.4f\n", maxz, minz, maxz - minz);
@@ -385,7 +384,7 @@ bool DeltaGridStrategy::handle_mcode(GCode & gcode, OutputStream & os)
         std::tie(x, y, z) = probe_offsets;
         os.printf(";Probe offsets:\nM565 X%1.5f Y%1.5f Z%1.5f\n", x, y, z);
         if(save) {
-            if(grid != nullptr) os.printf(";Load saved grid\nM375\n");
+            if(!isnan(grid[0])) os.printf(";Load saved grid\nM375\n");
             else if(gcode.get_subcode() == 3) os.printf(";WARNING No grid to save\n");
         }
         return true;
@@ -504,8 +503,8 @@ bool DeltaGridStrategy::doProbe(GCode& gcode, OutputStream& os)
 
 void DeltaGridStrategy::extrapolate_one_point(int x, int y, int xdir, int ydir)
 {
-    // We use a very large negative number to see if it is allocated
-    if (grid[x + (grid_size * y)] > -1e5F) {
+    // We use isnan to see if it is allocated
+    if (!isnan(grid[x + (grid_size * y)])) {
         return;  // Don't overwrite good values.
     }
     float a = 2 * grid[(x + xdir) + (y * grid_size)] - grid[(x + xdir * 2) + (y * grid_size)]; // Left to right.
@@ -597,9 +596,7 @@ void DeltaGridStrategy::reset_bed_level()
 {
     for (int y = 0; y < grid_size; y++) {
         for (int x = 0; x < grid_size; x++) {
-            // set to very big negative number to indicate not set
-            // then to be safe check against < -1E5F
-            grid[x + (grid_size * y)] = -1e6F;
+            grid[x + (grid_size * y)] = NAN;
         }
     }
 }
