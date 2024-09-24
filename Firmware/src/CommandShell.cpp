@@ -1505,6 +1505,14 @@ bool CommandShell::config_set_cmd(std::string& params, OutputStream& os)
         return true;
     }
 
+    // remove the optional [ ... ] around section
+    auto pos = sectionstr.find("[");
+    if(pos != sectionstr.npos) {
+        sectionstr.erase(pos, 1);
+        pos = sectionstr.find("]");
+        if(pos != sectionstr.npos) sectionstr.erase(pos, 1);
+    }
+
     std::fstream fsin;
     std::fstream fsout;
     fsin.open("/sd/config.ini", std::fstream::in);

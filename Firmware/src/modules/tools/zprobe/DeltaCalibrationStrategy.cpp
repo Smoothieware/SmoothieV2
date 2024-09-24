@@ -235,18 +235,19 @@ bool DeltaCalibrationStrategy::calibrate_delta_endstops(GCode& gcode, OutputStre
 
     float trimscale = 1.2522F; // empirically determined
 
+    // find min and max
     auto mmx = std::minmax({t1z, t2z, t3z});
     if((mmx.second - mmx.first) <= target) {
         os.printf("trim already set within required parameters: delta %f\n", mmx.second - mmx.first);
         return true;
     }
 
-    // set trims to worst case so we always have a negative trim
-    trimx += (mmx.first - t1z) * trimscale;
-    trimy += (mmx.first - t2z) * trimscale;
-    trimz += (mmx.first - t3z) * trimscale;
-
     for (int i = 1; i <= 10; ++i) {
+        // set new trim values based on min difference
+        trimx += (mmx.first - t1z) * trimscale;
+        trimy += (mmx.first - t2z) * trimscale;
+        trimz += (mmx.first - t3z) * trimscale;
+
         // set trim
         if(!set_trim(trimx, trimy, trimz, os)) return false;
 
@@ -275,10 +276,6 @@ bool DeltaCalibrationStrategy::calibrate_delta_endstops(GCode& gcode, OutputStre
             break;
         }
 
-        // set new trim values based on min difference
-        trimx += (mmx.first - t1z) * trimscale;
-        trimy += (mmx.first - t2z) * trimscale;
-        trimz += (mmx.first - t3z) * trimscale;
     }
 
     if((mmx.second - mmx.first) > target) {
