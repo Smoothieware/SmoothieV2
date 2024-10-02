@@ -2097,7 +2097,7 @@ bool Robot::delta_move(const float * delta, float rate_mm_s, uint8_t naxis)
     // add in the deltas to get new target
     for (int i = 0; i < naxis; i++) {
         if(i >= A_AXIS && get_slaved_to(i) >= 0) continue; // can't delta move a slaved axis either
-        target[i] += delta[i];
+        if(!isnan(delta[i])) target[i] += delta[i];
     }
 
     // submit for planning and if moved update machine_position
