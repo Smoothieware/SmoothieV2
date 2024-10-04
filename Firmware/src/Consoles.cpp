@@ -85,7 +85,7 @@ bool load_config_override(OutputStream& os, const char *fn)
 // can be called by modules when in command thread context
 bool dispatch_line(OutputStream& os, const char *ln)
 {
-    configASSERT(strncmp(pcTaskGetName(NULL), "CommandThread", configMAX_TASK_NAME_LEN-1) == 0);
+    configASSERT(strncmp(pcTaskGetName(NULL), "CommandThread", configMAX_TASK_NAME_LEN - 1) == 0);
 
     // need a mutable copy
     std::string line(ln);
@@ -385,7 +385,7 @@ static void usb_comms(void *param)
 
         if(abort_comms) break;
 
-        printf("DEBUG: CDC%d connected\n", inst+1);
+        printf("DEBUG: CDC%d connected\n", inst + 1);
 
         // create an output stream that writes to the cdc
         OutputStream *os = new OutputStream([inst](const char *buf, size_t len) { return write_cdc(inst, buf, len); });
@@ -476,14 +476,25 @@ static void uart_debug_comms(void *)
 #include "Uart.h"
 static uint8_t uart_channel;
 static UART::settings_t uart_console_settings;
+static UART *aux_uart = nullptr;
+
+UART *get_aux_uart() { return aux_uart; }
+static UART *init_aux_uart()
+{
+    UART *uart = UART::getInstance(uart_channel);
+    if(uart == nullptr || !uart->init(uart_console_settings)) {
+        printf("ERROR: Failed to init aux uart channel %d\n", uart_channel);
+        return nullptr;
+    }
+
+    return uart;
+}
+
 static void uart_console_comms(void *)
 {
     printf("DEBUG: UART Console Comms thread running\n");
-    UART *uart = UART::getInstance(uart_channel);
-    if(!uart->init(uart_console_settings)) {
-        printf("ERROR: Failed in init uart 1\n");
-        return;
-    }
+    UART *uart = init_aux_uart();
+    if(uart == nullptr) return;
 
     // create an output stream that writes to this uart
     static OutputStream os([uart](const char *buf, size_t len) { return uart->write((uint8_t*)buf, len); });
@@ -678,9 +689,11 @@ bool configure_consoles(ConfigReader& cr)
 
     ConfigReader::section_map_t ucm;
     if(cr.get_section("uart console", ucm)) {
-        uart_console_enabled = cr.get_bool(ucm, "enable", false);
-        printf("INFO: uart console is %s\n", uart_console_enabled ? "enabled" : "disabled");
-        if(uart_console_enabled) {
+        bool enabled = cr.get_bool(ucm, "enable", false);
+        if(enabled) {
+            printf("INFO: aux uart is enabled.\n");
+            uart_console_enabled = cr.get_bool(ucm, "console", true);
+            printf("INFO: aux uart is%sa console\n", uart_console_enabled ? " " : " not ");
             uart_channel = cr.get_int(ucm, "channel", 0);
             uart_console_settings.baudrate = cr.get_int(ucm, "baudrate", 115200);
             uart_console_settings.bits = cr.get_int(ucm, "bits", 8);
@@ -689,14 +702,22 @@ bool configure_consoles(ConfigReader& cr)
             if(parity == "none") uart_console_settings.parity = 0;
             else if(parity == "odd") uart_console_settings.parity = 1;
             else if(parity == "even") uart_console_settings.parity = 2;
-            else printf("ERROR: uart console parity must be one of none|odd|even\n");
-            printf("INFO: uart console settings: channel=%d, baudrate=%lu, bits=%d, stop_bits=%d, parity=%d\n",
+            else {
+                printf("ERROR: aux uart parity must be one of none|odd|even\n");
+                uart_console_settings.parity = 0;
+            }
+            if(!uart_console_enabled) {
+                // as it is not a console we need to initialise it here
+                aux_uart = init_aux_uart();
+            }
+            printf("INFO: aux uart settings: channel=%d, baudrate=%u, bits=%d, stop_bits=%d, parity=%d\n",
                    uart_channel, uart_console_settings.baudrate, uart_console_settings.bits, uart_console_settings.stop_bits, uart_console_settings.parity);
         }
 
     } else {
-        printf("INFO: no uart console section found, disabled\n");
+        printf("INFO: no uart console section found, aux uart is disabled\n");
         uart_console_enabled = false;
+        aux_uart = nullptr;
     }
 
     return true;

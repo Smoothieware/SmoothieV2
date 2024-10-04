@@ -150,7 +150,8 @@ bool Planner::append_block(ActuatorCoordinates& actuator_pos, uint8_t n_motors, 
     // nonlinearities of both the junction angle and junction velocity.
 
     // NOTE however it does not take into account independent axis, in most cartesian X and Y and Z are totally independent
-    // and this allows one to stop with little to no decleration in many cases. This is particualrly bad on leadscrew based systems that will skip steps.
+    // and this allows one to stop with little to no decleration in many cases.
+    // This is particularly bad on leadscrew based systems that will skip steps.
     float vmax_junction = minimum_planner_speed; // Set default max junction speed
 
     // if unit_vec was null then it was not a primary axis move so we skip the junction deviation stuff

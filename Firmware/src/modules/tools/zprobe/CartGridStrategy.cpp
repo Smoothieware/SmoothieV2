@@ -210,7 +210,7 @@ void CartGridStrategy::save_grid(OutputStream& os)
         return;
     }
 
-    if(grid[0] < -1E5F) {
+    if(isnan(grid[0])) {
         os.printf("error:No grid to save\n");
         return;
     }
@@ -495,7 +495,7 @@ bool CartGridStrategy::handle_mcode(GCode& gcode, OutputStream& os)
         std::tie(x, y, z) = probe_offsets;
         os.printf(";Probe offsets:\nM565 X%1.5f Y%1.5f Z%1.5f\n", x, y, z);
         if(save) {
-            if(grid != nullptr && grid[0] > -1E5F) os.printf(";Load saved grid\nM375\n");
+            if(grid != nullptr && !isnan(grid[0])) os.printf(";Load saved grid\nM375\n");
             else if(gcode.get_subcode() == 3) os.printf(";WARNING No grid to save\n");
         }
         return true;
@@ -764,9 +764,7 @@ void CartGridStrategy::reset_bed_level()
 {
     for (int y = 0; y < current_grid_y_size; y++) {
         for (int x = 0; x < current_grid_x_size; x++) {
-            // set to very big negative number to indicate not set
-            // then to be safe check against < -1E5F
-            grid[x + (current_grid_x_size * y)] = -1e6F;
+            grid[x + (current_grid_x_size * y)] = NAN;
         }
     }
 }

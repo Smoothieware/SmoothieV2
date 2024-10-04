@@ -102,7 +102,7 @@ OBJCOPY = "#{TOOLSBIN}objcopy"
 OBJDUMP = "#{TOOLSBIN}objdump"
 SIZE = "#{TOOLSBIN}size"
 AR = "#{TOOLSBIN}ar"
-ARFLAGS = 'ur'
+ARFLAGS = 'r'
 
 current_version= `#{CC} -dumpversion`.chomp
 puts "Current GCC version is #{current_version}"

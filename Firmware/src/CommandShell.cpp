@@ -20,6 +20,7 @@
 #include "GCodeProcessor.h"
 #include "Consoles.h"
 #include "BaseSolution.h"
+#include "Uart.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -1238,7 +1239,7 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
     float fr = NAN;
     float delta[n_motors];
     for (int i = 0; i < n_motors; ++i) {
-        delta[i] = 0;
+        delta[i] = NAN;
     }
 
     if(params.empty()) {
@@ -1292,7 +1293,7 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
     // select slowest axis rate to use
     int cnt = 0;
     for (int i = 0; i < n_motors; ++i) {
-        if(delta[i] != 0) {
+        if(!isnan(delta[i])) {
             ++cnt;
             if(isnan(rate_mm_s)) {
                 rate_mm_s = Robot::getInstance()->actuators[i]->get_max_rate();
@@ -1347,25 +1348,26 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         // get lowest acceleration of selected axis
         float acc = Robot::getInstance()->get_default_acceleration();
         for (int i = 0; i < n_motors; ++i) {
-            if(delta[i] == 0) continue;
+            if(isnan(delta[i])) continue;
             float ma =  Robot::getInstance()->actuators[i]->get_acceleration(); // in mm/sec²
             if(ma > 0.0001F && ma < acc) acc = ma;
         }
 
         // calculate minimum distance to travel to accomodate acceleration and feedrate
-        float t = fr / acc; // time to reach frame rate
-        float d = 0.5F * acc * powf(t, 2); // distance required to accelerate
-        d = std::max(d, 0.3333F); // take minimum being 1mm overall so 0.3333mm
+        float d = (fr * fr) / (2*acc); // distance required to fully accelerate to feedrate in mm (d = v*v / 2*a)
+        d = std::max(d, 0.3333F); // get minimum distance to move being 1mm overall so 0.3333mm for each segment
+
         // we need to check if the feedrate is too slow, for continuous jog if it takes over 5 seconds it is too slow
-        t = d * 3 / fr; // time it will take to do all three blocks
+        float t = d * 3 / fr; // time it will take to do all three blocks
         if(t > 5) {
             // increase feedrate so it will not take more than 5 seconds
             fr = (d * 3) / 5;
+            if(fr > rate_mm_s) fr = rate_mm_s;
         }
 
         // we need to move at least this distance to reach full speed
         for (int i = 0; i < n_motors; ++i) {
-            if(delta[i] != 0) {
+            if(!isnan(delta[i])) {
                 delta[i] = d * (delta[i] < 0 ? -1 : 1);
             }
         }
@@ -1502,6 +1504,14 @@ bool CommandShell::config_set_cmd(std::string& params, OutputStream& os)
     if(sectionstr.empty() || keystr.empty()) {
         os.printf("Usage: config-set section key [value]\n");
         return true;
+    }
+
+    // remove the optional [ ... ] around section
+    auto pos = sectionstr.find("[");
+    if(pos != sectionstr.npos) {
+        sectionstr.erase(pos, 1);
+        pos = sectionstr.find("]");
+        if(pos != sectionstr.npos) sectionstr.erase(pos, 1);
     }
 
     std::fstream fsin;
@@ -1763,9 +1773,48 @@ bool CommandShell::truncate_cmd(std::string& params, OutputStream& os)
 
 bool CommandShell::echo_cmd(std::string& params, OutputStream& os)
 {
-    std::string s(params);
-    s.append("\n");
-    print_to_all_consoles(s.c_str());
+    HELP("echo to consoles: [-n] don't send NL [-1] only send to Aux Uart, everything else gets sent");
+    std::string s;
+    bool send_nl = true;
+    bool send_to_uart = false;
+
+    // -n don't send NL
+    // -1 send only to uart
+    while(true) {
+        std::string opts = stringutils::shift_parameter(params);
+        if(opts.size() == 2 && opts[0] == '-') {
+            // process option
+            switch(toupper(opts[1])) {
+                case 'N':
+                    send_nl = false;
+                    break;
+                case '1':
+                    send_to_uart = true;
+                    break;
+                default:
+                    s.append(opts);
+                    if(params.size() > 0) s.append(" ");
+                    break;
+            }
+            continue;
+
+        } else {
+            s.append(opts);
+            if(params.size() > 0) s.append(" ");
+            break;
+        }
+    }
+
+    s.append(params);
+    if(send_nl) s.append("\n");
+    if(!send_to_uart) {
+        print_to_all_consoles(s.c_str());
+    } else {
+        UART *uart = get_aux_uart();
+        if(uart != nullptr) {
+            uart->write((uint8_t*)s.data(), s.size());
+        }
+    }
     return true;
 }
 

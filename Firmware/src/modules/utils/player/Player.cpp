@@ -604,8 +604,8 @@ bool Player::suspend_command(std::string& params, OutputStream& os )
         this->playing_file = false;
         this->was_playing_file = true;
     } else {
-        // send pause to upstream host
-        os.printf("// action:pause\n");
+        // send pause to all upstream hosts
+        print_to_all_consoles("// action:pause\n");
         this->was_playing_file = false;
     }
 
@@ -791,8 +791,8 @@ bool Player::resume_command(std::string& params, OutputStream& os )
         this->was_playing_file = false;
 
     } else {
-        // Send resume to host
-        os.printf("// action:resume\n");
+        // Send resume to all hosts
+        print_to_all_consoles("// action:resume\n");
     }
 
     return true;

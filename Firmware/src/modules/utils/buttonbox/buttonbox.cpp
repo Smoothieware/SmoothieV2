@@ -55,7 +55,7 @@ bool ButtonBox::configure(ConfigReader& cr)
         // foreach button
         std::string name = i.first;
         auto& m = i.second;
-        if(!cr.get_bool(m, enable_key, false)) continue; // skip if not enabled
+        if(!cr.get_bool(m, enable_key, true)) continue; // skip if not enabled
         std::string p = cr.get_string(m, pin_key, "nc");
         Pin *b = nullptr;
         bool external = false;
@@ -184,9 +184,20 @@ void ButtonBox::button_tick()
                 os.set_stop_request(true);
                 i.state = new_state;
 
-            }else if(strcmp(cmd, "KILL") == 0) {
+            } else if(strcmp(cmd, "KILL") == 0) {
                 i.state = new_state;
                 Module::broadcast_halt(true);
+
+            } else if(strcmp(cmd, "SUSPEND") == 0) {
+                i.state = new_state;
+                if(is_suspended()) {
+                    // resume
+                    cmd = "M601";
+                } else {
+                    // suspend
+                    cmd = "M600";
+                }
+                send_message_queue(cmd, &os, false);
 
             } else {
                 // Do not block and if queue was full the command is not sent
@@ -198,4 +209,20 @@ void ButtonBox::button_tick()
             }
         }
     }
+
+
+}
+
+bool ButtonBox::is_suspended() const
+{
+    auto m = Module::lookup("player");
+    if(m != nullptr) {
+        bool r = false;
+        bool ok = m->request("is_suspended", &r);
+        if(ok && r) {
+            return true;
+        }
+    }
+
+    return false;
 }

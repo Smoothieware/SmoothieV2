@@ -35,6 +35,7 @@ class Network : public Module {
         int timezone{0};
         std::string hostname;
         std::string ntp_server;
+        std::string firmware_url;
 
         volatile bool abort_network{false};
         bool enable_shell{false};

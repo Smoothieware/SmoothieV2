@@ -15,6 +15,8 @@ class ButtonBox : public Module {
 
     private:
         void button_tick();
+        bool is_suspended() const;
+
         using but_t = struct {
             std::string name;
             Pin *but;
