@@ -1428,6 +1428,10 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
 
         // reset the position based on current actuator position
         Robot::getInstance()->reset_position_from_current_actuator_position();
+
+        // if it was jogging an extruder set it back to zero
+        if(is_extruder > 0) Robot::getInstance()->reset_axis_position(0.0F, is_extruder);
+
         // restore compensationTransform
         Robot::getInstance()->compensationTransform = savect;
 
