@@ -71,6 +71,7 @@ public:
     bool is_homed() const;
     int8_t get_slaved_to(uint8_t a) const { if((a-3)<3) return slaved[a-3]; else return -1; }
     bool is_must_be_homed() const;
+    int get_active_extruder() const;
 
     BaseSolution* arm_solution;                           // Selected Arm solution ( millimeters to step calculation )
 
@@ -140,7 +141,6 @@ private:
 
     void select_plane(uint8_t axis_0, uint8_t axis_1, uint8_t axis_2);
     void clearToolOffset();
-    int get_active_extruder() const;
     void periodic_checks();
     void check_max_actuator_speeds(OutputStream* os);
 

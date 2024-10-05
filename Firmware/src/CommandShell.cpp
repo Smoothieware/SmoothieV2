@@ -1233,7 +1233,7 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
 
     // get axis to move and amount (X0.1)
     // may specify multiple axis
-
+    int is_extruder = -1;
     float rate_mm_s = NAN;
     float scale = 1.0F;
     float fr = NAN;
@@ -1243,7 +1243,7 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
     }
 
     if(params.empty()) {
-        os.printf("usage: $J [-c] X0.01 [Y1] [Z1] [S0.5|Fnnn] - axis can be XYZABC, optional speed is scale of max_rate or specify Feedrate. -c turns on continuous jog mode\n");
+        os.printf("usage: $J [-c] X0.01 [Y1] [Z1] [S0.5|Fnnn] - axis can be XYZABCE, optional speed is scale of max_rate or specify Feedrate. -c turns on continuous jog mode\n");
         return true;
     }
 
@@ -1274,6 +1274,12 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
             scale = 1.0F;
             fr = strtof(p.substr(1).c_str(), NULL) / 60.0F; // we want mm/sec but F is specified in mm/min
             continue;
+        }
+
+        if(ax == 'E') {
+            // find out which is the active extruder
+            is_extruder= Robot::getInstance()->get_active_extruder();
+            if(is_extruder > 0) ax = 'A' + is_extruder - 3;
         }
 
         if(!((ax >= 'X' && ax <= 'Z') || (ax >= 'A' && ax <= 'C'))) {
@@ -1371,6 +1377,13 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
                 delta[i] = d * (delta[i] < 0 ? -1 : 1);
             }
         }
+
+        if(is_extruder > 0) {
+            // convert mm to mm^3
+            auto& fnc = Robot::getInstance()->get_e_scale_fnc;
+            delta[is_extruder] /= ( fnc ? fnc() : 1.0F);
+        }
+
         //printf("distance: %f, time:%f, X%f Y%f Z%f A%f, speed:%f, acc:%f\n", d, t, delta[0], delta[1], delta[2], delta[3], fr, acc);
 
         // wait for any activity to stop
@@ -1419,6 +1432,11 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         Robot::getInstance()->compensationTransform = savect;
 
     } else {
+        if(is_extruder > 0) {
+            // convert mm to mm^3
+            auto& fnc = Robot::getInstance()->get_e_scale_fnc;
+            delta[is_extruder] /= ( fnc ? fnc() : 1.0F);
+        }
 
         Robot::getInstance()->delta_move(delta, fr, n_motors);
         Conveyor::getInstance()->force_queue();
