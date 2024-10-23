@@ -859,7 +859,7 @@ bool CommandShell::get_cmd(std::string& params, OutputStream& os)
 
     } else if (what == "steps") {
         for (int i = 0; i < Robot::getInstance()->get_number_registered_motors(); ++i) {
-            os.printf("%d: %d, %d\n", i, Robot::getInstance()->actuators[i]->get_last_step_count(), Robot::getInstance()->actuators[i]->get_current_step());
+            os.printf("%d: %d\n", i, Robot::getInstance()->actuators[i]->get_step_count());
         }
 
     } else if (what == "wcs") {

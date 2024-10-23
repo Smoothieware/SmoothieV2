@@ -17,7 +17,7 @@ class StepperMotor
         uint8_t get_motor_id() const { return motor_id; }
 
         // called from step ticker ISR
-        inline bool step() { step_pin.set(1); current_position_steps += (direction?-1:1); return moving; }
+        inline bool step() { step_pin.set(1); step_count += (direction?-1:1); return moving; }
         // called from unstep ISR
         inline void unstep() { step_pin.set(0); }
         // called from step ticker ISR
@@ -43,9 +43,9 @@ class StepperMotor
         void update_last_milestones(float mm, int32_t steps);
         float get_last_milestone(void) const { return last_milestone_mm; }
         int32_t get_last_milestone_steps(void) const { return last_milestone_steps; }
-        float get_current_position(void) const { return (float)current_position_steps/steps_per_mm; }
-        int32_t get_current_step(void) const { return current_position_steps; }
-        int32_t get_last_step_count(void) const { return last_step_count; }
+        float get_current_position(void) const { return (float)(step_count-step_count_homed)/steps_per_mm; }
+        int32_t get_current_step_position(void) const { return step_count-step_count_homed; }
+        int32_t get_step_count(void) const { return step_count; }
         float get_max_rate(void) const { return max_rate; }
         void set_max_rate(float mr) { max_rate= mr; }
         void set_acceleration(float a) { acceleration= a; }
@@ -67,8 +67,8 @@ class StepperMotor
         float max_rate; // this is not really rate it is in mm/sec, misnamed used in Robot and Extruder
         float acceleration;
 
-        volatile int32_t current_position_steps;
-        int32_t last_step_count;
+        volatile int32_t step_count;
+        int32_t step_count_homed;
         int32_t last_milestone_steps;
         float   last_milestone_mm;
         uint32_t forced_steps{0};
