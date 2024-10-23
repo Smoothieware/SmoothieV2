@@ -762,7 +762,7 @@ bool CommandShell::modules_cmd(std::string& params, OutputStream& os)
 
 bool CommandShell::get_cmd(std::string& params, OutputStream& os)
 {
-    HELP("get pos|wcs|state|status|temp|volts|fk|ik")
+    HELP("get pos|wcs|state|status|temp|volts|fk|ik|steps")
     std::string what = stringutils::shift_parameter( params );
     bool handled = true;
     if (what == "temp") {
@@ -856,6 +856,11 @@ bool CommandShell::get_cmd(std::string& params, OutputStream& os)
         Robot::getInstance()->print_position(3, buf); os.printf("%s\n", buf.c_str()); buf.clear();
         Robot::getInstance()->print_position(4, buf); os.printf("%s\n", buf.c_str()); buf.clear();
         Robot::getInstance()->print_position(5, buf); os.printf("%s\n", buf.c_str()); buf.clear();
+
+    } else if (what == "steps") {
+        for (int i = 0; i < Robot::getInstance()->get_number_registered_motors(); ++i) {
+            os.printf("%d: %d, %d\n", i, Robot::getInstance()->actuators[i]->get_last_step_count(), Robot::getInstance()->actuators[i]->get_current_step());
+        }
 
     } else if (what == "wcs") {
         // print the wcs state

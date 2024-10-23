@@ -15,6 +15,7 @@ StepperMotor::StepperMotor(Pin &step, Pin &dir, Pin &en) : step_pin(step), dir_p
     last_milestone_steps = 0;
     last_milestone_mm    = 0.0F;
     current_position_steps= 0;
+    last_step_count= 0;
     moving= false;
     acceleration= -1;
     selected= true;
@@ -33,6 +34,7 @@ void StepperMotor::change_steps_per_mm(float new_steps)
 {
     steps_per_mm = new_steps;
     last_milestone_steps = roundf(last_milestone_mm * steps_per_mm);
+    last_step_count= current_position_steps;
     current_position_steps = last_milestone_steps;
 }
 
@@ -40,6 +42,7 @@ void StepperMotor::change_last_milestone(float new_milestone)
 {
     last_milestone_mm = new_milestone;
     last_milestone_steps = roundf(last_milestone_mm * steps_per_mm);
+    last_step_count= current_position_steps;
     current_position_steps = last_milestone_steps;
 }
 
@@ -47,6 +50,7 @@ void StepperMotor::set_last_milestones(float mm, int32_t steps)
 {
     last_milestone_mm= mm;
     last_milestone_steps= steps;
+    last_step_count= current_position_steps;
     current_position_steps= last_milestone_steps;
 }
 
