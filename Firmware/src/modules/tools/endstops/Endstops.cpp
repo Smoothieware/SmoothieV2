@@ -1086,7 +1086,7 @@ bool Endstops::handle_mcode(GCode& gcode, OutputStream& os)
                 if (gcode.has_arg('Z')) {
                     homing_axis[Z_AXIS].homing_position = gamma_max = gcode.get_arg('Z');
                 }
-                os.printf("Max Z %8.3f ", gamma_max);
+                os.printf("Max Z: %8.3f ", gamma_max);
             }
             break;
 
