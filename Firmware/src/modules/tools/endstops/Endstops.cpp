@@ -567,7 +567,7 @@ void Endstops::home(axis_bitmap_t a)
     // Start moving the axes to the origin
     this->status = MOVING_TO_ENDSTOP_FAST;
 
-    // delta moves don't do segmentation so this is not needed
+    // delta_move does not do segmentation so this is not needed
     //Robot::getInstance()->disable_segmentation = true; // we must disable segmentation as this won't work with it enabled
 
     if(!home_z_first) home_xy();

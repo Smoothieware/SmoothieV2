@@ -437,6 +437,7 @@ bool Robot::configure(ConfigReader& cr)
 
     // initialise actuator positions to current cartesian position (X0 Y0 Z0)
     // so the first move can be correct if homing is not performed
+    // Note for deltas this is based on data in config.ini, if overidden in config override it will be wrong
     ActuatorCoordinates actuator_pos;
     arm_solution->cartesian_to_actuator(machine_position, actuator_pos);
     for (size_t i = X_AXIS; i <= Z_AXIS; i++) {
