@@ -1518,6 +1518,7 @@ bool Robot::handle_M500(GCode& gcode, OutputStream& os)
     // get or save any arm solution specific optional values
     BaseSolution::arm_options_t options;
     if(arm_solution->get_optional(options) && !options.empty()) {
+        os.printf(";NOTE it is recommended to change this in config.ini once values are confirmed\n");
         os.printf(";Optional arm solution specific settings:\nM665");
         for(auto &i : options) {
             os.printf(" %c%1.4f", i.first, i.second);
