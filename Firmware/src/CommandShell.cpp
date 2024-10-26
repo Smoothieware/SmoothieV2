@@ -1228,9 +1228,7 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
 
 bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
 {
-    HELP("instant jog: $J [-c] X0.01 [Y1] [Z1] [S0.5|F300] - axis can be XYZABC, optional speed (Snnn) is scale of max_rate. -c turns on continuous jog mode");
-
-    os.set_no_response(true);
+    HELP("instant jog: $J [-c] [-r] X0.01 [Y1] [Z1] [S0.5|F300] - axis can be XYZABC, optional speed (Snnn) is scale of max_rate. -c turns on continuous jog mode");
 
     AutoPushPop app;
 
@@ -1252,6 +1250,7 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
         return true;
     }
 
+    os.set_no_response(true);
     bool cont_mode = false;
     while(!params.empty()) {
         std::string p = stringutils::shift_parameter(params);
@@ -1261,6 +1260,10 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
                 case 'C':
                     cont_mode = true;
                     break;
+                case 'R': // send ok when done use this when sending $J in a gcode file
+                    os.set_no_response(false);
+                    break;
+
                 default:
                     os.printf("error:illegal option %c\n", p[1]);
                     return true;
