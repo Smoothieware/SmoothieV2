@@ -1279,6 +1279,9 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
             scale = 1.0F;
             fr = strtof(p.substr(1).c_str(), NULL) / 60.0F; // we want mm/sec but F is specified in mm/min
             continue;
+        } else if(ax == ';') {
+            // skip comments at end of line
+            break;
         }
 
         if(ax == 'E') {
