@@ -1228,7 +1228,7 @@ bool CommandShell::test_cmd(std::string& params, OutputStream& os)
 
 bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
 {
-    HELP("instant jog: $J [-c] [-r] X0.01 [Y1] [Z1] [S0.5|F300] - axis can be XYZABC, optional speed (Snnn) is scale of max_rate. -c turns on continuous jog mode");
+    HELP("instant jog: $J [-c] [-r] X0.01 [Y1] [Z1] [S0.5|F300] - axis can be XYZABCE, optional speed (Snnn) is scale of max_rate. -c turns on continuous jog mode, -r returns ok when done");
 
     AutoPushPop app;
 
@@ -1246,7 +1246,7 @@ bool CommandShell::jog_cmd(std::string& params, OutputStream& os)
     }
 
     if(params.empty()) {
-        os.printf("usage: $J [-c] X0.01 [Y1] [Z1] [S0.5|Fnnn] - axis can be XYZABCE, optional speed is scale of max_rate or specify Feedrate. -c turns on continuous jog mode\n");
+        os.printf("usage: $J [-c] [-r] X0.01 [Y1] [Z1] [S0.5|Fnnn] - axis can be XYZABCE, optional speed is scale of max_rate or specify Feedrate. -c turns on continuous jog mode\n");
         return true;
     }
 
