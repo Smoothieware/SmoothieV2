@@ -576,6 +576,9 @@ void Robot::periodic_checks()
         for(auto a : actuators) {
             a->set_vmot_lost();
         }
+
+        // clear the homed flags as homing is probably lost
+        clear_homed();
         printf("DEBUG: vmot went off\n");
     }
 
@@ -1184,6 +1187,7 @@ bool Robot::handle_mcodes(GCode& gcode, OutputStream& os)
         case 84:
             Conveyor::getInstance()->wait_for_idle();
             enable_all_motors(false); // turn all enable pins off
+            clear_homed();
             break;
 
         case 82: e_absolute_mode = true; break;
@@ -2556,6 +2560,14 @@ bool Robot::is_homed() const
     }
 
     return false;
+}
+
+void Robot::clear_homed()
+{
+    Module *m = Module::lookup("endstops");
+    if(m != nullptr) {
+        m->request("clear_homed", nullptr);
+    }
 }
 
 bool Robot::is_must_be_homed() const

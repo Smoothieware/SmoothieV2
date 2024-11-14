@@ -69,6 +69,7 @@ public:
     void do_park(GCode& gcode, OutputStream& os);
     void reset_compensated_machine_position();
     bool is_homed() const;
+    void clear_homed();
     int8_t get_slaved_to(uint8_t a) const { if((a-3)<3) return slaved[a-3]; else return -1; }
     bool is_must_be_homed() const;
     int get_active_extruder() const;
