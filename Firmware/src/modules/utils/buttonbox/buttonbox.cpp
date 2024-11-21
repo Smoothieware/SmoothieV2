@@ -14,6 +14,8 @@
 #define pin_key "pin"
 #define press_key "press"
 #define release_key "release"
+#define release_key "release"
+#define poll_rate_key "poll_rate_ms"
 
 /*
     A button box is a device with many programmable buttons.
@@ -48,6 +50,18 @@ bool ButtonBox::configure(ConfigReader& cr)
     if(!cr.get_sub_sections("button box", ssmap)) {
         printf("INFO: configure-buttonbox: no button box section found\n");
         return false;
+    }
+
+    auto s = ssmap.find("common");
+    if(s != ssmap.end()) {
+        auto& mm = s->second; // map of common config settings
+        poll_rate = cr.get_int(mm, poll_rate_key, 20);
+        if(poll_rate < 20) {
+            poll_rate= 20;
+            printf("WARNING: configure-buttonbox: minimum poll rate set to %ld ms\n", poll_rate);
+        }else{
+            printf("INFO: configure-buttonbox: poll rate set to %ld ms\n", poll_rate);
+        }
     }
 
     int cnt = 0;
@@ -112,7 +126,7 @@ bool ButtonBox::configure(ConfigReader& cr)
     printf("INFO: %d button(s) loaded\n", cnt);
 
     if(cnt > 0) {
-        if(SlowTicker::getInstance()->attach(20, std::bind(&ButtonBox::button_tick, this)) < 0) {
+        if(SlowTicker::getInstance()->attach(poll_rate, std::bind(&ButtonBox::button_tick, this)) < 0) {
             printf("ERROR: configure-buttonbox: failed to attach to SlowTicker\n");
         }
         return true;
