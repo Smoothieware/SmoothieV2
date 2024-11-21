@@ -16,7 +16,7 @@ class ButtonBox : public Module {
     private:
         void button_tick();
         bool is_suspended() const;
-        uint32_t poll_rate{20};
+        uint32_t poll_freq{20};
 
         using but_t = struct {
             std::string name;

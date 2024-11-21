@@ -87,6 +87,15 @@ int SlowTicker::attach(uint32_t frequency, std::function<void(void)> cb)
         return -1;
     }
 
+    if(frequency > 1000) {
+        printf("WARNING: Cannot set a slowtimer to frequencies > 1KHz, set to 1KHz\n");
+        frequency= 1000;
+
+    } else if(frequency == 0) {
+        printf("WARNING: Cannot set a slowtimer to 0Hz frequency, set to 1Hz\n");
+        frequency= 1;
+    }
+
     uint32_t interval= 1000/frequency;
     uint32_t n= callbacks.size();
     char buf[32];

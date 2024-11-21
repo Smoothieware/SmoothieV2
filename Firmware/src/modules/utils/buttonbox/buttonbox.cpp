@@ -15,7 +15,7 @@
 #define press_key "press"
 #define release_key "release"
 #define release_key "release"
-#define poll_rate_key "poll_rate_ms"
+#define poll_freq_key "poll_frequency_hz"
 
 /*
     A button box is a device with many programmable buttons.
@@ -55,19 +55,16 @@ bool ButtonBox::configure(ConfigReader& cr)
     auto s = ssmap.find("common");
     if(s != ssmap.end()) {
         auto& mm = s->second; // map of common config settings
-        poll_rate = cr.get_int(mm, poll_rate_key, 20);
-        if(poll_rate < 20) {
-            poll_rate= 20;
-            printf("WARNING: configure-buttonbox: minimum poll rate set to %ld ms\n", poll_rate);
-        }else{
-            printf("INFO: configure-buttonbox: poll rate set to %ld ms\n", poll_rate);
-        }
+        poll_freq = cr.get_int(mm, poll_freq_key, 20);
+        printf("INFO: configure-buttonbox: poll freq set to %ld hz\n", poll_freq);
     }
 
     int cnt = 0;
     for(auto& i : ssmap) {
         // foreach button
         std::string name = i.first;
+        if(name == "common") continue;
+
         auto& m = i.second;
         if(!cr.get_bool(m, enable_key, true)) continue; // skip if not enabled
         std::string p = cr.get_string(m, pin_key, "nc");
@@ -126,7 +123,7 @@ bool ButtonBox::configure(ConfigReader& cr)
     printf("INFO: %d button(s) loaded\n", cnt);
 
     if(cnt > 0) {
-        if(SlowTicker::getInstance()->attach(poll_rate, std::bind(&ButtonBox::button_tick, this)) < 0) {
+        if(SlowTicker::getInstance()->attach(poll_freq, std::bind(&ButtonBox::button_tick, this)) < 0) {
             printf("ERROR: configure-buttonbox: failed to attach to SlowTicker\n");
         }
         return true;
