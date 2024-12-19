@@ -70,7 +70,8 @@ bool GCodeProcessor::parse(const char *line, GCodes_t& gcodes)
         }
 
         // if it is M110: Set Current Line Number
-        if(pp+5 >= eos && strncmp(pp + 1, "M110", 4) == 0) {
+        // Need to handle cases N0 M110*123 and N0 M110 N0*123
+        if(pp+5 <= eos && strncmp(pp + 1, "M110", 4) == 0 && (pp+5 == eos || !isdigit(pp[5]))) {
             line_no = ln;
             return true;
         }
