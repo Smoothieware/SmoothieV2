@@ -1,0 +1,2 @@
+cd /home/morris/Stuff/STM32CubeMX/stlink/build/Release/bin
+./st-util

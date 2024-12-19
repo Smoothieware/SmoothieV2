@@ -126,10 +126,18 @@ REGISTER_TEST(GCodeTest, Line_numbers_and_checksums) {
     TEST_ASSERT_FALSE(ok);
     TEST_ASSERT_TRUE(gcodes.empty());
 
+    // test reset line number
     gcodes.clear();
     ok= gp.parse("N10 M110*123", gcodes);
     TEST_ASSERT_TRUE(ok);
     TEST_ASSERT_EQUAL_INT(10, gp.get_line_number());
+    TEST_ASSERT_TRUE(gcodes.empty());
+
+    // test alternate reset syntax
+    gcodes.clear();
+    ok= gp.parse("N0 M110 N0*125", gcodes);
+    TEST_ASSERT_TRUE(ok);
+    TEST_ASSERT_EQUAL_INT(0, gp.get_line_number());
     TEST_ASSERT_TRUE(gcodes.empty());
 
     // Bad line number

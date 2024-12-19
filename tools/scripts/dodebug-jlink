@@ -1,0 +1,1 @@
+/opt/gcc-arm-none-eabi-10-2020-q4-major/bin/arm-none-eabi-gdb -ex "target remote localhost:2331" smoothiev2_Prime/smoothiev2.elf

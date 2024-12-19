@@ -1,0 +1,1 @@
+/opt/jlink/JLinkGDBServer -device STM32H745ZI_M7 -if SWD -halt -speed 4000  -timeout 10000

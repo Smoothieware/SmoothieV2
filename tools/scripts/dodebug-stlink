@@ -1,0 +1,1 @@
+/home/morris/work/reprap/lpcopen-smoothie2/tools/arm-none-eabi-gdb-64bit -ex "target remote localhost:4242" smoothiev2_Nucleo/smoothiev2.elf
