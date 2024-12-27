@@ -293,6 +293,7 @@ bool ZProbe::handle_gcode(GCode& gcode, OutputStream& os)
         }
 
         if( gcode.get_code() == 30 ) { // simple Z probe
+            if(gcode.get_subcode() != 0) return false;  // if we got a G30.1 we do not handle it
 
             bool set_z = gcode.has_arg('Z'); // && !is_rdelta);
             bool probe_result;
