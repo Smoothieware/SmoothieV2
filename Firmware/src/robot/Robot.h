@@ -73,6 +73,7 @@ public:
     int8_t get_slaved_to(uint8_t a) const { if((a-3)<3) return slaved[a-3]; else return -1; }
     bool is_must_be_homed() const;
     int get_active_extruder() const;
+    bool is_nist_G30() const { return nist_G30; }
 
     BaseSolution* arm_solution;                           // Selected Arm solution ( millimeters to step calculation )
 
@@ -176,6 +177,8 @@ private:
     float max_speeds[3];                                 // Setting : max allowable speed in mm/s for each axis
     float max_speed;                                     // Setting : max allowable speed in mm/s for any move
     float park_position[3];
+    float saved_position[3];
+    bool nist_G30;
 
     // slaved motors, we can slave A,B,C to X,Y,Z
     // if -1, then not slaved otherwise it is the motor_id of the motor it is slaved to

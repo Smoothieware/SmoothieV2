@@ -272,6 +272,12 @@ bool ZProbe::doProbeAt(float &mm, float x, float y)
 
 bool ZProbe::handle_gcode(GCode& gcode, OutputStream& os)
 {
+    // G30 can be move to predefined position if in grbl mode and nist_G30 is set
+    if(THEDISPATCHER->is_grbl_mode() && Robot::getInstance()->is_nist_G30()) {
+        // handled in Robot
+        return false;
+    }
+
     if(gcode.get_code() >= 29 && gcode.get_code() <= 32) {
         if(!this->pin.connected()) {
             os.printf("ZProbe pin not configured.\n");

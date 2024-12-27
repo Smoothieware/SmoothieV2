@@ -46,6 +46,7 @@
 #define  segment_z_moves_key            "segment_z_moves"
 #define  save_g92_key                   "save_g92"
 #define  set_g92_key                    "set_g92"
+#define  nist_G30_key                   "nist_G30"
 #define  save_wcs_key                   "save_wcs"
 #define  must_be_homed_key              "must_be_homed"
 
@@ -126,6 +127,7 @@ Robot::Robot() : Module("robot")
     memset(this->compensated_machine_position, 0, sizeof compensated_machine_position);
     memset(this->park_position, 0, sizeof park_position);
     this->park_position[Z_AXIS] = NAN; // optional move
+    for(int i=0;i<3;++i) this->saved_position[i] = NAN;
     this->arm_solution = NULL;
     seconds_per_minute = 60.0F;
     this->clearToolOffset();
@@ -234,6 +236,7 @@ bool Robot::configure(ConfigReader& cr)
     this->segment_z_moves     = cr.get_bool(m, segment_z_moves_key, true);
     this->save_wcs            = cr.get_bool(m, save_wcs_key, false);
     this->save_g92            = cr.get_bool(m, save_g92_key, false);
+    this->nist_G30            = cr.get_bool(m, nist_G30_key, false);
     const char *g92           = cr.get_string(m, set_g92_key, "");
     this->must_be_homed       = cr.get_bool(m, must_be_homed_key, is_rdelta || is_delta);
 
@@ -997,10 +1000,11 @@ void Robot::do_park(GCode& gcode, OutputStream& os)
         absolute_mode = true;
         next_command_is_MCS = true; // must use machine coordinates in case G92 or WCS is in effect
         OutputStream nos;
-        if(!isnan(park_position[Z_AXIS])) {
-            THEDISPATCHER->dispatch(nos, 'G', 0, 'Z', from_millimeters(park_position[Z_AXIS]), 0);
+        auto &pos = gcode.get_code() == 28 ? park_position : saved_position;
+        if(!isnan(pos[Z_AXIS])) {
+            THEDISPATCHER->dispatch(nos, 'G', 0, 'Z', from_millimeters(pos[Z_AXIS]), 0);
         }
-        THEDISPATCHER->dispatch(nos, 'G', 0, 'X', from_millimeters(park_position[X_AXIS]), 'Y', from_millimeters(park_position[Y_AXIS]), 0);
+        THEDISPATCHER->dispatch(nos, 'G', 0, 'X', from_millimeters(pos[X_AXIS]), 'Y', from_millimeters(pos[Y_AXIS]), 0);
 
         pop_state();
 
@@ -1022,9 +1026,11 @@ bool Robot::handle_gcodes(GCode& gcode, OutputStream& os)
         case 19: this->select_plane(Y_AXIS, Z_AXIS, X_AXIS);   break;
         case 20: this->inch_mode = true;   break;
         case 21: this->inch_mode = false;   break;
+        case 30: if(!is_grbl_mode() || !nist_G30) break; // keep compatibility unless asked for otherwise
+            // fall through to G28
         case 28: // we only handle the park codes here, the homing module will handle the homing commands
             switch(gcode.get_subcode()) {
-                case 0: // G28 in grbl mode will do a rapid to the predefined position otherwise it is home command
+                case 0: // G28/G30 in grbl mode will do a rapid to the predefined position otherwise it is home/zprobe command
                     if(is_grbl_mode()) {
                         do_park(gcode, os);
                     } else {
@@ -1032,38 +1038,45 @@ bool Robot::handle_gcodes(GCode& gcode, OutputStream& os)
                     }
                     break;
 
-                case 1: // G28.1 set pre defined park position
+                case 1: { // G28.1/G30.1 set pre defined position
                     if(gcode.has_no_args()) {
                         if(is_homed()) {
                             // saves current position in absolute machine coordinates
-                            // If Z needs to be set it has to be set explicitly with the Z parameter
-                            get_axis_position(park_position, 2); // Only XY are set by default
+                            if(gcode.get_code() == 28) {
+                                // If Z needs to be set it has to be set explicitly with the Z parameter
+                                get_axis_position(park_position, 2); // Only XY are set by default
+                            }else{
+                                // G30.1
+                                get_axis_position(saved_position, 3); // XYZ are all set
+                            }
 
                         } else {
-                            os.printf("Cannot set park position unless axis are homed\n");
+                            os.printf("Cannot set predefined position unless axis are homed\n");
                         }
 
                     } else {
                         // Note the following is only meant to be used for recovering a saved position from config-override
                         // or setting Z Park position
                         // This is not a standard Gcode
-                        if(gcode.has_arg('X')) park_position[X_AXIS] = gcode.get_arg('X');
-                        if(gcode.has_arg('Y')) park_position[Y_AXIS] = gcode.get_arg('Y');
+                        auto &pos = gcode.get_code() == 28 ? park_position : saved_position;
+                        if(gcode.has_arg('X')) pos[X_AXIS] = gcode.get_arg('X');
+                        if(gcode.has_arg('Y')) pos[Y_AXIS] = gcode.get_arg('Y');
                         if(gcode.has_arg('Z')) {
-                            // setting z to zero or less will disable it (as a 0 park for Z would be a bad idea anyway)
+                            // for G28.1 setting z to zero or less will disable it (as a 0 park for Z would be a bad idea anyway)
                             float z = gcode.get_arg('Z');
-                            if(z <= 0) {
-                                park_position[Z_AXIS] = NAN;
+                            if(gcode.get_code() == 28 && z <= 0) {
+                                pos[Z_AXIS] = NAN;
                             } else {
-                                park_position[Z_AXIS] = z;
+                                pos[Z_AXIS] = z;
                             }
                         }
                     }
 
                     break;
+                }
 
                 case 2: // G28.2 in grbl mode does homing (triggered by $H), otherwise it moves to the park position
-                    if(!is_grbl_mode()) {
+                    if(gcode.get_code() == 28 && !is_grbl_mode()) {
                         do_park(gcode, os);
                     } else {
                         handled = false;
@@ -1565,9 +1578,18 @@ bool Robot::handle_M500(GCode& gcode, OutputStream& os)
     }
 
     if(park_position[X_AXIS] != 0 || park_position[Y_AXIS] != 0 || (!isnan(park_position[Z_AXIS]) && park_position[Z_AXIS] != 0)) {
-        os.printf(";predefined position:\nG28.1 X%1.4f Y%1.4f", park_position[X_AXIS], park_position[Y_AXIS]);
+        os.printf(";predefined park position:\nG28.1 X%1.4f Y%1.4f", park_position[X_AXIS], park_position[Y_AXIS]);
         if(!isnan(park_position[Z_AXIS])) {
             os.printf(" Z%1.4f", park_position[Z_AXIS]);
+        }
+        os.printf("\n");
+    }
+
+    // only save it if both X and Y are set (and optionally Z)
+    if(nist_G30 && is_grbl_mode() && !isnan(saved_position[X_AXIS]) && !isnan(saved_position[Y_AXIS])) {
+        os.printf(";predefined saved position:\nG30.1 X%1.4f Y%1.4f", saved_position[X_AXIS], saved_position[Y_AXIS]);
+        if(!isnan(saved_position[Z_AXIS])) {
+            os.printf(" Z%1.4f", saved_position[Z_AXIS]);
         }
         os.printf("\n");
     }
