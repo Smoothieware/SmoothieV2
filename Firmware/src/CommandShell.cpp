@@ -940,6 +940,7 @@ bool CommandShell::grblDG_cmd(std::string& params, OutputStream& os)
 
 bool CommandShell::grblDH_cmd(std::string& params, OutputStream& os)
 {
+    // Always home regardless of grbl mode setting
     if(THEDISPATCHER->is_grbl_mode()) {
         return THEDISPATCHER->dispatch(os, 'G', 28, 2, 0); // G28.2 to home
     } else {
@@ -949,7 +950,7 @@ bool CommandShell::grblDH_cmd(std::string& params, OutputStream& os)
 
 bool CommandShell::probe_cmd(std::string& params, OutputStream& os)
 {
-    return THEDISPATCHER->dispatch(os, 'G', 30, 'P', 1, 0); // G28 to home
+    return THEDISPATCHER->dispatch(os, 'G', 30, 'P', 1, 0); // force G30 to be probe
 }
 
 bool CommandShell::grblDP_cmd(std::string& params, OutputStream& os)
