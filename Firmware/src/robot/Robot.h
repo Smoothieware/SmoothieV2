@@ -69,6 +69,7 @@ public:
     void do_park(GCode& gcode, OutputStream& os);
     void reset_compensated_machine_position();
     bool is_homed() const;
+    bool can_z_home() const;
     void clear_homed();
     int8_t get_slaved_to(uint8_t a) const { if((a-3)<3) return slaved[a-3]; else return -1; }
     bool is_must_be_homed() const;

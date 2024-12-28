@@ -1128,6 +1128,12 @@ bool Endstops::request(const char *key, void *value)
         return true;
     }
 
+    if(strcmp(key, "can_z_home") == 0) {
+        bool *b = static_cast<bool *>(value);
+        *b = homing_axis[Z_AXIS].pin_info != nullptr;
+        return true;
+    }
+
     if(strcmp(key, "clear_homed") == 0) {
         for (auto &p : homing_axis) {
             if(p.pin_info != nullptr && p.homed) {

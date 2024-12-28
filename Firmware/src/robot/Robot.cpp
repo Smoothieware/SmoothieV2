@@ -126,7 +126,7 @@ Robot::Robot() : Module("robot")
     memset(this->machine_position, 0, sizeof machine_position);
     memset(this->compensated_machine_position, 0, sizeof compensated_machine_position);
     memset(this->park_position, 0, sizeof park_position);
-    this->park_position[Z_AXIS] = NAN; // optional move
+    this->park_position[Z_AXIS] = NAN; // optional move if z can home
     for(int i=0;i<3;++i) this->saved_position[i] = NAN;
     this->arm_solution = NULL;
     seconds_per_minute = 60.0F;
@@ -1048,6 +1048,7 @@ bool Robot::handle_gcodes(GCode& gcode, OutputStream& os)
                             }else{
                                 // G30.1
                                 get_axis_position(saved_position, 3); // XYZ are all set
+                                if(!can_z_home()) saved_position[Z_AXIS]= NAN; // cannot use Z if it can't be homed
                             }
 
                         } else {
@@ -1061,7 +1062,7 @@ bool Robot::handle_gcodes(GCode& gcode, OutputStream& os)
                         auto &pos = gcode.get_code() == 28 ? park_position : saved_position;
                         if(gcode.has_arg('X')) pos[X_AXIS] = gcode.get_arg('X');
                         if(gcode.has_arg('Y')) pos[Y_AXIS] = gcode.get_arg('Y');
-                        if(gcode.has_arg('Z')) {
+                        if(gcode.has_arg('Z') && can_z_home()) {
                             // for G28.1 setting z to zero or less will disable it (as a 0 park for Z would be a bad idea anyway)
                             float z = gcode.get_arg('Z');
                             if(gcode.get_code() == 28 && z <= 0) {
@@ -1075,8 +1076,8 @@ bool Robot::handle_gcodes(GCode& gcode, OutputStream& os)
                     break;
                 }
 
-                case 2: // G28.2 in grbl mode does homing (triggered by $H), otherwise it moves to the park position
-                    if(gcode.get_code() == 28 && !is_grbl_mode()) {
+                case 2: // G28.2/G30.2 in grbl mode does homing (triggered by $H), otherwise it moves to the park position
+                    if(!is_grbl_mode()) {
                         do_park(gcode, os);
                     } else {
                         handled = false;
@@ -2578,6 +2579,18 @@ bool Robot::is_homed() const
     if(m != nullptr) {
         bool state;
         bool ok = m->request("is_homed", &state);
+        if(ok && state) return true;
+    }
+
+    return false;
+}
+
+bool Robot::can_z_home() const
+{
+    Module *m = Module::lookup("endstops");
+    if(m != nullptr) {
+        bool state;
+        bool ok = m->request("can_z_home", &state);
         if(ok && state) return true;
     }
 
