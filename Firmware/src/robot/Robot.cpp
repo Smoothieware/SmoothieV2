@@ -1065,13 +1065,14 @@ bool Robot::handle_g28_g30(GCode& gcode, OutputStream& os)
                     return true;
                 }
 
-                if(gcode.has_arg('Z') && can_z_home()) {
-                    // for G28.1 setting z to zero or less will disable it (as a 0 park for Z would be a bad idea anyway)
-                    float z = gcode.get_arg('Z');
-                    if(gcode.get_code() == 28 && z <= 0) {
-                        pos[Z_AXIS] = NAN;
-                    } else {
+                // only set Z if the Z axis can be homed, otherwise ignore the Z parameter
+                if(gcode.has_arg('Z')) {
+                    if(can_z_home()) {
+                        float z = gcode.get_arg('Z');
                         pos[Z_AXIS] = z;
+                    }else{
+                        os.printf("warning:cannot save Z as the z axis cannot be homed\n");
+                        pos[Z_AXIS] = NAN;
                     }
                 }
             }
