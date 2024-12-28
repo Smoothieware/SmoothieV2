@@ -986,7 +986,7 @@ void Robot::do_park(GCode& gcode, OutputStream& os)
 {
     if(is_homed()) {
         if(gcode.get_code() == 30 && (isnan(saved_position[X_AXIS]) || isnan(saved_position[Y_AXIS]))) {
-            os.printf("error: cannot move to predefined position as it is not defined (Use G30.1 to define it)\n");
+            os.printf("error:cannot move to predefined position as it is not defined (Use G30.1 to define it)\n");
             return;
         }
 
@@ -1015,7 +1015,7 @@ void Robot::do_park(GCode& gcode, OutputStream& os)
         pop_state();
 
     } else {
-        os.printf("cannot move to predefined position as axis are not homed and MCS is unknown\n");
+        os.printf("error:cannot move to predefined position as axis are not homed and MCS is unknown\n");
     }
 }
 
@@ -1038,18 +1038,13 @@ bool Robot::handle_g28_g30(GCode& gcode, OutputStream& os)
         case 1: // G28.1/G30.1 set pre defined position
             if(gcode.has_no_args()) {
                 if(is_homed()) {
+                    auto &pos = gcode.get_code() == 28 ? park_position : saved_position;
                     // saves current position in absolute machine coordinates
-                    if(gcode.get_code() == 28) {
-                        // If Z needs to be set it has to be set explicitly with the Z parameter
-                        get_axis_position(park_position, 2); // Only XY are set by default
-                    }else{
-                        // G30.1
-                        get_axis_position(saved_position, 3); // XYZ are all set
-                        if(!can_z_home()) saved_position[Z_AXIS]= NAN; // cannot use Z if it can't be homed
-                    }
+                    get_axis_position(pos, 3); // XYZ are all set
+                    if(!can_z_home()) pos[Z_AXIS]= NAN; // cannot use Z if it can't be homed
 
                 } else {
-                    os.printf("Cannot set predefined position unless axis are homed\n");
+                    os.printf("error:Cannot set predefined position unless axis are homed\n");
                 }
 
             } else {
@@ -1060,13 +1055,13 @@ bool Robot::handle_g28_g30(GCode& gcode, OutputStream& os)
                 if(gcode.has_arg('X')) {
                     pos[X_AXIS] = gcode.get_arg('X');
                 } else {
-                    os.printf("error: Must supply X\n");
+                    os.printf("error:Must supply X\n");
                     return true;
                 }
                 if(gcode.has_arg('Y')) {
                     pos[Y_AXIS] = gcode.get_arg('Y');
                 } else {
-                    os.printf("error: Must supply Y\n");
+                    os.printf("error:Must supply Y\n");
                     return true;
                 }
 
