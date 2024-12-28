@@ -126,6 +126,7 @@ private:
     bool handle_motion_command(GCode& gcode, OutputStream& os);
     bool handle_dwell(GCode& gcode, OutputStream& os);
     bool handle_G10(GCode&, OutputStream&);
+    bool handle_g28_g30(GCode&, OutputStream&);
     bool handle_G92(GCode&, OutputStream&);
     bool handle_M500(GCode&, OutputStream&);
     bool handle_M665(GCode&, OutputStream&);

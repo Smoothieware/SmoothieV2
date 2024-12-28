@@ -497,7 +497,8 @@ bool Robot::configure(ConfigReader& cr)
     THEDISPATCHER->add_handler(Dispatcher::GCODE_HANDLER, 19, std::bind(&Robot::handle_gcodes, this, _1, _2));
     THEDISPATCHER->add_handler(Dispatcher::GCODE_HANDLER, 20, std::bind(&Robot::handle_gcodes, this, _1, _2));
     THEDISPATCHER->add_handler(Dispatcher::GCODE_HANDLER, 21, std::bind(&Robot::handle_gcodes, this, _1, _2));
-    THEDISPATCHER->add_handler(Dispatcher::GCODE_HANDLER, 28, std::bind(&Robot::handle_gcodes, this, _1, _2));
+    THEDISPATCHER->add_handler(Dispatcher::GCODE_HANDLER, 28, std::bind(&Robot::handle_g28_g30, this, _1, _2));
+    THEDISPATCHER->add_handler(Dispatcher::GCODE_HANDLER, 30, std::bind(&Robot::handle_g28_g30, this, _1, _2));
 
     THEDISPATCHER->add_handler(Dispatcher::GCODE_HANDLER, 43, std::bind(&Robot::handle_gcodes, this, _1, _2));
     THEDISPATCHER->add_handler(Dispatcher::GCODE_HANDLER, 49, std::bind(&Robot::handle_gcodes, this, _1, _2));
@@ -984,6 +985,11 @@ bool Robot::handle_motion_command(GCode& gcode, OutputStream& os)
 void Robot::do_park(GCode& gcode, OutputStream& os)
 {
     if(is_homed()) {
+        if(gcode.get_code() == 30 && (isnan(saved_position[X_AXIS]) || isnan(saved_position[Y_AXIS]))) {
+            os.printf("error: cannot move to predefined position as it is not defined (Use G30.1 to define it)\n");
+            return;
+        }
+
         // NIST spec says if XYZ are specified rapid move to them first then move to MCS of saved position
         // Smoothie differs from the NIST spec in that all XYZ moves are relative if specified
         // whereas NIST suggests using G91 instead.
@@ -1009,8 +1015,85 @@ void Robot::do_park(GCode& gcode, OutputStream& os)
         pop_state();
 
     } else {
-        os.printf("cannot park as axis are not homed and MCS is unknown\n");
+        os.printf("cannot move to predefined position as axis are not homed and MCS is unknown\n");
     }
+}
+
+bool Robot::handle_g28_g30(GCode& gcode, OutputStream& os)
+{
+    if(gcode.get_code() == 30 && (!is_grbl_mode() || !nist_G30 || gcode.has_arg('P'))) return false; // keep compatibility unless asked for otherwise
+
+    // Handle the same as G28
+    // we only handle the park codes here, the homing module will handle the homing commands
+    bool handled = true;
+    switch(gcode.get_subcode()) {
+        case 0: // G28/G30 in grbl mode will do a rapid to the predefined position otherwise it is home/zprobe command
+            if(is_grbl_mode()) {
+                do_park(gcode, os);
+            } else {
+                handled = false;
+            }
+            break;
+
+        case 1: // G28.1/G30.1 set pre defined position
+            if(gcode.has_no_args()) {
+                if(is_homed()) {
+                    // saves current position in absolute machine coordinates
+                    if(gcode.get_code() == 28) {
+                        // If Z needs to be set it has to be set explicitly with the Z parameter
+                        get_axis_position(park_position, 2); // Only XY are set by default
+                    }else{
+                        // G30.1
+                        get_axis_position(saved_position, 3); // XYZ are all set
+                        if(!can_z_home()) saved_position[Z_AXIS]= NAN; // cannot use Z if it can't be homed
+                    }
+
+                } else {
+                    os.printf("Cannot set predefined position unless axis are homed\n");
+                }
+
+            } else {
+                // Note the following is only meant to be used for recovering a saved position from config-override
+                // or setting Z Park position
+                // This is not a standard Gcode
+                auto &pos = gcode.get_code() == 28 ? park_position : saved_position;
+                if(gcode.has_arg('X')) {
+                    pos[X_AXIS] = gcode.get_arg('X');
+                } else {
+                    os.printf("error: Must supply X\n");
+                    return true;
+                }
+                if(gcode.has_arg('Y')) {
+                    pos[Y_AXIS] = gcode.get_arg('Y');
+                } else {
+                    os.printf("error: Must supply Y\n");
+                    return true;
+                }
+
+                if(gcode.has_arg('Z') && can_z_home()) {
+                    // for G28.1 setting z to zero or less will disable it (as a 0 park for Z would be a bad idea anyway)
+                    float z = gcode.get_arg('Z');
+                    if(gcode.get_code() == 28 && z <= 0) {
+                        pos[Z_AXIS] = NAN;
+                    } else {
+                        pos[Z_AXIS] = z;
+                    }
+                }
+            }
+            break;
+
+        case 2: // G28.2 moves to the predefined position if not in grbl mode
+            if(gcode.get_code() == 28 && !is_grbl_mode()) {
+                do_park(gcode, os);
+            } else {
+                handled = false;
+            }
+            break;
+
+        default: handled = false;
+    }
+
+    return handled;
 }
 
 // A GCode has been received
@@ -1026,68 +1109,6 @@ bool Robot::handle_gcodes(GCode& gcode, OutputStream& os)
         case 19: this->select_plane(Y_AXIS, Z_AXIS, X_AXIS);   break;
         case 20: this->inch_mode = true;   break;
         case 21: this->inch_mode = false;   break;
-        case 30: if(!is_grbl_mode() || !nist_G30) break; // keep compatibility unless asked for otherwise
-            // fall through to G28
-        case 28: // we only handle the park codes here, the homing module will handle the homing commands
-            switch(gcode.get_subcode()) {
-                case 0: // G28/G30 in grbl mode will do a rapid to the predefined position otherwise it is home/zprobe command
-                    if(is_grbl_mode()) {
-                        do_park(gcode, os);
-                    } else {
-                        handled = false;
-                    }
-                    break;
-
-                case 1: { // G28.1/G30.1 set pre defined position
-                    if(gcode.has_no_args()) {
-                        if(is_homed()) {
-                            // saves current position in absolute machine coordinates
-                            if(gcode.get_code() == 28) {
-                                // If Z needs to be set it has to be set explicitly with the Z parameter
-                                get_axis_position(park_position, 2); // Only XY are set by default
-                            }else{
-                                // G30.1
-                                get_axis_position(saved_position, 3); // XYZ are all set
-                                if(!can_z_home()) saved_position[Z_AXIS]= NAN; // cannot use Z if it can't be homed
-                            }
-
-                        } else {
-                            os.printf("Cannot set predefined position unless axis are homed\n");
-                        }
-
-                    } else {
-                        // Note the following is only meant to be used for recovering a saved position from config-override
-                        // or setting Z Park position
-                        // This is not a standard Gcode
-                        auto &pos = gcode.get_code() == 28 ? park_position : saved_position;
-                        if(gcode.has_arg('X')) pos[X_AXIS] = gcode.get_arg('X');
-                        if(gcode.has_arg('Y')) pos[Y_AXIS] = gcode.get_arg('Y');
-                        if(gcode.has_arg('Z') && can_z_home()) {
-                            // for G28.1 setting z to zero or less will disable it (as a 0 park for Z would be a bad idea anyway)
-                            float z = gcode.get_arg('Z');
-                            if(gcode.get_code() == 28 && z <= 0) {
-                                pos[Z_AXIS] = NAN;
-                            } else {
-                                pos[Z_AXIS] = z;
-                            }
-                        }
-                    }
-
-                    break;
-                }
-
-                case 2: // G28.2/G30.2 in grbl mode does homing (triggered by $H), otherwise it moves to the park position
-                    if(!is_grbl_mode()) {
-                        do_park(gcode, os);
-                    } else {
-                        handled = false;
-                    }
-                    break;
-
-                default: handled = false;
-            }
-            break;
-
         case 43:
             if(gcode.get_subcode() == 1 || gcode.get_subcode() == 2) {
                 float deltas[3] = {0, 0, 0};

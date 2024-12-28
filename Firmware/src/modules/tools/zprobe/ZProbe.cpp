@@ -273,7 +273,7 @@ bool ZProbe::doProbeAt(float &mm, float x, float y)
 bool ZProbe::handle_gcode(GCode& gcode, OutputStream& os)
 {
     // G30 can be move to predefined position if in grbl mode and nist_G30 is set
-    if(THEDISPATCHER->is_grbl_mode() && Robot::getInstance()->is_nist_G30()) {
+    if(gcode.get_code() == 30 && THEDISPATCHER->is_grbl_mode() && Robot::getInstance()->is_nist_G30() && !gcode.has_arg('P')) {
         // handled in Robot
         return false;
     }

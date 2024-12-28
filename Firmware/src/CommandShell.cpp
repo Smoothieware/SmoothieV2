@@ -82,10 +82,11 @@ bool CommandShell::initialize()
     THEDISPATCHER->add_handler( "get", std::bind( &CommandShell::get_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "$#", std::bind( &CommandShell::grblDP_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "$G", std::bind( &CommandShell::grblDG_cmd, this, _1, _2) );
-    THEDISPATCHER->add_handler( "$I", std::bind( &CommandShell::grblDG_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "$H", std::bind( &CommandShell::grblDH_cmd, this, _1, _2) );
-    THEDISPATCHER->add_handler( "$S", std::bind( &CommandShell::switch_poll_cmd, this, _1, _2) );
+    THEDISPATCHER->add_handler( "$I", std::bind( &CommandShell::grblDG_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "$J", std::bind( &CommandShell::jog_cmd, this, _1, _2) );
+    THEDISPATCHER->add_handler( "$P", std::bind( &CommandShell::probe_cmd, this, _1, _2) );
+    THEDISPATCHER->add_handler( "$S", std::bind( &CommandShell::switch_poll_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "test", std::bind( &CommandShell::test_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "version", std::bind( &CommandShell::version_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler( "break", std::bind( &CommandShell::break_cmd, this, _1, _2) );
@@ -944,6 +945,11 @@ bool CommandShell::grblDH_cmd(std::string& params, OutputStream& os)
     } else {
         return THEDISPATCHER->dispatch(os, 'G', 28, 0); // G28 to home
     }
+}
+
+bool CommandShell::probe_cmd(std::string& params, OutputStream& os)
+{
+    return THEDISPATCHER->dispatch(os, 'G', 30, 'P', 1, 0); // G28 to home
 }
 
 bool CommandShell::grblDP_cmd(std::string& params, OutputStream& os)
