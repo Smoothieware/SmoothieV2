@@ -958,7 +958,7 @@ bool CommandShell::probe_cmd(std::string& params, OutputStream& os)
         p = stringutils::shift_parameter(params);
     }
 
-    return THEDISPATCHER->dispatch(cmd.c_str(), os);
+    return dispatch_line(os, cmd.c_str());
 }
 
 bool CommandShell::grblDP_cmd(std::string& params, OutputStream& os)
