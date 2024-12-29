@@ -950,7 +950,15 @@ bool CommandShell::grblDH_cmd(std::string& params, OutputStream& os)
 
 bool CommandShell::probe_cmd(std::string& params, OutputStream& os)
 {
-    return THEDISPATCHER->dispatch(os, 'G', 30, 'P', 1, 0); // force G30 to be probe
+    std::string cmd = "G30 P1 ";\
+    // append any parameters that G30 takes
+    std::string p = stringutils::shift_parameter(params);
+    while(!p.empty()) {
+        cmd.append(p).append(" ");
+        p = stringutils::shift_parameter(params);
+    }
+
+    return THEDISPATCHER->dispatch(cmd.c_str(), os);
 }
 
 bool CommandShell::grblDP_cmd(std::string& params, OutputStream& os)
