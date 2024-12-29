@@ -950,7 +950,7 @@ bool CommandShell::grblDH_cmd(std::string& params, OutputStream& os)
 
 bool CommandShell::probe_cmd(std::string& params, OutputStream& os)
 {
-    std::string cmd = "G30 P1 ";\
+    std::string cmd = "G30 P1 "; // forces G30 to be simple probe regardless of grbl mode
     // append any parameters that G30 takes
     std::string p = stringutils::shift_parameter(params);
     while(!p.empty()) {
