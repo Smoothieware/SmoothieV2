@@ -1042,6 +1042,7 @@ bool Robot::handle_g28_g30(GCode& gcode, OutputStream& os)
                     // saves current position in absolute machine coordinates
                     get_axis_position(pos, 3); // XYZ are all set
                     if(!can_z_home()) pos[Z_AXIS]= NAN; // cannot use Z if it can't be homed
+                    os.printf("position saved, use M500 to make permanent\n");
 
                 } else {
                     os.printf("error:Cannot set predefined position unless axis are homed\n");
