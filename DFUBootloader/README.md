@@ -8,6 +8,8 @@ To build:
     cd DFUBootloader
     rake target=Prime -m
 
+A prebuilt binary  for the Prime board is in this directory as Prime-dfuloader.bin
+
 When flashed and dfu_enable is selected in config.ini you can run dfu-util to flash new firmware.
 
 When built for a board with QSPI (Smoothieboard Prime V2, Devebox) then the dfuloader.bin should be flashed to address 0x90000000, which can be done within smoothie by...
