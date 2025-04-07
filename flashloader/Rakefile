@@ -7,10 +7,10 @@ verbose(ENV['verbose'] == '1')
 PROG = 'flashloader'
 
 # include a defaults file if present
-load 'rakefile.defaults' if File.exists?('rakefile.defaults')
+load 'rakefile.defaults' if File.exist?('rakefile.defaults')
 
 if ENV['target'].nil?
-  TARGET = 'Nucleo'
+  TARGET = 'Prime'
 elsif (ENV['target'] != 'Nucleo' && ENV['target'] != 'Prime'&& ENV['target'] != 'Devebox')
   puts "ERROR: Must specify target=[Nucleo|Prime|Devebox]"
   exit 0
@@ -42,7 +42,7 @@ class DfileLoader
 
   # Load the makefile dependencies in +fn+.
   def load(fn)
-    return if ! File.exists?(fn)
+    return if ! File.exist?(fn)
     lines = File.read fn
     lines.gsub!(/\\ /, SPACE_MARK)
     lines.gsub!(/#[^\n]*\n/m, "")
@@ -129,7 +129,7 @@ DEPFILES = OBJS.collect { |fn| File.join(File.dirname(fn), File.basename(fn).ext
 # create destination directories
 SRCS.each do |s|
   d= File.join(OBJDIR, File.dirname(s))
-  FileUtils.mkdir_p(d) unless Dir.exists?(d)
+  FileUtils.mkdir_p(d) unless Dir.exist?(d)
 end
 
 include_dirs = [Dir.glob(["**/Inc", "**/Include", "**/include", "**/inc"])].flatten
