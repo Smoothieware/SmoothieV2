@@ -9,7 +9,7 @@ TESTING = ENV['testing'].nil? ? false : ENV['testing'] == '1'
 PROG = 'smoothiev2'
 
 # include a defaults file if present
-load 'rakefile.defaults' if File.exists?('rakefile.defaults')
+load 'rakefile.defaults' if File.exist?('rakefile.defaults')
 
 if ENV['target'].nil?
   TARGET = 'Prime'
