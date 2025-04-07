@@ -60,7 +60,7 @@ class DfileLoader
 
   # Load the makefile dependencies in +fn+.
   def load(fn)
-    return if ! File.exists?(fn)
+    return if ! File.exist?(fn)
     lines = File.read fn
     lines.gsub!(/\\ /, SPACE_MARK)
     lines.gsub!(/#[^\n]*\n/m, "")
@@ -215,7 +215,7 @@ DEPFILES = OBJS.collect { |fn| File.join(File.dirname(fn), File.basename(fn).ext
 # create destination directories
 SRCS.each do |s|
   d= File.join(OBJDIR, File.dirname(s))
-  FileUtils.mkdir_p(d) unless Dir.exists?(d)
+  FileUtils.mkdir_p(d) unless Dir.exist?(d)
 end
 
 include_dirs = ['Hal/network/portable/NetworkInterface', # Must be first ahead of Hal/STM32H7xx_HAL_Driver
