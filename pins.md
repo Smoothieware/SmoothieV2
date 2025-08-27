@@ -160,6 +160,14 @@ pins used on the headers when selecting a function in the Firmware
 | board id #2      | PF3   |               |
 | board id #1      | PF5   |               |
 | board id #0      | PF7   |               |
+| X step           | PD3   |               |
+| X dir            | PD4   |               |
+| Y step           | PK2   |               |
+| Y dir            | PG2   |               |
+| Z step           | PG3   |               |
+| Z dir            | PG4   |               |
+| E step           | PC6   |               |
+| E dir            | PG5   |               |
 
 # Gadgeteer headers
 
