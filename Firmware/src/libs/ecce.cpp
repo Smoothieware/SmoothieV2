@@ -108,6 +108,7 @@ typedef char string[132];
 namespace ecce {
 const string version = "Ecce editor v3.3";
 const char *usage="\
+  type %h to get help, %c to save file and exit\n\n\
   Basic commands\n\
   ==============\n\
   m{n}                move to next line\n\
@@ -1260,6 +1261,10 @@ int main(const char *infile, const char *outfile, std::function<void(char)> outf
 		free(buffer);
         return 1;
     }
+
+    // print help immediately
+    writestring(usage);
+    writeln();
 
     openFiles(infile, outfile);
 

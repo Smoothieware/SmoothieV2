@@ -2160,8 +2160,6 @@ bool CommandShell::edit_cmd(std::string& params, OutputStream& os)
         return true;
     }
 
-    os.printf("type %%h for help\n");
-
     os.capture_fnc = [](char c) { ecce::add_input(c); };
     int ret = ecce::main(infile.c_str(), outfile.c_str(), [&os](char c) {os.write(&c, 1);});
     os.capture_fnc = nullptr;
