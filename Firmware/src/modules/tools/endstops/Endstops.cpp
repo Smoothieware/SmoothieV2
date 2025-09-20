@@ -272,7 +272,7 @@ bool Endstops::load_endstops(ConfigReader& cr)
             } else if(i <= max_index) {
                 // for instance case where we defined C without A or B
                 homing_info_t t;
-                t.axis = 'A' + i;
+                t.axis = 'A' + i - 3;
                 t.axis_index = i;
                 t.pin_info = nullptr; // this tells it that it cannot be used for homing
                 homing_axis.push_back(t);
@@ -1040,10 +1040,12 @@ bool Endstops::handle_mcode(GCode& gcode, OutputStream& os)
 
         case 206: // M206 - set homing offset
             for (auto &p : homing_axis) {
+                if(p.pin_info == nullptr) continue; // not a configured homing endstop
                 if (gcode.has_arg(p.axis)) p.home_offset = gcode.get_arg(p.axis);
             }
 
             for (auto &p : homing_axis) {
+                if(p.pin_info == nullptr) continue; // not a configured homing endstop
                 os.printf("%c: %5.3f ", p.axis, p.home_offset);
             }
 
@@ -1062,6 +1064,7 @@ bool Endstops::handle_mcode(GCode& gcode, OutputStream& os)
             if(!is_rdelta) {
                 os.printf(";Home offset (mm):\nM206 ");
                 for (auto &p : homing_axis) {
+                    if(p.pin_info == nullptr) continue; // not a configured homing endstop
                     os.printf("%c%1.2f ", p.axis, p.home_offset);
                 }
                 os.printf("\n");
@@ -1281,7 +1284,7 @@ bool Endstops::move_slaved_axis(uint8_t paxis, bool adjust, OutputStream& os)
 
     // use slow feedrate in mm/sec of the primary axis
     float fr = homing_axis[paxis].slow_rate;
-    // The maximum travel fo rthe slaved actuator needs to be quite small to avoid causing damage
+    // The maximum travel for the slaved actuator needs to be quite small to avoid causing damage
     float max_travel= 20; // maximum travel in mm (TODO may need to be configurable)
     uint32_t steps = lroundf(Robot::getInstance()->actuators[paxis]->get_steps_per_mm() * max_travel);
     // convert fr to steps/sec
