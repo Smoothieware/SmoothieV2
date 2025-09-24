@@ -461,7 +461,7 @@ bool Robot::configure(ConfigReader& cr)
 #if defined(DRIVER_TMC)
             if(actuators[i]->get_microsteps() != actuators[st]->get_microsteps()) {
                 slaved[i - A_AXIS] = -1; // break the slaving to avoid disaster
-                printf("WARNING: configure-robot: slaved motor %d microsteps is not the same as motor %d - UNSLAVED\n", i, st);
+                printf("ERROR: configure-robot: slaved motor %d microsteps is not the same as motor %d - UNSLAVED\n", i, st);
             }
 #endif
         } else {

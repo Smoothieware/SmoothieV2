@@ -518,7 +518,7 @@ void Planner::prepare(Block *block, float acceleration_in_steps, float decelerat
     // was....
     // float acceleration_per_tick = acceleration_in_steps / STEP_TICKER_FREQUENCY_2; // that is 100,000² too big for a float
     // float deceleration_per_tick = deceleration_in_steps / STEP_TICKER_FREQUENCY_2;
-    double acceleration_per_tick = acceleration_in_steps * fp_scale; // this is now scaled to fit a 2.30 fixed point number
+    double acceleration_per_tick = acceleration_in_steps * fp_scale; // this is now scaled to fit a 2.62 fixed point number
     double deceleration_per_tick = deceleration_in_steps * fp_scale;
 
     for (uint8_t m = 0; m < Block::n_actuators; m++) {
