@@ -281,6 +281,12 @@ static void smoothie_startup(void *)
                     printf("INFO: Step pulse set to %d us\n", unsteptime);
                 }
 
+                int stepfreq = cr.get_int(sm, "step_frequency", -1);
+                if(stepfreq >= 1) {
+                    step_ticker->set_frequency(stepfreq);
+                    printf("INFO: Step frequency set to %d HZ\n", stepfreq);
+                }
+
                 std::string p = cr.get_string(sm, "aux_play_led", "nc");
                 aux_play_led = new Pin(p.c_str(), Pin::AS_OUTPUT);
                 if(!aux_play_led->connected()) {

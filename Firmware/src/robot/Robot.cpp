@@ -394,7 +394,7 @@ bool Robot::configure(ConfigReader& cr)
         // Only A,B,C can be slaved to X,Y,Z
         if(a >= A_AXIS) {
             std::string slave_to = cr.get_string(mm, slaved_to_key, "");
-            if(!slave_to.empty()) {
+            if(!slave_to.empty() && slave_to != "none") {
                 int st = find_actuator_key(slave_to.c_str());
                 if(st >= A_AXIS) {
                     // Not allowed to slave to axis other than X,Y,Z
