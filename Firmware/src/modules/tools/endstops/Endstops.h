@@ -38,7 +38,7 @@ class Endstops : public Module
         bool handle_G28(GCode& gcode, OutputStream& os);
         bool handle_mcode(GCode& gcode, OutputStream& os);
         bool move_slaved_axis(uint8_t paxis, bool adjust, OutputStream& os);
-        bool manual_move(uint32_t steps, uint32_t sps, uint8_t a, bool dir, uint32_t& nsteps, Pin *pin=nullptr);
+        bool manual_move(uint32_t steps, uint32_t sps, StepperMotor *sa, bool dir, uint32_t& nsteps, Pin *pin=nullptr);
 
         // global settings
         uint32_t debounce_ms;
@@ -68,11 +68,10 @@ class Endstops : public Module
             float fast_rate;
             float slow_rate;
             endstop_info_t *pin_info;
-
+            StepperMotor *slaved_axis;
             struct {
                 char axis:8; // one of XYZABC
                 uint8_t axis_index:3;
-                uint8_t slaved_axis_index:3;
                 bool home_direction:1; // true min or false max
                 bool homed:1;
             };

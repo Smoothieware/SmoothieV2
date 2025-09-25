@@ -292,70 +292,7 @@ bool Robot::configure(ConfigReader& cr)
         // create the actuator
         StepperMotor *sm = new StepperMotor(step_pin, dir_pin, en_pin);
 
-        // register this actuator (NB This must be 0,1,2,...) of the actuators array
-        uint8_t n = register_actuator(sm);
-        if(n != a) {
-            // this is a fatal error as they must be contiguous
-            printf("FATAL: configure-robot: motor %d does not match index %d\n", n, a);
-            return false;
-        }
-
-#ifdef BOARD_MINIALPHA
-        // set microstepping if enabled, use default x16 if not specified but pins exist
-        // TODO make these pins persistent and add gcode to set microstepping
-        Pin ms1_pin(cr.get_string(mm, ms1_pin_key, "nc"), Pin::AS_OUTPUT);
-        Pin ms2_pin(cr.get_string(mm, ms2_pin_key, "nc"), Pin::AS_OUTPUT);
-        Pin ms3_pin(cr.get_string(mm, ms3_pin_key, "nc"), Pin::AS_OUTPUT);
-        if(ms1_pin.connected() && ms2_pin.connected() && !ms3_pin.connected()) {
-            // A4982
-            printf("DEBUG: configure-robot: for actuator %s ms-pins: %s, %s\n", s->first.c_str(), ms1_pin.to_string().c_str(), ms2_pin.to_string().c_str());
-            std::string ms = cr.get_string(mm, ms_key, "");
-            if(ms.empty()) {
-                // set default
-                ms1_pin.set(true);
-                ms2_pin.set(true);
-
-            } else {
-                std::vector<float> v = stringutils::parse_number_list(ms.c_str());
-                if(v.size() == 2) {
-                    ms1_pin.set(v[0] > 0.001F);
-                    ms2_pin.set(v[1] > 0.001F);
-                } else {
-                    printf("WARNING: configure-robot: %s.microstepping settings needs two numbers 1,1 - SET to default\n", s->first.c_str());
-                    ms1_pin.set(true);
-                    ms2_pin.set(true);
-                }
-            }
-            printf("DEBUG: configure-robot: microstepping for %s set to %d,%d\n",
-                   s->first.c_str(), ms1_pin.get(), ms2_pin.get());
-
-        } else if(ms1_pin.connected() && ms2_pin.connected() && ms3_pin.connected()) {
-            // A5984 1/32 default
-            printf("DEBUG: configure-robot: for actuator %s ms-pins: %s, %s, %s\n", s->first.c_str(), ms1_pin.to_string().c_str(), ms2_pin.to_string().c_str(), ms3_pin.to_string().c_str());
-            std::string ms = cr.get_string(mm, ms_key, "");
-            if(ms.empty()) {
-                // set default
-                ms1_pin.set(true);
-                ms2_pin.set(true);
-                ms3_pin.set(false);
-
-            } else {
-                std::vector<float> v = stringutils::parse_number_list(ms.c_str());
-                if(v.size() == 3) {
-                    ms1_pin.set(v[0] > 0.001F);
-                    ms2_pin.set(v[1] > 0.001F);
-                    ms3_pin.set(v[2] > 0.001F);
-                } else {
-                    printf("WARNING: configure-robot: %s.microstepping settings needs three numbers 1,1,1 - SET to default\n", s->first.c_str());
-                    ms1_pin.set(true);
-                    ms2_pin.set(true);
-                    ms3_pin.set(false);
-                }
-            }
-            printf("DEBUG: configure-robot: microstepping for %s set to %d,%d,%d\n",
-                   s->first.c_str(), ms1_pin.get(), ms2_pin.get(), ms3_pin.get());
-        }
-#elif defined(DRIVER_TMC)
+#if defined(DRIVER_TMC)
         // drivers by default for XYZA are internal, BC are by default external
         // check board ID and select default tmc driver accordingly
         const char *def_driver = board_id == 1 ? "tmc2660" : "tmc2590";
@@ -364,52 +301,74 @@ bool Robot::configure(ConfigReader& cr)
             uint32_t t = type == "tmc2590" ? 2590 : 2660;
 
             // setup the TMC driver for this motor
-            if(!actuators[a]->setup_tmc(cr, s->first.c_str(), t)) {
+            if(!sm->setup_tmc(cr, s->first.c_str(), t)) {
                 printf("FATAL: configure-robot: setup_tmc%lu failed for %s\n", t, s->first.c_str());
                 return false;
             }
 
             //set microsteps here which will override the raw register setting if any
             uint16_t microstep = cr.get_int(mm, microsteps_key, 32);
-            actuators[a]->set_microsteps(microstep);
+            sm->set_microsteps(microstep);
             printf("DEBUG: configure-robot: microsteps for %s set to %d\n", s->first.c_str(), microstep);
+
+            // NOTE at the moment slaved actuators are only implemented for two TMC driver based boardsc
+            // if this is a slaved actuator then do not register it as its master will do the setup for it
+            // Only A,B,C can be slaved to X,Y,Z, and they must also be the last in the series if there is
+            // a real A axis then the slave must be B or C
+            std::string slave_to = cr.get_string(mm, slaved_to_key, "");
+            if(!slave_to.empty() && slave_to != "none") {
+                int st = find_actuator_key(slave_to.c_str());
+                // do some sanity checks
+                if(st >= A_AXIS) {
+                    // Not allowed to slave to axis other than X,Y,Z
+                    printf("ERROR: configure-robot: %s slaved to name %s is not allowed\n", s->first.c_str(), slave_to.c_str());
+                    break;
+                } else if(st < 0) {
+                    printf("ERROR: configure-robot: %s slaved to name %s is not found\n", s->first.c_str(), slave_to.c_str());
+                    break;
+                }
+
+                if(actuators[st]->has_slave()) {
+                    printf("ERROR: configure-robot: %s slaved to name %s already has a slave\n", s->first.c_str(), slave_to.c_str());
+                    break;
+                }
+
+                // we need to give it a motor ID even though it is not in the actuators array
+                sm->set_motor_id(a);
+
+                // give the master actuator a pointer to this actuator, and init it
+                if(!actuators[st]->init_slave(sm)) {
+                    printf("ERROR: configure-robot: %s slaved to name %s had issues see above\n", s->first.c_str(), slave_to.c_str());
+                    break;
+                }
+
+                printf("INFO: configure-robot: %s (%d) slaved to name %s\n", s->first.c_str(), a, slave_to.c_str());
+                continue;
+            }
 
         } else if(type == "external") {
             printf("DEBUG: configure-robot: %s is set as an external driver\n", s->first.c_str());
 
         } else {
             printf("FATAL: configure-robot: unknown driver type %s\n", type.c_str());
-            n_motors = a;
             return false;
         }
+
 #else
         printf("DEBUG: configure-robot: %s is set as an external driver\n", s->first.c_str());
 #endif
 
-        actuators[a]->change_steps_per_mm(cr.get_float(mm, steps_per_mm_key, a == Z_AXIS ? 2560.0F : 80.0F));
-        actuators[a]->set_max_rate(cr.get_float(mm, max_rate_key, 30000.0F) / 60.0F); // it is in mm/min and converted to mm/sec
-        actuators[a]->set_acceleration(cr.get_float(mm, acceleration_key, -1)); // mm/secs² if -1 it uses the default acceleration
-
-        // see if this motor is slaved to a previous one
-        // Only A,B,C can be slaved to X,Y,Z
-        if(a >= A_AXIS) {
-            std::string slave_to = cr.get_string(mm, slaved_to_key, "");
-            if(!slave_to.empty() && slave_to != "none") {
-                int st = find_actuator_key(slave_to.c_str());
-                if(st >= A_AXIS) {
-                    // Not allowed to slave to axis other than X,Y,Z
-                    printf("ERROR: configure-robot: %s slaved to name %s is not allowed\n", s->first.c_str(), slave_to.c_str());
-                } else if(st >= 0) {
-                    if(slaved[a - A_AXIS] < 0) {
-                        slaved[a - A_AXIS] = st;
-                    } else {
-                        printf("ERROR: configure-robot: %s already slaved to another axis %d\n", s->first.c_str(), slaved[a - A_AXIS]);
-                    }
-                } else {
-                    printf("ERROR: configure-robot: %s slaved to name %s is not found\n", s->first.c_str(), slave_to.c_str());
-                }
-            }
+        // register this actuator (NB This must be 0,1,2,...) of the actuators array
+        uint8_t n = register_actuator(sm);
+        if(n != a) {
+            // this is a fatal error as they must be contiguous
+            printf("FATAL: configure-robot: motor %d does not match index %d\n", n, a);
+            return false;
         }
+
+        sm->change_steps_per_mm(cr.get_float(mm, steps_per_mm_key, a == Z_AXIS ? 2560.0F : 80.0F));
+        sm->set_max_rate(cr.get_float(mm, max_rate_key, 30000.0F) / 60.0F); // it is in mm/min and converted to mm/sec
+        sm->set_acceleration(cr.get_float(mm, acceleration_key, -1)); // mm/secs² if -1 it uses the default acceleration
     }
 
     check_max_actuator_speeds(nullptr); // check the configs are sane
@@ -450,23 +409,7 @@ bool Robot::configure(ConfigReader& cr)
 #if MAX_ROBOT_ACTUATORS > 3
     // initialize any extra axis to machine position
     for (size_t i = A_AXIS; i < n_motors; i++) {
-        if(get_slaved_to(i) >= 0) {
-            // initialize a slaved axis to exactly the same settings as the axis it is slaved to
-            int8_t st = get_slaved_to(i);
-            actuators[i]->change_steps_per_mm(actuators[st]->get_steps_per_mm());
-            actuators[i]->set_max_rate(actuators[st]->get_max_rate());
-            actuators[i]->set_acceleration(actuators[st]->get_acceleration());
-            actuators[i]->change_last_milestone(actuator_pos[st]);
-            printf("INFO: configure-robot: motor %d is slaved to motor %d\n", i, st);
-#if defined(DRIVER_TMC)
-            if(actuators[i]->get_microsteps() != actuators[st]->get_microsteps()) {
-                slaved[i - A_AXIS] = -1; // break the slaving to avoid disaster
-                printf("ERROR: configure-robot: slaved motor %d microsteps is not the same as motor %d - UNSLAVED\n", i, st);
-            }
-#endif
-        } else {
-            actuators[i]->change_last_milestone(machine_position[i]);
-        }
+        actuators[i]->change_last_milestone(machine_position[i]);
     }
 #endif
 
@@ -1742,16 +1685,11 @@ void Robot::process_move(GCode& gcode, enum MOTION_MODE_T motion_mode)
     for (int i = A_AXIS; i < n_motors; ++i) {
         char letter = 'A' + i - A_AXIS;
         if(gcode.has_arg(letter)) {
-            if(get_slaved_to(i) >= 0) {
-                // can't move slaved axis report this
-                gcode.set_error("Cannot move a slaved axis");
+            float p = gcode.get_arg(letter);
+            if(this->absolute_mode) {
+                target[i] = p;
             } else {
-                float p = gcode.get_arg(letter);
-                if(this->absolute_mode) {
-                    target[i] = p;
-                } else {
-                    target[i] = p + machine_position[i];
-                }
+                target[i] = p + machine_position[i];
             }
         }
     }
@@ -1825,15 +1763,6 @@ void Robot::reset_axis_position(float x, float y, float z)
     for (size_t i = X_AXIS; i <= Z_AXIS; i++) {
         actuators[i]->change_last_milestone(actuator_pos[i]);
     }
-
-#if MAX_ROBOT_ACTUATORS > 3
-    // also set any slaved axis
-    for (int i = A_AXIS; i < n_motors; i++) {
-        if(get_slaved_to(i) >= 0) {
-            actuators[i]->change_last_milestone(actuator_pos[get_slaved_to(i)]);
-        }
-    }
-#endif
 }
 
 // Reset the position for an axis (used in homing, and to reset extruder after suspend)
@@ -1845,12 +1774,9 @@ void Robot::reset_axis_position(float position, int axis)
 
 #if MAX_ROBOT_ACTUATORS > 3
     } else if(axis < n_motors) {
-        // ignore slaved axis resets
-        if(get_slaved_to(axis) < 0) {
-            // ABC and/or extruders need to be set as there is no arm solution for them
-            machine_position[axis] = compensated_machine_position[axis] = position;
-            actuators[axis]->change_last_milestone(machine_position[axis]);
-        }
+        // ABC and/or extruders need to be set as there is no arm solution for them
+        machine_position[axis] = compensated_machine_position[axis] = position;
+        actuators[axis]->change_last_milestone(machine_position[axis]);
 #endif
     }
 }
@@ -1895,18 +1821,11 @@ void Robot::reset_position_from_current_actuator_position()
     // Handle extruders and/or ABC axis
 #if MAX_ROBOT_ACTUATORS > 3
     for (int i = A_AXIS; i < n_motors; i++) {
-        if(get_slaved_to(i) >= 0) {
-            // slaved axis are just reset to mimic their slaved counterpart and have no machine position
-            machine_position[i] = compensated_machine_position[i] = 0;
-            actuators[i]->change_last_milestone(actuator_pos[get_slaved_to(i)]);
-
-        } else {
-            // ABC and/or extruders just need to set machine_position and compensated_machine_position
-            float ap = actuator_pos[i];
-            if(actuators[i]->is_extruder() && get_e_scale_fnc) ap /= get_e_scale_fnc(); // inverse E scale if there is one and this is an extruder
-            machine_position[i] = compensated_machine_position[i] = ap;
-            actuators[i]->change_last_milestone(actuator_pos[i]); // this updates the last_milestone in the actuator
-        }
+        // ABC and/or extruders just need to set machine_position and compensated_machine_position
+        float ap = actuator_pos[i];
+        if(actuators[i]->is_extruder() && get_e_scale_fnc) ap /= get_e_scale_fnc(); // inverse E scale if there is one and this is an extruder
+        machine_position[i] = compensated_machine_position[i] = ap;
+        actuators[i]->change_last_milestone(actuator_pos[i]); // this updates the last_milestone in the actuator
     }
 #endif
 }
@@ -2015,13 +1934,6 @@ bool Robot::append_milestone(const float target[], float rate_mm_s)
     int aux_sel = -1; // if only one auxilliary is moving we set this to the the motor id
 
     for (size_t i = A_AXIS; i < n_motors; i++) {
-        int8_t s = get_slaved_to(i);
-        if(s >= 0) {
-            // we just slavishly copy the axis we are slaving
-            actuator_pos[i] = actuator_pos[s];
-            continue;
-        }
-
         actuator_pos[i] = transformed_target[i];
         if(actuators[i]->is_extruder() && get_e_scale_fnc) {
             // for the extruders just copy the position, and possibly scale it from mm³ to mm
@@ -2075,8 +1987,6 @@ bool Robot::append_milestone(const float target[], float rate_mm_s)
     } else {
         // check per-actuator speed limits
         for (size_t actuator = 0; actuator < n_motors; actuator++) {
-            if(actuator >= A_AXIS && get_slaved_to(actuator) >= 0) continue; // skip slaved axis
-
             float d = fabsf(actuator_pos[actuator] - actuators[actuator]->get_last_milestone());
             if(d == 0 || !actuators[actuator]->is_selected()) continue; // no movement for this actuator
 
@@ -2142,7 +2052,6 @@ bool Robot::delta_move(const float * delta, float rate_mm_s, uint8_t naxis)
 
     // add in the deltas to get new target
     for (int i = 0; i < naxis; i++) {
-        if(i >= A_AXIS && get_slaved_to(i) >= 0) continue; // can't delta move a slaved axis either
         if(!isnan(delta[i])) target[i] += delta[i];
     }
 

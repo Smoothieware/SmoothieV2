@@ -1,5 +1,6 @@
 #include "StepperMotor.h"
 #include "StepTicker.h"
+#include "OutputStream.h"
 
 #include <math.h>
 
@@ -20,6 +21,7 @@ StepperMotor::StepperMotor(Pin &step, Pin &dir, Pin &en) : step_pin(step), dir_p
     acceleration= -1;
     selected= true;
     extruder= false;
+    p_slave= nullptr;
 
     enable(false);
     unstep(); // initialize step pin
@@ -106,12 +108,16 @@ bool StepperMotor::setup_tmc(ConfigReader& cr, const char *actuator_name, uint32
         return false;
     }
     tmc->init();
+    tmc_type = type;
 
     return true;
 }
 
 bool StepperMotor::set_current(float c)
 {
+    // we need to do this here to both make the current the same and because the current module won't see the slave
+    if(p_slave != nullptr) p_slave->set_current(c);
+
     if(tmc == nullptr) return false;
     // send current to TMC
     current_ma= roundf(c*1000.0F);
@@ -134,6 +140,9 @@ int StepperMotor::get_microsteps()
 
 void StepperMotor::enable(bool state)
 {
+    // we need to do this here becuase the higher level won't see the slave
+    if(p_slave != nullptr) p_slave->enable(state);
+
     if(tmc == nullptr) {
         if(en_pin.connected()) {
             // set to true to enable the chip (en may need to be inverted)
@@ -193,24 +202,59 @@ void StepperMotor::dump_status(OutputStream& os, bool flag)
 {
     if(tmc == nullptr) return;
     tmc->dump_status(os, flag);
+    if(p_slave != nullptr) {
+        os.printf("----- Slave actuator -----\n");
+        p_slave->dump_status(os, flag);
+    }
 }
 
 void StepperMotor::set_raw_register(OutputStream& os, uint32_t reg, uint32_t val)
 {
     if(tmc == nullptr) return;
     tmc->set_raw_register(os, reg, val);
+    // we need to do this here because the higher level won't see the slave
+    if(p_slave != nullptr) p_slave->set_raw_register(os, reg, val);
 }
 
 bool StepperMotor::set_options(GCode& gcode)
 {
     if(tmc == nullptr) return false;
-    return tmc->set_options(gcode);
+    if(tmc->set_options(gcode)) {
+        // we need to do this here because the higher level won't see the slave
+        if(p_slave != nullptr && !p_slave->set_options(gcode)) return false;
+
+    }else{
+        return false;
+    }
+    return true;
 }
 
 bool StepperMotor::check_driver_error()
 {
     if(tmc == nullptr) return false;
-    return tmc->check_errors();
+    if(!tmc->check_errors()) return false;
+    if(p_slave != nullptr) {
+        if(!p_slave->check_driver_error()) return false;
+    }
+
+    return true;
+}
+
+bool StepperMotor::init_slave(StepperMotor *sm)
+{
+    // do some sanity checks that the slave and master have the same settings
+    if(sm->tmc_type != tmc_type) {
+        printf("ERROR: stepper-motor init-slave: slave %d does not have the same driver type as master %d\n", sm->motor_id, motor_id);
+        return false;
+    }
+
+    if(sm->get_microsteps() != get_microsteps()) {
+        printf("ERROR: stepper-motor init-slave: slave %d does not have the same microstepping as master %d\n", sm->motor_id, motor_id);
+        return false;
+    }
+
+    p_slave = sm;
+    return true;
 }
 
 #else

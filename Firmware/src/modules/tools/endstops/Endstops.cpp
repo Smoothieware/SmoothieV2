@@ -235,13 +235,11 @@ bool Endstops::load_endstops(ConfigReader& cr)
         hinfo.max_travel = cr.get_float(mm, max_travel_key, 500);
 
         // See if this axis has a slave and set it
-        hinfo.slaved_axis_index = 0; // no slave is the default
+        hinfo.slaved_axis = nullptr; // no slave is the default
 #if MAX_ROBOT_ACTUATORS > 3
         if(a >= X_AXIS && a <= Z_AXIS) {
-            for (uint8_t i = A_AXIS; i < Robot::getInstance()->get_number_registered_motors(); ++i) {
-                if(Robot::getInstance()->get_slaved_to(i) == a) {
-                    hinfo.slaved_axis_index = i; // set the slaved axis, needed to stop it when homed
-                }
+            if(STEPPER[a]->has_slave()) {
+                hinfo.slaved_axis = STEPPER[a]->get_slave(); // set the slaved axis, needed to stop it when homed
             }
         }
 #endif
@@ -373,9 +371,8 @@ void Endstops::read_endstops()
                         // we signal the motor to stop, which will preempt any moves on that axis
                         STEPPER[m]->stop_moving();
                         // also stop any slaved actuator
-                        uint8_t si = e.slaved_axis_index;
-                        if(si >= A_AXIS && si <= C_AXIS) {
-                            STEPPER[si]->stop_moving();
+                        if(e.slaved_axis != nullptr) {
+                            e.slaved_axis->stop_moving();
                         }
                     }
                     e.pin_info->triggered = true;
@@ -1269,8 +1266,8 @@ void Endstops::rotary_delta_M306(GCode& gcode, OutputStream& os)
 bool Endstops::move_slaved_axis(uint8_t paxis, bool adjust, OutputStream& os)
 {
     // check it is a slaved axis and get the associated primary axis
-    uint8_t a= homing_axis[paxis].slaved_axis_index;
-    if(a >= A_AXIS) {
+    StepperMotor *sa= homing_axis[paxis].slaved_axis;
+    if(sa != nullptr) {
         if(!homing_axis[paxis].homed) {
             // the primary axis has not been homed so bail
             os.printf("error: The primary axis %c (%d) has not been homed\n", homing_axis[paxis].axis,  paxis);
@@ -1294,10 +1291,10 @@ bool Endstops::move_slaved_axis(uint8_t paxis, bool adjust, OutputStream& os)
     // find the endstop pin for the slaved axis, it will be the endstop for the A (or B/C) axis
     endstop_info_t *es= nullptr;
     for(endstop_info_t *e : endstops) {
-        if(e->axis_index != a) continue;
+        if(e->axis_index != sa->get_motor_id()) continue;
 
         if(e->limit_enable) {
-            os.printf("error: limit must not be enabled for the endstop %d\n", a);
+            os.printf("error: limit must not be enabled for the endstop %d\n", sa->get_motor_id());
             return false;
         }
 
@@ -1305,7 +1302,7 @@ bool Endstops::move_slaved_axis(uint8_t paxis, bool adjust, OutputStream& os)
     }
 
     if(es == nullptr) {
-        os.printf("error: The slaved axis %d has no assigned endstop\n", a);
+        os.printf("error: The slaved axis %d has no assigned endstop\n", sa->get_motor_id());
         return false;
 
     }
@@ -1313,7 +1310,7 @@ bool Endstops::move_slaved_axis(uint8_t paxis, bool adjust, OutputStream& os)
     // if already triggered explain that it needs to be moved away slightly
     // TODO this may be fixed in a later version and allow for it to be triggered
     if(es->pin.get()) {
-        os.printf("error: endstop %d is already triggered, please adjust so it is not triggered at the same time as the primary endstop\n", a);
+        os.printf("error: endstop %d is already triggered, please adjust so it is not triggered at the same time as the primary endstop\n", sa->get_motor_id());
         return false;
     }
 
@@ -1321,37 +1318,37 @@ bool Endstops::move_slaved_axis(uint8_t paxis, bool adjust, OutputStream& os)
     uint32_t nsteps;
     bool dir= homing_axis[paxis].home_direction;
 
-    os.printf("issuing %d steps at a rate of %d steps/sec on the %c axis, direction %d\n", steps, sps, a, dir);
-    bool hit= manual_move(steps, sps, a, dir, nsteps, &es->pin);
+    os.printf("issuing %d steps at a rate of %d steps/sec on the %c axis, direction %d\n", steps, sps, sa->get_motor_id(), dir);
+    bool hit= manual_move(steps, sps, sa, dir, nsteps, &es->pin);
 
     if(!hit) {
-        os.printf("error: endstop %d was not triggered, please make sure it is within %f mm\n", a, max_travel);
+        os.printf("error: endstop %d was not triggered, please make sure it is within %f mm\n", sa->get_motor_id(), max_travel);
 
     }else{
 
         // find the offset moved from aligned
         float offset= nsteps / Robot::getInstance()->actuators[paxis]->get_steps_per_mm();
-        os.printf("Actuator %d, moved %lu steps, %0.4f mm to endstop\n", a, nsteps, offset);
+        os.printf("Actuator %d, moved %lu steps, %0.4f mm to endstop\n", sa->get_motor_id(), nsteps, offset);
 
         if(adjust && trim_mm[paxis] != 0) {
             // if trim is set then move back that amount to realign the axis
             nsteps = lroundf(Robot::getInstance()->actuators[paxis]->get_steps_per_mm() * trim_mm[paxis]);
-            os.printf("Actuator %d, adjusted %lu steps, %1.4f mm\n", a, nsteps, nsteps / Robot::getInstance()->actuators[paxis]->get_steps_per_mm());
+            os.printf("Actuator %d, adjusted %lu steps, %1.4f mm\n", sa->get_motor_id(), nsteps, nsteps / Robot::getInstance()->actuators[paxis]->get_steps_per_mm());
         }
     }
 
     // return to where it was
     uint32_t x;
-    manual_move(nsteps, sps, a, !dir, x);
+    manual_move(nsteps, sps, sa, !dir, x);
 
     return true;
 }
 
 // do a step by step manual move optionally until the pin is hit
-bool Endstops::manual_move(uint32_t steps, uint32_t sps, uint8_t a, bool dir, uint32_t& nsteps, Pin *pin)
+bool Endstops::manual_move(uint32_t steps, uint32_t sps, StepperMotor *sa, bool dir, uint32_t& nsteps, Pin *pin)
 {
     // make sure motors are enabled, as manual step does not check
-    if(!Robot::getInstance()->actuators[a]->is_enabled()) Robot::getInstance()->actuators[a]->enable(true);
+    if(!sa->is_enabled()) sa->enable(true);
 
     // now move at the required speed until the endstop triggers
     bool hit= (pin == nullptr);
@@ -1365,7 +1362,19 @@ bool Endstops::manual_move(uint32_t steps, uint32_t sps, uint8_t a, bool dir, ui
             break;
         }
 
-        Robot::getInstance()->actuators[a]->manual_step(dir);
+        // this won't work as the slave actuator is not registered with the stepticker
+        // sa->manual_step(dir);
+        // for now we do this hack
+        {
+            // set direction if needed
+            sa->set_direction(dir);
+            sa->step();
+            // unstep delay (pulse period) set to 4us here
+            uint32_t st = benchmark_timer_start();
+            while(benchmark_timer_as_us(benchmark_timer_elapsed(st)) < 4);
+            sa->unstep();
+        }
+
         ++nsteps;
 
         // delay

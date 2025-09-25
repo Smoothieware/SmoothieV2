@@ -71,7 +71,6 @@ public:
     bool is_homed() const;
     bool can_z_home() const;
     void clear_homed();
-    int8_t get_slaved_to(uint8_t a) const { if((a-3)<3) return slaved[a-3]; else return -1; }
     bool is_must_be_homed() const;
     int get_active_extruder() const;
     bool is_nist_G30() const { return nist_G30; }
@@ -181,12 +180,6 @@ private:
     float park_position[3];
     float saved_position[3];
     bool nist_G30;
-
-    // slaved motors, we can slave A,B,C to X,Y,Z
-    // if -1, then not slaved otherwise it is the motor_id of the motor it is slaved to
-    // this can only be applied to A, B, C and can only be slaved to X, Y, Z
-    // example if A is slaved to Y slaved[0]= 1
-    int8_t slaved[3]{-1, -1, -1};
 
     Pin *motors_enable_pin{nullptr};                      // global enable pin
     uint8_t n_motors;                                    //count of the motors/axis registered
