@@ -1740,19 +1740,18 @@ void Robot::process_move(GCode& gcode, enum MOTION_MODE_T motion_mode)
 
     // process ABC axis, this is mutually exclusive to using E for an extruder, so if E is used and A then the results are undefined
     for (int i = A_AXIS; i < n_motors; ++i) {
-        if(get_slaved_to(i) >= 0) {
-            target[i] = 0;
-            // maybe need to report this
-            continue; // can't move slaved axis
-        }
-
         char letter = 'A' + i - A_AXIS;
         if(gcode.has_arg(letter)) {
-            float p = gcode.get_arg(letter);
-            if(this->absolute_mode) {
-                target[i] = p;
+            if(get_slaved_to(i) >= 0) {
+                // can't move slaved axis report this
+                gcode.set_error("Cannot move a slaved axis");
             } else {
-                target[i] = p + machine_position[i];
+                float p = gcode.get_arg(letter);
+                if(this->absolute_mode) {
+                    target[i] = p;
+                } else {
+                    target[i] = p + machine_position[i];
+                }
             }
         }
     }
