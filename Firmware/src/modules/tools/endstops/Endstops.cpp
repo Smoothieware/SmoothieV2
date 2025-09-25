@@ -370,10 +370,6 @@ void Endstops::read_endstops()
                     } else {
                         // we signal the motor to stop, which will preempt any moves on that axis
                         STEPPER[m]->stop_moving();
-                        // also stop any slaved actuator
-                        if(e.slaved_axis != nullptr) {
-                            e.slaved_axis->stop_moving();
-                        }
                     }
                     e.pin_info->triggered = true;
                 }
@@ -1366,7 +1362,6 @@ bool Endstops::manual_move(uint32_t steps, uint32_t sps, StepperMotor *sa, bool 
         // sa->manual_step(dir);
         // for now we do this hack
         {
-            // set direction if needed
             sa->set_direction(dir);
             sa->step();
             // unstep delay (pulse period) set to 4us here
