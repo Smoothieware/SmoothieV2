@@ -1950,7 +1950,7 @@ bool Robot::append_milestone(const float target[], float rate_mm_s)
     // find distance moved by each axis, use transformed target from the current compensated machine position
     for (size_t i = 0; i < n_motors; i++) {
         deltas[i] = transformed_target[i] - compensated_machine_position[i];
-        if(deltas[i] == 0) continue;
+        if(std::abs(deltas[i]) < 0.0001F) continue; // try to ignore float hiccups
         // at least one non zero delta
         move = true;
         if(i < N_PRIMARY_AXIS) {
@@ -1964,7 +1964,7 @@ bool Robot::append_milestone(const float target[], float rate_mm_s)
     // see if this is a primary axis move or not
     bool auxilliary_move = true;
     for (int i = 0; i < N_PRIMARY_AXIS; ++i) {
-        if(deltas[i] != 0) {
+        if(std::abs(deltas[i]) >= 0.0001F) {
             auxilliary_move = false;
             break;
         }
