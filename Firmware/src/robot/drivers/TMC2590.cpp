@@ -211,13 +211,13 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
     name = actuator_name;
     ConfigReader::sub_section_map_t ssm;
     if(!cr.get_sub_sections("tmc2590", ssm)) {
-        printf("ERROR:config_tmc2590: no tmc2590 section found\n");
+        printf("ERROR: config_tmc2590: no tmc2590 section found\n");
         return false;
     }
 
     auto s = ssm.find(actuator_name);
     if(s == ssm.end()) {
-        printf("ERROR:config_tmc2590: %s - no tmc2590 entry found\n", actuator_name);
+        printf("ERROR: config_tmc2590: %s - no tmc2590 entry found\n", actuator_name);
         return false;
     }
 
@@ -237,11 +237,11 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
     spi_cs = new Pin(cs_pin.c_str(), Pin::AS_OUTPUT_ON); // set high on creation
     if(!spi_cs->connected()) {
         delete spi_cs;
-        printf("ERROR:config_tmc2590: %s - spi cs pin %s is invalid\n", actuator_name, cs_pin.c_str());
+        printf("ERROR: config_tmc2590: %s - spi cs pin %s is invalid\n", actuator_name, cs_pin.c_str());
         return false;
     }
     spi_cs->set(true);
-    printf("DEBUG:configure-tmc2590: %s - spi cs pin: %s\n", actuator_name, spi_cs->to_string().c_str());
+    printf("DEBUG: config-tmc2590: %s - spi cs pin: %s\n", actuator_name, spi_cs->to_string().c_str());
 
     // if this is the first instance then get any common settings
     if(!common_setup) {
@@ -252,7 +252,7 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
             if(reset_pin == nullptr) {
                 reset_pin= new Pin(cr.get_string(cm, reset_pin_key, "nc"), Pin::AS_OUTPUT_OFF); // sets low
                 if(reset_pin->connected()) {
-                    printf("DEBUG:configure-tmc2590: reset pin set to: %s\n", reset_pin->to_string().c_str());
+                    printf("DEBUG: config-tmc2590: reset pin set to: %s\n", reset_pin->to_string().c_str());
                     reset_pin->set(true); // sets high turns on all drivers
                 }else{
                     delete reset_pin;
@@ -315,7 +315,7 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
     // get rest of instance specific configs
     this->resistor = cr.get_int(mm, resistor_key, 50); // in milliohms
     this->max_current = cr.get_int(mm, max_current_key, this->resistor == 75 ? 4400 : this->resistor == 50 ? 5500 : 3200); // milliamps
-    printf("DEBUG:configure-tmc2590: %s - sense resistor: %d milliohms, max current: %ld mA\n", actuator_name, resistor, max_current);
+    printf("DEBUG: config-tmc2590: %s - sense resistor: %d milliohms, max current: %ld mA\n", actuator_name, resistor, max_current);
 
     // if raw registers are defined set them 1,2,3 etc in hex
     std::string str = cr.get_string(mm, raw_register_key, "");
@@ -337,13 +337,13 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
     bool interpolation = cr.get_bool(mm, step_interpolation_key, false);
     if(interpolation) {
         setStepInterpolation(1);
-        printf("DEBUG:configure-tmc2590: %s - step interpolation is on\n", actuator_name);
+        printf("DEBUG: config-tmc2590: %s - step interpolation is on\n", actuator_name);
     }
 
     bool pfd = cr.get_bool(mm, passive_fast_decay_key, true);
     if(pfd) {
         setPassiveFastDecay(1);
-        printf("DEBUG:configure-tmc2590: %s - passive fast decay is on\n", actuator_name);
+        printf("DEBUG: config-tmc2590: %s - passive fast decay is on\n", actuator_name);
     }
 
     // set the standstill current in mA, default is off
@@ -1308,15 +1308,15 @@ bool TMC2590::set_raw_register(OutputStream& stream, uint32_t reg, uint32_t val)
             send20bits(cool_step_register_value);
             send20bits(stall_guard2_current_register_value);
             send20bits(driver_configuration_register_value);
-            stream.printf("INFO: TMC2590 Registers written\n");
+            stream.printf("INFO: TMC2590 %c: Registers written\n", designator);
             break;
 
 
-        case 1: driver_control_register_value = val; stream.printf("INFO: TMC2590 driver control register set to %05lX\n", val); break;
-        case 2: chopper_config_register_value = val; stream.printf("INFO: TMC2590 chopper config register set to %05lX\n", val); break;
-        case 3: cool_step_register_value = val; stream.printf("INFO: TMC2590 cool step register set to %05lX\n", val); break;
-        case 4: stall_guard2_current_register_value = val; stream.printf("INFO: TMC2590 stall guard2 current register set to %05lX\n", val); break;
-        case 5: driver_configuration_register_value = val; stream.printf("INFO: TMC2590 driver configuration register set to %05lX\n", val); break;
+        case 1: driver_control_register_value = val; stream.printf("INFO: TMC2590 %c: driver control register set to %05lX\n", designator, val); break;
+        case 2: chopper_config_register_value = val; stream.printf("INFO: TMC2590 %c: chopper config register set to %05lX\n", designator, val); break;
+        case 3: cool_step_register_value = val; stream.printf("INFO: TMC2590 %c: cool step register set to %05lX\n", designator, val); break;
+        case 4: stall_guard2_current_register_value = val; stream.printf("INFO: TMC2590 %c: stall guard2 current register set to %05lX\n", designator, val); break;
+        case 5: driver_configuration_register_value = val; stream.printf("INFO: TMC2590 %c: driver configuration register set to %05lX\n", designator, val); break;
 
         default:
             stream.printf("1: driver control register\n");

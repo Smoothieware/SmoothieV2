@@ -88,18 +88,19 @@ void StepperMotor::manual_step(bool dir)
 #include "TMC2590.h"
 #include "TMC26X.h"
 
+extern int find_actuator_key(const char *k);
 bool StepperMotor::vmot= false;
 bool StepperMotor::setup_tmc(ConfigReader& cr, const char *actuator_name, uint32_t type)
 {
     // NOTE axis is only used by the TMC driver to identify itself in the designator field of M911
-    char axis= motor_id<3?'X'+motor_id:'A'+motor_id-3;
-    printf("DEBUG: setting up tmc%lu for %s, axis %c\n", type, actuator_name, axis);
+    char axis= motor_id<3 ? 'X'+motor_id : 'A'+motor_id-3;
+    printf("DEBUG: setup_tmc: setting up tmc%lu for %s, axis %c (%d)\n", type, actuator_name, axis, motor_id);
     if(type == 2590) {
         tmc= new TMC2590(axis);
     }else if(type == 2660){
         tmc= new TMC26X(axis);
     }else{
-        printf("ERROR: tmc%lu is not a valid driver\n", type);
+        printf("ERROR: setup_tmc: tmc%lu is not a valid driver\n", type);
         return false;
     }
 

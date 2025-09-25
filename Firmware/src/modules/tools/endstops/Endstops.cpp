@@ -186,7 +186,7 @@ bool Endstops::load_endstops(ConfigReader& cr)
         // check we are not going above the number of configured actuators/axis
         if(a >= Robot::getInstance()->get_number_registered_motors()) {
             // too many axis we only have configured n_motors
-            printf("ERROR: configure-endstop: Too many endstops defined for the number of axis\n");
+            printf("WARNING: configure-endstop: Too many endstops defined for the number of axis\n");
             continue;
         }
 

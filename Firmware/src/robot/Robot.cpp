@@ -159,7 +159,7 @@ static const char* const actuator_keys[] = {
 #endif
 };
 
-static int find_actuator_key(const char *k)
+int find_actuator_key(const char *k)
 {
     int m = -1;
     for (int i = 0; i < (int)(sizeof(actuator_keys) / sizeof(actuator_keys[0])); ++i) {
@@ -291,6 +291,7 @@ bool Robot::configure(ConfigReader& cr)
 
         // create the actuator
         StepperMotor *sm = new StepperMotor(step_pin, dir_pin, en_pin);
+        sm->set_motor_id(a);
 
 #if defined(DRIVER_TMC)
         // drivers by default for XYZA are internal, BC are by default external
