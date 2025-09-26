@@ -165,7 +165,7 @@ _ramfunc_  void StepTicker::step_tick (void)
     }
 
     // if nothing has been setup we ignore the ticks
-    if(!running && !check_forced_steps) {
+    if(!running) {
         // check if anything new available
         if(conveyor->get_next_block(&current_block)) { // returns false if no new block is available
             running = start_next_block(); // returns true if there is at least one motor with steps to issue
@@ -187,7 +187,6 @@ _ramfunc_  void StepTicker::step_tick (void)
         running = false;
         current_tick = 0;
         current_block = nullptr;
-        check_forced_steps = false;
         return;
     }
 
@@ -196,21 +195,6 @@ _ramfunc_  void StepTicker::step_tick (void)
     for (uint8_t m = 0; m < num_motors; m++) {
         auto *cur_motor = motor[m];
         auto& cur_tick_info = current_block->tick_info[m];
-
-        // first check if we have any forced steps
-        if(cur_motor->has_forced_step()) {
-            cur_motor->step();
-            cur_motor->decrement_forced_step();
-            // note this assumes only one axis can have forced steps
-            if(!cur_motor->has_forced_step()) check_forced_steps = false;
-
-            // we stepped so schedule an unstep
-            unstep |= (1 << m);
-            continue; // this will override any moves in the block queue for this motor
-        }
-
-        // we check again in case we had forced steps
-        if(!running) continue;
 
         // normal processing
         if(cur_tick_info.steps_to_move == 0) continue; // not active

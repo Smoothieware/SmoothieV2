@@ -1,6 +1,7 @@
 #include "StepperMotor.h"
 #include "StepTicker.h"
 #include "OutputStream.h"
+#include "benchmark_timer.h"
 
 #include <math.h>
 
@@ -69,17 +70,20 @@ int32_t StepperMotor::steps_to_target(float target)
 // Does a manual step pulse, used for direct encoder control of a stepper
 // NOTE manual step is experimental and may change and/or be removed in the future, it is an unsupported feature.
 // use at your own risk
+// NOTE this will step this motor and any slave motor
 void StepperMotor::manual_step(bool dir)
 {
     // set direction if needed
-    if(this->direction != dir) {
-        this->direction= dir;
-        this->dir_pin.set(dir);
+    if(this->get_direction() != dir) {
+        this->set_direction(dir);
     }
 
-    // this will be picked up by the stepticker and issue a step pulse
-    ++forced_steps;
-    StepTicker::getInstance()->set_check_forced_steps();
+    this->step();
+    // unstep delay (pulse period) set to 4us here
+    // FIXME try to use the pulse duration set in config
+    uint32_t st = benchmark_timer_start();
+    while(benchmark_timer_as_us(benchmark_timer_elapsed(st)) < 4);
+    this->unstep();
 }
 
 
@@ -88,7 +92,6 @@ void StepperMotor::manual_step(bool dir)
 #include "TMC2590.h"
 #include "TMC26X.h"
 
-extern int find_actuator_key(const char *k);
 bool StepperMotor::vmot= false;
 bool StepperMotor::setup_tmc(ConfigReader& cr, const char *actuator_name, uint32_t type)
 {

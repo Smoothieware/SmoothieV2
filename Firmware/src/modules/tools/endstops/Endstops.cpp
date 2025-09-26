@@ -1341,6 +1341,7 @@ bool Endstops::move_slaved_axis(uint8_t paxis, bool adjust, OutputStream& os)
 }
 
 // do a step by step manual move optionally until the pin is hit
+// Used to adjust the slave axis only
 bool Endstops::manual_move(uint32_t steps, uint32_t sps, StepperMotor *sa, bool dir, uint32_t& nsteps, Pin *pin)
 {
     // make sure motors are enabled, as manual step does not check
@@ -1358,17 +1359,7 @@ bool Endstops::manual_move(uint32_t steps, uint32_t sps, StepperMotor *sa, bool 
             break;
         }
 
-        // this won't work as the slave actuator is not registered with the stepticker
-        // sa->manual_step(dir);
-        // for now we do this hack
-        {
-            sa->set_direction(dir);
-            sa->step();
-            // unstep delay (pulse period) set to 4us here
-            uint32_t st = benchmark_timer_start();
-            while(benchmark_timer_as_us(benchmark_timer_elapsed(st)) < 4);
-            sa->unstep();
-        }
+        sa->manual_step(dir);
 
         ++nsteps;
 

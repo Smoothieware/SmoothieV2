@@ -42,8 +42,6 @@ class StepperMotor
         inline void stop_moving() { moving= false; }
 
         void manual_step(bool dir);
-        inline bool has_forced_step() { return forced_steps != 0; }
-        inline void decrement_forced_step() { --forced_steps; }
 
         inline bool which_direction() const { return direction; }
 
@@ -89,7 +87,6 @@ class StepperMotor
         int32_t step_count_homed;
         int32_t last_milestone_steps;
         float   last_milestone_mm;
-        uint32_t forced_steps{0};
 
         volatile struct {
             uint8_t motor_id:8;
