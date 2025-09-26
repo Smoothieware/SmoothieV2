@@ -71,6 +71,7 @@ int32_t StepperMotor::steps_to_target(float target)
 // NOTE manual step is experimental and may change and/or be removed in the future, it is an unsupported feature.
 // use at your own risk
 // NOTE this will step this motor and any slave motor
+// It is used by test raw and by the endstop move_slaved_axis
 void StepperMotor::manual_step(bool dir)
 {
     // set direction if needed
@@ -144,7 +145,7 @@ int StepperMotor::get_microsteps()
 
 void StepperMotor::enable(bool state)
 {
-    // we need to do this here becuase the higher level won't see the slave
+    // we need to do this here because the higher level won't see the slave
     if(p_slave != nullptr) p_slave->enable(state);
 
     if(tmc == nullptr) {
@@ -236,12 +237,12 @@ bool StepperMotor::set_options(GCode& gcode)
 bool StepperMotor::check_driver_error()
 {
     if(tmc == nullptr) return false;
-    if(!tmc->check_errors()) return false;
+    if(tmc->check_errors()) return true;
     if(p_slave != nullptr) {
-        if(!p_slave->check_driver_error()) return false;
+        if(p_slave->check_driver_error()) return true;
     }
 
-    return true;
+    return false;
 }
 
 bool StepperMotor::init_slave(StepperMotor *sm)

@@ -108,7 +108,7 @@ class StepperMotor
         bool check_driver_error();
         static bool set_vmot(bool state) { bool last= vmot; vmot= state; return last; }
         static bool get_vmot() { return vmot; }
-        void set_vmot_lost() { vmot_lost= true; }
+        void set_vmot_lost() { vmot_lost= true; if(p_slave!=nullptr) p_slave->vmot_lost= true; }
 
     private:
         uint32_t current_ma{0};

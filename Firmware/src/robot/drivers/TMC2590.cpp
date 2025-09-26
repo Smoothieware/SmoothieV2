@@ -1095,6 +1095,8 @@ void TMC2590::dump_status(OutputStream& stream, bool readable)
             stream.printf("Motor is standing still\n");
         }
 
+        stream.printf("Enabled: %d\n", isEnabled());
+
         int value = getReadoutValue();
         stream.printf("Microstep position phase A: %d\n", value);
 
