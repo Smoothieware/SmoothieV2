@@ -335,16 +335,12 @@ bool TMC2590::config(ConfigReader& cr, const char *actuator_name)
     // the following override the raw register settings if set
     // see if we want step interpolation
     bool interpolation = cr.get_bool(mm, step_interpolation_key, false);
-    if(interpolation) {
-        setStepInterpolation(1);
-        printf("DEBUG: config-tmc2590: %s - step interpolation is on\n", actuator_name);
-    }
+    setStepInterpolation(interpolation?1:0);
+    printf("DEBUG: config-tmc2590: %s - step interpolation is %s\n", actuator_name, interpolation?"on":"off");
 
     bool pfd = cr.get_bool(mm, passive_fast_decay_key, true);
-    if(pfd) {
-        setPassiveFastDecay(1);
-        printf("DEBUG: config-tmc2590: %s - passive fast decay is on\n", actuator_name);
-    }
+    setPassiveFastDecay(pfd?1:0);
+    printf("DEBUG: config-tmc2590: %s - passive fast decay is %s\n", actuator_name, pfd?"on":"off");
 
     // set the standstill current in mA, default is off
     standstill_current= cr.get_int(mm, standstill_current_key, 0);
