@@ -17,11 +17,22 @@ class StepperMotor
         uint8_t get_motor_id() const { return motor_id; }
 
         // called from step ticker ISR
-        inline bool step() { step_pin.set(1); step_count += (direction?-1:1); return moving; }
+        inline bool step() {
+            step_pin.set(1); step_count += (direction?-1:1);
+            if(p_slave != nullptr) p_slave->step();
+            return moving;
+        }
         // called from unstep ISR
-        inline void unstep() { step_pin.set(0); }
+        inline void unstep() {
+            step_pin.set(0);
+            if(p_slave != nullptr) p_slave->unstep();
+        }
+
         // called from step ticker ISR
-        inline void set_direction(bool f) { dir_pin.set(f); direction= f; }
+        inline void set_direction(bool f) {
+            dir_pin.set(f); direction= f;
+            if(p_slave != nullptr) p_slave->set_direction(f);
+        }
         inline bool get_direction() const { return direction; }
 
         void enable(bool state);
@@ -31,8 +42,6 @@ class StepperMotor
         inline void stop_moving() { moving= false; }
 
         void manual_step(bool dir);
-        inline bool has_forced_step() { return forced_steps != 0; }
-        inline void decrement_forced_step() { --forced_steps; }
 
         inline bool which_direction() const { return direction; }
 
@@ -57,11 +66,18 @@ class StepperMotor
 
         int32_t steps_to_target(float);
 
+        bool has_slave() const { return p_slave != nullptr; }
+        StepperMotor *get_slave() const { return p_slave; }
+        bool init_slave(StepperMotor *sm);
+
     private:
 
         Pin step_pin;
         Pin dir_pin;
         Pin en_pin;
+
+        // if this motor has a slave the pointer to it is set here
+        StepperMotor *p_slave{nullptr};
 
         float steps_per_mm;
         float max_rate; // this is not really rate it is in mm/sec, misnamed used in Robot and Extruder
@@ -71,7 +87,6 @@ class StepperMotor
         int32_t step_count_homed;
         int32_t last_milestone_steps;
         float   last_milestone_mm;
-        uint32_t forced_steps{0};
 
         volatile struct {
             uint8_t motor_id:8;
@@ -97,6 +112,7 @@ class StepperMotor
 
     private:
         uint32_t current_ma{0};
+        uint32_t tmc_type{0};
         // TMCxxxx driver
         TMCBase *tmc{nullptr};
         static bool vmot;

@@ -1,5 +1,7 @@
 #include "StepperMotor.h"
 #include "StepTicker.h"
+#include "OutputStream.h"
+#include "benchmark_timer.h"
 
 #include <math.h>
 
@@ -20,6 +22,7 @@ StepperMotor::StepperMotor(Pin &step, Pin &dir, Pin &en) : step_pin(step), dir_p
     acceleration= -1;
     selected= true;
     extruder= false;
+    p_slave= nullptr;
 
     enable(false);
     unstep(); // initialize step pin
@@ -67,17 +70,20 @@ int32_t StepperMotor::steps_to_target(float target)
 // Does a manual step pulse, used for direct encoder control of a stepper
 // NOTE manual step is experimental and may change and/or be removed in the future, it is an unsupported feature.
 // use at your own risk
+// NOTE this will step this motor and any slave motor
 void StepperMotor::manual_step(bool dir)
 {
     // set direction if needed
-    if(this->direction != dir) {
-        this->direction= dir;
-        this->dir_pin.set(dir);
+    if(this->get_direction() != dir) {
+        this->set_direction(dir);
     }
 
-    // this will be picked up by the stepticker and issue a step pulse
-    ++forced_steps;
-    StepTicker::getInstance()->set_check_forced_steps();
+    this->step();
+    // unstep delay (pulse period) set to 4us here
+    // FIXME try to use the pulse duration set in config
+    uint32_t st = benchmark_timer_start();
+    while(benchmark_timer_as_us(benchmark_timer_elapsed(st)) < 4);
+    this->unstep();
 }
 
 
@@ -90,14 +96,14 @@ bool StepperMotor::vmot= false;
 bool StepperMotor::setup_tmc(ConfigReader& cr, const char *actuator_name, uint32_t type)
 {
     // NOTE axis is only used by the TMC driver to identify itself in the designator field of M911
-    char axis= motor_id<3?'X'+motor_id:'A'+motor_id-3;
-    printf("DEBUG: setting up tmc%lu for %s, axis %c\n", type, actuator_name, axis);
+    char axis= motor_id<3 ? 'X'+motor_id : 'A'+motor_id-3;
+    printf("DEBUG: setup_tmc: setting up tmc%lu for %s, axis %c (%d)\n", type, actuator_name, axis, motor_id);
     if(type == 2590) {
         tmc= new TMC2590(axis);
     }else if(type == 2660){
         tmc= new TMC26X(axis);
     }else{
-        printf("ERROR: tmc%lu is not a valid driver\n", type);
+        printf("ERROR: setup_tmc: tmc%lu is not a valid driver\n", type);
         return false;
     }
 
@@ -106,12 +112,16 @@ bool StepperMotor::setup_tmc(ConfigReader& cr, const char *actuator_name, uint32
         return false;
     }
     tmc->init();
+    tmc_type = type;
 
     return true;
 }
 
 bool StepperMotor::set_current(float c)
 {
+    // we need to do this here to both make the current the same and because the current module won't see the slave
+    if(p_slave != nullptr) p_slave->set_current(c);
+
     if(tmc == nullptr) return false;
     // send current to TMC
     current_ma= roundf(c*1000.0F);
@@ -134,6 +144,9 @@ int StepperMotor::get_microsteps()
 
 void StepperMotor::enable(bool state)
 {
+    // we need to do this here becuase the higher level won't see the slave
+    if(p_slave != nullptr) p_slave->enable(state);
+
     if(tmc == nullptr) {
         if(en_pin.connected()) {
             // set to true to enable the chip (en may need to be inverted)
@@ -193,24 +206,59 @@ void StepperMotor::dump_status(OutputStream& os, bool flag)
 {
     if(tmc == nullptr) return;
     tmc->dump_status(os, flag);
+    if(p_slave != nullptr) {
+        os.printf("----- Slave actuator -----\n");
+        p_slave->dump_status(os, flag);
+    }
 }
 
 void StepperMotor::set_raw_register(OutputStream& os, uint32_t reg, uint32_t val)
 {
     if(tmc == nullptr) return;
     tmc->set_raw_register(os, reg, val);
+    // we need to do this here because the higher level won't see the slave
+    if(p_slave != nullptr) p_slave->set_raw_register(os, reg, val);
 }
 
 bool StepperMotor::set_options(GCode& gcode)
 {
     if(tmc == nullptr) return false;
-    return tmc->set_options(gcode);
+    if(tmc->set_options(gcode)) {
+        // we need to do this here because the higher level won't see the slave
+        if(p_slave != nullptr && !p_slave->set_options(gcode)) return false;
+
+    }else{
+        return false;
+    }
+    return true;
 }
 
 bool StepperMotor::check_driver_error()
 {
     if(tmc == nullptr) return false;
-    return tmc->check_errors();
+    if(!tmc->check_errors()) return false;
+    if(p_slave != nullptr) {
+        if(!p_slave->check_driver_error()) return false;
+    }
+
+    return true;
+}
+
+bool StepperMotor::init_slave(StepperMotor *sm)
+{
+    // do some sanity checks that the slave and master have the same settings
+    if(sm->tmc_type != tmc_type) {
+        printf("ERROR: stepper-motor init-slave: slave %d does not have the same driver type as master %d\n", sm->motor_id, motor_id);
+        return false;
+    }
+
+    if(sm->get_microsteps() != get_microsteps()) {
+        printf("ERROR: stepper-motor init-slave: slave %d does not have the same microstepping as master %d\n", sm->motor_id, motor_id);
+        return false;
+    }
+
+    p_slave = sm;
+    return true;
 }
 
 #else

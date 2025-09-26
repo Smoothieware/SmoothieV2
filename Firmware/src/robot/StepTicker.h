@@ -33,7 +33,6 @@ public:
     int register_actuator(StepperMotor* motor);
     float get_frequency() const { return frequency; }
     const Block *get_current_block() const { return current_block; }
-    void set_check_forced_steps() { check_forced_steps= true; }
     bool start();
     bool stop();
 
@@ -72,5 +71,4 @@ private:
 
     volatile bool running{false};
     static bool started;
-    bool check_forced_steps{false};
 };
