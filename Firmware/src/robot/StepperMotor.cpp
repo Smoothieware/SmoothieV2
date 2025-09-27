@@ -134,6 +134,8 @@ bool StepperMotor::set_microsteps(uint16_t ms)
 {
     if(tmc == nullptr) return false;
     tmc->setMicrosteps(ms); // sets microsteps
+    if(p_slave != nullptr) p_slave->set_microsteps(ms);
+
     return true;
 }
 
