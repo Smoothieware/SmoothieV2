@@ -68,6 +68,7 @@ int32_t StepperMotor::steps_to_target(float target)
 }
 
 // Does a manual step pulse, used for direct encoder control of a stepper
+// dir == true is a move in the negative direction
 // NOTE manual step is experimental and may change and/or be removed in the future, it is an unsupported feature.
 // use at your own risk
 // NOTE this will step this motor and any slave motor

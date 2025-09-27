@@ -1318,7 +1318,8 @@ bool Endstops::move_slaved_axis(uint8_t paxis, bool adjust, OutputStream& os)
     bool hit= manual_move(steps, sps, sa, dir, nsteps, &es->pin);
 
     if(!hit) {
-        os.printf("error: endstop %d was not triggered, please make sure it is within %f mm\n", sa->get_motor_id(), max_travel);
+        os.printf("error: endstop %d was not triggered, please make sure it is within %f mm, or try again\n", sa->get_motor_id(), max_travel);
+        return false;
 
     }else{
 
