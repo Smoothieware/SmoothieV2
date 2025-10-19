@@ -164,9 +164,16 @@ bool GCodeProcessor::parse(const char *line, GCodes_t& gcodes)
 
             } else {
                 // parameter word with no command word so use modal command word
-                // group1, copies G code and subcode for this line
-                gc.set_command('G', group1.get_code(), group1.get_subcode());
-                // fall through to process parameter word
+                if(group1.has_g()) {
+                    // group1, copies G code and subcode for this line
+                    gc.set_command('G', group1.get_code(), group1.get_subcode());
+                    // fall through to process parameter word
+                }else{
+                    // it is an error to have a parameter word before group1 has been set
+                    gc.set_error("Parameter with no previous G0/1/2 code");
+                    gcodes.push_back(gc);
+                    return false;
+                }
             }
         }
 
