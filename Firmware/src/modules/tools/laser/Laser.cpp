@@ -26,6 +26,7 @@
 #define maximum_s_value_key "maximum_s_value"
 #define default_power_key "default_power"
 #define proportional_power_key "proportional_power"
+#define proportional_power_frequency_key "proportional_power_frequency"
 
 REGISTER_MODULE(Laser, Laser::create)
 
@@ -108,9 +109,11 @@ bool Laser::configure(ConfigReader& cr)
     THEDISPATCHER->add_handler( "fire", std::bind( &Laser::handle_fire_cmd, this, _1, _2) );
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 221, std::bind(&Laser::handle_M221, this, _1, _2));
 
-    // no point in updating the power more than the PWM frequency, but no more than 1KHz
+    // no point in updating the power more than the PWM frequency
     uint32_t pwm_freq = pwm_pin->get_frequency();
-    uint32_t f = std::min(1000UL, pwm_freq);
+    uint32_t pp_freq = cr.get_int(m, proportional_power_frequency_key, 10000);
+    uint32_t f = std::min(pp_freq, pwm_freq);
+    printf("INFO: configure-laser: setting proportional power frequency to %luHz\n", f);
     if(f >= FastTicker::get_min_frequency()) {
         if(FastTicker::getInstance()->attach(f, std::bind(&Laser::set_proportional_power, this)) < 0) {
             printf("ERROR: configure-laser: Fast Ticker was not set (Too slow?)\n");
@@ -124,7 +127,7 @@ bool Laser::configure(ConfigReader& cr)
         }
     }
 
-    ms_per_tick = 1000 / f;
+    us_per_tick = 1000000 / f;
 
     return true;
 }
@@ -167,17 +170,17 @@ bool Laser::handle_fire_cmd( std::string& params, OutputStream& os )
 
         std::string duration = stringutils::shift_parameter(params);
         if(!duration.empty()) {
-            fire_duration = atoi(duration.c_str());
+            fire_duration = atoi(duration.c_str()) * 1000; // convert to microseconds
             // Avoid negative values, its just incorrect
-            if(fire_duration < ms_per_tick) {
-                os.printf("WARNING: Minimal duration is %ld ms, not firing\n", ms_per_tick);
+            if(fire_duration < us_per_tick) {
+                os.printf("WARNING: Minimal duration is %ld us, not firing\n", us_per_tick);
                 return true;
             }
             // rounding to minimal value
-            if (fire_duration % ms_per_tick != 0) {
-                fire_duration = (fire_duration / ms_per_tick) * ms_per_tick;
+            if (fire_duration % us_per_tick != 0) {
+                fire_duration = (fire_duration / us_per_tick) * us_per_tick;
             }
-            os.printf("WARNING: Firing laser at %1.2f%% power, for %ld ms, use fire off to stop test fire earlier\n", p, fire_duration);
+            os.printf("WARNING: Firing laser at %1.2f%% power, for %ld ms, use fire off to stop test fire earlier\n", p, fire_duration/1000);
         } else {
             os.printf("WARNING: Firing laser at %1.2f%% power, entering manual mode use fire off to return to auto mode\n", p);
         }
@@ -272,8 +275,8 @@ void Laser::set_proportional_power(void)
     if(manual_fire) {
         // If we have fire duration set
         if (fire_duration > 0) {
-            // Decrease it each ms
-            fire_duration -= ms_per_tick;
+            // Decrease it each tick
+            fire_duration -= us_per_tick;
             // And if it turned 0, disable laser and manual fire mode
             if (fire_duration <= 0) {
                 set_laser_power(0);
