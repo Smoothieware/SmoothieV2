@@ -391,7 +391,14 @@ bool ZProbe::handle_gcode(GCode& gcode, OutputStream& os)
             return true;
         }
 
+        // turn off any compensation transform so Z does not move as XY moves
+        auto savect= Robot::getInstance()->compensationTransform;
+        Robot::getInstance()->compensationTransform= nullptr;
+
         probe_XYZ(gcode, os, pa);
+
+        // restore compensationTransform
+        Robot::getInstance()->compensationTransform= savect;
 
         if(gcode.get_subcode() == 4 || gcode.get_subcode() == 5) {
             // restore invert sense
