@@ -4,10 +4,10 @@
 #include <cstring>
 #include <string>
 
-LineEditor::LineEditor(size_t max, OutputStream& tos)
+LineEditor::LineEditor(size_t max, OutputStream *tos)
 {
     maxsize = max;
-    this->os = &tos;
+    this->os = tos;
     pos = 0;
     state = NEXT_CHAR;
 }

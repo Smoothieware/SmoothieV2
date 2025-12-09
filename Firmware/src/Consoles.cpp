@@ -52,6 +52,11 @@ static FILE *upload_fp = nullptr;
 static bool loaded_configuration = false;
 bool config_override = false;
 
+// these determine if the line editor is enabled for the respective console, set in config.ini
+static bool usb2_line_edit= false;
+static bool debug_line_edit= false;
+static bool uart_line_edit= false;
+
 // load configuration from override file
 bool load_config_override(OutputStream& os, const char *fn)
 {
@@ -400,7 +405,16 @@ static void usb_comms(void *param)
             os->printf("\n%s\n", get_config_error_msg());
         }
 
-        os->printf("Welcome to Smoothie\nok\n");
+        os->printf("Welcome to Smoothie ");
+
+        LineEditor *line_editor = nullptr;
+        if(inst > 0) {
+            // create a line editor for this console if enabled in config.ini
+            line_editor = usb2_line_edit ? new LineEditor(256, os) : nullptr;
+            if(line_editor != nullptr) os->printf("Line editing is on");
+        }
+
+        os->printf("\nok\n");
 
         // now read lines and dispatch them
         char line[MAX_LINE_LENGTH];
@@ -415,6 +429,16 @@ static void usb_comms(void *param)
                     printf("DEBUG: USB OutputStream was closed, reopening\n");
                     os->set_closed(false);
                 }
+                // if line editor is enabled do this before fast_capture so the forth terminal will benifit
+                if(line_editor != nullptr) {
+                    if(!line_editor->add(usb_rx_buf, n)) { // return false until eol is entered
+                        continue;
+                    }
+                    n= line_editor->get_line(usb_rx_buf, usb_rx_buf_sz);
+                    cnt= 0;
+                    discard= false;
+                }
+
                 if(os->fast_capture_fnc) {
                     if(!os->fast_capture_fnc(usb_rx_buf, n)) {
                         os->fast_capture_fnc = nullptr; // we are done ok
@@ -456,7 +480,11 @@ static void uart_debug_comms(void *)
     char line[MAX_LINE_LENGTH];
     size_t cnt = 0;
     bool discard = false;
-    LineEditor *line_editor = nullptr;
+
+    // create a line editor for this console if enabled in config.ini
+    LineEditor *line_editor = debug_line_edit ? new LineEditor(256, &os) : nullptr;
+    if(line_editor != nullptr) os.printf("\nLine editing is on\n");
+
     while(!abort_comms) {
         // Wait to be notified that there has been a UART irq. (it may have been rx or tx so may not be anything to read)
         uint32_t ulNotificationValue = ulTaskNotifyTake( pdFALSE, waitms );
@@ -468,24 +496,6 @@ static void uart_debug_comms(void *)
 
         size_t n = read_uart(rx_buf, sizeof(rx_buf));
         if(n > 0) {
-            if(memchr(rx_buf, 5, n)) { // ^E toggles line edit
-                if(line_editor == nullptr) {
-                    line_editor= new LineEditor(256, os);
-                    if(cnt != 0) {
-                        line_editor->initial_add(line, cnt);
-                        cnt= 0;
-                    }
-                    n= 0;
-                    // turn off local echo doesn't work
-                    //os.printf("%c%c%c%c%c\n", 27, '[', '1', '2', 'h');
-                }else{
-                    cnt= line_editor->get_line(line, MAX_LINE_LENGTH);
-                    delete line_editor;
-                    line_editor= nullptr;
-                    n= 0;
-                }
-                os.printf("\nLine editing is now %s\n", line_editor!=nullptr?"on":"off");
-            }
             if(line_editor != nullptr) {
                 if(!line_editor->add(rx_buf, n)) { // return false until eol is entered
                     continue;
@@ -531,6 +541,10 @@ static void uart_console_comms(void *)
 
     const TickType_t waitms = pdMS_TO_TICKS(300);
 
+    // create a line editor for this console if enabled in config.ini
+    LineEditor *line_editor = uart_line_edit ? new LineEditor(256, &os) : nullptr;
+    if(line_editor != nullptr) os.printf("\nLine editing is on\n");
+
     char rx_buf[256];
     char line[MAX_LINE_LENGTH];
     size_t cnt = 0;
@@ -539,6 +553,14 @@ static void uart_console_comms(void *)
         // this will block until a character is available or timeout
         size_t n = uart->read((uint8_t*)rx_buf, sizeof(rx_buf), waitms);
         if(n > 0) {
+            if(line_editor != nullptr) {
+                if(!line_editor->add(rx_buf, n)) { // return false until eol is entered
+                    continue;
+                }
+                n= line_editor->get_line(rx_buf, sizeof rx_buf);
+                cnt= 0;
+                discard= false;
+            }
             process_command_buffer(n, rx_buf, &os, line, cnt, discard);
         }
     }
@@ -713,7 +735,11 @@ bool configure_consoles(ConfigReader& cr)
     if(cr.get_section("consoles", cm)) {
         config_second_usb_serial = cr.get_bool(cm, "second_usb_serial_enable", false) ? 1 : 0;
         printf("INFO: second usb serial is %s\n", config_second_usb_serial ? "enabled" : "disabled");
-
+        if(config_second_usb_serial) {
+            // see if it has line editing turned on
+            usb2_line_edit = cr.get_bool(cm, "line_editing_enabled", false);
+        }
+        debug_line_edit = cr.get_bool(cm, "debug_line_editing_enabled", false);
     }
 
     ConfigReader::section_map_t ucm;
@@ -738,7 +764,10 @@ bool configure_consoles(ConfigReader& cr)
             if(!uart_console_enabled) {
                 // as it is not a console we need to initialise it here
                 aux_uart = init_aux_uart();
+            }else{
+                uart_line_edit = cr.get_bool(ucm, "line_editing_enabled", false);
             }
+
             printf("INFO: aux uart settings: channel=%d, baudrate=%u, bits=%d, stop_bits=%d, parity=%d\n",
                    uart_channel, uart_console_settings.baudrate, uart_console_settings.bits, uart_console_settings.stop_bits, uart_console_settings.parity);
         }

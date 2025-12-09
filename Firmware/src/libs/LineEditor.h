@@ -7,7 +7,7 @@ class OutputStream;
 class LineEditor
 {
 public:
-    LineEditor(size_t maxsize, OutputStream& os);
+    LineEditor(size_t maxsize, OutputStream *os);
     virtual ~LineEditor();
     void initial_add(char *buf, size_t len);
     bool add(char *buf, size_t len);
