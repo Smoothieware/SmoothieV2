@@ -29,6 +29,8 @@
 #include "StringUtils.h"
 #include "uart_debug.h"
 #include "leds.h"
+#include "LineEditor.h"
+
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -454,6 +456,7 @@ static void uart_debug_comms(void *)
     char line[MAX_LINE_LENGTH];
     size_t cnt = 0;
     bool discard = false;
+    LineEditor *line_editor = nullptr;
     while(!abort_comms) {
         // Wait to be notified that there has been a UART irq. (it may have been rx or tx so may not be anything to read)
         uint32_t ulNotificationValue = ulTaskNotifyTake( pdFALSE, waitms );
@@ -465,6 +468,30 @@ static void uart_debug_comms(void *)
 
         size_t n = read_uart(rx_buf, sizeof(rx_buf));
         if(n > 0) {
+            if(memchr(rx_buf, 5, n)) { // ^E toggles line edit
+                if(line_editor == nullptr) {
+                    line_editor= new LineEditor(256, os);
+                    if(cnt != 0) {
+                        line_editor->initial_add(line, cnt);
+                        cnt= 0;
+                    }
+                    n= 0;
+                }else{
+                    cnt= line_editor->get_line(line, MAX_LINE_LENGTH);
+                    delete line_editor;
+                    line_editor= nullptr;
+                    n= 0;
+                }
+                os.printf("\nLine editing is now %s\n", line_editor!=nullptr?"on":"off");
+            }
+            if(line_editor != nullptr) {
+                if(!line_editor->add(rx_buf, n)) { // return false until eol is entered
+                    continue;
+                }
+                n= line_editor->get_line(rx_buf, sizeof rx_buf);
+                cnt= 0;
+                discard= false;
+            }
             process_command_buffer(n, rx_buf, &os, line, cnt, discard);
         }
     }
