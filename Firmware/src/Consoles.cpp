@@ -476,6 +476,8 @@ static void uart_debug_comms(void *)
                         cnt= 0;
                     }
                     n= 0;
+                    // turn off local echo doesn't work
+                    //os.printf("%c%c%c%c%c\n", 27, '[', '1', '2', 'h');
                 }else{
                     cnt= line_editor->get_line(line, MAX_LINE_LENGTH);
                     delete line_editor;
