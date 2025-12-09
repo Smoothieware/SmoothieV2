@@ -4,6 +4,9 @@
 #include <cstring>
 #include <string>
 
+// Maximum history lines
+constexpr size_t HISTORY_MAX = 16;
+
 LineEditor::LineEditor(size_t max, OutputStream *tos)
 {
     maxsize = max;
@@ -20,12 +23,17 @@ size_t LineEditor::get_line(char *rbuf, size_t sz)
     if(n > sz - 1) n = sz - 1;
     memcpy(rbuf, buf.data(), n);
     rbuf[n] = '\n';
-    return n+1;
+    return n + 1;
 }
 
 void LineEditor::putch(char c)
 {
     os->write(&c, 1);
+}
+
+void LineEditor::putstr(const char* s)
+{
+    while (*s) putch(*s++);
 }
 
 void LineEditor::initial_add(char *rbuf, size_t len)
@@ -55,11 +63,13 @@ bool LineEditor::add(char c)
             state = NEXT_CHAR;
             buf.clear();
             pos = 0;
+            hist_index = history.size(); // start after last history
 
         case NEXT_CHAR:
             if (c == '\n') {
                 putch('\n');
                 state = RESET;
+                if (!buf.empty()) add_history(buf);
                 return true;
             }
 
@@ -122,6 +132,29 @@ bool LineEditor::add(char c)
                 case '3': // Delete key: ESC [ 3 ~
                     state = ESC_SEQ3;
                     return false;
+                case 'A': // Up (history)
+                    if (!history.empty() && hist_index > 0) {
+                        clear_line();
+                        hist_index--;
+                        buf = history[hist_index];
+                        pos = buf.size();
+                        putstr(buf.c_str());
+                    }
+                    break;
+                case 'B': // Down (history)
+                    if (!history.empty() && hist_index < history.size() - 1) {
+                        clear_line();
+                        hist_index++;
+                        buf = history[hist_index];
+                        pos = buf.size();
+                        putstr(buf.c_str());
+                    } else if (hist_index == history.size() - 1) {
+                        clear_line();
+                        hist_index++;
+                        buf.clear();
+                        pos = 0;
+                    }
+                    break;
             }
             state =  NEXT_CHAR;
             return false;
@@ -143,4 +176,30 @@ bool LineEditor::add(char c)
     }
 
     return false;
+}
+
+void LineEditor::add_history(const std::string& line)
+{
+    // find if duplicate and move to end if so
+    for (auto i = history.begin(); i != history.end(); ++i) {
+        if(*i == line) {
+            // it is a duplicate, so move the dup to the current end of the list
+            auto tmp = *i;
+            history.erase(i);
+            history.push_back(tmp);
+            return;
+        }
+    }
+    if (history.size() >= HISTORY_MAX)
+        history.erase(history.begin());
+    history.push_back(line);
+}
+
+void LineEditor::clear_line()
+{
+    // move cursor to start
+    while (pos > 0) { putch('\b'); pos--; }
+    // clear line
+    for (size_t i = 0; i < buf.size(); ++i) putch(' ');
+    for (size_t i = 0; i < buf.size(); ++i) putch('\b');
 }

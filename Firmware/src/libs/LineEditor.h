@@ -1,13 +1,14 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 class OutputStream;
 
 class LineEditor
 {
 public:
-    LineEditor(size_t maxsize, OutputStream *os);
+    LineEditor(size_t maxlinesize, OutputStream *os);
     virtual ~LineEditor();
     void initial_add(char *buf, size_t len);
     bool add(char *buf, size_t len);
@@ -16,6 +17,9 @@ public:
 private:
     void putch(char c);
     bool add(char c);
+    void add_history(const std::string& line);
+    void clear_line();
+    void putstr(const char* s);
 
     size_t maxsize;
     std::string buf;
@@ -29,4 +33,6 @@ private:
         RESET
     };
     STATES state;
+    std::vector<std::string> history;
+    size_t hist_index{0};
 };
