@@ -54,7 +54,7 @@ bool config_override = false;
 
 // these determine if the line editor is enabled for the respective console, set in config.ini
 static bool usb2_line_edit= false;
-static bool debug_line_edit= false;
+static bool debug_uart_line_edit= false;
 static bool uart_line_edit= false;
 
 // load configuration from override file
@@ -411,7 +411,7 @@ static void usb_comms(void *param)
         if(inst > 0) {
             // create a line editor for this console if enabled in config.ini
             line_editor = usb2_line_edit ? new LineEditor(256, os) : nullptr;
-            if(line_editor != nullptr) os->printf("Line editing is on");
+            if(line_editor != nullptr) os->printf("- Line editing is on");
         }
 
         os->printf("\nok\n");
@@ -482,7 +482,7 @@ static void uart_debug_comms(void *)
     bool discard = false;
 
     // create a line editor for this console if enabled in config.ini
-    LineEditor *line_editor = debug_line_edit ? new LineEditor(256, &os) : nullptr;
+    LineEditor *line_editor = debug_uart_line_edit ? new LineEditor(256, &os) : nullptr;
     if(line_editor != nullptr) os.printf("\nLine editing is on\n");
 
     while(!abort_comms) {
@@ -739,7 +739,7 @@ bool configure_consoles(ConfigReader& cr)
             // see if it has line editing turned on
             usb2_line_edit = cr.get_bool(cm, "line_editing_enabled", false);
         }
-        debug_line_edit = cr.get_bool(cm, "debug_line_editing_enabled", false);
+        debug_uart_line_edit = cr.get_bool(cm, "uart_line_editing_enabled", false);
     }
 
     ConfigReader::section_map_t ucm;
