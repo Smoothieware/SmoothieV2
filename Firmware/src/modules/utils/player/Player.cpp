@@ -34,6 +34,8 @@ Player *Player::instance = nullptr;
 // needs to be static as it may be used by a queued gcode after abort
 OutputStream Player::nullos;
 
+extern "C" void rtc_get_datetime(char *buf, size_t len);
+
 REGISTER_MODULE(Player, Player::create)
 
 bool Player::create(ConfigReader& cr)
@@ -113,6 +115,7 @@ bool Player::configure(ConfigReader& cr)
 // extract any options found on line, terminates args at the space before the first option (-v)
 // eg this is a file.gcode -v
 //    will return -v and set args to this is a file.gcode
+// NOTE it does mean that a filename with a ' -' in it will fail
 std::string Player::extract_options(std::string& args)
 {
     std::string opts;
@@ -252,7 +255,7 @@ void Player::play_thread(void*)
 // Play a gcode file by considering each line as if it was received on the serial console
 bool Player::play_command( std::string& params, OutputStream& os )
 {
-    HELP("play file [-v] [-p]")
+    HELP("play file [-v] [-p] [-t]")
 
     // extract any options from the line and terminate the line there
     std::string options = extract_options(params);
@@ -291,6 +294,14 @@ bool Player::play_command( std::string& params, OutputStream& os )
         this->current_os = &os;
     }
 
+    // Output the stopped time to the current stream
+    if( options.find_first_of("Tt") == std::string::npos ) {
+        this->report_time = false;
+    } else {
+        this->report_time = true;
+        this->reply_os = &os;
+    }
+
     // get size of file
     struct stat buf;
     if (stat(filename.c_str(), &buf) >= 0) {
@@ -299,6 +310,13 @@ bool Player::play_command( std::string& params, OutputStream& os )
     } else {
         os.printf("WARNING - Could not get file size\n");
         file_size = 0;
+    }
+
+    if(this->report_time) {
+        // report date/time it started
+        char tbuf[20];
+        rtc_get_datetime(tbuf, sizeof(tbuf));
+        this->reply_os->printf("  Print started at: %s\n", tbuf);
     }
 
     this->played_cnt = 0;
@@ -449,6 +467,21 @@ void Player::in_command_ctx(bool idle)
     // clean up the play thread once it has finished normally
     if(play_thread_exited) {
         play_thread_exited = false;
+
+        if(this->reply_os != nullptr) {
+            // if we were printing from an M command from pronterface we need to send this back
+            this->reply_os->printf("Done printing file\n");
+
+            if(this->report_time) {
+                // report date/time it stopped
+                char buf[20];
+                rtc_get_datetime(buf, sizeof(buf));
+                this->reply_os->printf("Print stopped at: %s\n", buf);
+                this->report_time= false;
+            }
+            this->reply_os = nullptr;
+        }
+
     }
 }
 
@@ -519,12 +552,6 @@ void Player::player_thread()
     fclose(this->current_file_handler);
     current_file_handler = nullptr;
     this->current_os = nullptr;
-
-    if(this->reply_os != nullptr) {
-        // if we were printing from an M command from pronterface we need to send this back
-        this->reply_os->printf("Done printing file\n");
-        this->reply_os = nullptr;
-    }
 
     printf("DEBUG: Player thread exiting\n");
 
