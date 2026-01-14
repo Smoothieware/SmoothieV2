@@ -5,6 +5,7 @@
 #include <string>
 #include <bitset>
 #include <functional>
+#include <cstdint>
 
 class Pin
 {

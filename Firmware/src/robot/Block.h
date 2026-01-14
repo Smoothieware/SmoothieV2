@@ -4,6 +4,7 @@
 
 #include <array>
 #include <bitset>
+#include <cstdint>
 
 class Block
 {

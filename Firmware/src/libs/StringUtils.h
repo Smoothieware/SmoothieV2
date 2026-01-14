@@ -1,5 +1,6 @@
 #include <string>
 #include <vector>
+#include <cstdint>
 
 namespace stringutils {
     std::vector<std::string> split(const char *str, const char *sep);
