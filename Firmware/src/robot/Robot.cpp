@@ -349,7 +349,10 @@ bool Robot::configure(ConfigReader& cr)
 
         } else if(type == "external") {
             printf("DEBUG: configure-robot: %s is set as an external driver\n", s->first.c_str());
-
+            std::string slave_to = cr.get_string(mm, slaved_to_key, "");
+            if(!slave_to.empty()) {
+                printf("ERROR: configure-robot: %s is external, and cannot be slaved to anything in S/W\n", s->first.c_str());
+            }
         } else {
             printf("FATAL: configure-robot: unknown driver type %s\n", type.c_str());
             return false;
