@@ -17,20 +17,32 @@ Currently uses the following toolchain..
 
     gcc version 10.3.1 20210621 (release) (15:10.3-2021.07-4)
 
-*NOTE* if you use a different version you are likely to get compile errors
+It will compile under GCC versions upto 15.2.1 but it is not well tested.
+
+*NOTE* if you use more recent versions you are likely to get compile warnings
  which you will have to figure out as currently the only supported compiler
  is 10.3.1 as it has been tested for a long time and known to work with the
  code.
-    
-To get the tool chain you should do the following on Ubuntu based Linuxes...
+
+To get the tool chain you should do the following on recent Ubuntu/Debian based Linuxes...
+
+	sudo apt install gcc-arm-none-eabi
+
+	or
 
 	wget https://developer.arm.com/-/media/Files/downloads/gnu-rm/10.3-2021.10/gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2
 
-or for older versions (but make sure it is 10.3.1)
+	The first one will get a more recent GCC version (>= 12.2.1) which will compile but
+	there will be several warnings, and the resulting code is not well
+	tested yet.
+
+	The second will get the version that is well tested and has no compile warnings.
+
+or for older versions (but make sure it is >= 10.3.1)
 
     sudo apt-get install gcc-arm-none-eabi
 
-or for Debian Stretch (and Ubuntu) get the tar from here...
+alernatively for Debian (and Ubuntu) you can get the tar from here...
 
     https://developer.arm.com/open-source/gnu-toolchain/gnu-rm/downloads
 
