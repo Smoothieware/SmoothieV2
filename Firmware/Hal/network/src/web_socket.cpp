@@ -378,9 +378,9 @@ extern "C" BaseType_t delete_websocket_handler(HTTPClient_t *pclient)
             free(ws->buffer);
             ws->buffer = nullptr;
         }
+        printf("delete_websocket_handler: %p\n", ws);
         delete ws;
         pclient->websocketstate = nullptr;
-        printf("delete_websocket_handler: %p\n", ws);
     }
     return 0;
 }
