@@ -205,6 +205,7 @@ static void shell_thread(void *arg)
                     p_shell->cnt = 0;
                     p_shell->discard = false;
                     p_shell->os = new OutputStream([p_shell](const char *ibuf, size_t ilen) { return write_back(p_shell, ibuf, ilen); });
+                    p_shell->os->set_is_usb(); // we pretend to be a USB so we can use fast_capture
 
                     // we need it to know this so it can clr itself on close
                     p_shell->ss = socketset;
@@ -251,6 +252,16 @@ static void shell_thread(void *arg)
                         break;
                     }
                     #endif
+
+                    if(p_shell->os->fast_capture_fnc) {
+                        // with this callback set we just pass the buffer of
+                        // data to the callback, we do not process it in any
+                        // way. used by download_cmd and forth terminal
+                        if(!p_shell->os->fast_capture_fnc(buf, n)) {
+                            p_shell->os->fast_capture_fnc = nullptr; // we are done ok
+                        }
+                        continue;
+                    }
 
                     // this could block which would then also block any output that the
                     // command thread needs to make causing deadlock
