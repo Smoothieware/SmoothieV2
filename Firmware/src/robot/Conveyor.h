@@ -24,7 +24,7 @@ public:
     void check_queue(bool force= false);
 
     void wait_for_idle(bool wait_for_motors=true);
-    void wait_for_room();
+    bool is_there_room();
     bool is_idle() const;
 
     // returns next available block writes it to block and returns true

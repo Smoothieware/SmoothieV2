@@ -526,7 +526,10 @@ void Player::player_thread()
             //while(get_message_queue_space() < 2) vTaskDelay(pdMS_TO_TICKS(1));
 
             // don't fill block queue so don't let planner stall on a full queue
-            Conveyor::getInstance()->wait_for_room();
+            TickType_t delayms = pdMS_TO_TICKS(10); // 10 ms sleep
+            while(!Conveyor::getInstance()->is_there_room()) {
+                vTaskDelay(delayms);
+            }
 
             send_message_queue(buf, &nullos);
 

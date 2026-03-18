@@ -103,11 +103,10 @@ void Conveyor::wait_for_idle(bool wait_for_motors)
     // returning now means that everything has totally finished
 }
 
-void Conveyor::wait_for_room()
+// return true if there is room in the Queue
+bool Conveyor::is_there_room()
 {
-    while (PQUEUE->full()) {
-        safe_sleep(10); // is 10ms ok?
-    }
+    return !PQUEUE->full();
 }
 
 // #define TICKS2MS( xTicks ) ( (uint32_t) ( (xTicks * 1000) / configTICK_RATE_HZ ) )

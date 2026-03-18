@@ -47,6 +47,11 @@ simulating a stream of gcodes from a host, then the console gets stalled but
 that is ok. Another alternative is to schedule the issuing of gcodes from a
 slowtimer, one or two per cycle.
 
+There is also a callback `in_command_ctx` that can be requested (by setting
+`want_command_ctx = true` ) that is called when the command thread is idle.
+This allows a thread to send commands direct to the command thread in that
+context.
+
 ## getting input for a command
 
 ## things to avoid
