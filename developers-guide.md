@@ -31,14 +31,15 @@ don't saturate that queue.
 Basically any thread other than the command thread must put things on the
 message queue to get them executed.
 
-However if a command needs to run a gcode it can call dispatch directly as it
-is already in the command thread, however this cannot handle a lot of lines,
-maybe one or two gcodes, becuase stalling the command thread means nothing
-else will get done, and all other ports will be blocked. Examples here are
-the test command in the CommandShell, although some tests will stall the
-command thread, and probably shouldn't. Basically if enough gcodes are issued
-to fill the block queue, then the command thread will stall waiting for room.
-It is a good idea to not issue more gcodes than the size of the block queue.
+However if a command needs to run a gcode it can call
+`dispatch_line()` directly as it is already in the command thread, however
+this cannot handle a lot of lines, maybe one or two gcodes, because stalling
+the command thread means nothing else will get done, and all other ports will
+be blocked. Examples here are the test command in the CommandShell, although
+some tests will stall the command thread, and probably shouldn't. Basically
+if enough gcodes are issued to fill the block queue, then the command thread
+will stall waiting for room. It is a good idea to not issue more gcodes than
+the size of the block queue.
 
 If a module must do so then it should be run in a thread and should issue the
 gcodes in a controlled way as in the player thread. An alternative, as
@@ -48,13 +49,16 @@ that is ok. Another alternative is to schedule the issuing of gcodes from a
 slowtimer, one or two per cycle.
 
 There is also a callback `in_command_ctx` that can be requested (by setting
-`want_command_ctx = true` ) that is called when the command thread is idle.
-This allows a thread to send commands direct to the command thread in that
-context.
+`want_command_ctx = true` in `configure()`) that is called when the command
+thread is idle or running.
+
+This callback is running in the command thread context so can issue send
+commands direct to `dispatch_line()`. The thread can arrange by various means
+to have this callback issue the commands it wants.
 
 ## getting input for a command
 
-## things to avoid
+## things to avoid when running in threads
 
 * blocking or stalling the command thread
 * blocking the timer threads
@@ -66,3 +70,14 @@ blocking the command thread, which means nothing would get done from any
 comms thread as there is only one command thread. Although this is not fatal
 as eventually the block queue would clear and the peck cycle would end, it is
 however undesirable.
+
+Calling `safe_sleep()` from a thread other than the command thread. This call
+allows the command thread to sleep but still service queries, however that is
+not needed in other threads as they can simply call vTaskDelay() instead as
+queries will be handled by the comamnd thread so long as it is not stalled.
+The same is true for things like `wait_for_idle()`.
+
+Concurrent access to globals like current position and other status. In
+general one needs to be very careful of race conditions and concurrent access
+to variables when running threads, use of mutex and message queues is usually
+required. A good understanding of FreeRTOS is recommended.
