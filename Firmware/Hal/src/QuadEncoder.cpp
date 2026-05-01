@@ -134,5 +134,6 @@ uint32_t get_quadrature_encoder_div()
 
 uint32_t read_quadrature_encoder()
 {
-    return QE_TIM->CNT;
+    // it is a 16bit counter
+    return QE_TIM->CNT&0x0000FFFF;
 }

@@ -14,12 +14,15 @@ There are several threads running in the system.
   enabled (for instance the player module runs a thread which reads gcode
   from the sdcard and sends it to the command thread to be executed)
 
-All commands must be run from the command thread, which gets its command lines
-from a message queue which the other threads push lines onto. Checks are made
-to make sure you don't accidently try to execute a command from a different
-thread, although this cannot be relied on.
+All commands and gcodes must be run from the command thread, which gets its
+command lines from a message queue which the other threads push lines onto.
+Checks are made to make sure you don't accidently try to execute a command
+from a different thread, although this cannot be relied on and is only
+enabled in debug builds.
 
 ## adding commands and/or gcodes
+
+TBD
 
 ## running things in threads and feeding the command thread
 
@@ -58,6 +61,8 @@ to have this callback issue the commands it wants.
 
 ## getting input for a command
 
+TBD
+
 ## things to avoid when running in threads
 
 * blocking or stalling the command thread
@@ -80,4 +85,9 @@ The same is true for things like `wait_for_idle()`.
 Concurrent access to globals like current position and other status. In
 general one needs to be very careful of race conditions and concurrent access
 to variables when running threads, use of mutex and message queues is usually
-required. A good understanding of FreeRTOS is recommended.
+required. A good understanding of FreeRTOS is recommended. An example is
+setting the callback function, in the caller it checks if the `callback_fnc`
+is nullptr, and if not then it calls `callback_fnc()`. If this is being set
+to nullptr in a separate thread or interrupt, then it could get set to
+nullptr in between the check and the call, causing a crash. (This actually
+happened in stepticker).

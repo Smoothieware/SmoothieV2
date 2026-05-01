@@ -2059,6 +2059,8 @@ bool Robot::delta_move(const float * delta, float rate_mm_s, uint8_t naxis)
         if(!isnan(delta[i])) target[i] += delta[i];
     }
 
+    // treat it as a G0 (no laser)
+    is_g123 = false;
     // submit for planning and if moved update machine_position
     if(append_milestone(target, rate_mm_s)) {
         memcpy(machine_position, target, n_motors * sizeof(float));
