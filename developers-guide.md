@@ -1,5 +1,9 @@
 # This is a guide on how to develop for Smoothie V2
 
+We use an RTOS to schedule all the tasks (FreeRTOS), if you are unfamiliar
+with what an RTOS does here is a good short video explaining the
+fundamentals... [video](https://www.youtube.com/watch?v=i_eU16X67qU)
+
 ## architecture
 
 There are several threads running in the system.
@@ -20,8 +24,17 @@ Checks are made to make sure you don't accidently try to execute a command
 from a different thread, although this cannot be relied on and is only
 enabled in debug builds.
 
-## adding commands and/or gcodes
+## creating modules
+TBD
+See tools/examples/module-template.*
 
+### single instance module
+TBD
+
+### multiple instance module
+TBD
+
+## adding commands and/or gcodes
 TBD
 
 ## running things in threads and feeding the command thread
