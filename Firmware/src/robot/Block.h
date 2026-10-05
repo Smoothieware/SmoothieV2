@@ -37,6 +37,8 @@ public:
 
     float max_entry_speed;
 
+    std::array<int32_t, k_max_actuators> backlash_steps; // Number of steps for each axis that was used for backlash compensation
+
     // this is tick info needed for this block. applies to all motors
     uint32_t accelerate_until;
     uint32_t decelerate_after;

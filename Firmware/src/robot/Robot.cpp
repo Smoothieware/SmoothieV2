@@ -49,6 +49,7 @@
 #define  nist_G30_key                   "nist_G30"
 #define  save_wcs_key                   "save_wcs"
 #define  must_be_homed_key              "must_be_homed"
+#define  backlash_enable_key            "backlash_enable"
 
 // actuator keys
 #define step_pin_key                    "step_pin"
@@ -59,6 +60,7 @@
 #define acceleration_key                "acceleration"
 #define reversed_key                    "reversed"
 #define slaved_to_key                   "slaved_to"
+#define backlash_key                    "backlash_mm"
 
 // optional pins for microstepping used on smoothiev2 boards
 #define ms1_pin_key                     "ms1_pin"
@@ -240,13 +242,21 @@ bool Robot::configure(ConfigReader& cr)
     const char *g92           = cr.get_string(m, set_g92_key, "");
     this->must_be_homed       = cr.get_bool(m, must_be_homed_key, is_rdelta || is_delta);
 
+    // see if we want to enable backlash comp by default
+    if(cr.get_bool(m, backlash_enable_key, false)) {
+        enable_backlash_compensation(true);
+        printf("WARNING: Backlash compensation is ON\n");
+    } else {
+        printf("INFO: Backlash compensation is Off\n");
+    }
+
     if(strlen(g92) > 0) {
         // optional setting for a fixed G92 offset
         std::vector<float> t = stringutils::parse_number_list(g92);
         if(t.size() == 3) {
             g92_offset = wcs_t(t[0], t[1], t[2]);
         } else {
-            printf("Warning: configure-robot: g92_offset config is bad\n");
+            printf("WARNING: configure-robot: g92_offset config is bad\n");
         }
     }
 
@@ -373,6 +383,7 @@ bool Robot::configure(ConfigReader& cr)
         sm->change_steps_per_mm(cr.get_float(mm, steps_per_mm_key, a == Z_AXIS ? 2560.0F : 80.0F));
         sm->set_max_rate(cr.get_float(mm, max_rate_key, 30000.0F) / 60.0F); // it is in mm/min and converted to mm/sec
         sm->set_acceleration(cr.get_float(mm, acceleration_key, -1)); // mm/secs² if -1 it uses the default acceleration
+        sm->set_backlash_mm(cr.get_float(mm, backlash_key, 0.0F)); // mm
     }
 
     check_max_actuator_speeds(nullptr); // check the configs are sane
@@ -491,6 +502,7 @@ bool Robot::configure(ConfigReader& cr)
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 220, std::bind(&Robot::handle_mcodes, this, _1, _2));
 
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 400, std::bind(&Robot::handle_mcodes, this, _1, _2));
+    THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 425, std::bind(&Robot::handle_backlash, this, _1, _2));
 
     THEDISPATCHER->add_handler(Dispatcher::MCODE_HANDLER, 500, std::bind(&Robot::handle_M500, this, _1, _2));
 
@@ -1599,6 +1611,39 @@ bool Robot::handle_M665(GCode& gcode, OutputStream& os)
         os.printf("mm per line segment set to %8.4f\n", this->mm_per_line_segment);
     }
 
+    return true;
+}
+
+bool Robot::get_backlash_enabled() const
+{
+    // as they either are all enabled or none enabled we only look at first actuator
+    return actuators[0]->get_backlash_enabled();
+}
+
+void Robot::enable_backlash_compensation(bool flg)
+{
+    for (size_t i = 0; i < n_motors; i++) {
+        actuators[i]->enable_backlash(flg);
+    }
+}
+
+bool Robot::handle_backlash(GCode& gcode, OutputStream& os)
+{
+    // backlash compensation settings
+    if (gcode.has_arg('P')) {
+        bool f = gcode.get_arg('P') != 0;
+        enable_backlash_compensation(f);
+    }
+
+    os.printf("Backlash compensation is %s\n", get_backlash_enabled()?"Enabled":"Disabled");
+    for (int i = 0; i < n_motors; ++i) {
+        char axis = (i <= Z_AXIS ? 'X' + i : 'A' + (i - A_AXIS));
+        if(gcode.has_arg(axis)) {
+            actuators[i]->set_backlash_mm(gcode.get_arg(axis));
+        }
+        os.printf("%c%1.5f (%d) ", axis, actuators[i]->get_backlash_mm(), actuators[i]->get_backlash_enabled());
+    }
+    os.printf("\nNote these values are not saved with M500\n");
     return true;
 }
 

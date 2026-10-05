@@ -127,6 +127,7 @@ private:
     bool handle_G10(GCode&, OutputStream&);
     bool handle_g28_g30(GCode&, OutputStream&);
     bool handle_G92(GCode&, OutputStream&);
+    bool handle_backlash(GCode& gcode, OutputStream& os);
     bool handle_M500(GCode&, OutputStream&);
     bool handle_M665(GCode&, OutputStream&);
     #ifdef DRIVER_TMC
@@ -146,6 +147,8 @@ private:
     void clearToolOffset();
     void periodic_checks();
     void check_max_actuator_speeds(OutputStream* os);
+    bool get_backlash_enabled() const;
+    void enable_backlash_compensation(bool flg);
 
     std::array<wcs_t, MAX_WCS> wcs_offsets; // these are persistent once saved with M500
     uint8_t current_wcs{0}; // 0 means G54 is enabled this is persistent once saved with M500

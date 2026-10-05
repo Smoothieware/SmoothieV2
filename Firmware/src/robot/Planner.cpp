@@ -67,18 +67,27 @@ bool Planner::append_block(ActuatorCoordinates& actuator_pos, uint8_t n_motors, 
 
     // Direction bits
     bool has_steps = false;
+    float sos = 0.0F;
+
     for (size_t i = 0; i < n_motors; i++) {
         int32_t steps = Robot::getInstance()->actuators[i]->steps_to_target(actuator_pos[i]);
+        int32_t bl_steps = 0; // backlash compensation steps
+
         // Update current position
         if(steps != 0) {
             Robot::getInstance()->actuators[i]->update_last_milestones(actuator_pos[i], steps);
             has_steps = true;
+            bl_steps = Robot::getInstance()->actuators[i]->get_backlash_steps(steps);
+            if(bl_steps > 0) sos += powf(Robot::getInstance()->actuators[i]->get_backlash_mm(), 2);
         }
 
         // find direction
         block->direction_bits[i] = (steps < 0) ? 1 : 0;
         // save actual steps in block
         block->steps[i] = labs(steps);
+        // add in backlash compensation, and remember how many steps we used
+        block->steps[i] += bl_steps;
+        block->backlash_steps[i] = (bl_steps * ((steps<0)?-1:1));
     }
 
     // sometimes even though there is a detectable movement it turns out there are no steps to be had from such a small move
@@ -86,6 +95,11 @@ bool Planner::append_block(ActuatorCoordinates& actuator_pos, uint8_t n_motors, 
     if(!has_steps) {
         block->clear();
         return true;
+    }
+
+    // we need to also increase distance due to backlash compensation so speed is correct
+    if(sos > 0.0F) {
+        distance += sqrtf(sos);
     }
 
     // info needed by laser
