@@ -35,7 +35,10 @@ class StepperMotor
         }
         inline bool get_direction() const { return direction; }
         // called from step ticker ISR
-        inline void inc_steps(int32_t s) { step_count += s; }
+        inline void inc_steps(int32_t s) {
+            step_count += s;
+            if(p_slave != nullptr) { p_slave->step_count += s; }
+        }
 
         void enable(bool state);
         bool is_enabled() const;
