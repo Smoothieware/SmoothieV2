@@ -243,8 +243,9 @@ bool Robot::configure(ConfigReader& cr)
     this->must_be_homed       = cr.get_bool(m, must_be_homed_key, is_rdelta || is_delta);
 
     // see if we want to enable backlash comp by default
+    bool backlash = false;
     if(cr.get_bool(m, backlash_enable_key, false)) {
-        enable_backlash_compensation(true);
+        backlash = true;
         printf("WARNING: Backlash compensation is ON\n");
     } else {
         printf("INFO: Backlash compensation is Off\n");
@@ -384,6 +385,11 @@ bool Robot::configure(ConfigReader& cr)
         sm->set_max_rate(cr.get_float(mm, max_rate_key, 30000.0F) / 60.0F); // it is in mm/min and converted to mm/sec
         sm->set_acceleration(cr.get_float(mm, acceleration_key, -1)); // mm/secs² if -1 it uses the default acceleration
         sm->set_backlash_mm(cr.get_float(mm, backlash_key, 0.0F)); // mm
+    }
+
+    // enable this after the actuators have been setup
+    if(backlash) {
+        enable_backlash_compensation(true);
     }
 
     check_max_actuator_speeds(nullptr); // check the configs are sane
