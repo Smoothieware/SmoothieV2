@@ -34,6 +34,11 @@ class StepperMotor
             if(p_slave != nullptr) p_slave->set_direction(f);
         }
         inline bool get_direction() const { return direction; }
+        // called from step ticker ISR
+        inline void inc_steps(int32_t s) {
+            step_count += s;
+            if(p_slave != nullptr) { p_slave->step_count += s; }
+        }
 
         void enable(bool state);
         bool is_enabled() const;
@@ -70,6 +75,12 @@ class StepperMotor
         StepperMotor *get_slave() const { return p_slave; }
         bool init_slave(StepperMotor *sm);
 
+        int32_t get_backlash_steps(int32_t st);
+        float get_backlash_mm() const { return backlash_mm; }
+        void set_backlash_mm(float bl) { backlash_mm = bl; }
+        void enable_backlash(bool flg) { backlash_enabled = flg; }
+        bool get_backlash_enabled() const { return backlash_enabled; }
+
     private:
 
         Pin step_pin;
@@ -87,13 +98,16 @@ class StepperMotor
         int32_t step_count_homed;
         int32_t last_milestone_steps;
         float   last_milestone_mm;
+        float   backlash_mm;
 
         volatile struct {
             uint8_t motor_id:8;
             volatile bool direction:1;
             volatile bool moving:1;
+            volatile uint8_t last_direction:2;
             bool selected:1;
             bool extruder:1;
+            bool backlash_enabled:1;
         };
 
 #ifdef DRIVER_TMC
