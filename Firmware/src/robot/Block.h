@@ -62,6 +62,7 @@ public:
     tickinfo_t *tick_info;
 
     static uint8_t n_actuators;
+    volatile bool locked;              // set to true when the critical data is being updated, stepticker will have to skip if this is set
 
     struct {
         bool recalculate_flag: 1;            // Planner flag to recalculate trapezoids on entry junction
@@ -70,7 +71,6 @@ public:
         bool primary_axis: 1;                // set if this move is a primary axis
         bool is_g123: 1;                     // set if this is a G1, G2 or G3
         volatile bool is_ticking: 1;         // set when this block is being actively ticked by the stepticker
-        volatile bool locked: 1;             // set to true when the critical data is being updated, stepticker will have to skip if this is set
         uint16_t s_value: 12;                // for laser 1.11 Fixed point
     };
 };
