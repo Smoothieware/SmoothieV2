@@ -64,9 +64,9 @@ public:
     static uint8_t n_actuators;
     volatile bool locked;              // set to true when the critical data is being updated, stepticker will have to skip if this is set
     volatile bool is_ticking;          // set when this block is being actively ticked by the stepticker
+    volatile bool recalculate_flag;    // Planner flag to recalculate trapezoids on entry junction
 
     struct {
-        bool recalculate_flag: 1;            // Planner flag to recalculate trapezoids on entry junction
         bool nominal_length_flag: 1;         // Planner flag for nominal speed always reached
         bool is_ready: 1;
         bool primary_axis: 1;                // set if this move is a primary axis
