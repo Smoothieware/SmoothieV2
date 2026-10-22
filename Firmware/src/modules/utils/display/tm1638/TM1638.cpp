@@ -275,14 +275,21 @@ void TM1638::brightness(uint8_t brightness)
     sendCommand(value);
 }
 
-#include "benchmark_timer.h"
-
+extern "C" uint32_t get_microseconds();
 static void delayMicroseconds(uint32_t us)
 {
-    uint32_t st= benchmark_timer_start();
-    while(benchmark_timer_as_us(benchmark_timer_elapsed(st)) < us) ;
+    uint32_t t = get_microseconds();
+    uint32_t st= t + us;
+    // allow for wrap
+    if(st >= t) {
+        while(st > get_microseconds()) ;
+    } else {
+        while(st < get_microseconds()) ;
+    }
 }
 
+// NOTE this is bit banging data out which is sub optimal
+// with a 5us delay this will stall for 128us
 uint8_t  TM1638::HighFreqshiftin()
 {
     uint8_t value = 0;

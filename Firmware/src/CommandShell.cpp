@@ -23,6 +23,7 @@
 #include "Uart.h"
 #include "LineEditor.h"
 #include "MessageQueue.h"
+#include "tmr-setup.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -1488,7 +1489,9 @@ bool CommandShell::version_cmd(std::string& params, OutputStream& os)
     Version vers;
 
     os.printf("%s on %s. board_id: %02X\n", get_mcu().c_str(), BUILD_TARGET, board_id);
-    os.printf("Build version: %s, Build date: %s, System Clock: %ldMHz\r\n", vers.get_build(), vers.get_build_date(), SystemCoreClock / 1000000);
+    os.printf("Build version: %s, Build date: %s, System Clock: %ldMHz, Step Frequency: %1.2fKHz\n",
+        vers.get_build(), vers.get_build_date(), SystemCoreClock / 1000000, steptimer_get_frequency()/1000.0F);
+
     os.printf("%d axis, %d primary axis\n", MAX_ROBOT_ACTUATORS, N_PRIMARY_AXIS);
 
     os.set_no_response();
@@ -1688,12 +1691,13 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
 
     os.fast_capture_fnc = [&fp, &state, xSemaphore, file_size](char *buf, size_t len) {
         // note this is being run in the Comms thread
-        if(state < 0 || state >= file_size) return true; // we are in an error state or done
+        if(state < 0 || state >= file_size) return false; // we are in an error state or done
 
         if(fwrite(buf, 1, len, fp) != len) {
             state = -1;
             printf("DEBUG: fast download fwrite failed\n");
             xSemaphoreGive(xSemaphore);
+            return false;
         } else {
             state += len;
             if(state >= file_size) {
@@ -1715,6 +1719,8 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
         printf("DEBUG: fast download timed out\n");
         state = -2;
         errno = ETIMEDOUT;
+        // this could potentially cause a crash due to a race condition
+        os.fast_capture_fnc = nullptr;
     }
 
     os.printf(state <= 0 ? "FAIL - %d\n" : "SUCCESS\n", errno);
@@ -1728,8 +1734,6 @@ bool CommandShell::download_cmd(std::string& params, OutputStream& os)
         // allow incoming buffers to drain
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
-
-    os.fast_capture_fnc = nullptr;
 
     return true;
 }

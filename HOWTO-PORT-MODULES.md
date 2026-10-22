@@ -3,13 +3,16 @@ There are many differences between V1 and V2 many come from using FreeRTOS as th
 
 The other major difference is the use of a new config file format. V2 uses a .ini formatted file for the config.
 All  modules have their own section header, and there is an extension that allows multiple instances of the same module
+
 ```
 [MyModule]
 instance1.enable = true
 instance2.enable = true
 etc...
 ```
-See the tools/example-config.ini file
+
+See Extruder.cpp for an example of a module with multiple instances.
+See Laser.cpp for an example of a module with a single instance.
 
 Checksums are no longer used and the #defines are renamed to xxx_key instead and are strings.
 There is a helper script that converts many of the checksums into keys and calls to the new config library are converted too.

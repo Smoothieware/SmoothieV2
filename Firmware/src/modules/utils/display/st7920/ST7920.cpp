@@ -156,16 +156,24 @@ static const uint8_t font5x8[] = {
 #define mosi_pin_key "mosi"
 //#define miso_pin_key "miso"
 
+extern "C" uint32_t get_microseconds();
 static void wait_us(uint32_t us)
 {
     if(us >= 10000) {
         safe_sleep(us / 1000);
     } else {
-        uint32_t st = benchmark_timer_start();
-        while(benchmark_timer_as_us(benchmark_timer_elapsed(st)) < us) ;
+        uint32_t t = get_microseconds();
+        uint32_t st= t + us;
+        // allow for wrap
+        if(st >= t) {
+            while(st > get_microseconds()) ;
+        } else {
+            while(st < get_microseconds()) ;
+        }
     }
 }
 
+// use benchmark timer as it has the resolution needed
 static void wait_ns(uint32_t ns)
 {
     uint32_t st = benchmark_timer_start();

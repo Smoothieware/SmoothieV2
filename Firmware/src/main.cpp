@@ -197,6 +197,8 @@ extern "C" bool setup_sdmmc();
 static FATFS fatfs; /* File system object */
 extern bool config_override;
 
+extern "C" void microsecond_init();
+
 static void smoothie_startup(void *)
 {
     printf("INFO: Smoothie V2 Build for %s - starting up\n", BUILD_TARGET);
@@ -225,6 +227,9 @@ static void smoothie_startup(void *)
 #endif
     // this is configurable, but set the default here (for internal drivers)
     step_ticker->set_unstep_time(1); // 1us step pulse by default
+
+    // set up the microsecond counter (use instead of benchmark timer for critical timing)
+    microsecond_init();
 
     bool flash_on_boot = true;
     bool ok = false;

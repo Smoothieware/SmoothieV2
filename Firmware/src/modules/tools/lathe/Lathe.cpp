@@ -13,7 +13,8 @@
 #include "main.h"
 #include "OutputStream.h"
 #include "Pin.h"
-#include "benchmark_timer.h"
+#include "Conveyor.h"
+#include "tmr-setup.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -24,6 +25,11 @@
 #define enable_key "enable"
 #define ppr_key "encoder_ppr"
 #define index_pin_key "index_pin"
+#define index_edge_key "index_edge"
+#define index_debounce_key "index_debounce_us"
+#define index_minimum_key "index_minimum_us"
+#define qe_key "use_qe"
+#define qe_pullup_key "qe_pullup"
 
 REGISTER_MODULE(Lathe, Lathe::create)
 
@@ -53,32 +59,66 @@ bool Lathe::configure(ConfigReader& cr)
         return false;
     }
 
-    if(!setup_quadrature_encoder()) {
-        printf("ERROR: configure-lathe: unable to setup quadrature encoder\n");
-        return false;
+    index_minimum = 0; // no minimum pulse width
+
+    // default is qe encoder
+    ppr = 0;
+    bool qeflg = cr.get_bool(m, qe_key, true);
+    if(qeflg) {
+        if(!setup_quadrature_encoder(cr.get_bool(m,  qe_pullup_key, false))) {
+            printf("ERROR: configure-lathe: unable to setup quadrature encoder\n");
+            return false;
+        }
+        // pulses per rotation (takes into consideration any gearing) ppr= encoder resolution * gear ratio
+        ppr = cr.get_float(m, ppr_key, 1000);
+        printf("INFO: configure-lathe: encoder ppr %f\n", ppr);
+    } else {
+        printf("INFO: configure-lathe: No H/W quadrature encoder\n");
     }
 
     // use index pin if we define one
     index_pin =  new Pin(cr.get_string(m, index_pin_key, "nc"));
     if(index_pin->connected()) {
-        index_pin->as_interrupt(std::bind(&Lathe::handle_index_irq, this), Pin::RISING);
+        std::string edge = cr.get_string(m, index_edge_key, "falling");
+        Pin::INT_TYPE_T e;
+        if(edge == "rising") e = Pin::RISING;
+        else if(edge == "falling") e = Pin::FALLING;
+        else if(edge == "both") {
+            e = Pin::CHANGE;
+            // mimimum time of index pulse otherwise rejected in us
+            index_minimum = cr.get_int(m, index_minimum_key, 0);
+        }
+        else {
+            printf("ERROR: configure-lathe: index interrupt edge must be one of rising, falling, both: %s\n", edge.c_str());
+            delete index_pin;
+            return false;
+        }
+
+        // mimimum time between index pulses, in us, otherwise it will be rejected
+        index_debounce = cr.get_int(m, index_debounce_key, 300);
+
+        index_pin->as_interrupt(std::bind(&Lathe::handle_index_irq, this), e);
         if(!index_pin->connected()) {
             printf("ERROR: configure-lathe: Cannot set index pin to interrupt %s\n", index_pin->to_string().c_str());
             delete index_pin;
             index_pin = nullptr;
+            return false;
+
         }else{
-            printf("INFO: configure-lathe: using index pin: %s\n", index_pin->to_string().c_str());
+            printf("INFO: configure-lathe: using index pin: %s %s, with debounce %lu us, and minimum width %lu\n", index_pin->to_string().c_str(), edge.c_str(), index_debounce, index_minimum);
         }
 
     } else {
         delete index_pin;
         index_pin = nullptr;
         printf("INFO: configure-lathe: no index pin\n");
+
+        if(!qeflg) {
+            printf("ERROR: configure-lathe: At least one of qe and/or index pin must be set\n");
+            return false;
+        }
     }
 
-    // pulses per rotation (takes into consideration any gearing) ppr= encoder resolution * gear ratio
-    ppr = cr.get_float(m, ppr_key, 1000);
-    printf("INFO: configure-lathe: encoder ppr %f\n", ppr);
 
     // Actuator that is synchronized with the spindle
     // on a Lathe Z is the leadscrew for the carriage, X is the cross carriage
@@ -98,8 +138,6 @@ bool Lathe::configure(ConfigReader& cr)
     using std::placeholders::_1;
     using std::placeholders::_2;
 
-    benchmark_timer_init();
-
     Dispatcher::getInstance()->add_handler(Dispatcher::GCODE_HANDLER, 33, std::bind(&Lathe::handle_gcode, this, _1, _2));
     Dispatcher::getInstance()->add_handler("rpm", std::bind( &Lathe::rpm_cmd, this, _1, _2) );
 
@@ -112,10 +150,17 @@ bool Lathe::configure(ConfigReader& cr)
 bool Lathe::rpm_cmd(std::string& params, OutputStream& os)
 {
     HELP("display current rpm");
-
     os.printf("%1.1f\n", rpm);
+    // os.printf("index: %d, encoder: %d\n", index_pulse.load(), read_quadrature_encoder());
     os.set_no_response();
     return true;
+}
+
+// return true if a and b are within the delta range of each other
+template <typename T>
+    bool equal_within(const T& a, const T& b, const T& delta) {
+    float diff = std::abs(a - b);
+    return (diff <= std::abs(delta));
 }
 
 bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
@@ -143,56 +188,108 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
         }
 
         if(gcode.has_arg('Z')) {
-            if(rpm == 0) {
+             if(rpm == 0) {
                 gcode.set_error("Spindle must be running");
                 return true;
             }
 
             float distance = gcode.get_arg('Z'); // distance to move
-            end_pos = stepper_motor->get_current_position() + distance;
 
-            if(distance < 0) {
-                reversed = true;
-                distance = -distance;
-            } else {
-                reversed = false;
-            }
+            // if we have a qe encoder
+            if(gcode.get_subcode() == 1 && ppr > 0) {
+                // G33.1 uses this spindle sync method like the ELS does it.
+                end_pos = stepper_motor->get_current_position() + distance;
 
-            // if we have an index_pin then we wait to start by synchronizing to it
-            // NOTE the spindle and encoder must be geared 1:1 (or multiple spindle turns per 1 encoder turn)
-            // for this to have the desired effect, ie always start at the same place.
-            if(index_pin != nullptr) {
-                uint32_t curindex = index_pulse;
-                while(curindex == index_pulse) {
-                    // wait for index pulse to be hit
-                    // TODO may need to do safe_sleep here but that may take too long
-                    if(Module::is_halted() || rpm == 0) return true;
+                if(distance >= 0) {
+                    reversed = true;
+                } else {
+                    reversed = false;
+                    distance = -distance;
                 }
-            }
 
-            running = true;
+                // if we have an index_pin then we wait to start by synchronizing to it
+                // NOTE the spindle and encoder must be geared 1:1 (or multiple spindle turns per 1 encoder turn)
+                // for this to have the desired effect, ie always start at the same place.
+                if(index_pin != nullptr) {
+                    uint32_t curindex = index_pulse.load();
+                    while(curindex == index_pulse.load()) {
+                        // wait for index pulse to be hit
+                        // TODO may need to do safe_sleep here but that may take too long
+                        if(Module::is_halted() || rpm == 0) return true;
+                    }
+                }
 
-            // We have to wait for this to complete
-            while(running && !Module::is_halted()) {
+                target_position = stepper_motor->get_current_position();
+                if(!stepper_motor->is_enabled()) stepper_motor->enable(true);
+                current_direction = stepper_motor->get_direction();
+
+                // have stepticker call us
+                running = true;
+                StepTicker::getInstance()->callback_fnc = std::bind(&Lathe::update_position, this);
+
+                // We have to wait for this to complete
+                while(running && !Module::is_halted()) {
+                    safe_sleep(100);
+                    if(rpm == 0) {
+                        os.printf("error: Spindle stopped running\n");
+                        broadcast_halt(true);
+                        break;
+                    }
+                }
+                running = false;
+                end_pos = NAN;
                 safe_sleep(100);
-                // update DROs occasionally
+                // reset the position based on current actuator position
                 Robot::getInstance()->reset_position_from_current_actuator_position();
-                if(rpm == 0) {
-                    os.printf("error: Spindle stopped running\n");
-                    broadcast_halt(true);
-                    break;
+
+            } else {
+                // an alternative to above method, which would be better for high speeds that require acceleration/deceleration,
+                // is to take the current RPM and insert as if a normal G1 Znnn Fxxx where xxx is calculated from RPM
+                // this will accelerate and decelerate, but if the spindle RPM changes then the thread would be incorrect
+                // for turning this may be preferred. However it is not technically moving in sync with the spindle.
+                // I think this is how linuxcnc does it as only an index pulse is required to calculate RPM. IE no
+                // expensive high resolution encoder is needed
+                float frmms = (rpm / 60.0F) * dpr; // calculate_mmsec_from_RPM();
+                float last_rpm = rpm;
+                if(frmms > stepper_motor->get_max_rate()) {
+                    gcode.set_error("Current Spindle RPM means feed rate will exceed maximum");
+                } else {
+                    if(index_pin == nullptr) {
+                        gcode.set_error("Index pin is required for this function");
+                    } else {
+                        Conveyor::getInstance()->wait_for_idle();
+                        // sync with spindle, wait for 2 revolutions and then check rpm again
+                        uint32_t curindex = index_pulse.load();
+                        while(curindex+2 > index_pulse.load()) {
+                            // wait for index pulse to be hit
+                            if(Module::is_halted() || rpm == 0) {
+                                if(rpm == 0) {
+                                    gcode.set_error("Spindle stopped running");
+                                }
+                                return true;
+                            }
+                        }
+
+                        // check spindle speed is within 5% of last reading
+                        if(equal_within(last_rpm, rpm, last_rpm*5/100.0F)) {
+                            // issue the move, note that this will accelerate and decelerate
+                            THEDISPATCHER->dispatch(os, 'G', 1, 'F', frmms*60.0F, 'Z', distance, 0);
+                            Conveyor::getInstance()->wait_for_idle();
+                        } else {
+                            os.printf("last_rpm: %f, current rpm: %f, tolerance: %f\n", last_rpm, rpm, last_rpm*5/100.0F);
+                            gcode.set_error("Spindle speed stability was not within 5%% tolerance");
+                        }
+                    }
                 }
             }
-
-            running = false;
-
-            // reset the position based on current actuator position
-            Robot::getInstance()->reset_position_from_current_actuator_position();
 
         } else if(gcode.has_arg('X') || gcode.has_arg('Y')) {
             gcode.set_error("Only (Lathe) Z axis currently supported");
 
-        } else {
+        } else if(gcode.get_subcode() == 1 && ppr > 0) {
+            // REQUIRES a QE encoder
+            // NOTE this may be removed as it is not standard but is usefull for testing by manually turning the spindle
+            // plus it is more like the ELS way to do it.
             // no Z arg means manual mode where the half nut must be engaged and disengaged, control Y will stop it
             // K sets the mm per revolution
             end_pos = NAN;
@@ -201,13 +298,11 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
             current_direction = stepper_motor->get_direction();
 
             // have stepticker call us
-            StepTicker::getInstance()->callback_fnc = std::bind(&Lathe::update_position, this);
             running = true;
+            StepTicker::getInstance()->callback_fnc = std::bind(&Lathe::update_position, this);
 
             while(!os.get_stop_request() && !Module::is_halted()) {
                 safe_sleep(100);
-                // update DROs occasionally
-                Robot::getInstance()->reset_position_from_current_actuator_position();
                 //printf("%f %ld\n", target_position, read_quadrature_encoder());
                 // if(rpm == 0) {
                 //     // also stop if spindle stops
@@ -215,13 +310,14 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
                 // }
             }
             running = false;
-
-            StepTicker::getInstance()->callback_fnc = nullptr;
-
             os.set_stop_request(false);
+            // give it time to fully stop
             safe_sleep(100);
             // reset the position based on current actuator position
             Robot::getInstance()->reset_position_from_current_actuator_position();
+
+        } else {
+            gcode.set_error("Z axis required or encoder required");
         }
 
         return true;
@@ -231,54 +327,81 @@ bool Lathe::handle_gcode(GCode& gcode, OutputStream& os)
     return false;
 }
 
+extern "C" uint32_t get_microseconds();
 void Lathe::handle_index_irq()
 {
-    // count index pulses
-    ++index_pulse;
+    // TODO add minimum pulse width if needed index_minimum > 0 (needs to interrupt on change)
+    static uint32_t last_index_pulse_time = 0;
+    // we need to debounce this, scope says the bounce is about 50us to 250us after the first one
+    uint32_t deltaus = get_delta_microseconds(last_index_pulse_time);
+
+    if(deltaus > index_debounce) {
+        // count index pulses
+        index_pulse++;
+        // save time of index pulse and measure time between the pulses
+        uint32_t n = get_microseconds();
+        uint32_t l = index_time.exchange(n);
+        uint32_t d = (n >= l) ? n-l : 0xFFFFFFFF-(l-n)+1;
+        index_time_delta.store(d);
+        last_index_pulse_time = get_microseconds();
+    }
 }
 
 // called every 100 ms to calculate current RPM
 void Lathe::handle_rpm()
 {
-    static uint32_t last_index_pulse = 0;
     static uint32_t lasttime = 0;
-
-    if(lasttime == 0 || benchmark_timer_wrapped(lasttime)) {
-        lasttime = benchmark_timer_start();
-        return;
-    }
-
-    // get elapsed time since last call, more accurate than relying on 100ms timer
-    uint32_t deltams = benchmark_timer_as_ms(benchmark_timer_elapsed(lasttime));
-
+    static uint32_t lastcnt = 0;
     if(index_pin != nullptr) {
-        // use the index pin to calculate RPM
-        // sample about every second to increase pulse count captured
-        if(deltams >= 1000) {
-            lasttime = benchmark_timer_start();
-            if(last_index_pulse > index_pulse) {
-                // we wrapped so skip this one
-                last_index_pulse = index_pulse;
-                return;
+        // measure time between index pulses, which seems to be much more stable
+        uint32_t dtus = index_time_delta.load();
+        if(dtus > 0) {
+            // if last rpm is 0 it means the spindle was not running so last time is invalid
+            // so set to 1 so the next time around we calculate the correct rpm
+            if(rpm > 0) {
+                rpm = 60.0F * (1e6F / dtus);
+            } else {
+                rpm = 1;
             }
-
-            uint32_t d = index_pulse - last_index_pulse;
-            last_index_pulse = index_pulse;
-            rpm = (d * 60 * (1000.0F / deltams));
+        } else {
+            rpm = 0;
+            return;
         }
 
-    } else {
+        // if the index does not increase within a certain time then determine the spindle has stopped
+        uint32_t cnt = index_pulse.load();
+        if(lastcnt == cnt) {
+            uint32_t deltams = get_delta_microseconds(lasttime) / 1000;
+            if(deltams > 2000) { // 2 seconds is a reasonable amount of time that would be an RPM of 30
+                rpm = 0;
+                index_time_delta.store(0);
+            }
+        } else {
+            lasttime = get_microseconds();
+            lastcnt = cnt;
+        }
+
+    } else if(ppr > 0) {
+
+        if(lasttime == 0)  {
+            lasttime = get_microseconds();
+            return;
+        }
+
         // use encoder to calculate RPM
-        lasttime = benchmark_timer_start();
-        handle_rpm_encoder(deltams);
+        // get elapsed time since last call, more accurate than relying on 100ms timer
+        uint32_t deltaus = get_delta_microseconds(lasttime);
+        lasttime = get_microseconds();
+        rpm = handle_rpm_encoder(deltaus/1000);
     }
 }
 
 // calculate RPM from Encoder
+// each pulse is about 32us @ 1000RPM
 // Note at .5 secs sample rate we would wrap the counter at 960RPM and get a false reading (with a 2000ppr encoder returning 4000ppr)
 // at 10Hz sample rate we can go upto 4500RPM without wrapping
 // using a moving average to steady the RPM reading
-void Lathe::handle_rpm_encoder(uint32_t deltams)
+float Lathe::handle_rpm_encoder(uint32_t deltams)
 {
     static float ave[10];
     static int ave_cnt = 0;
@@ -287,6 +410,7 @@ void Lathe::handle_rpm_encoder(uint32_t deltams)
     uint32_t qediv = get_quadrature_encoder_div();
     uint32_t cnt = read_quadrature_encoder();
     uint32_t c = (cnt > last) ? cnt - last : last - cnt;
+
     last = cnt;
 
     // deal with over/underflow
@@ -299,7 +423,6 @@ void Lathe::handle_rpm_encoder(uint32_t deltams)
     if(ave_cnt < 10) {
         // fill the array first
         ave[ave_cnt++] = r;
-        rpm = r;
     } else {
         // use moving average
         float sum = r;
@@ -308,8 +431,10 @@ void Lathe::handle_rpm_encoder(uint32_t deltams)
             sum += ave[i];
         }
         ave[9] = r;
-        rpm = sum / 10;
+        r = sum / 10;
     }
+
+    return r;
 }
 
 // given move in spindle, calculate where the controlled axis should be
@@ -324,16 +449,6 @@ float Lathe::calculate_position(int32_t cnt)
 #define _ramfunc_ __attribute__ ((section(".ramfunctions"),long_call,noinline))
 
 // As these are called from the stepticker put them in RAM for faster execution
-// return true if a and b are within the delta range of each other
-_ramfunc_
-static bool equal_within(float a, float b, float delta)
-{
-    float diff = a - b;
-    if (diff < 0) diff = -diff;
-    if (delta < 0) delta = -delta;
-    return (diff <= delta);
-}
-
 _ramfunc_
 float Lathe::get_encoder_delta()
 {
@@ -369,21 +484,31 @@ float Lathe::get_encoder_delta()
 // if not then two or more steps maybe issued at a very fast rate
 // NOTE We could run this at a much slower rate and try to setup a block to move the distance accumulated, at a rate
 // determined by the spindle RPM. Not sure if that is practical though.
+// This maybe preferable (if possible), as it currently is when the distance is reached it stops abruptly with no deceleration
+// similarly it starts abruptly with no acceleration
 _ramfunc_
 int Lathe::update_position()
 {
-    if(!running || Module::is_halted()) return -1;
+    if(!running || Module::is_halted()) return -2;
 
     float current_position = stepper_motor->get_current_position();
 
     if(!std::isnan(end_pos)) {
         // G33 Znnn mode run the lead screw at the given rate (mm/rev in dpr) until distance is reached
         // check if we have travelled the required distance
+        #if 0
         // FIXME an equality operation is probably risky here we need to do > or < based on direction of travel
         if(equal_within(end_pos, current_position, delta_mm)) {
             running = false;
-            return -1;
+            return -2;
         }
+        #else
+        // FIXME this only works for moves in the negative Z direction
+        if(current_position <= end_pos) {
+            running = false;
+            return -2;
+        }
+        #endif
     }
 
     float delta = get_encoder_delta();

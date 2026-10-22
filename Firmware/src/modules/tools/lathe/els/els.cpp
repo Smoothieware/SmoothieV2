@@ -84,15 +84,24 @@ void ELS::after_load()
     started= true;
 }
 
+uint32_t ELS::get_rpm(){
+    uint32_t rpm = roundf(lathe->get_rpm());
+    if(rpm > 9999) {
+        rpm= 9999;
+    }
+    return rpm;
+}
+
 void ELS::update_rpm()
 {
     if(tm == nullptr || !started || enter_value) return;
-
+    char buf[20];
     // update display once per second
     if(tm->lock()) {
         // display current RPM in 4 left segments
-        rpm= lathe->get_rpm();
-        tm->DisplayDecNumNibble((int)roundf(rpm), var1, false, TMAlignTextRight);
+        sprintf(buf, "%4lu%03d.%1d", get_rpm(), var1/10, var1%10);
+        buf[9] = 0;
+        tm->displayText(buf);
 
         // display if running and what mode it is in
         tm->setLED(0, lathe->is_running()?1:0);
@@ -113,6 +122,8 @@ void ELS::check_buttons()
 
     if(tm == nullptr || !started) return;
 
+    char buf[20];
+
     if(tm->lock()) {
         buttons = tm->readButtons();
         tm->unlock();
@@ -121,8 +132,8 @@ void ELS::check_buttons()
     /* buttons contains a byte with values of button s8s7s6s5s4s3s2s1
      HEX  :  Switch no : Binary
      0x01 : S1 Pressed  0000 0001 - Stop operation
-     0x02 : S2 Pressed  0000 0010 - start G33 operation
-     0x04 : S3 Pressed  0000 0100 - start G1 operation
+     0x02 : S2 Pressed  0000 0010 - start G33 operation 1
+     0x04 : S3 Pressed  0000 0100 - start G33 operation 2
      0x08 : S4 Pressed  0000 1000 - edit number
      0x10 : S5 Pressed  0001 0000 - next digit
      0x20 : S6 Pressed  0010 0000 - Dec digit
@@ -142,8 +153,18 @@ void ELS::check_buttons()
     if((buttons & 0x02) && !(last_buttons & 0x02)) {
         // button 2 pressed, start operation G33 K{var1} where var1 is interpreted as a fixed point nnn.f
         if(!lathe->is_running() && var1 > 0) {
-            std::string cmd("G33 K");
+            std::string cmd("G33.1 K");
             cmd.append(std::to_string(var1/10)).append(".").append(std::to_string(std::abs(var1%10)));
+            send_message_queue(cmd.c_str(), &os, false);
+        }
+    }
+
+    if((buttons & 0x04) && !(last_buttons & 0x04)) {
+        // button 3 pressed, Issue G33 Knnn Znnn
+        if(!lathe->is_running() && var1 > 0) {
+            std::string cmd("G33.1 K");
+            cmd.append(std::to_string(var1/10)).append(".").append(std::to_string(std::abs(var1%10)));
+            cmd.append(" Z20"); // FIXME need to get distance from var2
             send_message_queue(cmd.c_str(), &os, false);
         }
     }
@@ -152,8 +173,9 @@ void ELS::check_buttons()
     if((buttons & 0x08) && !(last_buttons & 0x08)) {
         if(!enter_value) {
             var1 = 0;
-            edstr= "EDIT0000.";
+            edstr= "EDIT000.0";
             enter_value = true;
+            edpos = 0;
         } else {
             if(++edpos == 4) {
                 edstr= "";
@@ -161,11 +183,19 @@ void ELS::check_buttons()
                 enter_value= false;
 
             } else {
-                edstr.insert((8-edpos), ".");
+                sprintf(buf, "EDIT%03d.%1d", var1/10, var1%10);
+                edstr= buf;
             }
         }
         if(tm->lock()) {
             tm->displayText(edstr.c_str());
+            tm->setLED(7, false);
+            tm->setLED(6, false);
+            tm->setLED(5, false);
+            tm->setLED(4, false);
+            if(enter_value) {
+                tm->setLED(7-edpos, true);
+            }
             tm->unlock();
         }
     }
@@ -174,18 +204,25 @@ void ELS::check_buttons()
     if((buttons & 0x80) && !(last_buttons & 0x80)) {
         if(enter_value) {
             var1 += edmul[edpos];
-            char buf[10];
-            sprintf(buf, "EDIT%04d", var1);
+            if(var1 > 9999) {
+                var1= 9999;
+            }
+            sprintf(buf, "EDIT%03d.%1d", var1/10, var1%10);
             edstr= buf;
-            edstr.insert((8-edpos), ".");
+            if(tm->lock()) {
+                tm->displayText(edstr.c_str());
+                tm->unlock();
+            }
+
         } else {
             if(++var1 > 9999) {
                 var1= 9999;
-            }else{
-                if(tm->lock()) {
-                    tm->DisplayDecNumNibble((int)roundf(rpm), var1, false, TMAlignTextRight);
-                    tm->unlock();
-                }
+            }
+            if(tm->lock()) {
+                sprintf(buf, "%4lu%03d.%1d", get_rpm(), var1/10, var1%10);
+                buf[9] = 0;
+                tm->displayText(buf);
+                tm->unlock();
             }
         }
     }
@@ -193,25 +230,28 @@ void ELS::check_buttons()
     if((buttons & 0x20) && !(last_buttons & 0x20)) {
        if(enter_value) {
             var1 -= edmul[edpos];
-            char buf[10];
-            sprintf(buf, "EDIT%04d", var1);
+            if(var1 < 0) {
+                var1= 0;
+            }
+            sprintf(buf, "EDIT%03d.%1d", var1/10, var1%10);
             edstr= buf;
-            edstr.insert((8-edpos), ".");
+            if(tm->lock()) {
+                tm->displayText(edstr.c_str());
+                tm->unlock();
+            }
         } else {
             if(--var1 < 0) {
                 var1= 0;
-            }else{
-                if(tm->lock()) {
-                    tm->DisplayDecNumNibble((int)roundf(rpm), var1, false, TMAlignTextRight);
-                    tm->unlock();
-                }
+            }
+            if(tm->lock()) {
+                sprintf(buf, "%4lu%03d.%1d", get_rpm(), var1/10, var1%10);
+                buf[9] = 0;
+                tm->displayText(buf);
+                tm->unlock();
             }
         }
     }
 
     last_buttons= buttons;
 }
-
-
-
 

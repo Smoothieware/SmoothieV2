@@ -17,6 +17,8 @@
 #define release_key "release"
 #define poll_freq_key "poll_frequency_hz"
 
+extern "C" void print_to_all_consoles(const char *);
+
 /*
     A button box is a device with many programmable buttons.
     They can be used to define macros or functions or set some state.
@@ -192,12 +194,22 @@ void ButtonBox::button_tick()
 
         if(state_changed && cmd != nullptr) {
             if(strcmp(cmd, "$J STOP") == 0) {
-                os.set_stop_request(true);
+                if(!Module::is_halted()){
+                    // if we are in AlARM state don't send ^Y
+                    os.set_stop_request(true);
+                }
                 i.state = new_state;
 
             } else if(strcmp(cmd, "KILL") == 0) {
                 i.state = new_state;
                 Module::broadcast_halt(true);
+
+           } else if(strcmp(cmd, "FAULT") == 0) {
+                i.state = new_state;
+                Module::broadcast_halt(true);
+                std::string msg("FAULT detected: ");
+                msg.append(i.name);
+                print_to_all_consoles(msg.c_str());
 
             } else if(strcmp(cmd, "SUSPEND") == 0) {
                 i.state = new_state;

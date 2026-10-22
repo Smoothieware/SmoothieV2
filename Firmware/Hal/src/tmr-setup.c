@@ -18,6 +18,7 @@ static void (*fasttick_handler)();
 #define STEP_TIM_CLK_ENABLE                  __HAL_RCC_TIM3_CLK_ENABLE
 #define STEP_TIM_IRQn                        TIM3_IRQn
 #define STEP_TIM_IRQHandler                  TIM3_IRQHandler
+#define STEP_TIM_TIMERFREQ 					 20000000L // 20MHz
 
 _fast_data_ static TIM_HandleTypeDef StepTimHandle;
 
@@ -45,18 +46,19 @@ int steptimer_setup(uint32_t frequency, uint32_t delay, void *step_handler, void
     StepTimHandle.Instance = STEP_TIM;
 
     // Set STEP_TIM peripheral clock rate
-    uint32_t timerFreq = 20000000; // 20MHz
-    printf("DEBUG: STEP_TIM input clock rate= %lu\n", timerFreq);
+    printf("DEBUG: STEP_TIM input clock rate= %lu\n", STEP_TIM_TIMERFREQ);
 
     /* Compute the prescaler value to have STEP_TIM counter clock equal to 20MHz */
-    uint32_t uwPrescalerValue = (uint32_t) (SystemCoreClock / (2 * timerFreq)) - 1;
+    uint32_t uwPrescalerValue = (uint32_t) (SystemCoreClock / (2 * STEP_TIM_TIMERFREQ)) - 1;
 
     // step tick period
-    uint32_t period1 = timerFreq / frequency;
+    uint32_t period1 = STEP_TIM_TIMERFREQ / frequency;
     StepTimHandle.Init.Period = period1 - 1; // set period to trigger interrupt
     StepTimHandle.Init.Prescaler = uwPrescalerValue;
     StepTimHandle.Init.ClockDivision = 0;
     StepTimHandle.Init.CounterMode = TIM_COUNTERMODE_UP;
+    StepTimHandle.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+
     if (HAL_TIM_Base_Init(&StepTimHandle) != HAL_OK) {
         printf("ERROR: steptimer_setup failed to init steptimer\n");
         return 0;
@@ -67,14 +69,14 @@ int steptimer_setup(uint32_t frequency, uint32_t delay, void *step_handler, void
         printf("ERROR: steptimer_setup failed to start steptimer\n");
         return 0;
     }
-    printf("DEBUG: STEP_TIM period=%lu, interrupt rate=%lu Hz, pulse width=%f us\n", period1, timerFreq / period1, ((float)period1 * 1000000) / timerFreq);
+    printf("DEBUG: STEP_TIM period=%lu, interrupt rate=%lu Hz, pulse width=%f us\n", period1, STEP_TIM_TIMERFREQ / period1, ((float)period1 * 1000000) / STEP_TIM_TIMERFREQ);
     // the inaccuracy of the frequency if it does not exactly divide the frequency
-    printf("DEBUG: innaccuracy of step timer: %lu\n", timerFreq % period1);
+    printf("DEBUG: innaccuracy of step timer: %lu\n", STEP_TIM_TIMERFREQ % period1);
 
     // calculate ideal period for unstep interrupt
     uint32_t f = 1000000 / delay; // convert to frequency
-    uint32_t delay_period = timerFreq / f; // delay is in us
-    printf("DEBUG: UNSTEP_TIM period=%lu, pulse width=%f us\n", delay_period, ((float)delay_period * 1000000) / timerFreq);
+    uint32_t delay_period = STEP_TIM_TIMERFREQ / f; // delay is in us
+    printf("DEBUG: UNSTEP_TIM period=%lu, pulse width=%f us\n", delay_period, ((float)delay_period * 1000000) / STEP_TIM_TIMERFREQ);
 
     // Set UNSTEP_TIM instance
     UnStepTimHandle.Instance = UNSTEP_TIM;
@@ -112,6 +114,21 @@ void steptimer_stop()
     NVIC_DisableIRQ(UNSTEP_TIM_IRQn);
     HAL_TIM_Base_DeInit(&StepTimHandle);
     HAL_TIM_Base_DeInit(&UnStepTimHandle);
+}
+
+void steptimer_change_frequency(uint32_t freq)
+{
+	// NB the minimum frequency for 20MHz is 306Hz as the ARR is 16bit for TIM3
+	uint32_t per = STEP_TIM_TIMERFREQ / freq;
+	if(per > 0x10000) per = 0x10000;
+	else if(per == 0) per = 1;
+	__HAL_TIM_SET_AUTORELOAD(&StepTimHandle, per-1);
+}
+
+uint32_t steptimer_get_frequency()
+{
+	uint32_t arr = __HAL_TIM_GET_AUTORELOAD(&StepTimHandle);
+	return STEP_TIM_TIMERFREQ / (arr+1);
 }
 
 /**
@@ -280,3 +297,53 @@ void fasttick_stop()
     HAL_TIM_Base_DeInit(&FastTickTimHandle);
 }
 
+void microsecond_init(void)
+{
+    /* 1. Enable TIM5 peripheral clock (on APB1) */
+    RCC->APB1LENR |= RCC_APB1LENR_TIM5EN;
+    (void)RCC->APB1LENR;   /* dummy read — ensure clock is enabled before access */
+
+    /* 2. Stop the timer while we configure it */
+    TIM5->CR1 = 0;
+
+    /* 3. Prescaler: timer clock / (PSC + 1) = tick rate
+     *
+     *   Default clock tree (no CubeMX overrides):
+     * SYSCLK  = 400 MHz
+     *   AHB   = 200 MHz  (÷2)
+     *   APB1  = 100 MHz  (÷2)
+     *   TIM5  = 200 MHz  (×2 because APB1 prescaler > 1)
+     *
+     *   PSC = (200_000_000 / 1_000_000) - 1 = 199
+     *   If your APB1 timer clock differs, adjust:
+     *     PSC = (APB1_TIMER_CLK_HZ / 1_000_000) - 1
+     */
+    // uint32_t apb1_timer_clk = HAL_RCC_GetPCLK1Freq() * 2;  /* ×2 because APB1 prescaler > 1 */
+    // TIM5->PSC = (apb1_timer_clk / 1000000U) - 1;
+    TIM5->PSC = 199;
+
+    /* 4. Auto-reload = max value → free-running 32-bit counter */
+    TIM5->ARR = 0xFFFFFFFF;
+
+    /* 5. Force prescaler/ARR to load immediately */
+    TIM5->EGR = TIM_EGR_UG;
+
+    /* 6. Clear the update flag set by UG */
+    TIM5->SR = 0;
+
+    /* 7. Enable the counter */
+    TIM5->CR1 = TIM_CR1_CEN;
+}
+
+uint32_t get_microseconds()
+{
+	return TIM5->CNT;
+}
+
+// gets the delta microseconds since last, adjusts for wrap around
+uint32_t get_delta_microseconds(uint32_t last)
+{
+	uint32_t ct = TIM5->CNT;
+	if(last > ct) return (0xFFFFFFFFL - last) + ct + 1;
+	return ct - last;
+}

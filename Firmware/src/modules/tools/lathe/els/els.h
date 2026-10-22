@@ -16,9 +16,9 @@ class ELS : public Module {
         bool check_button(const char *name);
         void after_load();
         void update_rpm();
+        uint32_t get_rpm();
 
         int var1{0};
-        float rpm;
         Lathe *lathe{nullptr};
         TM1638 *tm{nullptr};
         uint8_t buttons{0};

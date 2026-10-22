@@ -29,6 +29,7 @@
 #include "StringUtils.h"
 #include "uart_debug.h"
 #include "leds.h"
+#include "StepTicker.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -298,6 +299,20 @@ bool process_command_buffer(size_t n, char *rx_buf, OutputStream *os, char *line
                 os->set_stop_request(true);
             }
 
+        } else if(cnt == 0 && c == '!') { // instant pause/feed hold
+            auto st = StepTicker::getInstance();
+            auto cv = Conveyor::getInstance();
+            if(!cv->is_idle() && !cv->is_continuous_mode() && !st->get_feed_hold()) {
+                st->set_feed_hold(true);
+                print_to_all_consoles("// action:feedhold\n"); // make upstream pause sending files
+            }
+        } else if(cnt == 0 && c == '~') { // instant resume/cycle start
+            auto st = StepTicker::getInstance();
+            if(st->get_feed_hold()) {
+                st->set_feed_hold(false);
+                print_to_all_consoles("// action:feedresume\n"); // make upstream resume sending files
+            }
+
         } else if(c == '?') {
             if(!queries.full()) {
                 queries.push_back({os, nullptr});
@@ -420,10 +435,12 @@ static void usb_comms(void *param)
                 if(os->fast_capture_fnc) {
                     if(!os->fast_capture_fnc(usb_rx_buf, n)) {
                         os->fast_capture_fnc = nullptr; // we are done ok
+                        // fall through to process as normal
+                    } else {
+                        continue;
                     }
-                } else {
-                    process_command_buffer(n, usb_rx_buf, os, line, cnt, discard);
                 }
+                process_command_buffer(n, usb_rx_buf, os, line, cnt, discard);
             }
 #if 1
             uint32_t db;
@@ -650,6 +667,8 @@ void command_handler()
 // process things like instant query
 void safe_sleep(uint32_t ms)
 {
+    configASSERT(strncmp(pcTaskGetName(NULL), "CommandThread", configMAX_TASK_NAME_LEN - 1) == 0);
+
     // here we need to sleep (and yield) for 10ms then check if we need to handle the query command
     TickType_t delayms = pdMS_TO_TICKS(10); // 10 ms sleep
     while(ms > 0) {

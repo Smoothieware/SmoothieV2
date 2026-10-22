@@ -11,6 +11,7 @@
 #include "main.h"
 #include "MessageQueue.h"
 #include "Consoles.h"
+#include "StepTicker.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -500,6 +501,13 @@ void Player::player_thread()
             vTaskDelay(pdMS_TO_TICKS(200)); // sleep and yield
         }
 
+        // if we are in feed hold wait here until it is released
+        while(StepTicker::getInstance()->get_feed_hold()) {
+            vTaskDelay(pdMS_TO_TICKS(200)); // sleep and yield
+            // if we also got a HALT then break out of this
+            if(Module::is_halted()) break;
+        }
+
         // allows us to abort the thread
         if(abort_thread || Module::is_halted()) {
             abort_thread = false;
@@ -526,7 +534,10 @@ void Player::player_thread()
             //while(get_message_queue_space() < 2) vTaskDelay(pdMS_TO_TICKS(1));
 
             // don't fill block queue so don't let planner stall on a full queue
-            Conveyor::getInstance()->wait_for_room();
+            TickType_t delayms = pdMS_TO_TICKS(10); // 10 ms sleep
+            while(!Conveyor::getInstance()->is_there_room()) {
+                vTaskDelay(delayms);
+            }
 
             send_message_queue(buf, &nullos);
 

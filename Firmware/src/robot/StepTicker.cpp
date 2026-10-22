@@ -5,6 +5,7 @@
 #include "Block.h"
 #include "Conveyor.h"
 #include "Module.h"
+#include "Robot.h"
 #include "tmr-setup.h"
 
 #include <fcntl.h>
@@ -155,10 +156,14 @@ _ramfunc_  void StepTicker::step_tick (void)
         missed_unsteps++; // keep track for diagnostics
     }
 
+    // due to the race of setting to nullptr and calling the fnc
+    // the caller should never set the fnc to nullptr, but return -2 instead
     if(callback_fnc) {
         // call an external function
         int m = callback_fnc();
-        if(m >= 0) {
+        if(m == -2) {
+            callback_fnc = nullptr;
+        } else if(m >= 0) {
             // we stepped so schedule an unstep
             unstep |= (1 << m);
         }
@@ -187,7 +192,80 @@ _ramfunc_  void StepTicker::step_tick (void)
         running = false;
         current_tick = 0;
         current_block = nullptr;
+        if(feed_hold_state != 0) {
+            steptimer_change_frequency(frequency);
+            feed_hold_state = 0;
+        }
         return;
+    }
+
+    // handle feed hold
+    // a state machine that handles the deceleration by slowing the step timer down to 1KHz
+    // and acceleration when released by increasing the step timer back to max frequency
+    switch(feed_hold_state) {
+        case 1: { // initial feed hold
+            // calculate the slope needed, uses default acceleration and current feed rate as a guestimate
+            float acc = Robot::getInstance()->get_default_acceleration(); // mm/sec²
+            float fr = Conveyor::getInstance()->get_current_feedrate();   // mm/sec
+            if(fr == 0) fr = Robot::getInstance()->get_feed_rate() / 60;
+            float time = fr * 1e3 / acc; // time this will take to stop in milliseconds
+            // we reduce the timer frequency every 1 millisecond to get a smooth deceleration
+            // calculate the number of 1ms time intervals we have to reduce it to the target frequency of 1KHz
+            feed_hold_count = feed_hold_count_calc = floorf(time); // the number of 1ms ticks we have to reduce the frequency
+            if(feed_hold_count > 0) {
+                feed_hold_reduction = (frequency - 1000.0F) / feed_hold_count; // the amount we reduce the frequency each tick
+                feed_hold_frequency = frequency; // current clock frequency
+                feed_hold_lasttime = get_microseconds();
+                feed_hold_state = 2;
+            }else {
+                // already too slow we can stop immediately
+                feed_hold_state = 3;
+                feed_hold_count_calc = 0;
+                return;
+            }
+        }
+            break;
+        case 2: // decelerating
+            if(feed_hold_count > 0) {
+                if(get_delta_microseconds(feed_hold_lasttime) > 1000) {
+                    feed_hold_lasttime = get_microseconds();
+                    --feed_hold_count;
+                    feed_hold_frequency -= feed_hold_reduction;
+                    if(feed_hold_frequency < 1000) feed_hold_frequency = 1000; // for safety
+                    steptimer_change_frequency(feed_hold_frequency);
+                }
+                // fall through and process tick
+            } else {
+                // done decelerating
+                feed_hold_state = 3;
+                return;
+            }
+            break;
+        case 3: // done decelerating so hold here
+            return;
+
+        case 4: // feed release
+            feed_hold_lasttime = get_microseconds();
+            feed_hold_count = feed_hold_count_calc;
+            feed_hold_state = 5;
+            break;
+        case 5: // accelerating
+            if(feed_hold_count > 0) {
+                if(get_delta_microseconds(feed_hold_lasttime) > 1000) {
+                    feed_hold_lasttime = get_microseconds();
+                    --feed_hold_count;
+                    feed_hold_frequency += feed_hold_reduction;
+                    if(feed_hold_frequency > frequency) feed_hold_frequency = frequency; // for safety
+                    steptimer_change_frequency(feed_hold_frequency);
+                }
+                // fall through and process tick
+
+            } else {
+                 // we are done accelerating, restore frequency
+                steptimer_change_frequency(frequency);
+                feed_hold_state = 0;
+            }
+            break;
     }
 
     bool still_moving = false;
@@ -266,6 +344,11 @@ _ramfunc_  void StepTicker::step_tick (void)
 
         // all moves finished
         current_tick = 0;
+
+        // we need to reduce motor stepcount by the number of backlashsteps to keep actuator position consistent
+        for (uint8_t m = 0; m < num_motors; m++) {
+            motor[m]->inc_steps(-(current_block->backlash_steps[m]));
+        }
 
         // get next block
         // do it here so there is no delay in ticks

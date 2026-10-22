@@ -129,6 +129,13 @@ void Drillingcycles::peck_hole()
 
     // for each cycle
     for (int i = 1; i < cycles; i++) {
+        if(Module::is_halted()) return;
+
+        // NOTE This could stall the command thread if dispatch fills up the
+        // block queue. It would be better to check that does not happen and
+        // defer the issuance of more gcodes or run in a thread if the number
+        // of cycles is > block queue depth.
+
         // decrement depth
         z_pos -= this->sticky_q;
         // feed down to depth at feedrate (F and Z)
@@ -177,6 +184,8 @@ void Drillingcycles::make_hole(GCode& gcode)
         // feed down to depth at feedrate (F and Z)
         THEDISPATCHER->dispatch(nullos, 'G', 1, 'Z', this->sticky_z, 'F', this->sticky_f, 0);
     }
+
+    if(Module::is_halted()) return;
 
     // if dwell, wait for x seconds
     if (this->sticky_p > 0) {

@@ -125,7 +125,7 @@ REGISTER_TEST(QETest, delta)
 // Tests both hardware encoder and S/W rotary encoder
 REGISTER_TEST(QETest, basic_read)
 {
-    TEST_ASSERT_TRUE(setup_quadrature_encoder());
+    TEST_ASSERT_TRUE(setup_quadrature_encoder(true));
 
     // pin1 and pin2 must be interrupt capable pins that have not already got interrupts assigned for that line number
     Pin pin1("PA6^"), pin2("PA5^");

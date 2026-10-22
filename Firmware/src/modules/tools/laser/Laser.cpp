@@ -287,6 +287,12 @@ void Laser::set_proportional_power(void)
         return;
     }
 
+    if(StepTicker::getInstance()->get_feed_holding()) {
+        // we are in feed hold so turn off laser
+        set_laser_power(0);
+        return;
+    }
+
     float power;
     if(get_laser_power(power)) {
         // adjust power to maximum power and actual velocity

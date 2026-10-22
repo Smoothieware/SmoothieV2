@@ -111,6 +111,7 @@ bool RotaryEncoder::setup()
         return false;
     }
 
+    printf("DEBUG: RotaryEncoder: set interrupt pins %s, %s\n", pin1.to_string().c_str(), pin2.to_string().c_str());
     return true;
 }
 

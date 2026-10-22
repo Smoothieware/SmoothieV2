@@ -35,6 +35,9 @@ public:
     const Block *get_current_block() const { return current_block; }
     bool start();
     bool stop();
+    void set_feed_hold(bool flg) { feed_hold_state = flg ? 1 : 4; }
+    bool get_feed_hold() const { return feed_hold_state > 0; }
+    bool get_feed_holding() const { return feed_hold_state == 3; }
 
     // can be set by a module to get called at stepticker frequency (currently only used by Lathe module)
     // return the motor number that needs to be unstepped if a step was made, or -1
@@ -67,7 +70,14 @@ private:
 
     uint32_t current_tick{0};
 
+    uint32_t feed_hold_count;
+    uint32_t feed_hold_count_calc;
+    uint32_t feed_hold_frequency;
+    uint32_t feed_hold_lasttime;
+    float feed_hold_reduction;
+
     uint8_t num_motors{0};
+    uint8_t feed_hold_state{0};
 
     volatile bool running{false};
     static bool started;

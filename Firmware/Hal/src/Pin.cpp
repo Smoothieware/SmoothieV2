@@ -33,6 +33,12 @@ static std::set<std::string> black_listed {
 
 static uint16_t gpiopin2pin(uint16_t gpin)
 {
+#if 1
+    #define __CLZ             (uint8_t)__builtin_clz
+    uint8_t lzcount = __CLZ((uint32_t)gpin);
+    return lzcount < 16 ? 16 : 31 - lzcount;
+}
+#else
     for (int i = 0; i < 16; ++i) {
         if((gpin >> i) & 1) {
             return i;
@@ -40,6 +46,7 @@ static uint16_t gpiopin2pin(uint16_t gpin)
     }
     return 16;
 }
+#endif
 
 Pin::Pin()
 {

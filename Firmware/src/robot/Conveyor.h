@@ -24,7 +24,7 @@ public:
     void check_queue(bool force= false);
 
     void wait_for_idle(bool wait_for_motors=true);
-    void wait_for_room();
+    bool is_there_room();
     bool is_idle() const;
 
     // returns next available block writes it to block and returns true
@@ -33,6 +33,7 @@ public:
     void flush_queue(void);
     void force_queue() { check_queue(true); }
     bool set_continuous_mode(bool flg);
+    bool is_continuous_mode() const { return continuous_mode != 0; }
     void set_hold(bool f) { hold_queue= f; }
 
 
