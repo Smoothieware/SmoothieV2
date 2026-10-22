@@ -345,6 +345,11 @@ _ramfunc_  void StepTicker::step_tick (void)
         // all moves finished
         current_tick = 0;
 
+        // we need to reduce motor stepcount by the number of backlashsteps to keep actuator position consistent
+        for (uint8_t m = 0; m < num_motors; m++) {
+            motor[m]->inc_steps(-(current_block->backlash_steps[m]));
+        }
+
         // get next block
         // do it here so there is no delay in ticks
         conveyor->block_finished();

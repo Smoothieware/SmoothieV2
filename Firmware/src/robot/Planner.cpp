@@ -67,18 +67,27 @@ bool Planner::append_block(ActuatorCoordinates& actuator_pos, uint8_t n_motors, 
 
     // Direction bits
     bool has_steps = false;
+    float sos = 0.0F;
+
     for (size_t i = 0; i < n_motors; i++) {
         int32_t steps = Robot::getInstance()->actuators[i]->steps_to_target(actuator_pos[i]);
+        int32_t bl_steps = 0; // backlash compensation steps
+
         // Update current position
         if(steps != 0) {
             Robot::getInstance()->actuators[i]->update_last_milestones(actuator_pos[i], steps);
             has_steps = true;
+            bl_steps = Robot::getInstance()->actuators[i]->get_backlash_steps(steps);
+            if(bl_steps > 0) sos += powf(Robot::getInstance()->actuators[i]->get_backlash_mm(), 2);
         }
 
         // find direction
         block->direction_bits[i] = (steps < 0) ? 1 : 0;
         // save actual steps in block
         block->steps[i] = labs(steps);
+        // add in backlash compensation, and remember how many steps we used
+        block->steps[i] += bl_steps;
+        block->backlash_steps[i] = (bl_steps * ((steps<0)?-1:1));
     }
 
     // sometimes even though there is a detectable movement it turns out there are no steps to be had from such a small move
@@ -86,6 +95,11 @@ bool Planner::append_block(ActuatorCoordinates& actuator_pos, uint8_t n_motors, 
     if(!has_steps) {
         block->clear();
         return true;
+    }
+
+    // we need to also increase distance due to backlash compensation so speed is correct
+    if(sos > 0.0F) {
+        distance += sqrtf(sos);
     }
 
     // info needed by laser
@@ -405,6 +419,10 @@ void Planner::calculate_trapezoid(Block *block, float entryspeed, float exitspee
     uint32_t deceleration_ticks = floorf( time_to_decelerate * STEP_TICKER_FREQUENCY );
     uint32_t total_move_ticks   = floorf( total_move_time    * STEP_TICKER_FREQUENCY );
 
+    // Each value is floored on its own, so the deceleration can come out longer than the whole move.
+    // decelerate_after is unsigned: without this clamp it would wrap to ~4 billion and the block would never decelerate.
+    if (deceleration_ticks > total_move_ticks) deceleration_ticks = total_move_ticks;
+
     // Now deduce the plateau time for those new values expressed in tick
     //uint32_t plateau_ticks = total_move_ticks - acceleration_ticks - deceleration_ticks;
 
@@ -418,6 +436,14 @@ void Planner::calculate_trapezoid(Block *block, float entryspeed, float exitspee
     // we have a potential race condition here as we could get interrupted anywhere in the middle of this call, we need to lock
     // the updates to the blocks to get around it
     block->locked= true;
+
+    // is_ticking was tested at the top, but the maths above takes a while and the step ticker may have started this block since.
+    // The ticker only starts unlocked blocks and can't be preempted by us, so after locking one of us has won: if it's ticking now, leave it alone
+    if (block->is_ticking) {
+        block->locked= false;
+        return;
+    }
+
     // Now figure out the two acceleration ramp change events in ticks
     block->accelerate_until = acceleration_ticks;
     block->decelerate_after = total_move_ticks - deceleration_ticks;

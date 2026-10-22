@@ -37,6 +37,8 @@ public:
 
     float max_entry_speed;
 
+    std::array<int32_t, k_max_actuators> backlash_steps; // Number of steps for each axis that was used for backlash compensation
+
     // this is tick info needed for this block. applies to all motors
     uint32_t accelerate_until;
     uint32_t decelerate_after;
@@ -60,15 +62,15 @@ public:
     tickinfo_t *tick_info;
 
     static uint8_t n_actuators;
+    volatile bool locked;              // set to true when the critical data is being updated, stepticker will have to skip if this is set
+    volatile bool is_ticking;          // set when this block is being actively ticked by the stepticker
+    volatile bool recalculate_flag;    // Planner flag to recalculate trapezoids on entry junction
 
     struct {
-        bool recalculate_flag: 1;            // Planner flag to recalculate trapezoids on entry junction
         bool nominal_length_flag: 1;         // Planner flag for nominal speed always reached
         bool is_ready: 1;
         bool primary_axis: 1;                // set if this move is a primary axis
         bool is_g123: 1;                     // set if this is a G1, G2 or G3
-        volatile bool is_ticking: 1;         // set when this block is being actively ticked by the stepticker
-        volatile bool locked: 1;             // set to true when the critical data is being updated, stepticker will have to skip if this is set
         uint16_t s_value: 12;                // for laser 1.11 Fixed point
     };
 };
