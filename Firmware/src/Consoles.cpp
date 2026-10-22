@@ -300,14 +300,14 @@ bool process_command_buffer(size_t n, char *rx_buf, OutputStream *os, char *line
             }
 
 
-        } else if(i == 0 && c == '!') { // instant pause/feed hold
+        } else if(cnt == 0 && c == '!') { // instant pause/feed hold
             auto st = StepTicker::getInstance();
             auto cv = Conveyor::getInstance();
             if(!cv->is_idle() && !cv->is_continuous_mode() && !st->get_feed_hold()) {
                 st->set_feed_hold(true);
                 print_to_all_consoles("// action:feedhold\n"); // make upstream pause sending files
             }
-        } else if(i == 0 && c == '~') { // instant resume/cycle start
+        } else if(cnt == 0 && c == '~') { // instant resume/cycle start
             auto st = StepTicker::getInstance();
             if(st->get_feed_hold()) {
                 st->set_feed_hold(false);
